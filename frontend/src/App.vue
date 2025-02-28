@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
+import TheMenu from "./components/TheMenu.vue";
 </script>
 
 <template>
   <header></header>
 
-  <RouterView />
+  <TheMenu />
+
+  <main>
+    <RouterView />
+  </main>
 </template>
 
 <style scoped></style>
