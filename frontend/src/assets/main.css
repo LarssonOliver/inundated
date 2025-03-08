@@ -1,4 +1,6 @@
 html {
-    font-feature-settings: "cv02","cv03","cv04","cv11";
-    font-family: Inter var,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;
+    font-family: Roboto, sans-serif;
+    background-color: var(--nord0);
+    color: var(--nord4);
 }
+

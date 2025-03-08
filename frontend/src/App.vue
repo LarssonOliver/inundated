@@ -13,4 +13,8 @@ import TheMenu from "./components/TheMenu.vue";
   </main>
 </template>
 
-<style scoped></style>
+<style>
+@import "@/../node_modules/@fontsource/roboto/index.css";
+@import "@/assets/nord.css";
+@import "@/assets/main.css";
+</style>
