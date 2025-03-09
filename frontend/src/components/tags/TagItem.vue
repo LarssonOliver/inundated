@@ -34,7 +34,7 @@ const containerClasses = reactive({
 <style scoped>
 .tag-container {
   background-color: v-bind("props.color");
-  margin: 0.25em;
+  margin: 0.25em 0.25em 0.25em 0;
   padding: 0.25em 0.5em;
   width: fit-content;
   border-radius: 0.5em;
