@@ -1,6 +1,8 @@
-html {
-    font-family: Roboto, sans-serif;
-    background-color: var(--nord0);
-    color: var(--nord4);
+:root {
+  font-family: Roboto, sans-serif;
+  color: var(--nord4);
 }
 
+html {
+  background-color: var(--nord0);
+}

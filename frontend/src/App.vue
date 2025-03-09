@@ -15,6 +15,7 @@ import TheMenu from "./components/TheMenu.vue";
 
 <style>
 @import "@/../node_modules/@fontsource/roboto/index.css";
+@import "@/../node_modules/material-icons/iconfont/material-icons.css";
 @import "@/assets/nord.css";
 @import "@/assets/main.css";
 </style>

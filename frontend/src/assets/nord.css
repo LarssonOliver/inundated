@@ -1,21 +1,21 @@
 :root {
-    --nord0: #2e3440; /* background color */
-    --nord1: #3b4252; /* status bars, panels, borders, etc */
-    --nord2: #434c5e; /* active editor line etc. */
-    --nord3: #4c566a; /* ui elements */
+  --nord0: #2e3440; /* background color */
+  --nord1: #3b4252; /* status bars, panels, borders, etc */
+  --nord2: #434c5e; /* active editor line etc. */
+  --nord3: #4c566a; /* ui elements */
 
-    --nord4: #d8dee9; /* default text color */
-    --nord5: #e5e9f0; /* light text color */
-    --nord6: #eceff4; /* elevated text color */
-    
-    --nord7: #8fbcbb; /* secondary accent color */
-    --nord8: #88c0d0; /* primary accent color */
-    --nord9: #91a1c1; /* supporting accent color */
-    --nord10: #5e81ac; /* more attention than default */
+  --nord4: #d8dee9; /* default text color */
+  --nord5: #e5e9f0; /* light text color */
+  --nord6: #eceff4; /* elevated text color */
 
-    --nord11: #bf616a; /* red, errors */
-    --nord12: #d08770; /* orange, dangerous */
-    --nord13: #ebcb8b; /* yellow, warnings */
-    --nord14: #a3be8c; /* green, success */
-    --nord15: #b48ead; /* purple, uncommon */
+  --nord7: #8fbcbb; /* secondary accent color */
+  --nord8: #88c0d0; /* primary accent color */
+  --nord9: #91a1c1; /* supporting accent color */
+  --nord10: #5e81ac; /* more attention than default */
+
+  --nord11: #bf616a; /* red, errors */
+  --nord12: #d08770; /* orange, dangerous */
+  --nord13: #ebcb8b; /* yellow, warnings */
+  --nord14: #a3be8c; /* green, success */
+  --nord15: #b48ead; /* purple, uncommon */
 }
