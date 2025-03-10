@@ -1,8 +1,11 @@
+@import url("input.css");
+
 :root {
   font-family: Roboto, sans-serif;
   color: var(--nord4);
 }
 
 html {
-  background-color: var(--nord0);
+  background-color: var(--nord-c0);
 }
+

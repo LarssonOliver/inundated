@@ -18,4 +18,7 @@
   --nord13: #ebcb8b; /* yellow, warnings */
   --nord14: #a3be8c; /* green, success */
   --nord15: #b48ead; /* purple, uncommon */
+
+--nord-c0: #292e39; /* custom 0, background color */
+  --nord-c1: #abb9cf; /* custom 1, placeholder text color */
 }
