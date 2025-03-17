@@ -24,6 +24,7 @@ declare module 'vue' {
     Menubar: typeof import('primevue/menubar')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchBox: typeof import('./src/components/inputs/SearchBox.vue')['default']
     SearchOrCreateTag: typeof import('./src/components/tags/SearchOrCreateTag.vue')['default']
     Tag: typeof import('./src/components/Tag.vue')['default']
     TagItem: typeof import('./src/components/tags/TagItem.vue')['default']

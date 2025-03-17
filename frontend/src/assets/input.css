@@ -1,47 +1,47 @@
 input {
-    width: 100%;
-    max-width: 400px;
-    padding: .5em .75em;
-    color: inherit;
-    border: 1px solid var(--nord0);
-    transition: border-color 0.1s, background-color 0.1s;
-    background-color: var(--nord0);
-
-    margin: 10px;
+  width: 100%;
+  max-width: 400px;
+  padding: 0.5em 0.75em;
+  color: inherit;
+  border: 1px solid var(--nord0);
+  transition:
+    border-color 0.1s,
+    background-color 0.1s;
+  background-color: var(--nord0);
 }
 
 input:focus {
-    border: 1px solid var(--nord3);
-    outline: none;
+  border: 1px solid var(--nord3);
+  outline: none;
 }
 
 input::placeholder {
-    color: var(--nord-c1);
+  color: var(--nord-c1);
 }
 
 input:disabled {
-    color: var(--nord3);
+  color: var(--nord3);
 }
 
 input:invalid {
-    border: 1px solid var(--nord11);
+  border: 1px solid var(--nord11);
 }
 
 input[type="submit"]:hover,
 input[type="reset"]:hover,
 input[type="button"]:hover {
-    cursor: pointer;
-    background-color: var(--nord1);
+  cursor: pointer;
+  background-color: var(--nord1);
 }
 
 input[type="range"] {
-    cursor: pointer;
-    accent-color: var(--nord1);
+  cursor: pointer;
+  accent-color: var(--nord1);
 }
 
 input[type="color"],
 input[type="radio"],
 input[type="checkbox"] {
-    cursor: pointer;
-    accent-color: var(--nord3);
+  cursor: pointer;
+  accent-color: var(--nord3);
 }
