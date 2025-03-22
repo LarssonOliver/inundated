@@ -5,7 +5,13 @@
     <TagItem color="#fff" name="tag:test" />
   </div>
 
-  <SearchBox placeholder="test...">Test</SearchBox>
+  <hr />
+
+  <SearchBox placeholder="test...">
+    <template v-slot="item">
+      {{ item }}
+    </template>
+  </SearchBox>
 </template>
 
 <script setup lang="ts">

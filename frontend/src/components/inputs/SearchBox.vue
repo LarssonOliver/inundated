@@ -1,22 +1,23 @@
 <template>
-  <div>
-    <input
-      type="text"
-      :placeholder="props.placeholder"
-      @mouseenter="showDropdown = true"
-      @mouseleave="showDropdown = false"
-    />
+  <div class="container">
+    <input type="text" :placeholder="props.placeholder" @mouseenter="showDropdown = true"
+      @mouseleave="showDropdown = true" />
 
-    <div
-      v-if="showDropdown"
-      class="dropdown"
-      @mouseenter="showDropdown = true"
-      @mouseleave="showDropdown = false"
-    >
+    <div v-if="showDropdown" class="dropdown" @mouseenter="showDropdown = true" @mouseleave="showDropdown = true">
       <div v-if="searching" class="searching-text">Searching...</div>
-      <div v-else></div>
-
-      <slot />
+      <ul v-else>
+        <li v-for="(item, _) of items">
+          <div class="list-item">
+            <slot v-bind="item" />
+          </div>
+          <hr />
+        </li>
+        <li>
+          <div class="list-item">
+            Create new item...
+          </div>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
@@ -24,17 +25,29 @@
 <script setup lang="ts" generic="T">
 import { ref } from "vue";
 
+const items = ref<T[]>([
+  { name: "test" },
+  { name: "test2" },
+  { name: "test3" },
+]);
+
 const props = defineProps<{
-  items?: T[];
-  searchFunc?: (query: string) => T[];
+  // items?: T[];
   placeholder?: string;
+  searchFunc?: (query: string) => T[];
+  createFunc?: (query: string) => Promise<T>;
 }>();
 
-const showDropdown = ref(false);
-const searching = ref(true);
+const showDropdown = ref(true);
+const searching = ref(false);
 </script>
 
 <style scoped>
+.container {
+  --max-width: 400px;
+  max-width: var(--max-width);
+}
+
 .dropdown {
   position: absolute;
   background-color: var(--nord0);
@@ -43,10 +56,20 @@ const searching = ref(true);
   z-index: 1;
   display: block;
   width: 100%;
-  max-width: 398px;
+  max-width: var(--max-width);
 }
 
 .searching-text {
   color: var(--nord-c1);
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-item:hover {
+  background-color: var(--nord3);
 }
 </style>
