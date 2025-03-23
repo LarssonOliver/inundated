@@ -1,51 +1,149 @@
 <template>
   <div class="container">
-    <input type="text" :placeholder="props.placeholder" @mouseenter="showDropdown = true"
-      @mouseleave="showDropdown = true" />
+    <input
+      type="text"
+      :placeholder="props.placeholder"
+      @mouseenter="showDropdown = true"
+      @mouseleave="showDropdown = false"
+      @focusin="showDropdown = true"
+      @focusout="showDropdown = false"
+      @keydown="handleKeyDown"
+      @keyup.control="isCtrlDown = false"
+      @input="highlightedIndex = null"
+      v-model="searchString"
+    />
 
-    <div v-if="showDropdown" class="dropdown" @mouseenter="showDropdown = true" @mouseleave="showDropdown = true">
+    <div
+      v-if="showDropdown"
+      class="dropdown"
+      @mouseenter="showDropdown = true"
+      @mouseleave="showDropdown = false"
+    >
       <div v-if="searching" class="searching-text">Searching...</div>
       <ul v-else>
-        <li v-for="(item, _) of items">
-          <div class="list-item">
-            <slot v-bind="item" />
-          </div>
-          <hr />
+        <li
+          v-for="(item, index) of props.items || []"
+          v-bind:key="index"
+          @mouseenter="highlightedIndex = index"
+          @mouseleave="highlightedIndex = null"
+          @mousedown="selectItem(item)"
+          :class="{ 'highlight-item': highlightedIndex === index }"
+        >
+          <slot v-bind="item" />
         </li>
-        <li>
-          <div class="list-item">
-            Create new item...
-          </div>
-        </li>
+        <hr v-if="showCreateItemField" />
+        <div
+          v-if="showCreateItemField"
+          @mouseenter="highlightedIndex = props.items?.length || 0"
+          @mouseleave="highlightedIndex = null"
+          @mousedown="createItem()"
+          :class="{ 'highlight-item': highlightedIndex === props.items?.length }"
+        >
+          <slot name="createItemField" :v-bind="searchString">
+            <li>
+              <slot name="createItemField">Create "{{ searchString }}"...</slot>
+            </li>
+          </slot>
+        </div>
       </ul>
     </div>
   </div>
 </template>
 
 <script setup lang="ts" generic="T">
-import { ref } from "vue";
-
-const items = ref<T[]>([
-  { name: "test" },
-  { name: "test2" },
-  { name: "test3" },
-]);
+import { computed, ref, watch } from "vue";
 
 const props = defineProps<{
-  // items?: T[];
+  items?: T[];
   placeholder?: string;
   searchFunc?: (query: string) => T[];
   createFunc?: (query: string) => Promise<T>;
 }>();
 
-const showDropdown = ref(true);
+const showCreateItemField = computed(() => {
+  return searchString.value.length > 0;
+});
+
+const searchString = ref("");
+const highlightedIndex = ref<number | null>(null);
+
+const showDropdown = ref(false);
 const searching = ref(false);
+const isCtrlDown = ref(false);
+
+function handleKeyDown(event: KeyboardEvent) {
+  switch (event.key) {
+    case "Control":
+      // Disabled directly in @keyup
+      isCtrlDown.value = true;
+      break;
+    case "n":
+      if (!isCtrlDown.value) break;
+    case "ArrowDown":
+      if (highlightedIndex.value === null && (props.items?.length || showCreateItemField)) {
+        highlightedIndex.value = 0;
+      } else if (showCreateItemField.value) {
+        highlightedIndex.value = Math.min(
+          (highlightedIndex?.value ?? -1) + 1,
+          props.items?.length ?? 0,
+        );
+      } else {
+        highlightedIndex.value = Math.min(
+          (highlightedIndex?.value ?? -1) + 1,
+          (props.items?.length ?? 0) - 1,
+        );
+      }
+      event.preventDefault();
+      break;
+
+    case "p":
+      if (!isCtrlDown.value) break;
+    case "ArrowUp":
+      if (highlightedIndex.value === null) {
+        break;
+      } else if (highlightedIndex.value === 0) {
+        highlightedIndex.value = null;
+      } else {
+        highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
+      }
+      event.preventDefault();
+      break;
+
+    case "u":
+      if (!isCtrlDown.value) break;
+      searchString.value = "";
+      highlightedIndex.value = null;
+      break;
+
+    case "Enter":
+      if (highlightedIndex.value !== null && highlightedIndex.value < (props.items?.length ?? 0)) {
+        selectItem(props.items?.[highlightedIndex.value] as T);
+      } else if (highlightedIndex.value === props.items?.length) {
+        createItem();
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+function selectItem(item: T) {
+  console.log("Select " + item.name);
+}
+
+function createItem() {
+  console.log("Create " + searchString.value);
+}
+
+watch(showDropdown, async () => (highlightedIndex.value = null));
 </script>
 
 <style scoped>
 .container {
   --max-width: 400px;
   max-width: var(--max-width);
+  font-size: 1em;
 }
 
 .dropdown {
@@ -69,7 +167,8 @@ ul {
   margin: 0;
 }
 
-.list-item:hover {
+.highlight-item {
   background-color: var(--nord3);
+  cursor: pointer;
 }
 </style>

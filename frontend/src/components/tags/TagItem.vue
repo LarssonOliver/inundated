@@ -1,8 +1,8 @@
 <template>
   <div :class="containerClasses" @mouseenter="hover = true" @mouseleave="hover = false">
-    <div>{{ props.name }}</div>
+    <div>{{ tag.name }}</div>
     <MaterialIcon
-      @click="(props.onClose as () => void)()"
+      @click="(onClose as () => void)()"
       v-if="hover && onClose !== undefined"
       class="close-icon"
       icon="close"
@@ -14,17 +14,17 @@
 <script setup lang="ts">
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
+import type { Tag } from "@/model/model";
 import { reactive, ref } from "vue";
 
 const hover = ref(false);
 
-const props = defineProps<{
-  name: string;
-  color: string;
+const { tag, onClose } = defineProps<{
+  tag: Tag;
   onClose?: () => void;
 }>();
 
-const darkText = shouldTextBeDarkFromBgColor(props.color);
+const darkText = shouldTextBeDarkFromBgColor(tag.color);
 const containerClasses = reactive({
   "tag-container": true,
   "dark-text": darkText,
@@ -33,7 +33,7 @@ const containerClasses = reactive({
 
 <style scoped>
 .tag-container {
-  background-color: v-bind("props.color");
+  background-color: v-bind("tag.color");
   margin: 0.25em 0.25em 0.25em 0;
   padding: 0.25em 0.5em;
   width: fit-content;

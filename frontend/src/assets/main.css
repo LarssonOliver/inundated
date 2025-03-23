@@ -3,11 +3,11 @@
 :root {
   font-family: Roboto, sans-serif;
   color: var(--nord4);
-
 }
 
 html {
   background-color: var(--nord-c0);
+  font-size: medium;
 }
 
 * {
@@ -17,6 +17,6 @@ html {
 }
 
 hr {
-    border: 0;
-    border-top: 1px solid var(--nord1);
+  border: 0;
+  border-top: 1px solid var(--nord1);
 }

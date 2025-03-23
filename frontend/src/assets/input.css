@@ -8,6 +8,7 @@ input {
     border-color 0.1s,
     background-color 0.1s;
   background-color: var(--nord0);
+  font-size: medium;
 }
 
 input:focus {
