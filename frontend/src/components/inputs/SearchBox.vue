@@ -9,7 +9,7 @@
       @focusout="showDropdown = false"
       @keydown="handleKeyDown"
       @keyup.control="isCtrlDown = false"
-      @input="highlightedIndex = null"
+      @input="onInput"
       v-model="searchString"
     />
 
@@ -56,8 +56,12 @@ import { computed, ref, watch } from "vue";
 const props = defineProps<{
   items?: T[];
   placeholder?: string;
-  searchFunc?: (query: string) => T[];
-  createFunc?: (query: string) => Promise<T>;
+}>();
+
+const emit = defineEmits<{
+  search: [query: string];
+  create: [createName: string];
+  select: [item: T];
 }>();
 
 const showCreateItemField = computed(() => {
@@ -70,6 +74,11 @@ const highlightedIndex = ref<number | null>(null);
 const showDropdown = ref(false);
 const searching = ref(false);
 const isCtrlDown = ref(false);
+
+function onInput() {
+  highlightedIndex.value = null;
+  emit("search", searchString.value);
+}
 
 function handleKeyDown(event: KeyboardEvent) {
   switch (event.key) {
@@ -129,11 +138,11 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 function selectItem(item: T) {
-  console.log("Select " + item.name);
+  emit("select", item);
 }
 
 function createItem() {
-  console.log("Create " + searchString.value);
+  emit("create", searchString.value);
 }
 
 watch(showDropdown, async () => (highlightedIndex.value = null));
