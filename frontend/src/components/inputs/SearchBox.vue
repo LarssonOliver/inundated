@@ -12,7 +12,6 @@
       @input="onInput"
       v-model="searchString"
     />
-
     <div
       v-if="showDropdown"
       class="dropdown"
@@ -64,16 +63,16 @@ const emit = defineEmits<{
   select: [item: T];
 }>();
 
-const showCreateItemField = computed(() => {
-  return searchString.value.length > 0;
-});
-
 const searchString = ref("");
 const highlightedIndex = ref<number | null>(null);
 
 const showDropdown = ref(false);
 const searching = ref(false);
 const isCtrlDown = ref(false);
+
+const showCreateItemField = computed(() => {
+  return searchString.value.length > 0;
+});
 
 function onInput() {
   highlightedIndex.value = null;
