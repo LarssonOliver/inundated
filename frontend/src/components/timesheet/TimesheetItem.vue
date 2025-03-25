@@ -4,6 +4,9 @@
     <!-- <input type="date" /> -->
     <!-- <input class="add-button" type="button" value="Button" /> -->
     <TimeInput />
+    <span class="centered-text">-</span>
+    <TimeInput />
+    <input type="date" />
   </div>
 </template>
 
@@ -15,6 +18,18 @@ import TimeInput from "@/components/inputs/TimeInput.vue";
 .timesheet-row {
   border: 1px solid var(--nord3);
   display: flex;
+}
+
+.centered-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+}
+
+input[type="date"] {
+  width: 11.5em;
+  margin-left: 1em;
 }
 
 /* .add-button { */
