@@ -35,6 +35,7 @@ declare module 'vue' {
     TheMenuBar: typeof import('./src/components/TheMenuBar.vue')['default']
     TheTimesheet: typeof import('./src/components/timesheet/TheTimesheet.vue')['default']
     TheWelcome: typeof import('./src/components/TheWelcome.vue')['default']
+    TimeInput: typeof import('./src/components/inputs/TimeInput.vue')['default']
     TimesheetItem: typeof import('./src/components/timesheet/TimesheetItem.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
   }

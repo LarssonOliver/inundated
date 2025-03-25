@@ -1,13 +1,15 @@
 <template>
   <div class="timesheet-row">
     Test
-    <input type="date" />
-    <input type="datetime" />
+    <!-- <input type="date" /> -->
     <!-- <input class="add-button" type="button" value="Button" /> -->
+    <TimeInput />
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import TimeInput from "@/components/inputs/TimeInput.vue";
+</script>
 
 <style scoped>
 .timesheet-row {
