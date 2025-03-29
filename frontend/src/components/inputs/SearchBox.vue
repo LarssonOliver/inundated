@@ -9,7 +9,7 @@
       @focusout="showDropdown = false"
       @keydown="handleKeyDown"
       @keyup.control="isCtrlDown = false"
-      @input="onInput"
+      ref="inputField"
       v-model="searchString"
     />
     <div
@@ -18,8 +18,7 @@
       @mouseenter="showDropdown = true"
       @mouseleave="showDropdown = false"
     >
-      <div v-if="searching" class="searching-text">Searching...</div>
-      <ul v-else>
+      <ul>
         <li
           v-for="(item, index) of props.items || []"
           v-bind:key="index"
@@ -30,7 +29,7 @@
         >
           <slot v-bind="item" />
         </li>
-        <hr v-if="showCreateItemField" />
+        <hr v-if="showCreateItemField && (items ?? []).length > 0" />
         <div
           v-if="showCreateItemField"
           @mouseenter="highlightedIndex = props.items?.length || 0"
@@ -67,17 +66,19 @@ const searchString = ref("");
 const highlightedIndex = ref<number | null>(null);
 
 const showDropdown = ref(false);
-const searching = ref(false);
 const isCtrlDown = ref(false);
+
+const inputField = ref<HTMLInputElement | null>(null);
 
 const showCreateItemField = computed(() => {
   return searchString.value.length > 0;
 });
 
-function onInput() {
+watch(searchString, () => {
   highlightedIndex.value = null;
   emit("search", searchString.value);
-}
+  inputField.value?.focus();
+});
 
 function handleKeyDown(event: KeyboardEvent) {
   switch (event.key) {
@@ -123,10 +124,15 @@ function handleKeyDown(event: KeyboardEvent) {
       highlightedIndex.value = null;
       break;
 
+    case "y":
+      if (!isCtrlDown.value || highlightedIndex.value === null) break;
     case "Enter":
       if (highlightedIndex.value !== null && highlightedIndex.value < (props.items?.length ?? 0)) {
         selectItem(props.items?.[highlightedIndex.value] as T);
-      } else if (highlightedIndex.value === props.items?.length) {
+      } else if (
+        highlightedIndex.value === null ||
+        highlightedIndex.value === props.items?.length
+      ) {
         createItem();
       }
       break;
@@ -146,7 +152,9 @@ function createItem() {
   searchString.value = "";
 }
 
-watch(showDropdown, async () => (highlightedIndex.value = null));
+watch(showDropdown, () => {
+  highlightedIndex.value = null;
+});
 </script>
 
 <style scoped>
@@ -165,10 +173,6 @@ watch(showDropdown, async () => (highlightedIndex.value = null));
   display: block;
   width: 100%;
   max-width: var(--max-width);
-}
-
-.searching-text {
-  color: var(--nord-c1);
 }
 
 ul {

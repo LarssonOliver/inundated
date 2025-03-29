@@ -9,17 +9,25 @@
         @close="onTagClose"
       />
     </div>
-    <SearchBox placeholder="" :items="searchTags" @search="onTagSearch" @select="onTagSelect">
-      <template v-slot="item">
-        <TagItem :tag="item" />
-      </template>
-    </SearchBox>
+    <div class="searchbox-container">
+      <SearchBox
+        placeholder=""
+        :items="searchTags"
+        @search="onTagSearch"
+        @select="onTagSelect"
+        @create="onTagCreate"
+      >
+        <template v-slot="item">
+          <TagItem :tag="item" />
+        </template>
+      </SearchBox>
+    </div>
     <div class="right-side">
       <TimeSpanEdit v-model="model" />
       <MaterialIcon
         class="centered-text more-icon"
         icon="more_horiz"
-        size="18px"
+        size="1.5em"
         @mousedown="console.log('TODO')"
       />
     </div>
@@ -47,12 +55,14 @@ const tagIds = ref(model.value.tagIds || []);
 watch(tagIds, (value) => (model.value.tagIds = value));
 
 function onTagSearch(query: string) {
-  searchTags.value = tagsStore.search(query).value;
+  const result = tagsStore.search(query).value;
+  searchTags.value = result.filter((tag) => !tagIds.value.includes(tag.id));
 }
 
 function onTagSelect(tag: Tag) {
   if (tagIds.value.some((id) => id === tag.id)) return;
   tagIds.value.push(tag.id);
+  searchTags.value = searchTags.value.filter((t) => t.id !== tag.id);
 }
 
 function onTagClose(tag: Tag) {
@@ -60,11 +70,17 @@ function onTagClose(tag: Tag) {
   if (index === -1) return;
   tagIds.value.splice(index, 1);
 }
+
+function onTagCreate(name: string) {
+  name = name.trim();
+  if (!name) return;
+  const tag = tagsStore.create(name);
+  if (tag && !tagIds.value.some((id) => id === tag.id)) tagIds.value.push(tag.id);
+}
 </script>
 
 <style scoped>
 .timesheet-row {
-  border: 1px solid var(--nord3);
   display: flex;
 }
 
@@ -76,8 +92,7 @@ function onTagClose(tag: Tag) {
 
 .tag-list {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
   margin-left: 0.5em;
 }
 
@@ -97,6 +112,13 @@ function onTagClose(tag: Tag) {
 input[type="date"] {
   width: 11.5em;
   margin-left: 1em;
+}
+
+.searchbox-container {
+  display: flex;
+  align-items: center;
+  min-width: 6em;
+  margin-right: 1em;
 }
 
 :deep(.search-container) {

@@ -7,21 +7,13 @@
 
   <hr />
 
-  <SearchBox placeholder="test..." :items="items">
-    <template v-slot="item">
-      <TagItem :tag="item" />
-    </template>
-  </SearchBox>
-
   <TheTimesheet />
 </template>
 
 <script setup lang="ts">
-import SearchBox from "@/components/inputs/SearchBox.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import TheTimesheet from "@/components/timesheet/TheTimesheet.vue";
 import type { Tag } from "@/model/tag";
-// import TagSearchOrCreateBox from "@/components/tags/TagSearchOrCreateBox.vue";
 
 const items: Tag[] = [
   { id: 1, name: "tag:test", color: "#44b", userId: 1 },

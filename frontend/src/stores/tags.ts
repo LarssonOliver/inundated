@@ -1,4 +1,5 @@
 // import { levenshteinDistance } from "@/helpers/search";
+import { stringToHexColor } from "@/helpers/colors";
 import type { Tag } from "@/model/tag";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -34,5 +35,23 @@ export const useTagsStore = defineStore("tags", () => {
       //   .map(({ tag }) => tag);
     });
 
-  return { tags, search, getById };
+  function create(name: string, color?: string): Tag {
+    if (tags.value.some((tag) => tag.name === name)) {
+      return tags.value.find((tag) => tag.name === name) as Tag;
+    }
+
+    if (!color) color = stringToHexColor(name);
+
+    const tag: Tag = {
+      id: tags.value.length + 1, // TODO
+      name,
+      color,
+      userId: 1, // TODO
+    };
+
+    tags.value.push(tag);
+    return tag;
+  }
+
+  return { tags, search, getById, create };
 });

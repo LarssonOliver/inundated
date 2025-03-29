@@ -56,7 +56,6 @@ function checkIfEndIsNextDay() {
   }
 
   model.value.endTime = end;
-  console.log(model.value.startTime, model.value.endTime);
 }
 </script>
 
