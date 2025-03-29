@@ -37,6 +37,8 @@ declare module 'vue' {
     TheWelcome: typeof import('./src/components/TheWelcome.vue')['default']
     TimeInput: typeof import('./src/components/inputs/TimeInput.vue')['default']
     TimesheetItem: typeof import('./src/components/timesheet/TimesheetItem.vue')['default']
+    TimeSpanEdit: typeof import('./src/components/inputs/TimeSpanEdit.vue')['default']
+    TimeSpanInput: typeof import('./src/components/inputs/TimeSpanInput.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
   }
   export interface ComponentCustomProperties {

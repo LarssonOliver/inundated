@@ -8,10 +8,12 @@
     <TimeInput />
     <input type="date" />
   </div>
+  <TimeSpanEdit />
 </template>
 
 <script setup lang="ts">
 import TimeInput from "@/components/inputs/TimeInput.vue";
+import TimeSpanEdit from "@/components/inputs/TimeSpanEdit.vue";
 </script>
 
 <style scoped>
