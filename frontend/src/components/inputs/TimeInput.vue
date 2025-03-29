@@ -60,14 +60,15 @@ function valueEntered() {
 
 <style scoped>
 input {
-  max-width: 4.75em;
+  width: 4.8em;
   font-family: monospace;
 }
 
 sup {
-  font-size: 8px;
+  font-size: 0.6em;
   position: absolute;
-  margin-left: -1.5em;
-  margin-top: 0.5em;
+  margin-left: -1.75em;
+  margin-top: 0.75em;
+  font-family: monospace;
 }
 </style>

@@ -1,19 +1,65 @@
 <template>
   <div class="timesheet-row">
-    Test
-    <!-- <input type="date" /> -->
-    <!-- <input class="add-button" type="button" value="Button" /> -->
-    <TimeInput />
-    <span class="centered-text">-</span>
-    <TimeInput />
-    <input type="date" />
+    <div class="tag-list">
+      <TagItem
+        v-for="tagId in tagIds"
+        :key="tagId"
+        :tag="tagsStore.getById(tagId).value as Tag"
+        :can-close="true"
+        @close="onTagClose"
+      />
+    </div>
+    <SearchBox placeholder="" :items="searchTags" @search="onTagSearch" @select="onTagSelect">
+      <template v-slot="item">
+        <TagItem :tag="item" />
+      </template>
+    </SearchBox>
+    <div class="right-side">
+      <TimeSpanEdit v-model="model" />
+      <MaterialIcon
+        class="centered-text more-icon"
+        icon="more_horiz"
+        size="18px"
+        @mousedown="console.log('TODO')"
+      />
+    </div>
   </div>
-  <TimeSpanEdit />
 </template>
 
 <script setup lang="ts">
-import TimeInput from "@/components/inputs/TimeInput.vue";
 import TimeSpanEdit from "@/components/inputs/TimeSpanEdit.vue";
+import MaterialIcon from "@/components/icons/MaterialIcon.vue";
+import TagItem from "@/components/tags/TagItem.vue";
+import SearchBox from "@/components/inputs/SearchBox.vue";
+import { useTagsStore } from "@/stores/tags";
+import type { Tag, TimeSpan } from "@/model/model";
+import { ref, watch } from "vue";
+import { newTimespanWithDefaults } from "@/helpers/timespan";
+
+const model = defineModel<TimeSpan>({
+  default: newTimespanWithDefaults(),
+});
+
+const tagsStore = useTagsStore();
+const searchTags = ref(tagsStore.tags);
+
+const tagIds = ref(model.value.tagIds || []);
+watch(tagIds, (value) => (model.value.tagIds = value));
+
+function onTagSearch(query: string) {
+  searchTags.value = tagsStore.search(query).value;
+}
+
+function onTagSelect(tag: Tag) {
+  if (tagIds.value.some((id) => id === tag.id)) return;
+  tagIds.value.push(tag.id);
+}
+
+function onTagClose(tag: Tag) {
+  const index = tagIds.value.indexOf(tag.id);
+  if (index === -1) return;
+  tagIds.value.splice(index, 1);
+}
 </script>
 
 <style scoped>
@@ -22,11 +68,30 @@ import TimeSpanEdit from "@/components/inputs/TimeSpanEdit.vue";
   display: flex;
 }
 
+.right-side {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.tag-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.5em;
+}
+
 .centered-text {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1em;
+  min-width: 1em;
+}
+
+.more-icon {
+  cursor: pointer;
+  margin-left: 0.25em;
+  margin-right: 0.25em;
 }
 
 input[type="date"] {
@@ -34,14 +99,7 @@ input[type="date"] {
   margin-left: 1em;
 }
 
-/* .add-button { */
-/*   background-color: var(--nord8); */
-/*   color: var(--nord0); */
-/*   width: auto; */
-/*   margin-left: auto; */
-/* } */
-
-/* .add-button:hover { */
-/*   background-color: rgb(121, 184, 202); */
-/* } */
+:deep(.search-container) {
+  --max-width: 12em;
+}
 </style>

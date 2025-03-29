@@ -1,6 +1,6 @@
 <template>
   <div class="timespaninput-container">
-    <input type="text" placeholder="Description..." v-model="model.name" />
+    <!-- <input type="text" placeholder="Description..." v-model="model.name" /> -->
     <TimeInput v-model="startTimeString" />
     <span class="centered-text">-</span>
     <TimeInput v-model="endTimeString" :show-next-day="isEndNextDay" />
@@ -63,7 +63,6 @@ function checkIfEndIsNextDay() {
 <style scoped>
 .timespaninput-container {
   display: flex;
-  border: 1px solid red;
 }
 
 .centered-text {
@@ -83,6 +82,5 @@ input[type="date"] {
 input[type="text"] {
   width: 16em;
   margin-right: 1em;
-  font-size: 13px;
 }
 </style>

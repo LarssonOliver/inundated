@@ -2,11 +2,11 @@
   <div :class="containerClasses" @mouseenter="hover = true" @mouseleave="hover = false">
     <div>{{ tag.name }}</div>
     <MaterialIcon
-      @click="(onClose as () => void)()"
-      v-if="hover && onClose !== undefined"
+      @click="$emit('close', tag)"
+      v-if="hover && canClose"
       class="close-icon"
       icon="close"
-      size="20px"
+      size="1.2em"
     />
   </div>
 </template>
@@ -15,16 +15,20 @@
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
 import type { Tag } from "@/model/model";
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
+
+defineEmits<{
+  close: [tag: Tag];
+}>();
 
 const hover = ref(false);
 
-const { tag, onClose } = defineProps<{
+const { tag, canClose } = defineProps<{
   tag: Tag;
-  onClose?: () => void;
+  canClose?: boolean;
 }>();
 
-const darkText = shouldTextBeDarkFromBgColor(tag.color);
+const darkText = computed(() => shouldTextBeDarkFromBgColor(tag.color));
 const containerClasses = reactive({
   "tag-container": true,
   "dark-text": darkText,
@@ -40,6 +44,7 @@ const containerClasses = reactive({
   border-radius: 0.5em;
   border: 1px solid var(--nord1);
   display: flex;
+  align-items: center;
 }
 
 .tag-container.dark-text {

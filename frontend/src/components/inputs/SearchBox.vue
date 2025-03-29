@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="search-container">
     <input
       type="text"
       :placeholder="props.placeholder"
@@ -14,7 +14,7 @@
     />
     <div
       v-if="showDropdown"
-      class="dropdown"
+      class="search-dropdown"
       @mouseenter="showDropdown = true"
       @mouseleave="showDropdown = false"
     >
@@ -40,7 +40,7 @@
         >
           <slot name="createItemField" :v-bind="searchString">
             <li>
-              <slot name="createItemField">Create "{{ searchString }}"...</slot>
+              <span>Create "{{ searchString }}"...</span>
             </li>
           </slot>
         </div>
@@ -138,27 +138,29 @@ function handleKeyDown(event: KeyboardEvent) {
 
 function selectItem(item: T) {
   emit("select", item);
+  searchString.value = "";
 }
 
 function createItem() {
   emit("create", searchString.value);
+  searchString.value = "";
 }
 
 watch(showDropdown, async () => (highlightedIndex.value = null));
 </script>
 
 <style scoped>
-.container {
+.search-container {
+  width: 100%;
   --max-width: 400px;
   max-width: var(--max-width);
-  font-size: 1em;
 }
 
-.dropdown {
+.search-dropdown {
   position: absolute;
   background-color: var(--nord0);
   border: 1px solid var(--nord1);
-  padding: 0.5em 0.75em;
+  padding: 0.25em 0.5em;
   z-index: 1;
   display: block;
   width: 100%;
@@ -178,5 +180,9 @@ ul {
 .highlight-item {
   background-color: var(--nord3);
   cursor: pointer;
+}
+
+span {
+  word-wrap: break-word;
 }
 </style>
