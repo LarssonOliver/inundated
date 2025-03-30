@@ -1,7 +1,7 @@
 import { stringToHexColor } from "@/helpers/colors";
 import { levenshteinDistance } from "@/helpers/search";
 import type { Tag } from "@/model/tag";
-import { defineStore } from "pinia";
+import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 export const useTagsStore = defineStore("tags", () => {
@@ -55,3 +55,7 @@ export const useTagsStore = defineStore("tags", () => {
 
   return { tags, search, getById, create };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useTagsStore, import.meta.hot));
+}

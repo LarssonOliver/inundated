@@ -1,4 +1,5 @@
 import type { TimeSpan } from "@/model/model";
+import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
@@ -34,3 +35,7 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
   ]);
   return { timeSpans };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useTimeSpansStore, import.meta.hot));
+}
