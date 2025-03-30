@@ -18,6 +18,10 @@ const model = defineModel<TimeSpan>({
   default: newTimespanWithDefaults(),
 });
 
+const emit = defineEmits<{
+  "update:model-value": [value: TimeSpan];
+}>();
+
 const startTimeString = ref(getTimeString(model.value.startTime));
 const endTimeString = ref(getTimeString(model.value.endTime));
 const startDateString = ref(getDateString(model.value.startTime));
@@ -56,6 +60,7 @@ function checkIfEndIsNextDay() {
   }
 
   model.value.endTime = end;
+  emit("update:model-value", model.value);
 }
 </script>
 

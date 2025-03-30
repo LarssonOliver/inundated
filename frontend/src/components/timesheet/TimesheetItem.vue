@@ -1,35 +1,19 @@
 <template>
   <div class="timesheet-row">
     <div class="tag-list">
-      <TagItem
-        v-for="tagId in tagIds"
-        :key="tagId"
-        :tag="tagsStore.getById(tagId).value as Tag"
-        :can-close="true"
-        @close="onTagClose"
-      />
+      <TagItem v-for="tagId in tagIds" :key="tagId" :tag="tagsStore.getById(tagId).value as Tag" :can-close="true"
+        @close="onTagClose" />
     </div>
     <div class="searchbox-container">
-      <SearchBox
-        placeholder=""
-        :items="searchTags"
-        @search="onTagSearch"
-        @select="onTagSelect"
-        @create="onTagCreate"
-      >
+      <SearchBox placeholder="" :items="searchTags" @search="onTagSearch" @select="onTagSelect" @create="onTagCreate">
         <template v-slot="item">
           <TagItem :tag="item" />
         </template>
       </SearchBox>
     </div>
     <div class="right-side">
-      <TimeSpanEdit v-model="model" />
-      <MaterialIcon
-        class="centered-text more-icon"
-        icon="more_horiz"
-        size="1.5em"
-        @mousedown="console.log('TODO')"
-      />
+      <TimeSpanEdit :model-value="model" @update:model-value="(value) => $emit('update:model-value', value)" />
+      <MaterialIcon class="centered-text more-icon" icon="more_horiz" size="1.5em" @mousedown="console.log('TODO')" />
     </div>
   </div>
 </template>
@@ -48,11 +32,22 @@ const model = defineModel<TimeSpan>({
   default: newTimespanWithDefaults(),
 });
 
+const emit = defineEmits<{
+  "update:model-value": [value: TimeSpan];
+}>();
+
 const tagsStore = useTagsStore();
 const searchTags = ref(tagsStore.tags);
 
-const tagIds = ref(model.value.tagIds || []);
-watch(tagIds, (value) => (model.value.tagIds = value));
+const tagIds = ref<number[]>(model.value.tagIds);
+watch(
+  tagIds,
+  (value) => {
+    model.value.tagIds = value;
+    emit("update:model-value", model.value);
+  },
+  { deep: true },
+);
 
 function onTagSearch(query: string) {
   const result = tagsStore.search(query).value;
