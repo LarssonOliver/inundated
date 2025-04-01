@@ -28,6 +28,7 @@ declare module 'vue' {
     SearchOrCreateTag: typeof import('./src/components/tags/SearchOrCreateTag.vue')['default']
     Tag: typeof import('./src/components/Tag.vue')['default']
     TagItem: typeof import('./src/components/tags/TagItem.vue')['default']
+    TagListEmbedded: typeof import('./src/components/tags/TagListEmbedded.vue')['default']
     TagSearchOrCreate: typeof import('./src/components/tags/TagSearchOrCreate.vue')['default']
     TagSearchOrCreateBox: typeof import('./src/components/tags/TagSearchOrCreateBox.vue')['default']
     TheMenu: typeof import('./src/components/TheMenu.vue')['default']
