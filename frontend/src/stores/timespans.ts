@@ -33,6 +33,7 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
       tagIds: [],
     },
   ]);
+
   return { timeSpans };
 });
 

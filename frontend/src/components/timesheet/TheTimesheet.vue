@@ -26,7 +26,7 @@ const newTimeSpan = ref(newTimespanWithDefaults());
 
 const timeSpans = computed(() => {
   const res = [...timeSpansStore.timeSpans];
-  res.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  res.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
   return res;
 });
 
