@@ -35,13 +35,13 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
   ]);
 
   /**
-  * Creates a new time span.
-  *
-  * @param timeSpan - The time span to create.
-  *
-  * @returns A promise that resolves to the newly created time span with
-  *   correctly assigned ID.
-  */
+   * Creates a new time span.
+   *
+   * @param timeSpan - The time span to create.
+   *
+   * @returns A promise that resolves to the newly created time span with
+   *   correctly assigned ID.
+   */
   async function createTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
     const newTimeSpan: TimeSpan = {
       id: timeSpans.value.length + 1, // TODO: Use ID from server
@@ -60,18 +60,17 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
   }
 
   /**
-  * Fetches a timespan by its ID.
-  *
-  * @param id - The ID of the time span to fetch.
-  *
-  * @returns A promise that resolves to the time span with the given ID,
-  *   or undefined if not found.
-  */
+   * Fetches a timespan by its ID.
+   *
+   * @param id - The ID of the time span to fetch.
+   *
+   * @returns A promise that resolves to the time span with the given ID,
+   *   or undefined if not found.
+   */
   async function getTimeSpanById(id: number): Promise<TimeSpan | undefined> {
     const timeSpan = timeSpans.value.find((ts) => ts.id === id);
 
-    if (!timeSpan)
-      return undefined;
+    if (!timeSpan) return undefined;
 
     const copy: TimeSpan = {
       ...timeSpan,
@@ -84,23 +83,23 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
   }
 
   /**
-  * Updates an existing time span.
-  *
-  * @param timeSpan - The time span to update.
-  *
-  * @returns A promise that resolves to the updated time span.
-  */
+   * Updates an existing time span.
+   *
+   * @param timeSpan - The time span to update.
+   *
+   * @returns A promise that resolves to the updated time span.
+   */
   async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
     throw new Error("Not implemented");
   }
 
   /**
-  * Deletes a time span.
-  *
-  * @param id - The ID of the time span to delete.
-  *
-  * @returns A promise that resolves when the time span is deleted.
-  */
+   * Deletes a time span.
+   *
+   * @param id - The ID of the time span to delete.
+   *
+   * @returns A promise that resolves when the time span is deleted.
+   */
   async function deleteTimeSpan(id: number): Promise<void> {
     const index = timeSpans.value.findIndex((ts) => ts.id === id);
     timeSpans.value.splice(index, 1);

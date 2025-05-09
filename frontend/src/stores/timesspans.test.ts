@@ -81,5 +81,3 @@ test("Get timespan by id not found after delete", async () => {
   await store.deleteTimeSpan(ts.id);
   expect(await store.getTimeSpanById(ts.id)).toBeUndefined();
 });
-
-
