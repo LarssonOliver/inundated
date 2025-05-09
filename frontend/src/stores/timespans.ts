@@ -3,6 +3,15 @@ import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+function copyTimeSpan(timeSpan: TimeSpan): TimeSpan {
+  return {
+    ...timeSpan,
+    startTime: new Date(timeSpan.startTime),
+    endTime: new Date(timeSpan.endTime),
+    tagIds: [...timeSpan.tagIds],
+  };
+}
+
 export const useTimeSpansStore = defineStore("timeSpans", () => {
   const timeSpans = ref<TimeSpan[]>([
     // {
@@ -56,7 +65,8 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
     // TODO: Implement API call to create the time span on the server
 
     timeSpans.value.push(newTimeSpan);
-    return newTimeSpan;
+
+    return copyTimeSpan(newTimeSpan);
   }
 
   /**
@@ -72,25 +82,26 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
 
     if (!timeSpan) return undefined;
 
-    const copy: TimeSpan = {
-      ...timeSpan,
-      startTime: new Date(timeSpan.startTime),
-      endTime: new Date(timeSpan.endTime),
-      tagIds: [...timeSpan.tagIds],
-    };
-
-    return copy;
+    return copyTimeSpan(timeSpan);
   }
 
   /**
    * Updates an existing time span.
    *
-   * @param timeSpan - The time span to update.
+   * @param timeSpan - The time span to update, identified by timeSpan.id.
    *
-   * @returns A promise that resolves to the updated time span.
+   * @returns A promise that resolves to the updated time span,
+   *   or undefined if not found.
    */
-  async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
-    throw new Error("Not implemented");
+  async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan | undefined> {
+    const index = timeSpans.value.findIndex((ts) => ts.id === timeSpan.id);
+
+    if (index === -1) return undefined;
+
+    const copy = copyTimeSpan(timeSpan);
+    timeSpans.value.splice(index, 1, copy);
+
+    return copyTimeSpan(copy);
   }
 
   /**
