@@ -10,7 +10,7 @@ function copyProject(project: Project): Project {
   };
 }
 
-export const useProjectsStore = defineStore("user", () => {
+export const useProjectsStore = defineStore("projects", () => {
   const projects = ref<Project[]>([]);
 
   /**

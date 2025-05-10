@@ -1,21 +1,10 @@
 <template>
   <div class="tag-list">
-    <TagItem
-      v-for="tagId in model"
-      :key="tagId"
-      :tag="tagsStore.getById(tagId).value as Tag"
-      :can-close="true"
-      @close="onTagClose"
-    />
+    <TagItem v-for="tag in tags" :key="tag.id" :tag="tag" :can-close="true" @close="onTagClose" />
   </div>
   <div class="searchbox-container">
-    <SearchBox
-      placeholder=""
-      :items="tagSearchResult"
-      @search="onTagSearch"
-      @select="onTagSelect"
-      @create="onTagCreate"
-    >
+    <SearchBox placeholder="" :items="tagSearchResult" @search="onTagSearch" @select="onTagSelect"
+      @create="onTagCreate">
       <template v-slot="item">
         <TagItem :tag="item" />
       </template>
@@ -28,7 +17,7 @@ import SearchBox from "@/components/inputs/SearchBox.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import type { Tag } from "@/model/model";
 import { useTagsStore } from "@/stores/tags";
-import { computed, ref } from "vue";
+import { ref, watch } from "vue";
 
 const emit = defineEmits<{
   "update:model-value": [value: number[]];
@@ -37,13 +26,10 @@ const emit = defineEmits<{
 const model = defineModel<number[]>({ default: [] });
 
 const tagsStore = useTagsStore();
+const tags = ref<Tag[]>([]);
 
 const tagSearchQuery = ref("");
-const tagSearchResult = computed<Tag[]>(() => {
-  return tagsStore
-    .search(tagSearchQuery.value)
-    .value.filter((tag) => !model.value.includes(tag.id));
-});
+const tagSearchResult = ref<Tag[]>([]);
 
 function onTagSearch(query: string) {
   tagSearchQuery.value = query;
@@ -62,15 +48,31 @@ function onTagClose(tag: Tag) {
   emit("update:model-value", model.value);
 }
 
-function onTagCreate(name: string) {
+async function onTagCreate(name: string) {
   name = name.trim();
   if (!name) return;
-  const tag = tagsStore.create(name);
+
+  const tag = await tagsStore.createTagFromName(name);
   if (tag && !model.value.some((id) => id === tag.id)) {
     model.value.push(tag.id);
     emit("update:model-value", model.value);
   }
 }
+
+watch(model.value, async (value) => {
+  tags.value = [];
+  for (const id of value) {
+    const tag = await tagsStore.getTagById(id);
+    if (tag) tags.value.push(tag);
+  }
+});
+
+watch(tagSearchQuery, async (query) => {
+  tagSearchResult.value = [];
+  if (!query) return;
+  const tags = await tagsStore.searchTags(query);
+  tagSearchResult.value = tags.filter((tag) => !model.value.includes(tag.id));
+});
 </script>
 
 <style scoped>
