@@ -82,6 +82,13 @@ test("Get timespan by id not found after delete", async () => {
   expect(await store.getTimeSpanById(ts.id)).toBeUndefined();
 });
 
+test("Delete non-existing timespan works", async () => {
+  const store = useTimeSpansStore();
+  const ts = await store.createTimeSpan(timeSpan);
+  await store.deleteTimeSpan(-2);
+  expect(await store.getTimeSpanById(ts.id)).toEqual(ts);
+});
+
 test("Update timespan", async () => {
   const store = useTimeSpansStore();
   const ts = await store.createTimeSpan(timeSpan);
@@ -93,7 +100,7 @@ test("Update timespan", async () => {
 
 test("Update timespan unlinks data objects", async () => {
   const store = useTimeSpansStore();
-  let ts = await store.createTimeSpan(timeSpan);
+  const ts = await store.createTimeSpan(timeSpan);
   ts.startTime.setSeconds(ts.startTime.getSeconds() + 1);
   ts.endTime.setSeconds(ts.endTime.getSeconds() + 1);
   ts.tagIds.push(3);

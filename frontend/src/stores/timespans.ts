@@ -98,7 +98,11 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
 
     if (index === -1) return undefined;
 
-    const copy = copyTimeSpan(timeSpan);
+    const copy = {
+      ...timeSpans.value[index],
+      ...copyTimeSpan(timeSpan),
+    };
+
     timeSpans.value.splice(index, 1, copy);
 
     return copyTimeSpan(copy);
@@ -113,7 +117,7 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
    */
   async function deleteTimeSpan(id: number): Promise<void> {
     const index = timeSpans.value.findIndex((ts) => ts.id === id);
-    timeSpans.value.splice(index, 1);
+    if (index !== -1) timeSpans.value.splice(index, 1);
   }
 
   return { timeSpans, getTimeSpanById, createTimeSpan, updateTimeSpan, deleteTimeSpan };
