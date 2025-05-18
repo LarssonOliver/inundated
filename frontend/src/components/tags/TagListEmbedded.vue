@@ -17,7 +17,7 @@ import SearchBox from "@/components/inputs/SearchBox.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import type { Tag } from "@/model/model";
 import { useTagsStore } from "@/stores/tags";
-import { ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 
 const emit = defineEmits<{
   "update:model-value": [value: number[]];
@@ -30,6 +30,9 @@ const tags = ref<Tag[]>([]);
 
 const tagSearchQuery = ref("");
 const tagSearchResult = ref<Tag[]>([]);
+
+onMounted(async () => await refreshTags());
+watch(model.value, async () => await refreshTags());
 
 function onTagSearch(query: string) {
   tagSearchQuery.value = query;
@@ -59,20 +62,20 @@ async function onTagCreate(name: string) {
   }
 }
 
-watch(model.value, async (value) => {
-  tags.value = [];
-  for (const id of value) {
-    const tag = await tagsStore.getTagById(id);
-    if (tag) tags.value.push(tag);
-  }
-});
-
 watch(tagSearchQuery, async (query) => {
   tagSearchResult.value = [];
   if (!query) return;
   const tags = await tagsStore.searchTags(query);
   tagSearchResult.value = tags.filter((tag) => !model.value.includes(tag.id));
 });
+
+async function refreshTags() {
+  tags.value.splice(0, tags.value.length);
+  for (const id of model.value) {
+    const tag = await tagsStore.getTagById(id);
+    if (tag) tags.value.push(tag);
+  }
+}
 </script>
 
 <style scoped>

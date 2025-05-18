@@ -24,7 +24,7 @@
           class="centered-text delete-icon"
           icon="delete"
           size="1.5em"
-          @mousedown="deleteTimeSpan"
+          @mousedown="deleteThisTimeSpan"
         />
       </button>
     </div>
@@ -56,10 +56,8 @@ function contextMenuClick() {
   showMenu.value = !showMenu.value;
 }
 
-function deleteTimeSpan() {
-  const index = timeSpansStore.timeSpans.findIndex((ts) => ts.id === model.value.id);
-  if (index < 0) return;
-  timeSpansStore.timeSpans.splice(index, 1);
+function deleteThisTimeSpan() {
+  timeSpansStore.deleteTimeSpan(model.value.id);
 }
 </script>
 

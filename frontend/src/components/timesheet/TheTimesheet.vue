@@ -1,13 +1,13 @@
 <template>
   <div class="container">
     <div class="new-timespan-container">
-      <TagListEmbedded v-model="newTimeSpan.tagIds" />
+      <TagListEmbedded v-model="tagIds" />
       <div class="right-side">
         <TimeSpanEdit v-model="newTimeSpan" />
         <input type="button" value="Add" @click="createTimeSpan" />
       </div>
     </div>
-    <div class="timespan-list-item" v-for="(timeSpan, index) in timeSpans" :key="timeSpan.id">
+    <div class="timespan-list-item" v-for="(timeSpan, index) in timeSpans" :key="timeSpan as unknown as PropertyKey">
       <TimesheetItem :model-value="timeSpan" @update:model-value="updateTimeSpan" />
       <hr class="item-divider" v-if="index < timeSpans.length - 1" />
     </div>
@@ -23,6 +23,7 @@ import { computed, ref } from "vue";
 
 const timeSpansStore = useTimeSpansStore();
 const newTimeSpan = ref(newTimespanWithDefaults());
+const tagIds = ref<number[]>([]);
 
 const timeSpans = computed(() => {
   const res = [...timeSpansStore.timeSpans];
@@ -30,18 +31,16 @@ const timeSpans = computed(() => {
   return res;
 });
 
-function updateTimeSpan(value: TimeSpan) {
-  const index = timeSpansStore.timeSpans.findIndex((ts) => ts.id === value.id);
-  timeSpansStore.timeSpans.splice(index, 1);
-  timeSpansStore.timeSpans.push(value);
+async function updateTimeSpan(value: TimeSpan) {
+  await timeSpansStore.updateTimeSpan(value);
 }
 
-function createTimeSpan() {
+async function createTimeSpan() {
   const newTimeSpanValue = { ...newTimeSpan.value } as TimeSpan;
-  newTimeSpanValue.tagIds = [...newTimeSpan.value.tagIds];
-  timeSpansStore.timeSpans.push(newTimeSpan.value);
-  newTimeSpan.value = newTimespanWithDefaults();
-  newTimeSpan.value.tagIds = [...newTimeSpanValue.tagIds];
+  newTimeSpanValue.tagIds = [...tagIds.value];
+  await timeSpansStore.createTimeSpan(newTimeSpanValue);
+
+  newTimeSpan.value = { ...newTimespanWithDefaults() };
 }
 </script>
 
