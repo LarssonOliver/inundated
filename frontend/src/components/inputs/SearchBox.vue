@@ -13,7 +13,7 @@
       v-model="searchString"
     />
     <div
-      v-if="showDropdown"
+      v-if="showDropdown && ((props.items ?? []).length > 0 || showCreateItemField)"
       class="search-dropdown"
       @mouseenter="showDropdown = true"
       @mouseleave="showDropdown = false"
