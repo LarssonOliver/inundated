@@ -43,7 +43,4 @@ declare module 'vue' {
     TimeSpanInput: typeof import('./src/components/inputs/TimeSpanInput.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
   }
-  export interface ComponentCustomProperties {
-    Ripple: typeof import('primevue/ripple')['default']
-  }
 }
