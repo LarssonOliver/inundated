@@ -1,7 +1,4 @@
 <template>
-  <div class="tag-list">
-    <TagItem v-for="tag in tags" :key="tag.id" :tag="tag" :can-close="true" @close="onTagClose" />
-  </div>
   <div class="searchbox-container">
     <SearchBox placeholder="" :items="tagSearchResult" @search="onTagSearch" @select="onTagSelect"
       @create="onTagCreate">
@@ -9,6 +6,9 @@
         <TagItem :tag="item" />
       </template>
     </SearchBox>
+  </div>
+  <div class="tag-list">
+    <TagItem v-for="tag in tags" :key="tag.id" :tag="tag" :can-close="true" @close="onTagClose" />
   </div>
 </template>
 
@@ -82,14 +82,15 @@ async function refreshTags() {
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  margin-left: 0.5em;
+  margin-right: 0.5em;
 }
 
 .searchbox-container {
   display: flex;
   align-items: center;
-  min-width: 6em;
-  margin-right: 1em;
+  min-width: 8em;
+  margin-left: 0.5em;
+  margin-right: 0.5em;
 }
 
 :deep(.search-container) {

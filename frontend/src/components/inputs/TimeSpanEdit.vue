@@ -1,6 +1,6 @@
 <template>
   <div class="timespaninput-container">
-    <!-- <input type="text" placeholder="Description..." v-model="model.name" /> -->
+    <input type="text" placeholder="Description..." v-model="model.name" style="width: 20em" />
     <TimeInput v-model="startTimeString" />
     <span class="centered-text">-</span>
     <TimeInput v-model="endTimeString" :show-next-day="isEndNextDay" />

@@ -42,6 +42,7 @@ async function updateTimeSpan(value: TimeSpan) {
 async function createTimeSpan() {
   const newTimeSpan: TimeSpan = { ...timeSpan.value, tagIds: [...tagIds.value] };
   await timeSpansStore.createTimeSpan(newTimeSpan);
+  timeSpan.value.name = "";
 }
 </script>
 
