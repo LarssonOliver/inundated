@@ -20,7 +20,6 @@ const sidebarStyle = computed(() => ({
   outline: 1px solid #ccc;
   height: 100vh;
   position: sticky;
-  margin-right: 1em;
   padding: 0.25em 0.5em;
   transition: all 0.1s ease;
 }

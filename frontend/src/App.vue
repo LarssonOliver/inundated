@@ -38,5 +38,6 @@ import TheMenu from "./components/TheMenu.vue";
 
 .content {
   flex: 1;
+  padding: 0.25em 0.5em;
 }
 </style>
