@@ -6,11 +6,15 @@ import TheMenu from "./components/TheMenu.vue";
 <template>
   <header></header>
 
-  <TheMenu />
+  <div class="layout">
+    <aside class="sidebar">
+      <TheMenu />
+    </aside>
 
-  <main>
-    <RouterView />
-  </main>
+    <main class="content">
+      <RouterView />
+    </main>
+  </div>
 </template>
 
 <style>
@@ -18,4 +22,21 @@ import TheMenu from "./components/TheMenu.vue";
 @import "@/../node_modules/material-icons/iconfont/material-icons.css";
 @import "@/assets/nord.css";
 @import "@/assets/main.css";
+</style>
+
+<style scoped>
+.layout {
+  top: 0;
+  left: 0;
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+}
 </style>

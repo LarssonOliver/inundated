@@ -1,7 +1,12 @@
 <template>
   <div class="searchbox-container">
-    <SearchBox placeholder="" :items="tagSearchResult" @search="onTagSearch" @select="onTagSelect"
-      @create="onTagCreate">
+    <SearchBox
+      placeholder=""
+      :items="tagSearchResult"
+      @search="onTagSearch"
+      @select="onTagSelect"
+      @create="onTagCreate"
+    >
       <template v-slot="item">
         <TagItem :tag="item" />
       </template>
