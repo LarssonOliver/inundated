@@ -1,0 +1,141 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.1/schema/2025-09-15
+
+openapi: 3.1.2
+info:
+  title: Inundated
+  version: 0.0.1
+
+servers:
+  - url: /api
+
+# tags:
+#   - name: items
+#     description: Tenant-scoped CRUD resources
+
+paths: {}
+#   /items:
+#     get:
+#       tags: [items]
+#       summary: List items
+#       operationId: listItems
+#       security:
+#         - oidc: []
+#       responses:
+#         '200':
+#           description: List of items
+#           content:
+#             application/json:
+#               schema:
+#                 type: array
+#                 items:
+#                   $ref: '#/components/schemas/Item'
+
+#     post:
+#       tags: [items]
+#       summary: Create item
+#       operationId: createItem
+#       security:
+#         - oidc: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/CreateItem'
+#       responses:
+#         '201':
+#           description: Item created
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Item'
+
+#   /items/{id}:
+#     parameters:
+#       - name: id
+#         in: path
+#         required: true
+#         schema:
+#           type: string
+#           format: uuid
+
+#     get:
+#       tags: [items]
+#       summary: Get item
+#       operationId: getItem
+#       security:
+#         - oidc: []
+#       responses:
+#         '200':
+#           description: Item
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Item'
+#         '404':
+#           description: Not found
+
+#     put:
+#       tags: [items]
+#       summary: Update item
+#       operationId: updateItem
+#       security:
+#         - oidc: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/UpdateItem'
+#       responses:
+#         '200':
+#           description: Updated item
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Item'
+
+#     delete:
+#       tags: [items]
+#       summary: Delete item
+#       operationId: deleteItem
+#       security:
+#         - oidc: []
+#       responses:
+#         '204':
+#           description: Deleted
+
+# components:
+#   securitySchemes:
+#     oidc:
+#       type: openIdConnect
+#       openIdConnectUrl: https://example.com/.well-known/openid-configuration
+
+  # schemas:
+    # Item:
+    #   type: object
+    #   required: [id, name, createdAt]
+    #   properties:
+    #     id:
+    #       type: string
+    #       format: uuid
+    #     name:
+    #       type: string
+    #     createdAt:
+    #       type: string
+    #       format: date-time
+
+    # CreateItem:
+    #   type: object
+    #   required: [name]
+    #   properties:
+    #     name:
+    #       type: string
+
+    # UpdateItem:
+    #   type: object
+    #   required: [name]
+    #   properties:
+    #     name:
+    #       type: string
+
