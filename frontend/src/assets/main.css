@@ -26,3 +26,17 @@ hr {
   border: 0;
   border-top: 1px solid var(--nord1);
 }
+
+a {
+  color: var(--nord7);
+  text-decoration: none;
+  border-radius: 0.25em;
+  transition: background-color 0.2s ease-in-out 0s;
+  padding: 0.1em 0.25em;
+}
+
+a:hover,
+a:active,
+a:focus {
+  background-color: var(--nord3);
+}
