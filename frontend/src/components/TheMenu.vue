@@ -12,6 +12,9 @@
           <li>
             <router-link to="/projects"> Projects </router-link>
           </li>
+          <li>
+            <router-link to="/tags"> Tags </router-link>
+          </li>
         </ul>
       </nav>
       <div class="footer">

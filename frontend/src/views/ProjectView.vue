@@ -11,7 +11,6 @@
     </div>
     <input v-if="!isNewProject" type="button" value="Save Project" @click="saveProject" />
     <input v-else type="button" value="Create Project" @click="createProject" />
-    {{ project }}
   </div>
 </template>
 

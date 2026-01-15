@@ -1,0 +1,68 @@
+<template>
+  <div class="tag-page">
+    <h2 v-if="!isNewTag">Tag: <TagItem :tag="tag" /></h2>
+    <h2 v-else>New Tag</h2>
+
+    <input type="text" v-model="tag.name" />
+    <input type="color" v-model="tag.color" />
+    <input v-if="!isNewTag" type="button" value="Save Tag" @click="saveTag" />
+    <input v-else type="button" value="Create Tag" @click="createTag" />
+    {{ tag }}
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { Tag } from "@/model/model";
+import { watch, ref } from "vue";
+import { useTagsStore } from "@/stores/tags";
+import { useRoute, useRouter } from "vue-router";
+import { newTagWithDefaults } from "@/helpers/tag";
+
+const tagsStore = useTagsStore();
+const router = useRouter();
+const route = useRoute();
+
+const tag = ref<Tag>(newTagWithDefaults());
+const isNewTag = ref(false);
+
+watch(
+  () => route.params.id,
+  async (newId) => {
+    if (!newId) {
+      // This is a new tag at the /new route
+      isNewTag.value = true;
+      return;
+    }
+
+    const result = await tagsStore.getTagById(Number(newId));
+    if (result) {
+      tag.value = result;
+      isNewTag.value = false;
+    } else {
+      // Handle case where tag is not found
+    }
+  },
+  { immediate: true },
+);
+
+async function saveTag() {
+  await tagsStore.updateTag(tag.value);
+}
+
+async function createTag() {
+  const newTag = await tagsStore.createTagFromName(tag.value.name, tag.value.color);
+  router.push({ name: "Tag", params: { id: newTag.id } });
+}
+</script>
+
+<style scoped>
+.tag-page {
+  margin: 0 1em;
+  display: flex;
+  flex-direction: column;
+}
+
+input {
+  margin-top: 1em;
+}
+</style>
