@@ -28,16 +28,21 @@ import TheMenu from "./components/TheMenu.vue";
 .layout {
   top: 0;
   left: 0;
-  display: flex;
-  min-height: 100vh;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {
-  flex-shrink: 0;
+  top: 0;
+  position: sticky;
+  overflow-y: auto;
 }
 
 .content {
   flex: 1;
   padding: 0.25em 0.5em;
+  overflow-y: scroll;
 }
 </style>

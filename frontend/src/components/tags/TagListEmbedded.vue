@@ -1,5 +1,5 @@
 <template>
-  <div class="searchbox-container">
+  <div class="searchbox-container" v-if="!readOnly">
     <SearchBox
       placeholder=""
       :items="tagSearchResult"
@@ -13,7 +13,13 @@
     </SearchBox>
   </div>
   <div class="tag-list">
-    <TagItem v-for="tag in tags" :key="tag.id" :tag="tag" :can-close="true" @close="onTagClose" />
+    <TagItem
+      v-for="tag in tags"
+      :key="tag.id"
+      :tag="tag"
+      :can-close="!readOnly"
+      @close="onTagClose"
+    />
   </div>
 </template>
 
@@ -29,6 +35,9 @@ const emit = defineEmits<{
 }>();
 
 const model = defineModel<number[]>({ default: [] });
+const { readOnly } = defineProps<{
+  readOnly?: boolean;
+}>();
 
 const tagsStore = useTagsStore();
 const tags = ref<Tag[]>([]);

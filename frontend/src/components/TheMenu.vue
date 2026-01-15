@@ -6,17 +6,16 @@
       </div>
       <nav>
         <ul class="link-list">
-          <li v-for="route in routes" :key="route.path">
-            <router-link :to="route.path">
-              {{ route.name || route.path }}
-            </router-link>
+          <li>
+            <router-link to="/"> Home </router-link>
+          </li>
+          <li>
+            <router-link to="/projects"> Projects </router-link>
           </li>
         </ul>
       </nav>
       <div class="footer">
-        <strong>
-          Inundated v{{ version }}
-        </strong>
+        <strong> Inundated v{{ version }} </strong>
       </div>
     </div>
   </div>
@@ -24,11 +23,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
 import { version } from "@/../package.json";
-
-const router = useRouter();
-const routes = router.getRoutes();
 
 const isExpanded = ref(true);
 const toggleSidebar = () => {
