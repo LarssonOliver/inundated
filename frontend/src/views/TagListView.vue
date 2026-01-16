@@ -10,8 +10,8 @@
           <div class="tag-item">
             <router-link class="tag-name" :to="`/tags/${tag.id}`">
               {{ tag.name }}
-              <TagItem :tag="tag" />
             </router-link>
+            <TagItem :tag="tag" />
           </div>
         </div>
       </div>
@@ -79,7 +79,7 @@ input[type="button"]:hover {
 
 .tag-name {
   font-weight: bold;
-  margin: 0 4em 0 1em;
+  margin: 0 2em 0 1em;
   font-size: 1.1em;
   align-content: center;
   padding: 0 0.5em;

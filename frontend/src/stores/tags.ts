@@ -12,11 +12,7 @@ function copyTag(tag: Tag): Tag {
 }
 
 export const useTagsStore = defineStore("tags", () => {
-  const tags = ref<Tag[]>([
-    { id: 1, name: "tag:test", color: "#44b", userId: 1 },
-    { id: 2, name: "tag:hello", color: "#bbb", userId: 1 },
-    { id: 3, name: "tag:world", color: "#acd", userId: 1 },
-  ]);
+  const tags = ref<Tag[]>([]);
 
   /**
    * Creates a new tag.

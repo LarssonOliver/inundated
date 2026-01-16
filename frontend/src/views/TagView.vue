@@ -1,13 +1,15 @@
 <template>
   <div class="tag-page">
-    <h2 v-if="!isNewTag">Tag: <TagItem :tag="tag" /></h2>
+    <div v-if="!isNewTag" class="title-bar">
+      <h2>Tag:</h2>
+      <TagItem :tag="tag" />
+    </div>
     <h2 v-else>New Tag</h2>
 
     <input type="text" v-model="tag.name" />
     <input type="color" v-model="tag.color" />
     <input v-if="!isNewTag" type="button" value="Save Tag" @click="saveTag" />
     <input v-else type="button" value="Create Tag" @click="createTag" />
-    {{ tag }}
   </div>
 </template>
 
@@ -64,5 +66,16 @@ async function createTag() {
 
 input {
   margin-top: 1em;
+}
+
+.title-bar {
+  flex-direction: row;
+  display: flex;
+}
+
+.title-bar h2 {
+  margin: 0;
+  margin-right: 1em;
+  align-content: center;
 }
 </style>

@@ -7,7 +7,7 @@
       <nav>
         <ul class="link-list">
           <li>
-            <router-link to="/"> Home </router-link>
+            <router-link to="/"> Timesheet </router-link>
           </li>
           <li>
             <router-link to="/projects"> Projects </router-link>
