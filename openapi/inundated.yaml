@@ -13,98 +13,252 @@ tags:
   - name: projects
   - name: timeSpans
 
-paths: {}
-#   /items:
-#     get:
-#       tags: [items]
-#       summary: List items
-#       operationId: listItems
-#       security:
-#         - oidc: []
-#       responses:
-#         '200':
-#           description: List of items
-#           content:
-#             application/json:
-#               schema:
-#                 type: array
-#                 items:
-#                   $ref: '#/components/schemas/Item'
+paths:
+  /tags:
+    get:
+      tags: [tags]
+      summary: List tags
+      operationId: listTags
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
 
-#     post:
-#       tags: [items]
-#       summary: Create item
-#       operationId: createItem
-#       security:
-#         - oidc: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               $ref: '#/components/schemas/CreateItem'
-#       responses:
-#         '201':
-#           description: Item created
-#           content:
-#             application/json:
-#               schema:
-#                 $ref: '#/components/schemas/Item'
+    post:
+      tags: [tags]
+      summary: Create tag
+      operationId: createTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTag'
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
 
-#   /items/{id}:
-#     parameters:
-#       - name: id
-#         in: path
-#         required: true
-#         schema:
-#           type: string
-#           format: uuid
+  /tags/{tagId}:
+    parameters:
+      - name: tagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
 
-#     get:
-#       tags: [items]
-#       summary: Get item
-#       operationId: getItem
-#       security:
-#         - oidc: []
-#       responses:
-#         '200':
-#           description: Item
-#           content:
-#             application/json:
-#               schema:
-#                 $ref: '#/components/schemas/Item'
-#         '404':
-#           description: Not found
+    get:
+      tags: [tags]
+      summary: Get tag
+      operationId: getTag
+      responses:
+        '200':
+          description: Tag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '404':
+          description: Not found
 
-#     put:
-#       tags: [items]
-#       summary: Update item
-#       operationId: updateItem
-#       security:
-#         - oidc: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               $ref: '#/components/schemas/UpdateItem'
-#       responses:
-#         '200':
-#           description: Updated item
-#           content:
-#             application/json:
-#               schema:
-#                 $ref: '#/components/schemas/Item'
+    patch:
+      tags: [tags]
+      summary: Update tag
+      operationId: updateTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTag'
+      responses:
+        '200':
+          description: Updated tag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
 
-#     delete:
-#       tags: [items]
-#       summary: Delete item
-#       operationId: deleteItem
-#       security:
-#         - oidc: []
-#       responses:
-#         '204':
-#           description: Deleted
+    delete:
+      tags: [tags]
+      summary: Delete tag
+      operationId: deleteTag
+      responses:
+        '204':
+          description: Deleted
+
+  /projects:
+    get:
+      tags: [projects]
+      summary: List projects
+      operationId: listProjects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+
+    post:
+      tags: [projects]
+      summary: Create project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProject'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [projects]
+      summary: Get project
+      operationId: getProject
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Not found
+
+    patch:
+      tags: [projects]
+      summary: Update project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProject'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+    delete:
+      tags: [projects]
+      summary: Delete project
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Deleted
+
+  /time-spans:
+    get:
+      tags: [timeSpans]
+      summary: List time spans
+      operationId: listTimeSpans
+      responses:
+        '200':
+          description: List of time spans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeSpan'
+
+    post:
+      tags: [timeSpans]
+      summary: Create time span
+      operationId: createTimeSpan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimeSpan'
+      responses:
+        '201':
+          description: Time span created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSpan'
+
+  /time-spans/{timeSpanId}:
+    parameters:
+      - name: timeSpanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [timeSpans]
+      summary: Get time span
+      operationId: getTimeSpan
+      responses:
+        '200':
+          description: Time span
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSpan'
+        '404':
+          description: Not found
+
+    patch:
+      tags: [timeSpans]
+      summary: Update time span
+      operationId: updateTimeSpan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTimeSpan'
+      responses:
+        '200':
+          description: Updated time span
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSpan'
+
+    delete:
+      tags: [timeSpans]
+      summary: Delete time span
+      operationId: deleteTimeSpan
+      responses:
+        '204':
+          description: Deleted
 
 components:
 #   securitySchemes:
