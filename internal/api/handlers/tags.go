@@ -44,12 +44,30 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 
 // DeleteTag implements [api.TagHandler].
 func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequestObject) (api.DeleteTagResponseObject, error) {
-	panic("unimplemented")
+	err := t.svc.DeleteTag(ctx, request.TagId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return api.DeleteTag204Response{}, nil
 }
 
 // GetTag implements [api.TagHandler].
 func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject) (api.GetTagResponseObject, error) {
-	panic("unimplemented")
+	reply, err := t.svc.GetTag(ctx, request.TagId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	apiTag := api.Tag{
+		Id:    reply.Id,
+		Name:  reply.Name,
+		Color: reply.Color,
+	}
+
+	return api.GetTag200JSONResponse(apiTag), nil
 }
 
 // ListTags implements [api.TagHandler].

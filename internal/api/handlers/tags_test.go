@@ -110,20 +110,41 @@ func TestTagHandler_CreateTag(t *testing.T) {
 
 func TestTagHandler_DeleteTag(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for receiver constructor.
-		svc service.TagService
-		// Named input parameters for target function.
-		request api.DeleteTagRequestObject
-		want    api.DeleteTagResponseObject
-		wantErr bool
+		name     string
+		deleteFn func(ctx context.Context, id uuid.UUID) error
+		request  uuid.UUID
+		wantErr  bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "successful delete",
+			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+				return nil
+			},
+			request: uuid.New(),
+			wantErr: false,
+		},
+		{
+			name: "service error",
+			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+				return errors.New("service error")
+			},
+			request: uuid.New(),
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := handlers.NewTagHandler(tt.svc)
-			got, gotErr := ta.DeleteTag(context.Background(), tt.request)
+			svc := &mockTagService{
+				DeleteFn: tt.deleteFn,
+			}
+
+			request := api.DeleteTagRequestObject{
+				TagId: tt.request,
+			}
+
+			ta := handlers.NewTagHandler(svc)
+			_, gotErr := ta.DeleteTag(context.Background(), request)
+
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("DeleteTag() failed: %v", gotErr)
@@ -133,30 +154,50 @@ func TestTagHandler_DeleteTag(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("DeleteTag() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
-			if true {
-				t.Errorf("DeleteTag() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }
 
 func TestTagHandler_GetTag(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for receiver constructor.
-		svc service.TagService
-		// Named input parameters for target function.
-		request api.GetTagRequestObject
-		want    api.GetTagResponseObject
+		name    string
+		getFn   func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+		request uuid.UUID
+		want    api.Tag
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "successful get",
+			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+				return model.Tag{Id: id, Name: "Sample Tag", Color: "#abcdef"}, nil
+			},
+			request: uuid.New(),
+			want:    api.Tag{Name: "Sample Tag", Color: "#abcdef"},
+			wantErr: false,
+		},
+		{
+			name: "service error",
+			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+				return model.Tag{}, errors.New("service error")
+			},
+			request: uuid.New(),
+			want:    api.Tag{},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := handlers.NewTagHandler(tt.svc)
-			got, gotErr := ta.GetTag(context.Background(), tt.request)
+			svc := &mockTagService{
+				GetFn: tt.getFn,
+			}
+
+			ta := handlers.NewTagHandler(svc)
+
+			request := api.GetTagRequestObject{
+				TagId: tt.request,
+			}
+
+			got, gotErr := ta.GetTag(context.Background(), request)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("GetTag() failed: %v", gotErr)
@@ -166,8 +207,9 @@ func TestTagHandler_GetTag(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("GetTag() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
-			if true {
+
+			res := got.(api.GetTag200JSONResponse)
+			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
 				t.Errorf("GetTag() = %v, want %v", got, tt.want)
 			}
 		})
