@@ -8,32 +8,34 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository"
 )
 
-type TagService struct {
+type TagServiceImpl struct {
 	repository repository.TagRepository
 }
 
-func NewTagService(repo repository.TagRepository) *TagService {
-	return &TagService{
+var _ TagService = (*TagServiceImpl)(nil)
+
+func NewTagService(repo repository.TagRepository) *TagServiceImpl {
+	return &TagServiceImpl{
 		repository: repo,
 	}
 }
 
-func (s *TagService) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+func (s *TagServiceImpl) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
 	return s.repository.GetTag(ctx, id)
 }
 
-func (s *TagService) ListTags(ctx context.Context) ([]model.Tag, error) {
+func (s *TagServiceImpl) ListTags(ctx context.Context) ([]model.Tag, error) {
 	return s.repository.ListTags(ctx)
 }
 
-func (s *TagService) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (s *TagServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	return s.repository.CreateTag(ctx, tag)
 }
 
-func (s *TagService) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (s *TagServiceImpl) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	return s.repository.UpdateTag(ctx, tag)
 }
 
-func (s *TagService) DeleteTag(ctx context.Context, id uuid.UUID) error {
+func (s *TagServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	return s.repository.DeleteTag(ctx, id)
 }
