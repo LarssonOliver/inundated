@@ -1,27 +1,21 @@
 package main
 
 import (
-	"log"
-	"net/http"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/larssonoliver/inundated/internal/api"
-	genapi "github.com/larssonoliver/inundated/internal/api/gen"
 )
 
 func main() {
-	server := api.NewServer()
+	// server := api.NewServer()
 
-	r := chi.NewMux()
+	// r := chi.NewMux()
 
-	m := []genapi.StrictMiddlewareFunc{}
+	// m := []genapi.StrictMiddlewareFunc{}
 	
-	h := genapi.HandlerFromMux(genapi.NewStrictHandler(server, m), r)
+	// h := genapi.HandlerFromMux(genapi.NewStrictHandler(server, m), r)
 
-	s := &http.Server{
-		Handler: h,
-		Addr:    "0.0.0.0:8080",
-	}
+	// s := &http.Server{
+	// 	Handler: h,
+	// 	Addr:    "0.0.0.0:8080",
+	// }
 
-	log.Fatal(s.ListenAndServe())
+	// log.Fatal(s.ListenAndServe())
 }

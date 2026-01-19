@@ -1,26 +1,29 @@
 package model
 
-import "time"
+import (
+	"time"
 
-type Uuid string
-
-type Project struct {
-	Id         Uuid
-	Name       string
-	Color      string
-	TagIds     []string
-	TimeBudget float64
-}
+	"github.com/google/uuid"
+)
 
 type Tag struct {
-	Id    Uuid
+	Id    uuid.UUID
 	Name  string
 	Color string
 }
 
+type Project struct {
+	Id         uuid.UUID
+	Name       string
+	Color      string
+	TimeBudget time.Duration
+	TagIds     []uuid.UUID
+}
+
 type TimeSpan struct {
-	Id        Uuid
+	Id        uuid.UUID
 	Name      string
-	EndTime   time.Time
 	StartTime time.Time
+	EndTime   time.Time
+	TagIds    []uuid.UUID
 }
