@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -27,16 +26,8 @@ func NewProjectStore() *ProjectStore {
 
 // CreateProject implements [repository.ProjectRepository].
 func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	if project.Name == "" {
-		return model.Project{}, errors.New("project name cannot be empty")
-	}
-
-	if project.Color == "" {
-		return model.Project{}, errors.New("project color cannot be empty")
-	}
-
-	if !helpers.IsValidColor(project.Color) {
-		return model.Project{}, errors.New("project color is not a valid hex color")
+	if project.Name == "" || project.Color == "" || !helpers.IsValidColor(project.Color) {
+		return model.Project{}, model.ErrInvalidArgument
 	}
 
 	var tagIds []uuid.UUID
@@ -71,7 +62,7 @@ func (t *ProjectStore) GetProject(ctx context.Context, id uuid.UUID) (model.Proj
 
 	project, exists := t.data[id]
 	if !exists {
-		return model.Project{}, errors.New("project not found")
+		return model.Project{}, model.ErrNotFound
 	}
 
 	return project, nil
@@ -93,16 +84,8 @@ func (t *ProjectStore) ListProjects(ctx context.Context) ([]model.Project, error
 
 // UpdateProject implements [repository.ProjectRepository].
 func (t *ProjectStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	if project.Name == "" {
-		return model.Project{}, errors.New("project name cannot be empty")
-	}
-
-	if project.Color == "" {
-		return model.Project{}, errors.New("project color cannot be empty")
-	}
-
-	if !helpers.IsValidColor(project.Color) {
-		return model.Project{}, errors.New("project color is not a valid hex color")
+	if project.Name == "" || project.Color == "" || !helpers.IsValidColor(project.Color) {
+		return model.Project{}, model.ErrInvalidArgument
 	}
 
 	t.mu.Lock()
@@ -110,7 +93,7 @@ func (t *ProjectStore) UpdateProject(ctx context.Context, project model.Project)
 
 	_, exists := t.data[project.Id]
 	if !exists {
-		return model.Project{}, errors.New("project not found")
+		return model.Project{}, model.ErrNotFound
 	}
 
 	t.data[project.Id] = project
@@ -125,7 +108,7 @@ func (t *ProjectStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
 	t.mu.RUnlock()
 
 	if !exists {
-		return errors.New("project not found")
+		return model.ErrNotFound
 	}
 
 	t.mu.Lock()

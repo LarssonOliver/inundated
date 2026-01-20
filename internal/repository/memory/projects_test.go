@@ -18,6 +18,7 @@ func TestProjectStore_CreateProject(t *testing.T) {
 		project model.Project
 		want    model.Project
 		wantErr bool
+		errType error
 	}{
 		{
 			name:    "Test CreateProject with valid input",
@@ -36,24 +37,28 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			project: model.Project{Name: "", Color: "#0000FF"},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateProject with invalid color",
 			project: model.Project{Name: "InvalidColor", Color: "NotAColor"},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateProject with empty color",
 			project: model.Project{Name: "NoColor", Color: ""},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateProject with nil project",
 			project: model.Project{},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateProject with set ID (should be ignored)",
@@ -69,6 +74,9 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("CreateProject() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -97,6 +105,7 @@ func TestProjectStore_GetProject(t *testing.T) {
 		getId         func(createdProject *model.Project) uuid.UUID
 		want          model.Project
 		wantErr       bool
+		errType       error
 	}{
 		{
 			name:          "Test GetProject with existing ID",
@@ -115,6 +124,7 @@ func TestProjectStore_GetProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:          "Test GetProject with empty UUID",
@@ -124,6 +134,7 @@ func TestProjectStore_GetProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -136,6 +147,9 @@ func TestProjectStore_GetProject(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("GetProject() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -162,6 +176,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 		name           string // description of this test case
 		insertProjects []model.Project
 		wantErr        bool
+		errType        error
 	}{
 		{
 			name: "Test ListProjects with multiple projects",
@@ -182,6 +197,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 			insertProjects: []model.Project{
 				{Name: "OnlyProject", Color: "#123456"},
 			},
+			wantErr: false,
 		},
 		{
 			name:           "Test ListProjects with duplicate projects",
@@ -202,6 +218,9 @@ func TestProjectStore_ListProjects(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("ListProjects() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -245,6 +264,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 		editProjectId func(createdProject *model.Project) uuid.UUID
 		want          model.Project
 		wantErr       bool
+		errType       error
 	}{
 		{
 			name:        "Test UpdateProject with valid input",
@@ -265,6 +285,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:        "Test UpdateProject with empty name",
@@ -275,6 +296,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:        "Test UpdateProject with invalid color",
@@ -285,6 +307,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:        "Test UpdateProject with empty ID",
@@ -295,6 +318,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:        "Test UpdateProject with same name and color",
@@ -332,6 +356,9 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("UpdateProject() failed: %v", gotErr)
 				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
+				}
 				return
 			}
 			if tt.wantErr {
@@ -356,6 +383,7 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 		insertProject model.Project
 		deleteId      func(createdProject *model.Project) uuid.UUID
 		wantErr       bool
+		errType       error
 	}{
 		{
 			name:          "Test DeleteProject with existing ID",
@@ -372,6 +400,7 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 				return uuid.New()
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:          "Test DeleteProject with empty UUID",
@@ -380,6 +409,7 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 				return uuid.Nil
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -393,6 +423,9 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("DeleteProject() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
 				}
 				return
 			}

@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -26,20 +25,8 @@ func NewTimeSpanStore() *TimeSpanStore {
 
 // CreateTimeSpan implements [repository.TimeSpanRepository].
 func (t *TimeSpanStore) CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	if timeSpan.Name == "" {
-		return model.TimeSpan{}, errors.New("timeSpan name cannot be empty")
-	}
-
-	if timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() {
-		return model.TimeSpan{}, errors.New("start time and end time must be set")
-	}
-
-	if timeSpan.EndTime.Before(timeSpan.StartTime) {
-		return model.TimeSpan{}, errors.New("end time cannot be before start time")
-	}
-
-	if timeSpan.EndTime.Equal(timeSpan.StartTime) {
-		return model.TimeSpan{}, errors.New("end time cannot be equal to start time")
+	if timeSpan.Name == "" || timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() || timeSpan.EndTime.Before(timeSpan.StartTime) || timeSpan.EndTime.Equal(timeSpan.StartTime) {
+		return model.TimeSpan{}, model.ErrInvalidArgument
 	}
 
 	var tagIds []uuid.UUID
@@ -50,7 +37,6 @@ func (t *TimeSpanStore) CreateTimeSpan(ctx context.Context, timeSpan model.TimeS
 	} else {
 		tagIds = []uuid.UUID{}
 	}
-
 
 	newId := uuid.New()
 	newTimeSpan := model.TimeSpan{
@@ -75,7 +61,7 @@ func (t *TimeSpanStore) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.Ti
 
 	timeSpan, exists := t.data[id]
 	if !exists {
-		return model.TimeSpan{}, errors.New("timeSpan not found")
+		return model.TimeSpan{}, model.ErrNotFound
 	}
 
 	return timeSpan, nil
@@ -97,20 +83,8 @@ func (t *TimeSpanStore) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, er
 
 // UpdateTimeSpan implements [repository.TimeSpanRepository].
 func (t *TimeSpanStore) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	if timeSpan.Name == "" {
-		return model.TimeSpan{}, errors.New("timeSpan name cannot be empty")
-	}
-
-	if timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() {
-		return model.TimeSpan{}, errors.New("start time and end time must be set")
-	}
-
-	if timeSpan.EndTime.Before(timeSpan.StartTime) {
-		return model.TimeSpan{}, errors.New("end time cannot be before start time")
-	}
-
-	if timeSpan.EndTime.Equal(timeSpan.StartTime) {
-		return model.TimeSpan{}, errors.New("end time cannot be equal to start time")
+	if timeSpan.Name == "" || timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() || timeSpan.EndTime.Before(timeSpan.StartTime) || timeSpan.EndTime.Equal(timeSpan.StartTime) {
+		return model.TimeSpan{}, model.ErrInvalidArgument
 	}
 
 	t.mu.Lock()
@@ -118,7 +92,7 @@ func (t *TimeSpanStore) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeS
 
 	_, exists := t.data[timeSpan.Id]
 	if !exists {
-		return model.TimeSpan{}, errors.New("timeSpan not found")
+		return model.TimeSpan{}, model.ErrNotFound
 	}
 
 	t.data[timeSpan.Id] = timeSpan
@@ -133,7 +107,7 @@ func (t *TimeSpanStore) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error 
 	t.mu.RUnlock()
 
 	if !exists {
-		return errors.New("timeSpan not found")
+		return model.ErrNotFound
 	}
 
 	t.mu.Lock()

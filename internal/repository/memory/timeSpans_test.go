@@ -20,6 +20,7 @@ func TestTimeSpanStore_CreateTimeSpan(t *testing.T) {
 		timeSpan model.TimeSpan
 		want     model.TimeSpan
 		wantErr  bool
+		errType  error
 	}{
 		{
 			name:     "Test CreateTimeSpan with valid input",
@@ -38,24 +39,28 @@ func TestTimeSpanStore_CreateTimeSpan(t *testing.T) {
 			timeSpan: model.TimeSpan{Name: "", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour)},
 			want:     model.TimeSpan{},
 			wantErr:  true,
+			errType:  model.ErrInvalidArgument,
 		},
 		{
 			name:     "Test CreateTimeSpan with EndTime before StartTime",
 			timeSpan: model.TimeSpan{Name: "InvalidTime", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime},
 			want:     model.TimeSpan{},
 			wantErr:  true,
+			errType:  model.ErrInvalidArgument,
 		},
 		{
 			name:     "Test CreateTimeSpan with zero StartTime and EndTime",
 			timeSpan: model.TimeSpan{Name: "ZeroTime", StartTime: time.Time{}, EndTime: time.Time{}},
 			want:     model.TimeSpan{},
 			wantErr:  true,
+			errType:  model.ErrInvalidArgument,
 		},
 		{
 			name:     "Test CreateTimeSpan with identical StartTime and EndTime",
 			timeSpan: model.TimeSpan{Name: "SameTime", StartTime: baseTime, EndTime: baseTime},
 			want:     model.TimeSpan{},
 			wantErr:  true,
+			errType:  model.ErrInvalidArgument,
 		},
 		{
 			name:     "Test CreateTimeSpan with set ID (should be ignored)",
@@ -77,6 +82,9 @@ func TestTimeSpanStore_CreateTimeSpan(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("CreateTimeSpan() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTimeSpan() error type = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -110,6 +118,7 @@ func TestTimeSpanStore_GetTimeSpan(t *testing.T) {
 		getId          func(createdTimeSpan *model.TimeSpan) uuid.UUID
 		want           model.TimeSpan
 		wantErr        bool
+		errType        error
 	}{
 		{
 			name:           "Test GetTimeSpan with existing ID",
@@ -128,6 +137,7 @@ func TestTimeSpanStore_GetTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:           "Test GetTimeSpan with empty UUID",
@@ -137,6 +147,7 @@ func TestTimeSpanStore_GetTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -150,6 +161,9 @@ func TestTimeSpanStore_GetTimeSpan(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("GetTimeSpan() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTimeSpan() error type = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -176,6 +190,7 @@ func TestTimeSpanStore_ListTimeSpans(t *testing.T) {
 		name            string // description of this test case
 		insertTimeSpans []model.TimeSpan
 		wantErr         bool
+		errType         error
 	}{
 		{
 			name:            "Test ListTimeSpans with multiple entries",
@@ -206,6 +221,9 @@ func TestTimeSpanStore_ListTimeSpans(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("ListTimeSpans() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTimeSpan() error type = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -246,6 +264,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 		editTimeSpanId func(createdTimeSpan *model.TimeSpan) uuid.UUID
 		want           model.TimeSpan
 		wantErr        bool
+		errType        error
 	}{
 		{
 			name:         "Test UpdateTimeSpan with existing ID",
@@ -266,6 +285,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:         "Test UpdateTimeSpan with empty UUID",
@@ -276,6 +296,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:         "Test UpdateTimeSpan with empty name",
@@ -286,6 +307,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:         "Test UpdateTimeSpan with EndTime before StartTime",
@@ -296,6 +318,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:         "Test UpdateTimeSpan with identical StartTime and EndTime",
@@ -306,6 +329,7 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 			},
 			want:    model.TimeSpan{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:         "Test UpdateTimeSpan with same name and times",
@@ -354,6 +378,9 @@ func TestTimeSpanStore_UpdateTimeSpan(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("UpdateTimeSpan() failed: %v", gotErr)
 				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTimeSpan() error type = %v, want %v", gotErr, tt.errType)
+				}
 				return
 			}
 			if tt.wantErr {
@@ -381,6 +408,7 @@ func TestTimeSpanStore_DeleteTimeSpan(t *testing.T) {
 		insertTimeSpan model.TimeSpan
 		deleteId       func(createdTimeSpan *model.TimeSpan) uuid.UUID
 		wantErr        bool
+		errType        error
 	}{
 		{
 			name:           "Test DeleteTimeSpan with existing ID",
@@ -397,6 +425,7 @@ func TestTimeSpanStore_DeleteTimeSpan(t *testing.T) {
 				return uuid.New()
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:           "Test DeleteTimeSpan with empty UUID",
@@ -405,6 +434,7 @@ func TestTimeSpanStore_DeleteTimeSpan(t *testing.T) {
 				return uuid.Nil
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -418,6 +448,9 @@ func TestTimeSpanStore_DeleteTimeSpan(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("DeleteTimeSpan() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTimeSpan() error type = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
