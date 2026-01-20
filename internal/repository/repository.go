@@ -7,6 +7,12 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
+type Repository interface {
+	TagRepository
+	ProjectRepository
+	TimeSpanRepository
+}
+
 type TagRepository interface {
 	GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error)
 	ListTags(ctx context.Context) ([]model.Tag, error)

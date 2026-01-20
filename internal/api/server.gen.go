@@ -671,6 +671,14 @@ func (response CreateProject201JSONResponse) VisitCreateProjectResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateProject400Response struct {
+}
+
+func (response CreateProject400Response) VisitCreateProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type DeleteProjectRequestObject struct {
 	ProjectId openapi_types.UUID `json:"projectId"`
 }
@@ -684,6 +692,14 @@ type DeleteProject204Response struct {
 
 func (response DeleteProject204Response) VisitDeleteProjectResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteProject404Response struct {
+}
+
+func (response DeleteProject404Response) VisitDeleteProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
 	return nil
 }
 
@@ -730,6 +746,22 @@ func (response UpdateProject200JSONResponse) VisitUpdateProjectResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateProject400Response struct {
+}
+
+func (response UpdateProject400Response) VisitUpdateProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type UpdateProject404Response struct {
+}
+
+func (response UpdateProject404Response) VisitUpdateProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type ListTagsRequestObject struct {
 }
 
@@ -763,6 +795,14 @@ func (response CreateTag201JSONResponse) VisitCreateTagResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateTag400Response struct {
+}
+
+func (response CreateTag400Response) VisitCreateTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type DeleteTagRequestObject struct {
 	TagId openapi_types.UUID `json:"tagId"`
 }
@@ -776,6 +816,14 @@ type DeleteTag204Response struct {
 
 func (response DeleteTag204Response) VisitDeleteTagResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteTag404Response struct {
+}
+
+func (response DeleteTag404Response) VisitDeleteTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
 	return nil
 }
 
@@ -822,6 +870,22 @@ func (response UpdateTag200JSONResponse) VisitUpdateTagResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateTag400Response struct {
+}
+
+func (response UpdateTag400Response) VisitUpdateTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type UpdateTag404Response struct {
+}
+
+func (response UpdateTag404Response) VisitUpdateTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type ListTimeSpansRequestObject struct {
 }
 
@@ -855,6 +919,14 @@ func (response CreateTimeSpan201JSONResponse) VisitCreateTimeSpanResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateTimeSpan400Response struct {
+}
+
+func (response CreateTimeSpan400Response) VisitCreateTimeSpanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type DeleteTimeSpanRequestObject struct {
 	TimeSpanId openapi_types.UUID `json:"timeSpanId"`
 }
@@ -868,6 +940,14 @@ type DeleteTimeSpan204Response struct {
 
 func (response DeleteTimeSpan204Response) VisitDeleteTimeSpanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteTimeSpan404Response struct {
+}
+
+func (response DeleteTimeSpan404Response) VisitDeleteTimeSpanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
 	return nil
 }
 
@@ -912,6 +992,22 @@ func (response UpdateTimeSpan200JSONResponse) VisitUpdateTimeSpanResponse(w http
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateTimeSpan400Response struct {
+}
+
+func (response UpdateTimeSpan400Response) VisitUpdateTimeSpanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type UpdateTimeSpan404Response struct {
+}
+
+func (response UpdateTimeSpan404Response) VisitUpdateTimeSpanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 // StrictServerInterface represents all server handlers.

@@ -29,7 +29,9 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 
 	reply, err := t.svc.CreateTag(ctx, tag)
 
-	if err != nil {
+	if err == model.ErrInvalidArgument {
+		return api.CreateTag400Response{}, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -46,7 +48,9 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequestObject) (api.DeleteTagResponseObject, error) {
 	err := t.svc.DeleteTag(ctx, request.TagId)
 
-	if err != nil {
+	if err == model.ErrNotFound {
+		return api.DeleteTag404Response{}, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -57,7 +61,9 @@ func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequest
 func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject) (api.GetTagResponseObject, error) {
 	reply, err := t.svc.GetTag(ctx, request.TagId)
 
-	if err != nil {
+	if err == model.ErrNotFound {
+		return api.GetTag404Response{}, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -72,10 +78,54 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 
 // ListTags implements [api.TagHandler].
 func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestObject) (api.ListTagsResponseObject, error) {
-	panic("unimplemented")
+	reply, err := t.svc.ListTags(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	apiTags := make([]api.Tag, 0, len(reply))
+	for _, tag := range reply {
+		apiTag := api.Tag{
+			Id:    tag.Id,
+			Name:  tag.Name,
+			Color: tag.Color,
+		}
+		apiTags = append(apiTags, apiTag)
+	}
+
+	return api.ListTags200JSONResponse(apiTags), nil
 }
 
 // UpdateTag implements [api.TagHandler].
 func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequestObject) (api.UpdateTagResponseObject, error) {
-	panic("unimplemented")
+	tag, err := t.svc.GetTag(ctx, request.TagId)
+	if err == model.ErrNotFound {
+		return api.UpdateTag404Response{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if request.Body.Name != nil {
+		tag.Name = *request.Body.Name
+	}
+	if request.Body.Color != nil {
+		tag.Color = *request.Body.Color
+	}
+
+	reply, err := t.svc.UpdateTag(ctx, tag)
+
+	if err == model.ErrInvalidArgument {
+		return api.UpdateTag400Response{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	apiTag := api.Tag{
+		Id:    reply.Id,
+		Name:  reply.Name,
+		Color: reply.Color,
+	}
+
+	return api.UpdateTag200JSONResponse(apiTag), nil
 }

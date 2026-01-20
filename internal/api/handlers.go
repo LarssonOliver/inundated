@@ -2,6 +2,12 @@ package api
 
 import "context"
 
+type HttpHandler interface {
+	TagHandler
+	ProjectHandler
+	TimeSpanHandler
+}
+
 type TagHandler interface {
 	GetTag(ctx context.Context, request GetTagRequestObject) (GetTagResponseObject, error)
 	ListTags(ctx context.Context, request ListTagsRequestObject) (ListTagsResponseObject, error)

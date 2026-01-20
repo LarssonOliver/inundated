@@ -15,6 +15,7 @@ func TestTagStore_CreateTag(t *testing.T) {
 		tag     model.Tag
 		want    model.Tag
 		wantErr bool
+		errType error
 	}{
 		{
 			name:    "Test CreateTag with valid input",
@@ -33,24 +34,28 @@ func TestTagStore_CreateTag(t *testing.T) {
 			tag:     model.Tag{Name: "", Color: "#0000FF"},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateTag with invalid color",
 			tag:     model.Tag{Name: "InvalidColor", Color: "NotAColor"},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateTag with empty color",
 			tag:     model.Tag{Name: "NoColor", Color: ""},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateTag with nil tag",
 			tag:     model.Tag{},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test CreateTag with set ID (should be ignored)",
@@ -66,6 +71,9 @@ func TestTagStore_CreateTag(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("CreateTag() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTag() error = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -86,6 +94,7 @@ func TestTagStore_GetTag(t *testing.T) {
 		getId     func(createdTag *model.Tag) uuid.UUID
 		want      model.Tag
 		wantErr   bool
+		errType   error
 	}{
 		{
 			name:      "Test GetTag with existing ID",
@@ -104,6 +113,7 @@ func TestTagStore_GetTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:      "Test GetTag with empty UUID",
@@ -113,6 +123,7 @@ func TestTagStore_GetTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -125,6 +136,9 @@ func TestTagStore_GetTag(t *testing.T) {
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("GetTag() failed: %v", gotErr)
+				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("CreateTag() error = %v, want %v", gotErr, tt.errType)
 				}
 				return
 			}
@@ -163,6 +177,7 @@ func TestTagStore_ListTags(t *testing.T) {
 			insertTags: []model.Tag{
 				{Name: "OnlyTag", Color: "#123456"},
 			},
+			wantErr: false,
 		},
 		{
 			name:       "Test ListTags with duplicate tags",
@@ -218,6 +233,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 		editTagId func(createdTag *model.Tag) uuid.UUID
 		want      model.Tag
 		wantErr   bool
+		errType   error
 	}{
 		{
 			name:    "Test UpdateTag with valid input",
@@ -238,6 +254,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:    "Test UpdateTag with empty name",
@@ -248,6 +265,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test UpdateTag with invalid color",
@@ -258,6 +276,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrInvalidArgument,
 		},
 		{
 			name:    "Test UpdateTag with empty ID",
@@ -268,6 +287,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			},
 			want:    model.Tag{},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:    "Test UpdateTag with same name and color",
@@ -295,6 +315,9 @@ func TestTagStore_UpdateTag(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("UpdateTag() failed: %v", gotErr)
 				}
+				if tt.errType != nil && gotErr != tt.errType {
+					t.Errorf("UpdateTag() error = %v, want %v", gotErr, tt.errType)
+				}
 				return
 			}
 			if tt.wantErr {
@@ -313,6 +336,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 		insertTag model.Tag
 		deleteId  func(createdTag *model.Tag) uuid.UUID
 		wantErr   bool
+		errType  error
 	}{
 		{
 			name:      "Test DeleteTag with existing ID",
@@ -329,6 +353,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 				return uuid.New()
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 		{
 			name:      "Test DeleteTag with empty UUID",
@@ -337,6 +362,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 				return uuid.Nil
 			},
 			wantErr: true,
+			errType: model.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {

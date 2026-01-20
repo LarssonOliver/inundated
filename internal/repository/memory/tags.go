@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -27,16 +26,8 @@ func NewTagStore() *TagStore {
 
 // CreateTag implements [repository.TagRepository].
 func (t *TagStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	if tag.Name == "" {
-		return model.Tag{}, errors.New("tag name cannot be empty")
-	}
-
-	if tag.Color == "" {
-		return model.Tag{}, errors.New("tag color cannot be empty")
-	}
-
-	if !helpers.IsValidColor(tag.Color) {
-		return model.Tag{}, errors.New("tag color is not a valid hex color")
+	if tag.Name == "" || tag.Color == "" || !helpers.IsValidColor(tag.Color) {
+		return model.Tag{}, model.ErrInvalidArgument
 	}
 
 	newId := uuid.New()
@@ -60,7 +51,7 @@ func (t *TagStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) 
 
 	tag, exists := t.data[id]
 	if !exists {
-		return model.Tag{}, errors.New("tag not found")
+		return model.Tag{}, model.ErrNotFound
 	}
 
 	return tag, nil
@@ -82,16 +73,8 @@ func (t *TagStore) ListTags(ctx context.Context) ([]model.Tag, error) {
 
 // UpdateTag implements [repository.TagRepository].
 func (t *TagStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	if tag.Name == "" {
-		return model.Tag{}, errors.New("tag name cannot be empty")
-	}
-
-	if tag.Color == "" {
-		return model.Tag{}, errors.New("tag color cannot be empty")
-	}
-
-	if !helpers.IsValidColor(tag.Color) {
-		return model.Tag{}, errors.New("tag color is not a valid hex color")
+	if tag.Name == "" || tag.Color == "" || !helpers.IsValidColor(tag.Color) {
+		return model.Tag{}, model.ErrInvalidArgument
 	}
 
 	t.mu.Lock()
@@ -99,7 +82,7 @@ func (t *TagStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, err
 
 	_, exists := t.data[tag.Id]
 	if !exists {
-		return model.Tag{}, errors.New("tag not found")
+		return model.Tag{}, model.ErrNotFound
 	}
 
 	t.data[tag.Id] = tag
@@ -114,7 +97,7 @@ func (t *TagStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	t.mu.RUnlock()
 
 	if !exists {
-		return errors.New("tag not found")
+		return model.ErrNotFound
 	}
 
 	t.mu.Lock()

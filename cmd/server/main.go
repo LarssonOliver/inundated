@@ -1,21 +1,35 @@
 package main
 
 import (
+	"log"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/larssonoliver/inundated/internal/api"
+	"github.com/larssonoliver/inundated/internal/api/handlers"
+	"github.com/larssonoliver/inundated/internal/repository"
+	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/larssonoliver/inundated/internal/service"
 )
 
+func setupRepository() repository.Repository {
+	return memory.NewMemoryStore()
+}
+
 func main() {
-	// server := api.NewServer()
+	repo := setupRepository()
+	svc := service.NewService(repo)
+	handler := handlers.NewHandler(svc)
+	server := api.NewServer(handler)
 
-	// r := chi.NewMux()
-
-	// m := []genapi.StrictMiddlewareFunc{}
+	r := chi.NewMux()
 	
-	// h := genapi.HandlerFromMux(genapi.NewStrictHandler(server, m), r)
+	h := api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 
-	// s := &http.Server{
-	// 	Handler: h,
-	// 	Addr:    "0.0.0.0:8080",
-	// }
+	s := &http.Server{
+		Handler: h,
+		Addr:    "0.0.0.0:8080",
+	}
 
-	// log.Fatal(s.ListenAndServe())
+	log.Fatal(s.ListenAndServe())
 }

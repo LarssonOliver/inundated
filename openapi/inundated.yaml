@@ -28,7 +28,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Tag'
-
     post:
       tags: [tags]
       summary: Create tag
@@ -46,6 +45,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tag'
+        '400':
+          description: Bad request
 
   /tags/{tagId}:
     parameters:
@@ -87,6 +88,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tag'
+        '400':
+          description: Bad request
+        '404':
+          description: Not found
 
     delete:
       tags: [tags]
@@ -95,6 +100,8 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          description: Not found
 
   /projects:
     get:
@@ -128,6 +135,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
+        '400':
+          description: Bad request
 
   /projects/{projectId}:
     parameters:
@@ -169,6 +178,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
+        '400':
+          description: Bad request
+        '404':
+          description: Not found
 
     delete:
       tags: [projects]
@@ -177,6 +190,8 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          description: Not found
 
   /time-spans:
     get:
@@ -210,6 +225,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TimeSpan'
+        '400':
+          description: Bad request
 
   /time-spans/{timeSpanId}:
     parameters:
@@ -251,6 +268,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TimeSpan'
+        '400':
+          description: Bad request
+        '404':
+          description: Not found
 
     delete:
       tags: [timeSpans]
@@ -259,6 +280,8 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          description: Not found
 
 components:
 #   securitySchemes:
