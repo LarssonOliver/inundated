@@ -1,8 +1,9 @@
-package helpers_test
+package utils_test
 
 import (
-	"github.com/larssonoliver/inundated/internal/helpers"
 	"testing"
+
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 func TestIsValidColor(t *testing.T) {
@@ -47,19 +48,19 @@ func TestIsValidColor(t *testing.T) {
 			want:  false,
 		},
 		{
-			name: "valid lowercase hex color",
+			name:  "valid lowercase hex color",
 			color: "#abcdef",
 			want:  true,
 		},
 		{
-			name: "valid uppercase hex color",
+			name:  "valid uppercase hex color",
 			color: "#ABCDEF",
 			want:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := helpers.IsValidColor(tt.color)
+			got := utils.IsValidColor(tt.color)
 			if got != tt.want {
 				t.Errorf("IsValidColor() = %v, want %v", got, tt.want)
 			}

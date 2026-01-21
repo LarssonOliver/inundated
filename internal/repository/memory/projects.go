@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/larssonoliver/inundated/internal/helpers"
+	"github.com/larssonoliver/inundated/internal/utils"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 )
@@ -26,7 +26,7 @@ func NewProjectStore() *ProjectStore {
 
 // CreateProject implements [repository.ProjectRepository].
 func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	if project.Name == "" || project.Color == "" || !helpers.IsValidColor(project.Color) {
+	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
 
@@ -84,7 +84,7 @@ func (t *ProjectStore) ListProjects(ctx context.Context) ([]model.Project, error
 
 // UpdateProject implements [repository.ProjectRepository].
 func (t *ProjectStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	if project.Name == "" || project.Color == "" || !helpers.IsValidColor(project.Color) {
+	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
 

@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/larssonoliver/inundated/internal/helpers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 type TagStore struct {
@@ -26,7 +26,7 @@ func NewTagStore() *TagStore {
 
 // CreateTag implements [repository.TagRepository].
 func (t *TagStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	if tag.Name == "" || tag.Color == "" || !helpers.IsValidColor(tag.Color) {
+	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
 
@@ -73,7 +73,7 @@ func (t *TagStore) ListTags(ctx context.Context) ([]model.Tag, error) {
 
 // UpdateTag implements [repository.TagRepository].
 func (t *TagStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	if tag.Name == "" || tag.Color == "" || !helpers.IsValidColor(tag.Color) {
+	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
 
