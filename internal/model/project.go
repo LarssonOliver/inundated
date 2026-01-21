@@ -10,6 +10,6 @@ type Project struct {
 	Id         uuid.UUID
 	Name       string
 	Color      string
-	TimeBudget time.Duration
+	TimeBudget *time.Duration
 	TagIds     []uuid.UUID
 }

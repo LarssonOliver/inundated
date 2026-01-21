@@ -325,7 +325,7 @@ components:
           pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
     Project:
       type: object
-      required: [id, name, color, timeBudget, tagIds]
+      required: [id, name, color]
       properties:
         id:
           type: string
@@ -336,7 +336,7 @@ components:
         color:
           type: string
           pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
-        timeBudget:
+        timeBudgetHours:
           type: number
           format: double
         tagIds:
@@ -355,7 +355,7 @@ components:
         color:
           type: string
           pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
-        timeBudget:
+        timeBudgetHours:
           type: number
           format: double
         tagIds:
@@ -374,7 +374,7 @@ components:
         color:
           type: string
           pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
-        timeBudget:
+        timeBudgetHours:
           type: number
           format: double
         tagIds:

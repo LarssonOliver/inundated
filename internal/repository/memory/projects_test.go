@@ -10,6 +10,10 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 )
 
+func ptrd(d time.Duration) *time.Duration {
+	return &d
+}
+
 func TestProjectStore_CreateProject(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -22,14 +26,14 @@ func TestProjectStore_CreateProject(t *testing.T) {
 	}{
 		{
 			name:    "Test CreateProject with valid input",
-			project: model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: 0, TagIds: tagIds},
-			want:    model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: 0, TagIds: tagIds},
+			project: model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: ptrd(0), TagIds: tagIds},
+			want:    model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: ptrd(0), TagIds: tagIds},
 			wantErr: false,
 		},
 		{
 			name:    "Test CreateProject with another valid input",
-			project: model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: 4 * time.Hour, TagIds: nil},
-			want:    model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: 4 * time.Hour, TagIds: []uuid.UUID{}},
+			project: model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: ptrd(4 * time.Hour), TagIds: nil},
+			want:    model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: ptrd(4 * time.Hour), TagIds: []uuid.UUID{}},
 			wantErr: false,
 		},
 		{
@@ -83,8 +87,16 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("CreateProject() succeeded unexpectedly")
 			}
-			if got.Name != tt.want.Name || got.Color != tt.want.Color || got.Id == tt.want.Id || got.TimeBudget != tt.want.TimeBudget || len(got.TagIds) != len(tt.want.TagIds) {
+			if got.Name != tt.want.Name || got.Color != tt.want.Color || got.Id == tt.want.Id || len(got.TagIds) != len(tt.want.TagIds) {
 				t.Errorf("CreateProject() = %v, want %v", got, tt.want)
+				return
+			}
+			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
+				return
+			}
+			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
 				return
 			}
 			for i, tagId := range tt.want.TagIds {
@@ -109,11 +121,11 @@ func TestProjectStore_GetProject(t *testing.T) {
 	}{
 		{
 			name:          "Test GetProject with existing ID",
-			createProject: model.Project{Name: "Project1", Color: "#FF0000", TimeBudget: 2 * time.Hour, TagIds: tagIds},
+			createProject: model.Project{Name: "Project1", Color: "#FF0000", TimeBudget: ptrd(2 * time.Hour), TagIds: tagIds},
 			getId: func(createdProject *model.Project) uuid.UUID {
 				return createdProject.Id
 			},
-			want:    model.Project{Name: "Project1", Color: "#FF0000", TimeBudget: 2 * time.Hour, TagIds: tagIds},
+			want:    model.Project{Name: "Project1", Color: "#FF0000", TimeBudget: ptrd(2 * time.Hour), TagIds: tagIds},
 			wantErr: false,
 		},
 		{
@@ -156,8 +168,16 @@ func TestProjectStore_GetProject(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("GetProject() succeeded unexpectedly")
 			}
-			if project.Name != tt.want.Name || project.Color != tt.want.Color || project.Id != got.Id || project.TimeBudget != tt.want.TimeBudget || len(got.TagIds) != len(tt.want.TagIds) {
+			if project.Name != tt.want.Name || project.Color != tt.want.Color || project.Id != got.Id || len(got.TagIds) != len(tt.want.TagIds) {
 				t.Errorf("GetProject() = %v, want %v", got, tt.want)
+				return
+			}
+			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
+				return
+			}
+			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
 				return
 			}
 			for i, tagId := range tt.want.TagIds {
@@ -181,7 +201,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 		{
 			name: "Test ListProjects with multiple projects",
 			insertProjects: []model.Project{
-				{Name: "Project1", Color: "#FF0000", TimeBudget: 3 * time.Hour, TagIds: tagIds},
+				{Name: "Project1", Color: "#FF0000", TimeBudget: ptrd(3 * time.Hour), TagIds: tagIds},
 				{Name: "Project2", Color: "#00FF00"},
 				{Name: "Project3", Color: "#0000FF"},
 			},
@@ -236,7 +256,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 				found := false
 			outer:
 				for _, gotProject := range got {
-					if gotProject.Id == project.Id && gotProject.Name == project.Name && gotProject.Color == project.Color && gotProject.TimeBudget == project.TimeBudget && len(gotProject.TagIds) == len(project.TagIds) {
+					if gotProject.Id == project.Id && gotProject.Name == project.Name && gotProject.Color == project.Color && len(gotProject.TagIds) == len(project.TagIds) {
 						for i, tagId := range project.TagIds {
 							if gotProject.TagIds[i] != tagId {
 								continue outer
@@ -268,12 +288,12 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 	}{
 		{
 			name:        "Test UpdateProject with valid input",
-			project:     model.Project{Name: "OldName", Color: "#FF0000", TimeBudget: 1 * time.Hour, TagIds: []uuid.UUID{tagIds[0]}},
-			editProject: model.Project{Name: "NewName", Color: "#00FF00", TimeBudget: 2 * time.Hour, TagIds: tagIds},
+			project:     model.Project{Name: "OldName", Color: "#FF0000", TimeBudget: ptrd(1 * time.Hour), TagIds: []uuid.UUID{tagIds[0]}},
+			editProject: model.Project{Name: "NewName", Color: "#00FF00", TimeBudget: ptrd(2 * time.Hour), TagIds: tagIds},
 			editProjectId: func(createdProject *model.Project) uuid.UUID {
 				return createdProject.Id
 			},
-			want:    model.Project{Name: "NewName", Color: "#00FF00", TimeBudget: 2 * time.Hour, TagIds: tagIds},
+			want:    model.Project{Name: "NewName", Color: "#00FF00", TimeBudget: ptrd(2 * time.Hour), TagIds: tagIds},
 			wantErr: false,
 		},
 		{
@@ -364,8 +384,16 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("UpdateProject() succeeded unexpectedly")
 			}
-			if tt.want.Name != got.Name || tt.want.Color != got.Color || tt.want.Id != got.Id || tt.want.TimeBudget != got.TimeBudget || len(got.TagIds) != len(tt.want.TagIds) {
+			if tt.want.Name != got.Name || tt.want.Color != got.Color || tt.want.Id != got.Id || len(got.TagIds) != len(tt.want.TagIds) {
 				t.Errorf("UpdateProject() = %v, want %v", got, tt.want)
+				return
+			}
+			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
+				return
+			}
+			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
+				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
 				return
 			}
 			for i, tagId := range tt.want.TagIds {

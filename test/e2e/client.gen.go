@@ -20,10 +20,10 @@ import (
 
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
-	Color      string                `json:"color"`
-	Name       string                `json:"name"`
-	TagIds     *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudget *float64              `json:"timeBudget,omitempty"`
+	Color           string                `json:"color"`
+	Name            string                `json:"name"`
+	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
 }
 
 // CreateTag defines model for CreateTag.
@@ -41,11 +41,11 @@ type CreateTimeSpan struct {
 
 // Project defines model for Project.
 type Project struct {
-	Color      string               `json:"color"`
-	Id         openapi_types.UUID   `json:"id"`
-	Name       string               `json:"name"`
-	TagIds     []openapi_types.UUID `json:"tagIds"`
-	TimeBudget float64              `json:"timeBudget"`
+	Color           string                `json:"color"`
+	Id              openapi_types.UUID    `json:"id"`
+	Name            string                `json:"name"`
+	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
 }
 
 // Tag defines model for Tag.
@@ -65,10 +65,10 @@ type TimeSpan struct {
 
 // UpdateProject defines model for UpdateProject.
 type UpdateProject struct {
-	Color      *string               `json:"color,omitempty"`
-	Name       *string               `json:"name,omitempty"`
-	TagIds     *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudget *float64              `json:"timeBudget,omitempty"`
+	Color           *string               `json:"color,omitempty"`
+	Name            *string               `json:"name,omitempty"`
+	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
 }
 
 // UpdateTag defines model for UpdateTag.
