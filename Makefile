@@ -1,6 +1,16 @@
 # This should probably be pinned in the future
 OPENAPI_GENERATOR_TAG ?= latest-release
 
+BINARY_DIR := bin
+BINARY := ${BINARY_DIR}/inundated
+
+.PHONY: build
+build: ${BINARY}
+
+${BINARY}:
+	mkdir -p ${BINARY_DIR}
+	go build -o $@ cmd/server/main.go
+
 # Run tests
 .PHONY: test test-backend test-frontend
 test: test-backend test-frontend
