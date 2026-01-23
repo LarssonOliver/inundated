@@ -9,7 +9,7 @@ Name | Type
 `id` | string
 `name` | string
 `color` | string
-`timeBudget` | number
+`timeBudgetHours` | number
 `tagIds` | Set&lt;string&gt;
 
 ## Example
@@ -22,7 +22,7 @@ const example = {
   "id": null,
   "name": null,
   "color": null,
-  "timeBudget": null,
+  "timeBudgetHours": null,
   "tagIds": null,
 } satisfies Project
 

@@ -36,7 +36,7 @@ export interface CreateProject {
      * @type {number}
      * @memberof CreateProject
      */
-    timeBudget?: number;
+    timeBudgetHours?: number;
     /**
      * 
      * @type {Set<string>}
@@ -66,7 +66,7 @@ export function CreateProjectFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'name': json['name'],
         'color': json['color'],
-        'timeBudget': json['timeBudget'] == null ? undefined : json['timeBudget'],
+        'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
@@ -84,7 +84,7 @@ export function CreateProjectToJSONTyped(value?: CreateProject | null, ignoreDis
         
         'name': value['name'],
         'color': value['color'],
-        'timeBudget': value['timeBudget'],
+        'timeBudgetHours': value['timeBudgetHours'],
         'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }

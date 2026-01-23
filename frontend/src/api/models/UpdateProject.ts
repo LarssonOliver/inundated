@@ -36,7 +36,7 @@ export interface UpdateProject {
      * @type {number}
      * @memberof UpdateProject
      */
-    timeBudget?: number;
+    timeBudgetHours?: number;
     /**
      * 
      * @type {Set<string>}
@@ -64,7 +64,7 @@ export function UpdateProjectFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'name': json['name'] == null ? undefined : json['name'],
         'color': json['color'] == null ? undefined : json['color'],
-        'timeBudget': json['timeBudget'] == null ? undefined : json['timeBudget'],
+        'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
@@ -82,7 +82,7 @@ export function UpdateProjectToJSONTyped(value?: UpdateProject | null, ignoreDis
         
         'name': value['name'],
         'color': value['color'],
-        'timeBudget': value['timeBudget'],
+        'timeBudgetHours': value['timeBudgetHours'],
         'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }

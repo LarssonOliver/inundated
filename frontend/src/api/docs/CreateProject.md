@@ -8,7 +8,7 @@ Name | Type
 ------------ | -------------
 `name` | string
 `color` | string
-`timeBudget` | number
+`timeBudgetHours` | number
 `tagIds` | Set&lt;string&gt;
 
 ## Example
@@ -20,7 +20,7 @@ import type { CreateProject } from ''
 const example = {
   "name": null,
   "color": null,
-  "timeBudget": null,
+  "timeBudgetHours": null,
   "tagIds": null,
 } satisfies CreateProject
 

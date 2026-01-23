@@ -37,6 +37,12 @@ export interface CreateTimeSpan {
      * @memberof CreateTimeSpan
      */
     endTime: Date;
+    /**
+     * 
+     * @type {Set<string>}
+     * @memberof CreateTimeSpan
+     */
+    tagIds?: Set<string>;
 }
 
 /**
@@ -62,6 +68,7 @@ export function CreateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: bool
         'name': json['name'],
         'startTime': (new Date(json['startTime'])),
         'endTime': (new Date(json['endTime'])),
+        'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
 
@@ -79,6 +86,7 @@ export function CreateTimeSpanToJSONTyped(value?: CreateTimeSpan | null, ignoreD
         'name': value['name'],
         'startTime': value['startTime'].toISOString(),
         'endTime': value['endTime'].toISOString(),
+        'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }
 

@@ -42,13 +42,13 @@ export interface Project {
      * @type {number}
      * @memberof Project
      */
-    timeBudget: number;
+    timeBudgetHours?: number;
     /**
      * 
      * @type {Set<string>}
      * @memberof Project
      */
-    tagIds: Set<string>;
+    tagIds?: Set<string>;
 }
 
 /**
@@ -58,8 +58,6 @@ export function instanceOfProject(value: object): value is Project {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('color' in value) || value['color'] === undefined) return false;
-    if (!('timeBudget' in value) || value['timeBudget'] === undefined) return false;
-    if (!('tagIds' in value) || value['tagIds'] === undefined) return false;
     return true;
 }
 
@@ -76,8 +74,8 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         'id': json['id'],
         'name': json['name'],
         'color': json['color'],
-        'timeBudget': json['timeBudget'],
-        'tagIds': new Set(json['tagIds']),
+        'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
+        'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
 
@@ -95,8 +93,8 @@ export function ProjectToJSONTyped(value?: Project | null, ignoreDiscriminator: 
         'id': value['id'],
         'name': value['name'],
         'color': value['color'],
-        'timeBudget': value['timeBudget'],
-        'tagIds': Array.from(value['tagIds'] as Set<any>),
+        'timeBudgetHours': value['timeBudgetHours'],
+        'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }
 

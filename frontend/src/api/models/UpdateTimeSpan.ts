@@ -37,6 +37,12 @@ export interface UpdateTimeSpan {
      * @memberof UpdateTimeSpan
      */
     endTime?: Date;
+    /**
+     * 
+     * @type {Set<string>}
+     * @memberof UpdateTimeSpan
+     */
+    tagIds?: Set<string>;
 }
 
 /**
@@ -59,6 +65,7 @@ export function UpdateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: bool
         'name': json['name'] == null ? undefined : json['name'],
         'startTime': json['startTime'] == null ? undefined : (new Date(json['startTime'])),
         'endTime': json['endTime'] == null ? undefined : (new Date(json['endTime'])),
+        'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
 
@@ -76,6 +83,7 @@ export function UpdateTimeSpanToJSONTyped(value?: UpdateTimeSpan | null, ignoreD
         'name': value['name'],
         'startTime': value['startTime'] == null ? value['startTime'] : value['startTime'].toISOString(),
         'endTime': value['endTime'] == null ? value['endTime'] : value['endTime'].toISOString(),
+        'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }
 

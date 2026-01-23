@@ -1,6 +1,6 @@
 apis/ProjectsApi.ts
 apis/TagsApi.ts
-apis/TimeSpansApi.ts
+apis/TimespansApi.ts
 apis/index.ts
 docs/CreateProject.md
 docs/CreateTag.md
@@ -10,7 +10,7 @@ docs/ProjectsApi.md
 docs/Tag.md
 docs/TagsApi.md
 docs/TimeSpan.md
-docs/TimeSpansApi.md
+docs/TimespansApi.md
 docs/UpdateProject.md
 docs/UpdateTag.md
 docs/UpdateTimeSpan.md

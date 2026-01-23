@@ -43,6 +43,12 @@ export interface TimeSpan {
      * @memberof TimeSpan
      */
     endTime: Date;
+    /**
+     * 
+     * @type {Set<string>}
+     * @memberof TimeSpan
+     */
+    tagIds?: Set<string>;
 }
 
 /**
@@ -70,6 +76,7 @@ export function TimeSpanFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'name': json['name'],
         'startTime': (new Date(json['startTime'])),
         'endTime': (new Date(json['endTime'])),
+        'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
     };
 }
 
@@ -88,6 +95,7 @@ export function TimeSpanToJSONTyped(value?: TimeSpan | null, ignoreDiscriminator
         'name': value['name'],
         'startTime': value['startTime'].toISOString(),
         'endTime': value['endTime'].toISOString(),
+        'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
     };
 }
 

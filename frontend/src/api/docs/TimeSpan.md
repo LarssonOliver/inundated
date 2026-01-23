@@ -10,6 +10,7 @@ Name | Type
 `name` | string
 `startTime` | Date
 `endTime` | Date
+`tagIds` | Set&lt;string&gt;
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "name": null,
   "startTime": null,
   "endTime": null,
+  "tagIds": null,
 } satisfies TimeSpan
 
 console.log(example)

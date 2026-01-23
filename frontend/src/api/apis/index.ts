@@ -2,4 +2,4 @@
 /* eslint-disable */
 export * from './ProjectsApi';
 export * from './TagsApi';
-export * from './TimeSpansApi';
+export * from './TimespansApi';

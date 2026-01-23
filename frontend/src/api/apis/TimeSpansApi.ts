@@ -48,7 +48,7 @@ export interface UpdateTimeSpanRequest {
 /**
  * 
  */
-export class TimeSpansApi extends runtime.BaseAPI {
+export class TimespansApi extends runtime.BaseAPI {
 
     /**
      * Create time span
