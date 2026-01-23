@@ -25,9 +25,10 @@ type CreateTag struct {
 
 // CreateTimeSpan defines model for CreateTimeSpan.
 type CreateTimeSpan struct {
-	EndTime   time.Time `json:"endTime"`
-	Name      string    `json:"name"`
-	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time             `json:"endTime"`
+	Name      string                `json:"name"`
+	StartTime time.Time             `json:"startTime"`
+	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
 
 // Project defines model for Project.
@@ -48,10 +49,11 @@ type Tag struct {
 
 // TimeSpan defines model for TimeSpan.
 type TimeSpan struct {
-	EndTime   time.Time          `json:"endTime"`
-	Id        openapi_types.UUID `json:"id"`
-	Name      string             `json:"name"`
-	StartTime time.Time          `json:"startTime"`
+	EndTime   time.Time             `json:"endTime"`
+	Id        openapi_types.UUID    `json:"id"`
+	Name      string                `json:"name"`
+	StartTime time.Time             `json:"startTime"`
+	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
 
 // UpdateProject defines model for UpdateProject.
@@ -70,9 +72,10 @@ type UpdateTag struct {
 
 // UpdateTimeSpan defines model for UpdateTimeSpan.
 type UpdateTimeSpan struct {
-	EndTime   *time.Time `json:"endTime,omitempty"`
-	Name      *string    `json:"name,omitempty"`
-	StartTime *time.Time `json:"startTime,omitempty"`
+	EndTime   *time.Time            `json:"endTime,omitempty"`
+	Name      *string               `json:"name,omitempty"`
+	StartTime *time.Time            `json:"startTime,omitempty"`
+	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.

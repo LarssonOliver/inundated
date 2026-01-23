@@ -17,6 +17,6 @@ func NewHandler(svc service.Service) *Handler {
 	return &Handler{
 		TagHandler:      *NewTagHandler(svc),
 		ProjectHandler:  *NewProjectHandler(svc),
-		TimeSpanHandler: *NewTimeSpanHandler(),
+		TimeSpanHandler: *NewTimeSpanHandler(svc),
 	}
 }

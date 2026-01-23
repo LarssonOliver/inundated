@@ -27,6 +27,7 @@ func NewService(repository repository.Repository) *ServiceImpl {
 type Service interface {
 	TagService
 	ProjectService
+	TimeSpanService
 }
 
 type TagService interface {

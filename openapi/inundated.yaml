@@ -11,7 +11,7 @@ servers:
 tags:
   - name: tags
   - name: projects
-  - name: timeSpans
+  - name: timespans
 
 paths:
   /tags:
@@ -195,7 +195,7 @@ paths:
 
   /time-spans:
     get:
-      tags: [timeSpans]
+      tags: [timespans]
       summary: List time spans
       operationId: listTimeSpans
       responses:
@@ -209,7 +209,7 @@ paths:
                   $ref: '#/components/schemas/TimeSpan'
 
     post:
-      tags: [timeSpans]
+      tags: [timespans]
       summary: Create time span
       operationId: createTimeSpan
       requestBody:
@@ -238,7 +238,7 @@ paths:
           format: uuid
 
     get:
-      tags: [timeSpans]
+      tags: [timespans]
       summary: Get time span
       operationId: getTimeSpan
       responses:
@@ -252,7 +252,7 @@ paths:
           description: Not found
 
     patch:
-      tags: [timeSpans]
+      tags: [timespans]
       summary: Update time span
       operationId: updateTimeSpan
       requestBody:
@@ -274,7 +274,7 @@ paths:
           description: Not found
 
     delete:
-      tags: [timeSpans]
+      tags: [timespans]
       summary: Delete time span
       operationId: deleteTimeSpan
       responses:
@@ -399,6 +399,12 @@ components:
         endTime:
           type: string
           format: date-time
+        tagIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
     CreateTimeSpan:
       type: object
       required: [name, startTime, endTime]
@@ -412,6 +418,12 @@ components:
         endTime:
           type: string
           format: date-time
+        tagIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
     UpdateTimeSpan:
       type: object
       minProperties: 1
@@ -425,3 +437,9 @@ components:
         endTime:
           type: string
           format: date-time
+        tagIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
