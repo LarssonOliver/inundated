@@ -3,7 +3,7 @@ import { levenshteinDistance } from "@/helpers/search";
 import type { Tag } from "@/model/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 function copyTag(tag: Tag): Tag {
   return {
@@ -13,6 +13,8 @@ function copyTag(tag: Tag): Tag {
 
 export const useTagsStore = defineStore("tags", () => {
   const tags = ref<Tag[]>([]);
+
+  const readOnlyTags = computed(() => tags.value.map(copyTag));
 
   /**
    * Creates a new tag.
@@ -139,7 +141,15 @@ export const useTagsStore = defineStore("tags", () => {
     if (index !== -1) tags.value.splice(index, 1);
   }
 
-  return { tags, createTag, createTagFromName, getTagById, searchTags, updateTag, deleteTag };
+  return {
+    tags: readOnlyTags,
+    createTag,
+    createTagFromName,
+    getTagById,
+    searchTags,
+    updateTag,
+    deleteTag,
+  };
 });
 
 if (import.meta.hot) {

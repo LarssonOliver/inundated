@@ -13,6 +13,8 @@ function copyProject(project: Project): Project {
 export const useProjectsStore = defineStore("projects", () => {
   const projects = ref<Project[]>([]);
 
+  const readOnlyProjects = computed(() => projects.value.map(copyProject));
+
   /**
    * Creates a new project.
    *
@@ -87,7 +89,13 @@ export const useProjectsStore = defineStore("projects", () => {
     if (index !== -1) projects.value.splice(index, 1);
   }
 
-  return { projects, createProject, getProjectById, updateProject, deleteProject };
+  return {
+    projects: readOnlyProjects,
+    createProject,
+    getProjectById,
+    updateProject,
+    deleteProject,
+  };
 });
 
 if (import.meta.hot) {

@@ -13,35 +13,9 @@ function copyTimeSpan(timeSpan: TimeSpan): TimeSpan {
 }
 
 export const useTimeSpansStore = defineStore("timeSpans", () => {
-  const timeSpans = ref<TimeSpan[]>([
-    // {
-    //   id: 1,
-    //   name: "Test 1",
-    //   startTime: new Date("2019-01-02T12:40:00.000Z"),
-    //   endTime: new Date("2019-01-02T13:30:00.000Z"),
-    //   timeZone: "Europe/Stockholm",
-    //   userId: 1,
-    //   tagIds: [],
-    // },
-    // {
-    //   id: 2,
-    //   name: "Test 2",
-    //   startTime: new Date("2019-01-02T14:40:00.000Z"),
-    //   endTime: new Date("2019-01-02T18:30:00.000Z"),
-    //   timeZone: "Europe/Stockholm",
-    //   userId: 1,
-    //   tagIds: [],
-    // },
-    // {
-    //   id: 3,
-    //   name: "Test 3",
-    //   startTime: new Date("2019-01-02T11:40:00.000Z"),
-    //   endTime: new Date("2019-01-02T12:30:00.000Z"),
-    //   timeZone: "Europe/Stockholm",
-    //   userId: 1,
-    //   tagIds: [],
-    // },
-  ]);
+  const timeSpans = ref<TimeSpan[]>([]);
+
+  const readOnlyTimeSpans = computed(() => timeSpans.value.map(copyTimeSpan));
 
   /**
    * Creates a new time span.
@@ -120,7 +94,13 @@ export const useTimeSpansStore = defineStore("timeSpans", () => {
     if (index !== -1) timeSpans.value.splice(index, 1);
   }
 
-  return { timeSpans, getTimeSpanById, createTimeSpan, updateTimeSpan, deleteTimeSpan };
+  return {
+    timeSpans: readOnlyTimeSpans,
+    getTimeSpanById,
+    createTimeSpan,
+    updateTimeSpan,
+    deleteTimeSpan,
+  };
 });
 
 if (import.meta.hot) {
