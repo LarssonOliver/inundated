@@ -3,9 +3,14 @@ package api
 import "context"
 
 type HttpHandler interface {
+	HealthHandler
 	TagHandler
 	ProjectHandler
 	TimeSpanHandler
+}
+
+type HealthHandler interface {
+	HealthCheck(ctx context.Context, request HealthCheckRequestObject) (HealthCheckResponseObject, error)
 }
 
 type TagHandler interface {

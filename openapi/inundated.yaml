@@ -14,6 +14,14 @@ tags:
   - name: timespans
 
 paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: OK
+
   /tags:
     get:
       tags: [tags]

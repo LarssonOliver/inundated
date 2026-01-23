@@ -31,9 +31,8 @@ func main() {
 		return r.URL.Path == "/health"
 	}))
 
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.OpenApiRequestValidator())
-		_ = api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
+	r.Route("/api", func(r chi.Router) {
+		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 	})
 
 	s := &http.Server{
