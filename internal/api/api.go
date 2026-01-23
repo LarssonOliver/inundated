@@ -19,11 +19,6 @@ func NewServer(handler HttpHandler) *Server {
 	}
 }
 
-// HealthCheck implements [StrictServerInterface].
-func (s *Server) HealthCheck(ctx context.Context, request HealthCheckRequestObject) (HealthCheckResponseObject, error) {
-	return s.handler.HealthCheck(ctx, request)
-}
-
 // CreateTag implements StrictServerInterface.
 func (s *Server) CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error) {
 	return s.handler.CreateTag(ctx, request)

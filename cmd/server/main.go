@@ -26,13 +26,19 @@ func main() {
 
 	r := chi.NewMux()
 
-	logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
-	r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
-		return r.URL.Path == "/health"
-	}))
+	r.Handle("/health", handlers.HealthHandler())
 
 	r.Route("/api", func(r chi.Router) {
+		logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
+		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
+			return r.URL.Path == "/health"
+		}))
+
 		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Handle("/*", handlers.FrontendHandler())
 	})
 
 	s := &http.Server{

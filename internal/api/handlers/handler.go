@@ -6,7 +6,6 @@ import (
 )
 
 type Handler struct {
-	HealthHandler
 	TagHandler
 	ProjectHandler
 	TimeSpanHandler

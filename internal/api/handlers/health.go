@@ -1,19 +1,10 @@
 package handlers
 
-import (
-	"context"
-	"github.com/larssonoliver/inundated/internal/api"
-)
+import "net/http"
 
-type HealthHandler struct{}
-
-var _ api.HealthHandler = (*HealthHandler)(nil)
-
-func NewHealthHandler() *HealthHandler {
-	return &HealthHandler{}
-}
-
-// HealthCheck implements [api.HealthHandler].
-func (h *HealthHandler) HealthCheck(ctx context.Context, request api.HealthCheckRequestObject) (api.HealthCheckResponseObject, error) {
-	return api.HealthCheck200Response{}, nil
+func HealthHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 }
