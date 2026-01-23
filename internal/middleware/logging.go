@@ -8,11 +8,18 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func RequestLogger(logger *log.Logger) func(http.Handler) http.Handler {
+func RequestLogger(
+	logger *log.Logger,
+	skipFn func(r *http.Request) bool,
+) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
+			if skipFn != nil && skipFn(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
 
+			start := time.Now()
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			next.ServeHTTP(ww, r)

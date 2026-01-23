@@ -27,9 +27,9 @@ func main() {
 	r := chi.NewMux()
 
 	logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
-	r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
+	r.Use(middleware.RequestLogger(logger, func (r *http.Request) bool {
 		return r.URL.Path == "/health"
-	}))
+	})
 
 	h := api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 
