@@ -321,6 +321,7 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 	existingID := uuid.New()
 	name := "existing-timespan"
 	newName := "updated-timespan"
+	tagId := uuid.New()
 
 	tests := []struct {
 		name      string
@@ -336,9 +337,10 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 			requestId: existingID,
 			request: api.UpdateTimeSpan{
 				Name: &name,
+				TagIds: &[]uuid.UUID{},
 			},
 			getFn: func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
-				return model.TimeSpan{Id: id, Name: "old-name"}, nil
+				return model.TimeSpan{Id: id, Name: "old-name", TagIds: []uuid.UUID{tagId}}, nil
 			},
 			updateFn: func(ctx context.Context, timespan model.TimeSpan) (model.TimeSpan, error) {
 				return timespan, nil
@@ -346,6 +348,7 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 			want: api.TimeSpan{
 				Id:   existingID,
 				Name: name,
+				TagIds: nil,
 			},
 			wantErr: false,
 		},
@@ -407,6 +410,14 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 			res := got.(api.UpdateTimeSpan200JSONResponse)
 			if res.Id == uuid.Nil || res.Name != tt.want.Name {
 				t.Errorf("UpdateTimeSpan() = %v, want %v", got, tt.want)
+			}
+			if tt.want.TagIds == nil && res.TagIds != nil && len(*res.TagIds) != 0 {
+				t.Errorf("UpdateProject() TagIds = %v, want %v", res.TagIds, tt.want.TagIds)
+			}
+			if tt.want.TagIds != nil {
+				if res.TagIds == nil || len(*res.TagIds) != len(*tt.want.TagIds) {
+					t.Errorf("UpdateProject() TagIds = %v, want %v", res.TagIds, tt.want.TagIds)
+				}
 			}
 		})
 	}

@@ -315,6 +315,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 	name := "existing-project"
 	color := "#ffffff"
 	newName := "updated-project"
+	tagId := uuid.New()
 
 	tests := []struct {
 		name      string
@@ -329,19 +330,21 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 			name:      "successfully updates project",
 			requestId: existingID,
 			request: api.UpdateProject{
-				Name:  &name,
-				Color: &color,
+				Name:   &name,
+				Color:  &color,
+				TagIds: &[]uuid.UUID{},
 			},
 			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
-				return model.Project{Id: id, Name: "old-name", Color: "#000000"}, nil
+				return model.Project{Id: id, Name: "old-name", Color: "#000000", TagIds: []uuid.UUID{tagId}}, nil
 			},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
 				return project, nil
 			},
 			want: api.Project{
-				Id:    existingID,
-				Name:  name,
-				Color: color,
+				Id:     existingID,
+				Name:   name,
+				Color:  color,
+				TagIds: nil,
 			},
 			wantErr: false,
 		},
@@ -404,6 +407,14 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 			res := got.(api.UpdateProject200JSONResponse)
 			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
 				t.Errorf("UpdateProject() = %v, want %v", got, tt.want)
+			}
+			if tt.want.TagIds == nil && res.TagIds != nil && len(*res.TagIds) != 0 {
+				t.Errorf("UpdateProject() TagIds = %v, want %v", res.TagIds, tt.want.TagIds)
+			}
+			if tt.want.TagIds != nil {
+				if res.TagIds == nil || len(*res.TagIds) != len(*tt.want.TagIds) {
+					t.Errorf("UpdateProject() TagIds = %v, want %v", res.TagIds, tt.want.TagIds)
+				}
 			}
 		})
 	}

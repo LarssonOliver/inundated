@@ -142,7 +142,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 		project.TimeBudget = utils.FloatHoursToDuration(request.Body.TimeBudgetHours)
 	}
 
-	if request.Body.TagIds != nil && len(*request.Body.TagIds) > 0 {
+	if request.Body.TagIds != nil {
 		project.TagIds = *request.Body.TagIds
 	}
 
