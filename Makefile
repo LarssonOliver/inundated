@@ -7,9 +7,12 @@ BINARY := ${BINARY_DIR}/inundated
 .PHONY: build
 build: ${BINARY}
 
-${BINARY}:
+${BINARY}: build-frontend
 	mkdir -p ${BINARY_DIR}
 	go build -o $@ cmd/server/main.go
+
+build-frontend:
+	cd frontend && npm install && npm run build
 
 # Run tests
 .PHONY: test test-backend test-frontend
