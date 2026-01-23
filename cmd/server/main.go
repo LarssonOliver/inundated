@@ -23,7 +23,7 @@ func main() {
 	server := api.NewServer(handler)
 
 	r := chi.NewMux()
-	
+
 	h := api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 
 	s := &http.Server{

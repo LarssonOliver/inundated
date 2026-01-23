@@ -248,12 +248,12 @@ func TestTimeSpanHandler_ListTimeSpans(t *testing.T) {
 			},
 			want: []api.TimeSpan{
 				{
-					Id:    timespan1.Id,
-					Name:  timespan1.Name,
+					Id:   timespan1.Id,
+					Name: timespan1.Name,
 				},
 				{
-					Id:    timespan2.Id,
-					Name:  timespan2.Name,
+					Id:   timespan2.Id,
+					Name: timespan2.Name,
 				},
 			},
 			wantErr: false,
@@ -344,8 +344,8 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 				return timespan, nil
 			},
 			want: api.TimeSpan{
-				Id:    existingID,
-				Name:  name,
+				Id:   existingID,
+				Name: name,
 			},
 			wantErr: false,
 		},
@@ -353,7 +353,7 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 			name:      "service returns generic error",
 			requestId: existingID,
 			request: api.UpdateTimeSpan{
-				Name:  &name,
+				Name: &name,
 			},
 			getFn: func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
 				return model.TimeSpan{Id: id, Name: "old-name", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)}, nil

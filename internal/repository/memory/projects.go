@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/larssonoliver/inundated/internal/utils"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 type ProjectStore struct {

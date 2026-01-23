@@ -336,7 +336,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 		insertTag model.Tag
 		deleteId  func(createdTag *model.Tag) uuid.UUID
 		wantErr   bool
-		errType  error
+		errType   error
 	}{
 		{
 			name:      "Test DeleteTag with existing ID",

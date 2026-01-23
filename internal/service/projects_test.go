@@ -161,14 +161,14 @@ func TestProjectService_ListProjects(t *testing.T) {
 func TestProjectService_CreateProject(t *testing.T) {
 	tests := []struct {
 		name     string
-		project      model.Project
+		project  model.Project
 		createFn func(ctx context.Context, project model.Project) (model.Project, error)
 		want     model.Project
 		wantErr  bool
 	}{
 		{
-			name: "successful create",
-			project:  model.Project{Name: "New Project", Color: "#123456"},
+			name:    "successful create",
+			project: model.Project{Name: "New Project", Color: "#123456"},
 			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
 				project.Id = uuid.New()
 				return project, nil
@@ -177,8 +177,8 @@ func TestProjectService_CreateProject(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "repository error",
-			project:  model.Project{Name: "New Project", Color: "#123456"},
+			name:    "repository error",
+			project: model.Project{Name: "New Project", Color: "#123456"},
 			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
 				return model.Project{}, errors.New("database error")
 			},
@@ -213,14 +213,14 @@ func TestProjectService_UpdateProject(t *testing.T) {
 	projectId := uuid.New()
 	tests := []struct {
 		name     string
-		project      model.Project
+		project  model.Project
 		updateFn func(ctx context.Context, project model.Project) (model.Project, error)
 		want     model.Project
 		wantErr  bool
 	}{
 		{
-			name: "successful update",
-			project:  model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
+			name:    "successful update",
+			project: model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
 				return project, nil
 			},
@@ -228,8 +228,8 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "repository error",
-			project:  model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
+			name:    "repository error",
+			project: model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
 				return model.Project{}, errors.New("database error")
 			},

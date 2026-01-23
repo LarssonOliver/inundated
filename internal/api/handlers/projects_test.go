@@ -388,7 +388,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 			ta := handlers.NewProjectHandler(svc)
 			request := api.UpdateProjectRequestObject{
 				ProjectId: tt.requestId,
-				Body:  &tt.request,
+				Body:      &tt.request,
 			}
 
 			got, gotErr := ta.UpdateProject(context.Background(), request)
