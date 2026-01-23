@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
-	"github.com/larssonoliver/inundated/internal/middleware"
+	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/service"
@@ -31,10 +31,13 @@ func main() {
 		return r.URL.Path == "/health"
 	}))
 
-	h := api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.OpenApiRequestValidator())
+		_ = api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
+	})
 
 	s := &http.Server{
-		Handler: h,
+		Handler: r,
 		Addr:    "0.0.0.0:8080",
 	}
 
