@@ -15,7 +15,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
 });
 
-test.fails("Store empty on init", () => {
+test("Store empty on init", () => {
   const store = useTagsStore();
   expect(store.tags.length).toBe(0);
 });
