@@ -1,3 +1,5 @@
+import { TagsApi } from "@/api";
+import { APIConfig } from "@/api/config";
 import { stringToHexColor } from "@/helpers/colors";
 import { levenshteinDistance } from "@/helpers/search";
 import type { Tag } from "@/model/model";
@@ -5,16 +7,20 @@ import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
+const tagsApi = new TagsApi(APIConfig);
+
 function copyTag(tag: Tag): Tag {
-  return {
-    ...tag,
-  };
+  return { ...tag };
 }
 
 export const useTagsStore = defineStore("tags", () => {
   const tags = ref<Tag[]>([]);
 
   const readOnlyTags = computed(() => tags.value.map(copyTag));
+
+  // async function fetchTags(): Promise<void> {
+  //   tags.value = await tagsApi.listTags();
+  // }
 
   /**
    * Creates a new tag.

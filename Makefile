@@ -36,5 +36,5 @@ generate-backend-api:
 
 generate-frontend-api:
 	@echo "==> Running frontend code generators..."
-	docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_TAG} generate -i /local/openapi/inundated.yaml -g typescript-fetch --additional-properties=supportsES6=true -o /local/frontend/src/api/
+	docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_TAG} generate -i /local/openapi/inundated.yaml -g typescript-fetch --additional-properties=supportsES6=true -o /local/frontend/src/api/generated
 
