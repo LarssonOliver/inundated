@@ -1,7 +1,7 @@
 import type { Project } from "@/model/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 function copyProject(project: Project): Project {
   return {

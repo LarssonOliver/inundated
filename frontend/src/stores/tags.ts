@@ -1,5 +1,4 @@
-import { TagsApi } from "@/api";
-import { APIConfig } from "@/api/config";
+// import { APIConfig } from "@/api/config";
 import { stringToHexColor } from "@/helpers/colors";
 import { levenshteinDistance } from "@/helpers/search";
 import type { Tag } from "@/model/model";
@@ -7,7 +6,7 @@ import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-const tagsApi = new TagsApi(APIConfig);
+// const tagsApi = new TagsApi(APIConfig);
 
 function copyTag(tag: Tag): Tag {
   return { ...tag };
@@ -32,10 +31,9 @@ export const useTagsStore = defineStore("tags", () => {
    */
   async function createTag(tag: Tag): Promise<Tag> {
     const newTag: Tag = {
-      id: tags.value.length + 1, // TODO: Use ID from server
+      id: "" + tags.value.length + 1, // TODO: Use ID from server
       name: tag.name,
       color: tag.color,
-      userId: tag.userId, // TODO: Use the current user's id
     };
 
     tags.value.push(newTag);
@@ -62,10 +60,9 @@ export const useTagsStore = defineStore("tags", () => {
     if (!color) color = stringToHexColor(name);
 
     return await createTag({
-      id: 0,
+      id: "",
       name,
       color,
-      userId: 0,
     });
   }
 

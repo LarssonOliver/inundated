@@ -1,7 +1,7 @@
 import type { TimeSpan } from "@/model/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 function copyTimeSpan(timeSpan: TimeSpan): TimeSpan {
   return {
