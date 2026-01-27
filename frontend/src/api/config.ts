@@ -1,5 +1,5 @@
 import { Configuration } from "./generated/runtime";
 
-export const APIConfig = new Configuration({
+export const ApiConfig = new Configuration({
   basePath: "/api",
 });
