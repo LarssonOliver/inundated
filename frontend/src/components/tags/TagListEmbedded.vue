@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import SearchBox from "@/components/inputs/SearchBox.vue";
 import TagItem from "@/components/tags/TagItem.vue";
-import type { Tag } from "@/model/model";
+import type { Tag } from "@/model";
 import { useTagsStore } from "@/stores/tags";
 import { onMounted, ref, watch } from "vue";
 

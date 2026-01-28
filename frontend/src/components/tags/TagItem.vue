@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
-import type { Tag } from "@/model/model";
+import type { Tag } from "@/model";
 import { computed, reactive, ref } from "vue";
 
 defineEmits<{

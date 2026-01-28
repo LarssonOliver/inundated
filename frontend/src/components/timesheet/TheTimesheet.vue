@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
-import type { TimeSpan } from "@/model/model";
+import type { TimeSpan } from "@/model";
 import { useTimeSpansStore } from "@/stores/timespans";
 import { computed, ref } from "vue";
 

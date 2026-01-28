@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Tag } from "@/model/model";
+import type { Tag } from "@/model";
 import { watch, ref } from "vue";
 import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";

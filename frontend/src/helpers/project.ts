@@ -1,4 +1,4 @@
-import type { Project } from "@/model/model";
+import type { Project } from "@/model";
 
 import { stringToHexColor } from "./colors";
 

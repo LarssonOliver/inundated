@@ -1,17 +1,8 @@
-import { __test__, useTagsStore } from "@/stores/tags";
+import { __test__ } from "@/stores/tags";
 import { setActivePinia, createPinia } from "pinia";
-import { test, expect, beforeEach, vi, it, describe } from "vitest";
+import { expect, beforeEach, vi, it, describe } from "vitest";
 
 const { createTagsStore } = __test__;
-
-const tag = {
-  id: "b13cfcd8-65d4-4b86-9313-a2a0626b6d9b",
-  name: "Test",
-  color: "#FF0000",
-  timeBudget: 60,
-  userId: 1,
-  tagIds: [1, 2, 5],
-};
 
 function mockTagsApi() {
   return {
@@ -20,6 +11,7 @@ function mockTagsApi() {
     createTag: vi.fn(),
     updateTag: vi.fn(),
     deleteTag: vi.fn(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
@@ -30,19 +22,14 @@ beforeEach(() => {
 describe("tags store", () => {
   it("fetchTags loads tags into state", async () => {
     const api = mockTagsApi();
-    api.listTags.mockResolvedValue([
-      { id: "1", name: "A", color: "#111" },
-    ]);
+    api.listTags.mockResolvedValue([{ id: "1", name: "A", color: "#111" }]);
 
     const useStore = createTagsStore(api);
     const store = useStore();
 
     await store.fetchTags();
 
-    expect(store.tags).toEqual([
-      { id: "1", name: "A", color: "#111" },
-    ]);
-    expect(store.isLoading).toBe(false);
+    expect(store.tags).toEqual([{ id: "1", name: "A", color: "#111" }]);
   });
 
   it("fetchTagById inserts or updates a tag", async () => {
@@ -62,8 +49,25 @@ describe("tags store", () => {
     expect(store.tags).toHaveLength(1);
   });
 
-});
+  it("create adds tag to state", async () => {
+    const api = mockTagsApi();
+    api.createTag.mockResolvedValue({
+      id: "new",
+      name: "New",
+      color: "#fff",
+    });
 
+    const useStore = createTagsStore(api);
+    const store = useStore();
+
+    const created = await store.createTag({
+      name: "New",
+      color: "#fff",
+    });
+
+    expect(store.tags).toContainEqual(created);
+  });
+});
 
 // test("Store empty on init", () => {
 //   const store = useTagsStore();

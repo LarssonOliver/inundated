@@ -1,4 +1,4 @@
-import type { User } from "@/model/model";
+import type { User } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { ref } from "vue";

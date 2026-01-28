@@ -1,4 +1,4 @@
-import type { TimeSpan } from "@/model/model";
+import type { TimeSpan } from "@/model";
 
 export function newTimespanWithDefaults(): TimeSpan {
   const endTime = new Date();

@@ -11,13 +11,10 @@ function copyTag(tag: Tag): Tag {
 }
 
 function createTagsStore(api: TagsApi) {
-
   return defineStore("tags", () => {
     const tags = ref<Tag[]>([]);
-    const loading = ref(false);
 
     const readOnlyTags = computed(() => tags.value.map(copyTag));
-    const isLoading = computed(() => loading.value);
 
     /**
      * Fetches all tags from the API and stores them locally.
@@ -25,19 +22,34 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves when the tags have been fetched.
      */
     async function fetchTags(): Promise<void> {
-      loading.value = true;
       tags.value = await api.listTags();
-      loading.value = false;
     }
 
     /**
-    * Fetches a tag by its ID from the API.
-    *
-    * @param id - The ID of the tag to fetch.
-    *
-    * @returns A promise that resolves to the tag if found, or undefined
+     * Fetches a tag by its ID from the API.
+     *
+     * @param id - The ID of the tag to fetch.
+     *
+     * @returns A promise that resolves to the tag if found, or undefined
      */
     async function fetchTagById(id: string): Promise<Tag | undefined> {
+      const fetchTagPromise = api.getTag(id);
+
+      const index = tags.value.findIndex((tag) => tag.id === id);
+
+      const fetchedTag = await fetchTagPromise;
+
+      if (!fetchedTag) {
+        return undefined;
+      }
+
+      if (index === -1) {
+        tags.value.push(fetchedTag);
+      } else {
+        tags.value.splice(index, 1, fetchedTag);
+      }
+
+      return copyTag(fetchedTag);
     }
 
     /**
@@ -48,16 +60,8 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves to the newly created tag with
      *   correctly assigned ID.
      */
-    async function createTag(tag: Tag): Promise<Tag> {
-      const newTag: Tag = {
-        id: "" + tags.value.length + 1, // TODO: Use ID from server
-        name: tag.name,
-        color: tag.color,
-      };
-
-      tags.value.push(newTag);
-
-      return copyTag(newTag);
+    async function createTag(tag: Omit<Tag, "id">): Promise<Tag> {
+      throw new Error("Not implemented");
     }
 
     /**
@@ -72,33 +76,19 @@ function createTagsStore(api: TagsApi) {
      *  correctly assigned ID.
      */
     async function createTagFromName(name: string, color?: string): Promise<Tag> {
-      const existingTag = tags.value.find((tag) => tag.name === name);
-
-      if (existingTag) return copyTag(existingTag);
-
-      if (!color) color = stringToHexColor(name);
-
-      return await createTag({
-        id: "",
-        name,
-        color,
-      });
+      throw new Error("Not implemented");
     }
 
     /**
-     * Fetches a tag by its ID.
+     * Gets a tag by its ID. This does not fetch the tag from the API.
      *
-     * @param id - The ID of the tag to fetch.
+     * @param id - The ID of the tag to get.
      *
      * @returns A promise that resolves to the tag if found, or undefined
      *  if not found.
      */
     async function getTagById(id: string): Promise<Tag | undefined> {
-      const tag = tags.value.find((tag) => tag.id === id);
-
-      if (!tag) return undefined;
-
-      return copyTag(tag);
+      throw new Error("Not implemented");
     }
 
     /**
@@ -137,18 +127,7 @@ function createTagsStore(api: TagsApi) {
      *  if not found.
      */
     async function updateTag(tag: Tag): Promise<Tag | undefined> {
-      const index = tags.value.findIndex((p) => p.id === tag.id);
-
-      if (index === -1) return undefined;
-
-      const copy = {
-        ...tags.value[index],
-        ...copyTag(tag),
-      };
-
-      tags.value.splice(index, 1, copy);
-
-      return copyTag(copy);
+      throw new Error("Not implemented");
     }
 
     /**
@@ -159,13 +138,11 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves when the tag is deleted.
      */
     async function deleteTag(id: string): Promise<void> {
-      const index = tags.value.findIndex((p) => p.id === id);
-      if (index !== -1) tags.value.splice(index, 1);
+      throw new Error("Not implemented");
     }
 
     return {
       tags: readOnlyTags,
-      isLoading,
       fetchTags,
       fetchTagById,
       createTag,

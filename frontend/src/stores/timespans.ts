@@ -1,4 +1,4 @@
-import type { TimeSpan } from "@/model/model";
+import type { TimeSpan } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
