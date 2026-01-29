@@ -5,7 +5,7 @@ import type { Project } from "@/model";
 /**
  * Full Project <-> API Project mapper
  */
-export const tagMapper: Mapper<Project, Api.Project> = {
+export const projectMapper: Mapper<Project, Api.Project> = {
   fromApi(apiModel: Api.Project): Project {
     return {
       id: apiModel.id,
@@ -34,7 +34,7 @@ export function toApiCreateProject(domain: Omit<Project, "id">): Api.CreateProje
     name: domain.name,
     color: domain.color,
     timeBudgetHours: domain.timeBudgetHours,
-    tagIds: domain.tagIds.size > 0 ? new Set(domain.tagIds) : undefined,
+    tagIds: new Set(domain.tagIds),
   };
 }
 
@@ -46,8 +46,6 @@ export function toApiUpdateProject(patch: Partial<Omit<Project, "id">>): Api.Upd
     ...(patch.name !== undefined && { name: patch.name }),
     ...(patch.color !== undefined && { color: patch.color }),
     ...(patch.timeBudgetHours !== undefined && { timeBudgetHours: patch.timeBudgetHours }),
-    ...(patch.tagIds !== undefined && {
-      tagIds: patch.tagIds.size > 0 ? new Set(patch.tagIds) : undefined,
-    }),
+    ...(patch.tagIds !== undefined && { tagIds: new Set(patch.tagIds) }),
   };
 }

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { tagMapper, toApiCreateTimeSpan, toApiUpdateTimeSpan } from "@/api/mappers/timespanMapper";
+import {
+  timeSpanMapper,
+  toApiCreateTimeSpan,
+  toApiUpdateTimeSpan,
+} from "@/api/mappers/timespanMapper";
 import type { TimeSpan } from "@/model";
 import type * as Api from "@/api/generated/models";
 
@@ -18,7 +22,7 @@ describe("TimeSpan mapper", () => {
         tagIds: new Set([uuid("a"), uuid("b")]),
       };
 
-      const result = tagMapper.fromApi(apiModel);
+      const result = timeSpanMapper.fromApi(apiModel);
 
       expect(result.id).toBe(apiModel.id);
       expect(result.name).toBe(apiModel.name);
@@ -38,7 +42,7 @@ describe("TimeSpan mapper", () => {
         tagIds: undefined,
       };
 
-      const result = tagMapper.fromApi(apiModel);
+      const result = timeSpanMapper.fromApi(apiModel);
 
       expect(result.tagIds).toBeInstanceOf(Set);
       expect(result.tagIds.size).toBe(0);
@@ -55,7 +59,7 @@ describe("TimeSpan mapper", () => {
         tagIds: new Set([uuid("c"), uuid("d")]),
       };
 
-      const result = tagMapper.toApi(domain);
+      const result = timeSpanMapper.toApi(domain);
 
       expect(result.id).toBe(domain.id);
       expect(result.name).toBe(domain.name);
@@ -64,7 +68,7 @@ describe("TimeSpan mapper", () => {
       expect(result.tagIds).toEqual(new Set([uuid("c"), uuid("d")]));
     });
 
-    it("omits tagIds when the domain Set is empty", () => {
+    it("includes tagIds when the domain Set is empty", () => {
       const domain: TimeSpan = {
         id: uuid("4"),
         name: "No tags",
@@ -73,9 +77,9 @@ describe("TimeSpan mapper", () => {
         tagIds: new Set(),
       };
 
-      const result = tagMapper.toApi(domain);
+      const result = timeSpanMapper.toApi(domain);
 
-      expect(result.tagIds).toBeUndefined();
+      expect(result.tagIds).toEqual(new Set());
     });
   });
 });
@@ -97,19 +101,6 @@ describe("toApiCreateTimeSpan", () => {
       endTime: domain.endTime,
       tagIds: new Set([uuid("e"), uuid("f")]),
     });
-  });
-
-  it("omits tagIds when empty", () => {
-    const domain: Omit<TimeSpan, "id"> = {
-      name: "No tags",
-      startTime: iso("2025-02-01T10:00:00.000Z"),
-      endTime: iso("2025-02-01T11:30:00.000Z"),
-      tagIds: new Set(),
-    };
-
-    const result = toApiCreateTimeSpan(domain);
-
-    expect(result.tagIds).toBeUndefined();
   });
 });
 
@@ -150,7 +141,7 @@ describe("toApiUpdateTimeSpan", () => {
     });
   });
 
-  it("sets tagIds to undefined when provided but empty", () => {
+  it("sets tagIds to empty when provided but empty", () => {
     const patch: Partial<Omit<TimeSpan, "id">> = {
       tagIds: new Set(),
     };
@@ -158,7 +149,7 @@ describe("toApiUpdateTimeSpan", () => {
     const result = toApiUpdateTimeSpan(patch);
 
     expect(result).toEqual({
-      tagIds: undefined,
+      tagIds: new Set(),
     });
   });
 

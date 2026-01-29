@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./tags";
+import type { TagsApi } from "./generated";
 
 const { createTagsApi } = __test__;
 
-function mockGeneratedApi() {
+function mockGeneratedApi(): Mocked<TagsApi> {
   return {
     listTags: vi.fn(),
     getTag: vi.fn(),
@@ -15,8 +16,13 @@ function mockGeneratedApi() {
 }
 
 describe("tags API", () => {
+  let api: Mocked<TagsApi>;
+
+  beforeEach(() => {
+    api = mockGeneratedApi();
+  });
+
   it("listTags maps API tags to domain tags", async () => {
-    const api = mockGeneratedApi();
     api.listTags.mockResolvedValue([
       { id: "1", name: "A", color: "#111" },
       { id: "2", name: "B", color: "#222" },
@@ -34,7 +40,6 @@ describe("tags API", () => {
   });
 
   it("getTag returns mapped tag when found", async () => {
-    const api = mockGeneratedApi();
     api.getTag.mockResolvedValue({
       id: "abc",
       name: "Test",
@@ -54,7 +59,6 @@ describe("tags API", () => {
   });
 
   it("createTag maps domain input and output correctly", async () => {
-    const api = mockGeneratedApi();
     api.createTag.mockResolvedValue({
       id: "new-id",
       name: "New",
@@ -79,7 +83,6 @@ describe("tags API", () => {
   });
 
   it("updateTag maps partial update correctly", async () => {
-    const api = mockGeneratedApi();
     api.updateTag.mockResolvedValue({
       id: "1",
       name: "Updated",
@@ -104,7 +107,6 @@ describe("tags API", () => {
   });
 
   it("deleteTag calls API with correct id", async () => {
-    const api = mockGeneratedApi();
     api.deleteTag.mockResolvedValue(undefined);
 
     const sut = createTagsApi(api);

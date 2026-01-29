@@ -5,7 +5,7 @@ import type { TimeSpan } from "@/model";
 /**
  * Full TimeSpan <-> API TimeSpan mapper
  */
-export const tagMapper: Mapper<TimeSpan, Api.TimeSpan> = {
+export const timeSpanMapper: Mapper<TimeSpan, Api.TimeSpan> = {
   fromApi(apiModel: Api.TimeSpan): TimeSpan {
     return {
       id: apiModel.id,
@@ -21,7 +21,7 @@ export const tagMapper: Mapper<TimeSpan, Api.TimeSpan> = {
       name: domainModel.name,
       startTime: new Date(domainModel.startTime),
       endTime: new Date(domainModel.endTime),
-      tagIds: domainModel.tagIds.size > 0 ? new Set(domainModel.tagIds) : undefined,
+      tagIds: new Set(domainModel.tagIds),
     };
   },
 };
@@ -34,7 +34,7 @@ export function toApiCreateTimeSpan(domain: Omit<TimeSpan, "id">): Api.CreateTim
     name: domain.name,
     startTime: new Date(domain.startTime),
     endTime: new Date(domain.endTime),
-    tagIds: domain.tagIds.size > 0 ? new Set(domain.tagIds) : undefined,
+    tagIds: new Set(domain.tagIds),
   };
 }
 
@@ -46,8 +46,6 @@ export function toApiUpdateTimeSpan(patch: Partial<Omit<TimeSpan, "id">>): Api.U
     ...(patch.name !== undefined && { name: patch.name }),
     ...(patch.startTime !== undefined && { startTime: new Date(patch.startTime) }),
     ...(patch.endTime !== undefined && { endTime: new Date(patch.endTime) }),
-    ...(patch.tagIds !== undefined && {
-      tagIds: patch.tagIds.size > 0 ? new Set(patch.tagIds) : undefined,
-    }),
+    ...(patch.tagIds !== undefined && { tagIds: new Set(patch.tagIds) }),
   };
 }

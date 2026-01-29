@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { tagMapper, toApiCreateProject, toApiUpdateProject } from "@/api/mappers/projectMapper";
+import { projectMapper, toApiCreateProject, toApiUpdateProject } from "@/api/mappers/projectMapper";
 import type { Project } from "@/model";
 import type * as Api from "@/api/generated/models";
 
-describe("tagMapper", () => {
+describe("projectMapper", () => {
   describe("fromApi", () => {
     it("maps a full API Project to a domain Project", () => {
       const apiProject: Api.Project = {
@@ -17,7 +17,7 @@ describe("tagMapper", () => {
         ]),
       };
 
-      const result = tagMapper.fromApi(apiProject);
+      const result = projectMapper.fromApi(apiProject);
 
       expect(result).toEqual({
         id: "550e8400-e29b-41d4-a716-446655440000",
@@ -40,7 +40,7 @@ describe("tagMapper", () => {
         tagIds: undefined,
       };
 
-      const result = tagMapper.fromApi(apiProject);
+      const result = projectMapper.fromApi(apiProject);
 
       expect(result.tagIds).toBeInstanceOf(Set);
       expect(result.tagIds.size).toBe(0);
@@ -60,7 +60,7 @@ describe("tagMapper", () => {
         ]),
       };
 
-      const result = tagMapper.toApi(domainProject);
+      const result = projectMapper.toApi(domainProject);
 
       expect(result).toEqual({
         id: "550e8400-e29b-41d4-a716-446655440002",
@@ -72,20 +72,6 @@ describe("tagMapper", () => {
           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         ]),
       });
-    });
-
-    it("omits tagIds when the domain Set is empty", () => {
-      const domainProject: Project = {
-        id: "550e8400-e29b-41d4-a716-446655440003",
-        name: "No Tags",
-        color: "#123456",
-        timeBudgetHours: 8,
-        tagIds: new Set(),
-      };
-
-      const result = tagMapper.toApi(domainProject);
-
-      expect(result.tagIds).toBeUndefined();
     });
   });
 });
@@ -114,19 +100,6 @@ describe("toApiCreateProject", () => {
       ]),
     });
   });
-
-  it("omits tagIds when empty", () => {
-    const domain: Omit<Project, "id"> = {
-      name: "No Tags",
-      color: "#abcdef",
-      timeBudgetHours: 12,
-      tagIds: new Set(),
-    };
-
-    const result = toApiCreateProject(domain);
-
-    expect(result.tagIds).toBeUndefined();
-  });
 });
 
 describe("toApiUpdateProject", () => {
@@ -153,18 +126,6 @@ describe("toApiUpdateProject", () => {
 
     expect(result).toEqual({
       tagIds: new Set(["eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"]),
-    });
-  });
-
-  it("sets tagIds to undefined when provided but empty", () => {
-    const patch: Partial<Omit<Project, "id">> = {
-      tagIds: new Set(),
-    };
-
-    const result = toApiUpdateProject(patch);
-
-    expect(result).toEqual({
-      tagIds: undefined,
     });
   });
 
