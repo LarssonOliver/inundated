@@ -5,7 +5,7 @@ export function newTagWithDefaults(): Tag {
   const randomColorString = Math.random().toString(36);
   return {
     id: "",
-    name: "new tag",
+    name: "",
     color: stringToHexColor(randomColorString),
   };
 }

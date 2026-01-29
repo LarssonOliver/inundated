@@ -31,10 +31,10 @@ import { useTagsStore } from "@/stores/tags";
 import { onMounted, ref, watch } from "vue";
 
 const emit = defineEmits<{
-  "update:model-value": [value: string[]];
+  "update:model-value": [value: Set<string>];
 }>();
 
-const model = defineModel<string[]>({ default: [] });
+const model = defineModel<Set<string>>({ default: new Set<string>() });
 const { readOnly } = defineProps<{
   readOnly?: boolean;
 }>();
@@ -53,15 +53,12 @@ function onTagSearch(query: string) {
 }
 
 function onTagSelect(tag: Tag) {
-  if (model.value.some((id) => id === tag.id)) return;
-  model.value.push(tag.id);
+  model.value.add(tag.id);
   emit("update:model-value", model.value);
 }
 
 function onTagClose(tag: Tag) {
-  const index = model.value.indexOf(tag.id);
-  if (index === -1) return;
-  model.value.splice(index, 1);
+  model.value.delete(tag.id);
   emit("update:model-value", model.value);
 }
 
@@ -70,8 +67,8 @@ async function onTagCreate(name: string) {
   if (!name) return;
 
   const tag = await tagsStore.createTagFromName(name);
-  if (tag && !model.value.some((id) => id === tag.id)) {
-    model.value.push(tag.id);
+  if (tag) {
+    model.value.add(tag.id);
     emit("update:model-value", model.value);
   }
 }
@@ -80,7 +77,7 @@ watch(tagSearchQuery, async (query) => {
   tagSearchResult.value = [];
   if (!query) return;
   const tags = tagsStore.searchTags(query);
-  tagSearchResult.value = tags.filter((tag) => !model.value.includes(tag.id));
+  tagSearchResult.value = tags.filter((tag) => !model.value.has(tag.id));
 });
 
 async function refreshTags() {

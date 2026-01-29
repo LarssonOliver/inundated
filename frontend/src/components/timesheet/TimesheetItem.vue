@@ -36,9 +36,9 @@ import TimeSpanEdit from "@/components/inputs/TimeSpanEdit.vue";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import type { TimeSpan } from "@/model";
-import { newTimespanWithDefaults } from "@/helpers/timespan";
+import { newTimespanWithDefaults } from "@/helpers/timeSpan";
 import { ref } from "vue";
-import { useTimeSpansStore } from "@/stores/timespans";
+import { useTimeSpansStore } from "@/stores/timeSpans";
 
 const timeSpansStore = useTimeSpansStore();
 

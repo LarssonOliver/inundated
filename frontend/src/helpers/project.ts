@@ -5,11 +5,10 @@ import { stringToHexColor } from "./colors";
 export function newProjectWithDefaults(): Project {
   const randomColorString = Math.random().toString(36);
   return {
-    id: 0,
+    id: "",
     name: "",
-    timeBudget: 0,
+    timeBudgetHours: 0,
     color: stringToHexColor(randomColorString),
-    userId: 0, // TODO
-    tagIds: [],
+    tagIds: new Set<string>(),
   };
 }

@@ -12,7 +12,7 @@
 import type { TimeSpan } from "@/model/timespan";
 import { ref, watch } from "vue";
 import TimeInput from "@/components/inputs/TimeInput.vue";
-import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
+import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timeSpan";
 
 const model = defineModel<TimeSpan>({
   default: newTimespanWithDefaults(),

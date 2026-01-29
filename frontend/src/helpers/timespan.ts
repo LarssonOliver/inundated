@@ -7,13 +7,11 @@ export function newTimespanWithDefaults(): TimeSpan {
   startTime.setHours(endTime.getHours() - 1);
 
   return {
-    id: 0,
+    id: "",
     name: "",
     startTime: startTime,
     endTime: endTime,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    userId: 0, // TODO
-    tagIds: [],
+    tagIds: new Set<string>(),
   };
 }
 

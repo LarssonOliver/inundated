@@ -1,122 +1,135 @@
-import { useTimeSpansStore } from "@/stores/timespans";
+import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
-import { test, expect, beforeEach } from "vitest";
+import type { TimeSpan } from "@/model";
+import type { TimeSpansApi } from "@/api/timeSpans";
+import { __test__ } from "@/stores/timeSpans";
 
-const timeSpan = {
-  id: 0,
-  name: "Test",
-  startTime: new Date("2019-01-02T12:40:00.000Z"),
-  endTime: new Date("2019-01-02T13:30:00.000Z"),
-  timeZone: "Europe/Stockholm",
-  userId: 1,
-  tagIds: [1, 2, 5],
-};
+// Helper to create sample timeSpans
+function makeTimeSpan(partial?: Partial<TimeSpan>): TimeSpan {
+  const now = new Date();
+  return {
+    id: partial?.id ?? "ts1",
+    name: partial?.name ?? "Sample TimeSpan",
+    startTime: partial?.startTime ?? now,
+    endTime: partial?.endTime ?? new Date(now.getTime() + 3600_000),
+    tagIds: partial?.tagIds ?? new Set(["t1", "t2"]),
+  };
+}
 
-beforeEach(() => {
-  setActivePinia(createPinia());
-});
+describe("timeSpans store", () => {
+  let api: Mocked<TimeSpansApi>;
+  let useStore: ReturnType<typeof __test__.createTimeSpansStore>;
 
-test("Store empty on init", () => {
-  const store = useTimeSpansStore();
-  expect(store.timeSpans.length).toBe(0);
-});
+  beforeEach(() => {
+    setActivePinia(createPinia());
 
-test("Create time span", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  expect(ts).not.toEqual(timeSpan);
-  expect(ts.id).toBeGreaterThan(0);
-  expect(ts.startTime).toEqual(timeSpan.startTime);
-  expect(ts.endTime).toEqual(timeSpan.endTime);
-  expect(ts.timeZone).toEqual(timeSpan.timeZone);
-  expect(ts.tagIds).toEqual(timeSpan.tagIds);
-});
+    api = {
+      listTimeSpans: vi.fn(),
+      getTimeSpan: vi.fn(),
+      createTimeSpan: vi.fn(),
+      updateTimeSpan: vi.fn(),
+      deleteTimeSpan: vi.fn(),
+    };
 
-test("Create timespan unlinks arrays", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  ts.tagIds.push(3);
-  expect(ts.tagIds).not.toEqual(timeSpan.tagIds);
-});
+    useStore = __test__.createTimeSpansStore(api);
+  });
 
-test("Create timespan unlinks date objects", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  ts.startTime.setSeconds(timeSpan.startTime.getSeconds() + 1);
-  ts.endTime.setSeconds(timeSpan.endTime.getSeconds() + 1);
-  expect(ts.startTime).not.toEqual(timeSpan.startTime);
-  expect(ts.endTime).not.toEqual(timeSpan.endTime);
-});
+  it("fetches all timeSpans and stores them", async () => {
+    const spans = [makeTimeSpan({ id: "a" }), makeTimeSpan({ id: "b" })];
+    api.listTimeSpans.mockResolvedValue(spans);
 
-test("Get timespan by id", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  const ts2 = await store.getTimeSpanById(ts.id);
-  expect(ts2).not.toBeUndefined();
-});
+    const store = useStore();
+    await store.fetchTimeSpans();
 
-test("Get timespan by id not found", async () => {
-  const store = useTimeSpansStore();
-  expect(await store.getTimeSpanById(0)).toBeUndefined();
-  expect(await store.getTimeSpanById(-1)).toBeUndefined();
-  expect(await store.getTimeSpanById(11)).toBeUndefined();
-});
+    expect(api.listTimeSpans).toHaveBeenCalledOnce();
+    expect(store.timeSpans).toHaveLength(2);
+    expect(store.timeSpans.map((s) => s.id)).toEqual(["a", "b"]);
+  });
 
-test("Get timespan is decoupled from store", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  const ts2 = await store.getTimeSpanById(ts.id);
-  expect(ts2).not.toBeUndefined();
-  ts2?.tagIds.push(3);
-  ts2?.startTime.setSeconds(ts2.startTime.getSeconds() + 1);
-  ts2?.endTime.setSeconds(ts2.endTime.getSeconds() + 1);
-  expect(ts2?.tagIds).not.toEqual(ts.tagIds);
-  expect(ts2?.startTime).not.toEqual(ts.startTime);
-  expect(ts2?.endTime).not.toEqual(ts.endTime);
-});
+  it("returns defensive copies from the getter", async () => {
+    const original = makeTimeSpan();
+    api.listTimeSpans.mockResolvedValue([original]);
 
-test("Get timespan by id not found after delete", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  await store.deleteTimeSpan(ts.id);
-  expect(await store.getTimeSpanById(ts.id)).toBeUndefined();
-});
+    const store = useStore();
+    await store.fetchTimeSpans();
 
-test("Delete non-existing timespan works", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  await store.deleteTimeSpan(-2);
-  expect(await store.getTimeSpanById(ts.id)).toEqual(ts);
-});
+    const fetched = store.timeSpans[0];
+    fetched.tagIds.add("evil");
+    fetched.startTime.setFullYear(2000);
 
-test("Update timespan", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  ts.name = "Updated";
+    expect(original.tagIds.has("evil")).toBe(false);
+    expect(original.startTime.getFullYear()).not.toBe(2000);
+  });
 
-  const updatedTs = await store.updateTimeSpan(ts);
-  expect(updatedTs?.name).toEqual("Updated");
-});
+  it("fetches a timeSpan by id and stores it", async () => {
+    const ts = makeTimeSpan({ id: "x" });
+    api.getTimeSpan.mockResolvedValue(ts);
 
-test("Update timespan unlinks data objects", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  ts.startTime.setSeconds(ts.startTime.getSeconds() + 1);
-  ts.endTime.setSeconds(ts.endTime.getSeconds() + 1);
-  ts.tagIds.push(3);
-  const oldTs = await store.getTimeSpanById(ts.id);
-  expect(oldTs?.startTime).not.toEqual(ts.startTime);
-  expect(oldTs?.endTime).not.toEqual(ts.endTime);
-  expect(oldTs?.tagIds).not.toEqual(ts.tagIds);
-  const updatedTs = await store.updateTimeSpan(ts);
-  expect(updatedTs?.startTime).toEqual(ts.startTime);
-  expect(updatedTs?.endTime).toEqual(ts.endTime);
-  expect(updatedTs?.tagIds).toEqual(ts.tagIds);
-});
+    const store = useStore();
+    const result = await store.fetchTimeSpanById("x");
 
-test("Update non-existing timespan fails", async () => {
-  const store = useTimeSpansStore();
-  const ts = await store.createTimeSpan(timeSpan);
-  ts.id = 10;
-  expect(await store.updateTimeSpan(ts)).toBeUndefined();
+    expect(api.getTimeSpan).toHaveBeenCalledWith("x");
+    expect(result.id).toBe("x");
+    expect(store.getTimeSpanById("x")?.id).toBe("x");
+  });
+
+  it("creates a timeSpan and stores it", async () => {
+    const input = {
+      name: "New",
+      startTime: new Date(),
+      endTime: new Date(Date.now() + 1000),
+      tagIds: new Set<string>(),
+    };
+
+    const created = makeTimeSpan({ id: "new", ...input });
+    api.createTimeSpan.mockResolvedValue(created);
+
+    const store = useStore();
+    const result = await store.createTimeSpan(input);
+
+    expect(api.createTimeSpan).toHaveBeenCalledWith(input);
+    expect(result.id).toBe("new");
+    expect(store.getTimeSpanById("new")).toBeDefined();
+  });
+
+  it("updates a timeSpan and replaces it in store", async () => {
+    const initial = makeTimeSpan({ id: "u1", name: "Old" });
+    const updated = makeTimeSpan({ id: "u1", name: "Updated" });
+
+    api.listTimeSpans.mockResolvedValue([initial]);
+    api.updateTimeSpan.mockResolvedValue(updated);
+
+    const store = useStore();
+    await store.fetchTimeSpans();
+
+    const result = await store.updateTimeSpan(updated);
+
+    expect(api.updateTimeSpan).toHaveBeenCalledWith("u1", {
+      name: "Updated",
+      startTime: updated.startTime,
+      endTime: updated.endTime,
+      tagIds: updated.tagIds,
+    });
+
+    expect(result.name).toBe("Updated");
+    expect(store.getTimeSpanById("u1")?.name).toBe("Updated");
+  });
+
+  it("returns undefined for missing timeSpan", () => {
+    const store = useStore();
+    expect(store.getTimeSpanById("missing")).toBeUndefined();
+  });
+
+  it("deletes a timeSpan", async () => {
+    const ts = makeTimeSpan({ id: "d1" });
+    api.listTimeSpans.mockResolvedValue([ts]);
+    api.deleteTimeSpan.mockResolvedValue(undefined);
+
+    const store = useStore();
+    await store.fetchTimeSpans();
+    await store.deleteTimeSpan("d1");
+
+    expect(api.deleteTimeSpan).toHaveBeenCalledWith("d1");
+    expect(store.getTimeSpanById("d1")).toBeUndefined();
+  });
 });

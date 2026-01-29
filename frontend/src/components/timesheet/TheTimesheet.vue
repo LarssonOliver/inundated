@@ -20,14 +20,14 @@
 
 <script setup lang="ts">
 import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
-import { newTimespanWithDefaults } from "@/helpers/timespan";
+import { newTimespanWithDefaults } from "@/helpers/timeSpan";
 import type { TimeSpan } from "@/model";
-import { useTimeSpansStore } from "@/stores/timespans";
+import { useTimeSpansStore } from "@/stores/timeSpans";
 import { computed, ref } from "vue";
 
 const timeSpansStore = useTimeSpansStore();
 const timeSpan = ref(newTimespanWithDefaults());
-const tagIds = ref<number[]>([]);
+const tagIds = ref<Set<string>>(new Set<string>());
 
 const timeSpans = computed(() => {
   const res = [...timeSpansStore.timeSpans];
@@ -40,7 +40,7 @@ async function updateTimeSpan(value: TimeSpan) {
 }
 
 async function createTimeSpan() {
-  const newTimeSpan: TimeSpan = { ...timeSpan.value, tagIds: [...tagIds.value] };
+  const newTimeSpan: TimeSpan = { ...timeSpan.value, tagIds: new Set(tagIds.value) };
   await timeSpansStore.createTimeSpan(newTimeSpan);
   timeSpan.value.name = "";
 }

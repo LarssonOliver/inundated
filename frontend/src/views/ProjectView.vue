@@ -5,7 +5,7 @@
 
     <input type="text" v-model="project.name" />
     <input type="color" v-model="project.color" />
-    <input type="number" v-model.number="project.timeBudget" />
+    <input type="number" v-model.number="project.timeBudgetHours" />
     <div class="tags-container">
       <TagListEmbedded v-model="projectTags" @update:model-value="updateProjectTags" />
     </div>
@@ -30,10 +30,10 @@ const isNewProject = ref(false);
 
 // Reactive state
 const project = ref(newProjectWithDefaults());
-const projectTags = ref<number[]>([]);
+const projectTags = ref<Set<string>>(new Set<string>());
 
 function updateProjectTags() {
-  project.value.tagIds = [...projectTags.value];
+  project.value.tagIds = new Set<string>(projectTags.value);
 }
 
 watch(
@@ -45,11 +45,10 @@ watch(
       return;
     }
 
-    const result = await projectsStore.getProjectById(Number(newId));
+    const result = await projectsStore.fetchProjectById(newId as string);
     if (result) {
       project.value = result;
-      projectTags.value.length = 0;
-      projectTags.value.push(...result.tagIds);
+      projectTags.value = new Set<string>(project.value.tagIds);
       isNewProject.value = false;
     } else {
       // Handle case where project is not found

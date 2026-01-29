@@ -1,102 +1,130 @@
-import { useProjectsStore } from "@/stores/projects";
+import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
-import { test, expect, beforeEach } from "vitest";
+import type { Project } from "@/model";
+import type { ProjectsApi } from "@/api/projects";
+import { __test__ } from "@/stores/projects";
 
-const project = {
-  id: 0,
-  name: "Test",
-  color: "#FF0000",
-  timeBudget: 60,
-  userId: 1,
-  tagIds: [1, 2, 5],
-};
+function project(partial?: Partial<Project>): Project {
+  return {
+    id: partial?.id ?? "p1",
+    name: partial?.name ?? "Project",
+    color: partial?.color ?? "#ff0000",
+    timeBudgetHours: partial?.timeBudgetHours,
+    tagIds: partial?.tagIds ?? new Set(["t1", "t2"]),
+  };
+}
 
-beforeEach(() => {
-  setActivePinia(createPinia());
-});
+describe("projects store", () => {
+  let api: Mocked<ProjectsApi>;
+  let useStore: ReturnType<typeof __test__.createProjectsStore>;
 
-test("Store empty on init", () => {
-  const store = useProjectsStore();
-  expect(store.projects.length).toBe(0);
-});
+  beforeEach(() => {
+    setActivePinia(createPinia());
 
-test("Create project", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  expect(p).not.toEqual(project);
-  expect(p.id).toBeGreaterThan(0);
-  expect(p.name).toEqual(project.name);
-  expect(p.color).toEqual(project.color);
-  expect(p.timeBudget).toEqual(project.timeBudget);
-  expect(p.tagIds).toEqual(project.tagIds);
-});
+    api = {
+      listProjects: vi.fn(),
+      getProject: vi.fn(),
+      createProject: vi.fn(),
+      updateProject: vi.fn(),
+      deleteProject: vi.fn(),
+    };
 
-test("Create project unlinks arrays", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  p.tagIds.push(3);
-  expect(p.tagIds).not.toEqual(project.tagIds);
-});
+    useStore = __test__.createProjectsStore(api);
+  });
 
-test("Get project by id", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  const p2 = await store.getProjectById(p.id);
-  expect(p2).not.toBeUndefined();
-});
+  it("fetches and stores all projects", async () => {
+    const projects = [project({ id: "a" }), project({ id: "b" })];
+    api.listProjects.mockResolvedValue(projects);
 
-test("Get project by id not found", async () => {
-  const store = useProjectsStore();
-  expect(await store.getProjectById(0)).toBeUndefined();
-  expect(await store.getProjectById(-1)).toBeUndefined();
-  expect(await store.getProjectById(11)).toBeUndefined();
-});
+    const store = useStore();
+    await store.fetchProjects();
 
-test("Get project is decoupled from store", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  const p2 = await store.getProjectById(p.id);
-  expect(p2).not.toBeUndefined();
-  p2?.tagIds.push(3);
-  expect(p2?.tagIds).not.toEqual(p.tagIds);
-});
+    expect(api.listProjects).toHaveBeenCalledOnce();
+    expect(store.projects).toHaveLength(2);
+    expect(store.projects.map((p) => p.id)).toEqual(["a", "b"]);
+  });
 
-test("Get project by id not found after delete", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  await store.deleteProject(p.id);
-  expect(await store.getProjectById(p.id)).toBeUndefined();
-});
+  it("returns defensive copies from projects getter", async () => {
+    const original = project();
+    api.listProjects.mockResolvedValue([original]);
 
-test("Delete non-existing project works", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  await store.deleteProject(-2);
-  expect(await store.getProjectById(p.id)).toEqual(p);
-});
+    const store = useStore();
+    await store.fetchProjects();
 
-test("Update project", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  p.name = "Updated";
+    const fetched = store.projects[0];
+    fetched.tagIds.add("evil");
 
-  const updatedP = await store.updateProject(p);
-  expect(updatedP?.name).toEqual("Updated");
-});
+    expect(original.tagIds.has("evil")).toBe(false);
+  });
 
-test("Update project unlinks data objects", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  p.tagIds.push(3);
-  const oldp = await store.getProjectById(p.id);
-  expect(oldp?.tagIds).not.toEqual(p.tagIds);
-  const updatedp = await store.updateProject(p);
-  expect(updatedp?.tagIds).toEqual(p.tagIds);
-});
+  it("fetches project by id and stores it", async () => {
+    const p = project({ id: "x" });
+    api.getProject.mockResolvedValue(p);
 
-test("Update non-existing project fails", async () => {
-  const store = useProjectsStore();
-  const p = await store.createProject(project);
-  p.id = 10;
-  expect(await store.updateProject(p)).toBeUndefined();
+    const store = useStore();
+    const result = await store.fetchProjectById("x");
+
+    expect(api.getProject).toHaveBeenCalledWith("x");
+    expect(result.id).toBe("x");
+    expect(store.getProjectById("x")?.id).toBe("x");
+  });
+
+  it("creates a project and stores it", async () => {
+    const input = {
+      name: "New",
+      color: "#000",
+      tagIds: new Set<string>(),
+    };
+
+    const created = project({ id: "new", ...input });
+    api.createProject.mockResolvedValue(created);
+
+    const store = useStore();
+    const result = await store.createProject(input);
+
+    expect(api.createProject).toHaveBeenCalledWith(input);
+    expect(result.id).toBe("new");
+    expect(store.getProjectById("new")).toBeDefined();
+  });
+
+  it("updates a project and replaces it in store", async () => {
+    const initial = project({ id: "u1", name: "Old" });
+    const updated = project({ id: "u1", name: "Updated" });
+
+    api.listProjects.mockResolvedValue([initial]);
+    api.updateProject.mockResolvedValue(updated);
+
+    const store = useStore();
+    await store.fetchProjects();
+
+    const result = await store.updateProject(updated);
+
+    expect(api.updateProject).toHaveBeenCalledWith("u1", {
+      name: "Updated",
+      color: updated.color,
+      timeBudgetHours: updated.timeBudgetHours,
+      tagIds: updated.tagIds,
+    });
+
+    expect(result.name).toBe("Updated");
+    expect(store.getProjectById("u1")?.name).toBe("Updated");
+  });
+
+  it("returns undefined when getting a missing project", () => {
+    const store = useStore();
+    expect(store.getProjectById("missing")).toBeUndefined();
+  });
+
+  it("deletes a project", async () => {
+    const p = project({ id: "d1" });
+    api.listProjects.mockResolvedValue([p]);
+    api.deleteProject.mockResolvedValue(undefined);
+
+    const store = useStore();
+    await store.fetchProjects();
+    await store.deleteProject("d1");
+
+    expect(api.deleteProject).toHaveBeenCalledWith("d1");
+    expect(store.getProjectById("d1")).toBeUndefined();
+  });
 });

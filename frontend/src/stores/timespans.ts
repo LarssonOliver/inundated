@@ -1,3 +1,4 @@
+import { timeSpansApi, type TimeSpansApi } from "@/api/timeSpans";
 import type { TimeSpan } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -8,100 +9,110 @@ function copyTimeSpan(timeSpan: TimeSpan): TimeSpan {
     ...timeSpan,
     startTime: new Date(timeSpan.startTime),
     endTime: new Date(timeSpan.endTime),
-    tagIds: [...timeSpan.tagIds],
+    tagIds: new Set(timeSpan.tagIds),
   };
 }
 
-export const useTimeSpansStore = defineStore("timeSpans", () => {
-  const timeSpans = ref<TimeSpan[]>([]);
+function createTimeSpansStore(api: TimeSpansApi) {
+  return defineStore("timeSpans", () => {
+    const timeSpans = ref<Map<string, TimeSpan>>(new Map<string, TimeSpan>());
 
-  const readOnlyTimeSpans = computed(() => timeSpans.value.map(copyTimeSpan));
+    const readOnlyTimeSpans = computed<readonly TimeSpan[]>(() =>
+      Array.from(timeSpans.value.values()).map(copyTimeSpan),
+    );
 
-  /**
-   * Creates a new time span.
-   *
-   * @param timeSpan - The time span to create.
-   *
-   * @returns A promise that resolves to the newly created time span with
-   *   correctly assigned ID.
-   */
-  async function createTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
-    const newTimeSpan: TimeSpan = {
-      id: timeSpans.value.length + 1, // TODO: Use ID from server
-      name: timeSpan.name,
-      startTime: new Date(timeSpan.startTime),
-      endTime: new Date(timeSpan.endTime),
-      timeZone: timeSpan.timeZone,
-      userId: timeSpan.userId, // TODO: Use the current user ID
-      tagIds: [...timeSpan.tagIds],
+    /**
+     * Fetches all timeSpans from the API and stores them locally.
+     *
+     * @returns A promise that resolves when the timeSpans have been fetched.
+     */
+    async function fetchTimeSpans(): Promise<void> {
+      const fetched = await api.listTimeSpans();
+      timeSpans.value = new Map(fetched.map((timeSpan) => [timeSpan.id, timeSpan]));
+    }
+
+    /**
+     * Fetch a timeSpan by its ID from the API.
+     *
+     * @param id - The ID of the timeSpan to fetch.
+     *
+     * @returns A promise that resolves to the timeSpan if found, or undefined
+     */
+    async function fetchTimeSpanById(id: string): Promise<TimeSpan> {
+      const fetched = await api.getTimeSpan(id);
+      timeSpans.value.set(fetched.id, fetched);
+      return copyTimeSpan(fetched);
+    }
+
+    /**
+     * Creates a new timeSpan.
+     *
+     * @param timeSpan - The timeSpan to create.
+     *
+     * @returns A promise that resolves to the newly created timeSpan with
+     *   correctly assigned ID.
+     */
+    async function createTimeSpan(timeSpan: Omit<TimeSpan, "id">): Promise<TimeSpan> {
+      const newTimeSpan = await api.createTimeSpan(timeSpan);
+      timeSpans.value.set(newTimeSpan.id, newTimeSpan);
+      return copyTimeSpan(newTimeSpan);
+    }
+
+    /**
+     * Fetches a timeSpan by its ID.
+     *
+     * @param id - The ID of the timeSpan to fetch.
+     *
+     * @returns A promise that resolves to the timeSpan if found, or undefined
+     *  if not found.
+     */
+    function getTimeSpanById(id: string): TimeSpan | undefined {
+      const timeSpan = timeSpans.value.get(id);
+      if (!timeSpan) return undefined;
+      return copyTimeSpan(timeSpan);
+    }
+
+    /**
+     * Updates an existing timeSpan.
+     *
+     * @param timeSpan - The timeSpan to update, identified by timeSpan.id.
+     *
+     * @returns A promise that resolves to the updated timeSpan, or undefined
+     *  if not found.
+     */
+    async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
+      const { id, ...fields } = timeSpan;
+      const updated = await api.updateTimeSpan(id, fields);
+      timeSpans.value.set(updated.id, updated);
+      return copyTimeSpan(updated);
+    }
+
+    /**
+     * Deletes a timeSpan by its ID.
+     *
+     * @param id - The ID of the timeSpan to delete.
+     *
+     * @returns A promise that resolves when the timeSpan is deleted.
+     */
+    async function deleteTimeSpan(id: string): Promise<void> {
+      await api.deleteTimeSpan(id);
+      timeSpans.value.delete(id);
+    }
+
+    return {
+      timeSpans: readOnlyTimeSpans,
+      fetchTimeSpans,
+      fetchTimeSpanById,
+      createTimeSpan,
+      getTimeSpanById,
+      updateTimeSpan,
+      deleteTimeSpan,
     };
+  });
+}
 
-    // TODO: Implement API call to create the time span on the server
-
-    timeSpans.value.push(newTimeSpan);
-
-    return copyTimeSpan(newTimeSpan);
-  }
-
-  /**
-   * Fetches a timespan by its ID.
-   *
-   * @param id - The ID of the time span to fetch.
-   *
-   * @returns A promise that resolves to the time span with the given ID,
-   *   or undefined if not found.
-   */
-  async function getTimeSpanById(id: number): Promise<TimeSpan | undefined> {
-    const timeSpan = timeSpans.value.find((ts) => ts.id === id);
-
-    if (!timeSpan) return undefined;
-
-    return copyTimeSpan(timeSpan);
-  }
-
-  /**
-   * Updates an existing time span.
-   *
-   * @param timeSpan - The time span to update, identified by timeSpan.id.
-   *
-   * @returns A promise that resolves to the updated time span,
-   *   or undefined if not found.
-   */
-  async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan | undefined> {
-    const index = timeSpans.value.findIndex((ts) => ts.id === timeSpan.id);
-
-    if (index === -1) return undefined;
-
-    const copy = {
-      ...timeSpans.value[index],
-      ...copyTimeSpan(timeSpan),
-    };
-
-    timeSpans.value.splice(index, 1, copy);
-
-    return copyTimeSpan(copy);
-  }
-
-  /**
-   * Deletes a time span.
-   *
-   * @param id - The ID of the time span to delete.
-   *
-   * @returns A promise that resolves when the time span is deleted.
-   */
-  async function deleteTimeSpan(id: number): Promise<void> {
-    const index = timeSpans.value.findIndex((ts) => ts.id === id);
-    if (index !== -1) timeSpans.value.splice(index, 1);
-  }
-
-  return {
-    timeSpans: readOnlyTimeSpans,
-    getTimeSpanById,
-    createTimeSpan,
-    updateTimeSpan,
-    deleteTimeSpan,
-  };
-});
+export const useTimeSpansStore = createTimeSpansStore(timeSpansApi);
+export const __test__ = { createTimeSpansStore };
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(useTimeSpansStore, import.meta.hot));
