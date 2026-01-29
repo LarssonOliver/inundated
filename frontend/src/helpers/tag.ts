@@ -1,11 +1,11 @@
 import { stringToHexColor } from "@/helpers/colors";
+import type { Tag } from "@/model";
 
-export function newTagWithDefaults() {
+export function newTagWithDefaults(): Tag {
   const randomColorString = Math.random().toString(36);
   return {
-    id: 0,
-    name: "",
+    id: "",
+    name: "new tag",
     color: stringToHexColor(randomColorString),
-    userId: 0, // TODO
   };
 }

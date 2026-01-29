@@ -36,12 +36,12 @@ watch(
       return;
     }
 
-    const result = await tagsStore.getTagById(Number(newId));
+    const result = await tagsStore.fetchTagById(newId as string);
     if (result) {
       tag.value = result;
       isNewTag.value = false;
     } else {
-      // Handle case where tag is not found
+      // Handle case where tag is not
     }
   },
   { immediate: true },

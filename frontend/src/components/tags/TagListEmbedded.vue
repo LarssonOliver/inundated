@@ -31,10 +31,10 @@ import { useTagsStore } from "@/stores/tags";
 import { onMounted, ref, watch } from "vue";
 
 const emit = defineEmits<{
-  "update:model-value": [value: number[]];
+  "update:model-value": [value: string[]];
 }>();
 
-const model = defineModel<number[]>({ default: [] });
+const model = defineModel<string[]>({ default: [] });
 const { readOnly } = defineProps<{
   readOnly?: boolean;
 }>();
@@ -79,14 +79,14 @@ async function onTagCreate(name: string) {
 watch(tagSearchQuery, async (query) => {
   tagSearchResult.value = [];
   if (!query) return;
-  const tags = await tagsStore.searchTags(query);
+  const tags = tagsStore.searchTags(query);
   tagSearchResult.value = tags.filter((tag) => !model.value.includes(tag.id));
 });
 
 async function refreshTags() {
   tags.value.splice(0, tags.value.length);
   for (const id of model.value) {
-    const tag = await tagsStore.getTagById(id);
+    const tag = await tagsStore.fetchTagById(id);
     if (tag) tags.value.push(tag);
   }
 }

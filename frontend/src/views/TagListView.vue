@@ -22,9 +22,14 @@
 <script setup lang="ts">
 import { useTagsStore } from "@/stores/tags";
 import { useRouter } from "vue-router";
+import { onMounted } from "vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
+
+onMounted(async () => {
+  await tagsStore.fetchTags();
+});
 </script>
 
 <style scoped>

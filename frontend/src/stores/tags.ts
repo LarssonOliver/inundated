@@ -12,9 +12,11 @@ function copyTag(tag: Tag): Tag {
 
 function createTagsStore(api: TagsApi) {
   return defineStore("tags", () => {
-    const tags = ref<Tag[]>([]);
+    const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
 
-    const readOnlyTags = computed(() => tags.value.map(copyTag));
+    const readOnlyTags = computed<readonly Tag[]>(() =>
+      Array.from(tags.value.values()).map(copyTag),
+    );
 
     /**
      * Fetches all tags from the API and stores them locally.
@@ -22,7 +24,8 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves when the tags have been fetched.
      */
     async function fetchTags(): Promise<void> {
-      tags.value = await api.listTags();
+      const fetched = await api.listTags();
+      tags.value = new Map(fetched.map((tag) => [tag.id, tag]));
     }
 
     /**
@@ -32,24 +35,13 @@ function createTagsStore(api: TagsApi) {
      *
      * @returns A promise that resolves to the tag if found, or undefined
      */
-    async function fetchTagById(id: string): Promise<Tag | undefined> {
-      const fetchTagPromise = api.getTag(id);
-
-      const index = tags.value.findIndex((tag) => tag.id === id);
-
-      const fetchedTag = await fetchTagPromise;
-
-      if (!fetchedTag) {
-        return undefined;
+    async function fetchTagById(id: string): Promise<Tag> {
+      const fetched = await api.getTag(id);
+      if (!fetched) {
+        throw new Error(`Tag with ID ${id} not found`);
       }
-
-      if (index === -1) {
-        tags.value.push(fetchedTag);
-      } else {
-        tags.value.splice(index, 1, fetchedTag);
-      }
-
-      return copyTag(fetchedTag);
+      tags.value.set(fetched.id, fetched);
+      return copyTag(fetched);
     }
 
     /**
@@ -61,7 +53,9 @@ function createTagsStore(api: TagsApi) {
      *   correctly assigned ID.
      */
     async function createTag(tag: Omit<Tag, "id">): Promise<Tag> {
-      throw new Error("Not implemented");
+      const created = await api.createTag(tag);
+      tags.value.set(created.id, created);
+      return copyTag(created);
     }
 
     /**
@@ -76,7 +70,22 @@ function createTagsStore(api: TagsApi) {
      *  correctly assigned ID.
      */
     async function createTagFromName(name: string, color?: string): Promise<Tag> {
-      throw new Error("Not implemented");
+      const normalizedName = name.trim();
+      if (!normalizedName) {
+        throw new Error("Tag name cannot be empty");
+      }
+
+      for (const tag of tags.value.values()) {
+        if (tag.name === normalizedName) {
+          return copyTag(tag);
+        }
+      }
+
+      const newTag = await createTag({
+        name: normalizedName,
+        color: color ?? stringToHexColor(normalizedName),
+      });
+      return newTag;
     }
 
     /**
@@ -87,8 +96,9 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves to the tag if found, or undefined
      *  if not found.
      */
-    async function getTagById(id: string): Promise<Tag | undefined> {
-      throw new Error("Not implemented");
+    function getTagById(id: string): Tag | undefined {
+      const tag = tags.value.get(id);
+      return tag ? copyTag(tag) : undefined;
     }
 
     /**
@@ -99,23 +109,20 @@ function createTagsStore(api: TagsApi) {
      *
      * @returns A promise that resolves to an array of matching tags.
      */
-    async function searchTags(query: string): Promise<Tag[]> {
-      if (!query) return [...tags.value];
+    function searchTags(query: string): Tag[] {
+      const q = query.trim().toLowerCase();
+      if (!q) {
+        return Array.from(tags.value.values()).map(copyTag);
+      }
 
-      // if (searchString.length < "tag:".length) {
-      //   return tags.value
-      //     .filter((tag) => tag.name.toLowerCase().includes(searchString.toLowerCase()))
-      //     .slice(0, maxItems);
-      // }
-
-      return tags.value
+      return Array.from(tags.value.values())
         .map((tag) => ({
           tag,
-          distance: levenshteinDistance(tag.name, query),
+          distance: levenshteinDistance(tag.name.toLowerCase(), q),
         }))
         .filter(({ distance }) => distance < 3)
         .sort((a, b) => a.distance - b.distance)
-        .map(({ tag }) => tag);
+        .map(({ tag }) => copyTag(tag));
     }
 
     /**
@@ -123,11 +130,13 @@ function createTagsStore(api: TagsApi) {
      *
      * @param tag - The tag to update, identified by tag.id.
      *
-     * @returns A promise that resolves to the updated tag, or undefined
-     *  if not found.
+     * @returns A promise that resolves to the updated tag.
      */
-    async function updateTag(tag: Tag): Promise<Tag | undefined> {
-      throw new Error("Not implemented");
+    async function updateTag(tag: Tag): Promise<Tag> {
+      const { id, ...patch } = tag;
+      const updated = await api.updateTag(id, patch);
+      tags.value.set(updated.id, updated);
+      return copyTag(updated);
     }
 
     /**
@@ -138,7 +147,8 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves when the tag is deleted.
      */
     async function deleteTag(id: string): Promise<void> {
-      throw new Error("Not implemented");
+      await api.deleteTag(id);
+      tags.value.delete(id);
     }
 
     return {

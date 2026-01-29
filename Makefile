@@ -9,7 +9,7 @@ build: ${BINARY}
 
 ${BINARY}: build-frontend
 	mkdir -p ${BINARY_DIR}
-	go build -o $@ cmd/server/main.go
+	go build -o $@ -tags embed cmd/server/main.go
 
 build-frontend:
 	cd frontend && npm install && npm run build

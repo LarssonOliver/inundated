@@ -5,7 +5,7 @@ import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./ma
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
-  getTag(id: string): Promise<Tag | undefined>;
+  getTag(id: string): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
   deleteTag(id: string): Promise<void>;
@@ -20,9 +20,9 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
       return mapFromApiArray(tagMapper, response);
     },
 
-    async getTag(id: string): Promise<Tag | undefined> {
+    async getTag(id: string): Promise<Tag> {
       const response = await api.getTag({ tagId: id });
-      return response ? tagMapper.fromApi(response) : undefined;
+      return tagMapper.fromApi(response);
     },
 
     async createTag(tag: Omit<Tag, "id">): Promise<Tag> {
