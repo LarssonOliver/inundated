@@ -45,8 +45,14 @@ const tags = ref<Tag[]>([]);
 const tagSearchQuery = ref("");
 const tagSearchResult = ref<Tag[]>([]);
 
-onMounted(async () => await refreshTags());
-watch(model.value, async () => await refreshTags());
+onMounted(async () => {
+  await refreshTags();
+});
+watch(
+  () => Array.from(model.value),
+  async () => await refreshTags(),
+  { deep: true },
+);
 
 function onTagSearch(query: string) {
   tagSearchQuery.value = query;
@@ -81,7 +87,7 @@ watch(tagSearchQuery, async (query) => {
 });
 
 async function refreshTags() {
-  tags.value.splice(0, tags.value.length);
+  tags.value.length = 0;
   for (const id of model.value) {
     const tag = await tagsStore.fetchTagById(id);
     if (tag) tags.value.push(tag);

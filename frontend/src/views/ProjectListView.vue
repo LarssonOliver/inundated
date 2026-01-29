@@ -24,9 +24,12 @@ import { useProjectsStore } from "@/stores/projects";
 import { useRouter } from "vue-router";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
+import { onMounted } from "vue";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
+
+onMounted(async () => await projectsStore.fetchProjects());
 </script>
 
 <style scoped>

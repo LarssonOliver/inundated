@@ -59,7 +59,7 @@ async function createTag() {
 
 <style scoped>
 .tag-page {
-  margin: 0 1em;
+  margin: 1em 1em;
   display: flex;
   flex-direction: column;
 }

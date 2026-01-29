@@ -23,11 +23,15 @@ import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timeSpan";
 import type { TimeSpan } from "@/model";
 import { useTimeSpansStore } from "@/stores/timeSpans";
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 
 const timeSpansStore = useTimeSpansStore();
 const timeSpan = ref(newTimespanWithDefaults());
 const tagIds = ref<Set<string>>(new Set<string>());
+
+onMounted(async () => {
+  await timeSpansStore.fetchTimeSpans();
+});
 
 const timeSpans = computed(() => {
   const res = [...timeSpansStore.timeSpans];
