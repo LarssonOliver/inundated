@@ -1,8 +1,7 @@
 export interface Project {
-  id: number;
+  id: string;
   name: string;
   color: string;
-  timeBudget: number;
-  userId: number;
-  tagIds: number[];
+  timeBudgetHours?: number;
+  tagIds: Set<string>;
 }

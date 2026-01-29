@@ -26,11 +26,10 @@ const useTestStore = defineStore("test", () => {
   };
 });
 
-// Plugins won't load unless installed in a vue app
-const app = createApp({});
-
 describe("Pinia error handling plugin", () => {
   beforeEach(() => {
+    // Plugins won't load unless installed in a vue app
+    const app = createApp({});
     const pinia = createPinia();
     pinia.use(errorHandlingPlugin);
     app.use(pinia);

@@ -1,6 +1,6 @@
 import type { Mapper } from "./index";
 import type * as Api from "@/api/generated/models";
-import type { Tag } from "@/model/tag";
+import type { Tag } from "@/model";
 
 /**
  * Full Tag <-> API Tag mapper
