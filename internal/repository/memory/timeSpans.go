@@ -12,14 +12,16 @@ import (
 type TimeSpanStore struct {
 	mu   sync.RWMutex
 	data map[uuid.UUID]model.TimeSpan
+	tags repository.TagRepository
 }
 
 var _ repository.TimeSpanRepository = (*TimeSpanStore)(nil)
 
-func NewTimeSpanStore() *TimeSpanStore {
+func NewTimeSpanStore(tags repository.TagRepository) *TimeSpanStore {
 	return &TimeSpanStore{
 		mu:   sync.RWMutex{},
 		data: make(map[uuid.UUID]model.TimeSpan),
+		tags: tags,
 	}
 }
 
@@ -32,6 +34,10 @@ func (t *TimeSpanStore) CreateTimeSpan(ctx context.Context, timeSpan model.TimeS
 	var tagIds []uuid.UUID
 
 	if timeSpan.TagIds != nil {
+		if !tagsExist(ctx, t.tags, timeSpan.TagIds) {
+			return model.TimeSpan{}, model.ErrInvalidReference
+		}
+
 		tagIds = make([]uuid.UUID, len(timeSpan.TagIds))
 		copy(tagIds, timeSpan.TagIds)
 	} else {
@@ -85,6 +91,10 @@ func (t *TimeSpanStore) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, er
 func (t *TimeSpanStore) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
 	if timeSpan.Name == "" || timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() || timeSpan.EndTime.Before(timeSpan.StartTime) || timeSpan.EndTime.Equal(timeSpan.StartTime) {
 		return model.TimeSpan{}, model.ErrInvalidArgument
+	}
+
+	if timeSpan.TagIds != nil && !tagsExist(ctx, t.tags, timeSpan.TagIds) {
+		return model.TimeSpan{}, model.ErrInvalidReference
 	}
 
 	t.mu.Lock()

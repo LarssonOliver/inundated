@@ -13,14 +13,16 @@ import (
 type ProjectStore struct {
 	mu   sync.RWMutex
 	data map[uuid.UUID]model.Project
+	tags repository.TagRepository
 }
 
 var _ repository.ProjectRepository = (*ProjectStore)(nil)
 
-func NewProjectStore() *ProjectStore {
+func NewProjectStore(tags repository.TagRepository) *ProjectStore {
 	return &ProjectStore{
 		mu:   sync.RWMutex{},
 		data: make(map[uuid.UUID]model.Project),
+		tags: tags,
 	}
 }
 
@@ -33,6 +35,10 @@ func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project)
 	var tagIds []uuid.UUID
 
 	if project.TagIds != nil {
+		if !tagsExist(ctx, t.tags, project.TagIds) {
+			return model.Project{}, model.ErrInvalidReference
+		}
+
 		tagIds = make([]uuid.UUID, len(project.TagIds))
 		copy(tagIds, project.TagIds)
 	} else {
@@ -86,6 +92,10 @@ func (t *ProjectStore) ListProjects(ctx context.Context) ([]model.Project, error
 func (t *ProjectStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
 	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
+	}
+
+	if project.TagIds != nil && !tagsExist(ctx, t.tags, project.TagIds) {
+		return model.Project{}, model.ErrInvalidReference
 	}
 
 	t.mu.Lock()

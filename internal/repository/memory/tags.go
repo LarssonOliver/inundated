@@ -24,6 +24,15 @@ func NewTagStore() *TagStore {
 	}
 }
 
+func tagsExist(ctx context.Context, tags repository.TagRepository, tagIds []uuid.UUID) bool {
+	for _, tagId := range tagIds {
+		if _, err := tags.GetTag(ctx, tagId); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 // CreateTag implements [repository.TagRepository].
 func (t *TagStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {

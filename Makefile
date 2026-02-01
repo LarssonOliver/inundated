@@ -20,7 +20,7 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "==> Running backend tests..."
-	go test -v ./...
+	go run gotest.tools/gotestsum@latest
 
 test-frontend:
 	@echo "==> Running frontend tests..."

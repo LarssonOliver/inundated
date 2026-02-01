@@ -3,17 +3,18 @@ package memory
 import "github.com/larssonoliver/inundated/internal/repository"
 
 type MemoryStore struct {
-	TagStore
-	ProjectStore
-	TimeSpanStore
+	*TagStore
+	*ProjectStore
+	*TimeSpanStore
 }
 
 var _ repository.Repository = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
+	tagStore := NewTagStore()
 	return &MemoryStore{
-		TagStore:      *NewTagStore(),
-		ProjectStore:  *NewProjectStore(),
-		TimeSpanStore: *NewTimeSpanStore(),
+		TagStore:      tagStore,
+		ProjectStore:  NewProjectStore(tagStore),
+		TimeSpanStore: NewTimeSpanStore(tagStore),
 	}
 }
