@@ -1,0 +1,9 @@
+BEGIN;
+
+DROP TABLE IF EXISTS project_tags;
+DROP TABLE IF EXISTS timespan_tags;
+DROP TABLE IF EXISTS timespans;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS tags;
+
+COMMIT;
