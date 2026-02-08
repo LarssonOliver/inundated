@@ -17,9 +17,11 @@ CREATE TABLE projects (
 
 -- Project-Tag join table
 CREATE TABLE project_tags (
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (project_id, tag_id)
+    project_id UUID NOT NULL,
+    tag_id UUID NOT NULL,
+    PRIMARY KEY (project_id, tag_id),
+    CONSTRAINT project_tags_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    CONSTRAINT project_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 
 -- Timespans
@@ -32,9 +34,11 @@ CREATE TABLE timespans (
 
 -- TimeSpan-Tag join table
 CREATE TABLE timespan_tags (
-    timespan_id UUID NOT NULL REFERENCES timespans(id) ON DELETE CASCADE,
-    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (timespan_id, tag_id)
+    timespan_id UUID NOT NULL,
+    tag_id UUID NOT NULL,
+    PRIMARY KEY (timespan_id, tag_id),
+    CONSTRAINT timespan_tags_timespan_id_fkey FOREIGN KEY (timespan_id) REFERENCES timespans(id) ON DELETE CASCADE,
+    CONSTRAINT timespan_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 
 COMMIT;
