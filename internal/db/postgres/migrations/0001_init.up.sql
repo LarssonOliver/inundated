@@ -33,7 +33,7 @@ CREATE TABLE timespans (
 -- TimeSpan-Tag join table
 CREATE TABLE timespan_tags (
     timespan_id UUID NOT NULL REFERENCES timespans(id) ON DELETE CASCADE,
-    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (timespan_id, tag_id)
 );
 

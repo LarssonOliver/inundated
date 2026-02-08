@@ -2,40 +2,91 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"embed"
-	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
-
-	fs, err := iofs.New(migrationsFS, "migrations")
+func ApplyMigrations(ctx context.Context, dsn string) error {
+	m, cleanup, err := newMigrator(dsn)
 	if err != nil {
-		panic(err)
+		return err
+	}
+	defer cleanup()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return err
 	}
 
-	db := stdlib.OpenDBFromPool(pool)
+	return nil
+}
+
+func ApplyMigrationsUpTo(ctx context.Context, dsn string, version uint) error {
+	if version == 0 {
+		return nil
+	}
+
+	m, cleanup, err := newMigrator(dsn)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := m.Migrate(version); err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+	return nil
+}
+
+func ApplyMigrationsSteps(ctx context.Context, dsn string, steps int) error {
+	m, cleanup, err := newMigrator(dsn)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := m.Steps(steps); err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+	return nil
+}
+
+func newMigrator(dsn string) (*migrate.Migrate, func() error, error) {
+	fs, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
-		return fmt.Errorf("pgx migrate driver: %w", err)
+		db.Close()
+		return nil, nil, err
 	}
 
 	m, err := migrate.NewWithInstance("iofs", fs, "pgx", driver)
 	if err != nil {
-		return fmt.Errorf("new migrate instance: %w", err)
+		db.Close()
+		return nil, nil, err
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("apply migrations: %w", err)
+	cleanup := func() error {
+		srcErr, dbErr := m.Close()
+		if srcErr != nil {
+			return srcErr
+		}
+		return dbErr
 	}
 
-	return nil
+	return m, cleanup, nil
 }
