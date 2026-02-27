@@ -4,8 +4,11 @@ OPENAPI_GENERATOR_TAG ?= latest-release
 BINARY_DIR := bin
 BINARY := ${BINARY_DIR}/inundated
 
-.PHONY: build
+.PHONY: build dev
 build: ${BINARY}
+
+dev:
+	go run cmd/server/main.go
 
 ${BINARY}: build-frontend
 	mkdir -p ${BINARY_DIR}
