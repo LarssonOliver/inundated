@@ -2,10 +2,10 @@
 /* eslint-disable */
 export * from './CreateProject';
 export * from './CreateTag';
-export * from './CreateTimeSpan';
+export * from './CreateTimespan';
 export * from './Project';
 export * from './Tag';
-export * from './TimeSpan';
+export * from './Timespan';
 export * from './UpdateProject';
 export * from './UpdateTag';
-export * from './UpdateTimeSpan';
+export * from './UpdateTimespan';

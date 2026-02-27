@@ -5,7 +5,7 @@
       @update:model-value="() => $emit('update:model-value', model)"
     />
     <div class="right-side">
-      <TimeSpanEdit
+      <TimespanEdit
         :model-value="model"
         @update:model-value="(value) => $emit('update:model-value', value)"
       />
@@ -24,7 +24,7 @@
           class="centered-text delete-icon"
           icon="delete"
           size="1.5em"
-          @mousedown="deleteThisTimeSpan"
+          @mousedown="deleteThisTimespan"
         />
       </button>
     </div>
@@ -32,32 +32,32 @@
 </template>
 
 <script setup lang="ts">
-import TimeSpanEdit from "@/components/inputs/TimeSpanEdit.vue";
+import TimespanEdit from "@/components/inputs/TimespanEdit.vue";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
-import type { TimeSpan } from "@/model";
-import { newTimespanWithDefaults } from "@/helpers/timeSpan";
+import type { Timespan } from "@/model";
+import { newTimespanWithDefaults } from "@/helpers/timespan";
 import { ref } from "vue";
-import { useTimeSpansStore } from "@/stores/timeSpans";
+import { useTimespansStore } from "@/stores/timespans";
 
-const timeSpansStore = useTimeSpansStore();
+const timespansStore = useTimespansStore();
 
-const model = defineModel<TimeSpan>({
+const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
 });
 
 const showMenu = ref(false);
 
 defineEmits<{
-  "update:model-value": [value: TimeSpan];
+  "update:model-value": [value: Timespan];
 }>();
 
 function contextMenuClick() {
   showMenu.value = !showMenu.value;
 }
 
-function deleteThisTimeSpan() {
-  timeSpansStore.deleteTimeSpan(model.value.id);
+function deleteThisTimespan() {
+  timespansStore.deleteTimespan(model.value.id);
 }
 </script>
 

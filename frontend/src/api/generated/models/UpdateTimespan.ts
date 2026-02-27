@@ -16,47 +16,47 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface UpdateTimeSpan
+ * @interface UpdateTimespan
  */
-export interface UpdateTimeSpan {
+export interface UpdateTimespan {
     /**
      * 
      * @type {string}
-     * @memberof UpdateTimeSpan
+     * @memberof UpdateTimespan
      */
     name?: string;
     /**
      * 
      * @type {Date}
-     * @memberof UpdateTimeSpan
+     * @memberof UpdateTimespan
      */
     startTime?: Date;
     /**
      * 
      * @type {Date}
-     * @memberof UpdateTimeSpan
+     * @memberof UpdateTimespan
      */
     endTime?: Date;
     /**
      * 
      * @type {Set<string>}
-     * @memberof UpdateTimeSpan
+     * @memberof UpdateTimespan
      */
     tagIds?: Set<string>;
 }
 
 /**
- * Check if a given object implements the UpdateTimeSpan interface.
+ * Check if a given object implements the UpdateTimespan interface.
  */
-export function instanceOfUpdateTimeSpan(value: object): value is UpdateTimeSpan {
+export function instanceOfUpdateTimespan(value: object): value is UpdateTimespan {
     return true;
 }
 
-export function UpdateTimeSpanFromJSON(json: any): UpdateTimeSpan {
-    return UpdateTimeSpanFromJSONTyped(json, false);
+export function UpdateTimespanFromJSON(json: any): UpdateTimespan {
+    return UpdateTimespanFromJSONTyped(json, false);
 }
 
-export function UpdateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: boolean): UpdateTimeSpan {
+export function UpdateTimespanFromJSONTyped(json: any, ignoreDiscriminator: boolean): UpdateTimespan {
     if (json == null) {
         return json;
     }
@@ -69,11 +69,11 @@ export function UpdateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: bool
     };
 }
 
-export function UpdateTimeSpanToJSON(json: any): UpdateTimeSpan {
-    return UpdateTimeSpanToJSONTyped(json, false);
+export function UpdateTimespanToJSON(json: any): UpdateTimespan {
+    return UpdateTimespanToJSONTyped(json, false);
 }
 
-export function UpdateTimeSpanToJSONTyped(value?: UpdateTimeSpan | null, ignoreDiscriminator: boolean = false): any {
+export function UpdateTimespanToJSONTyped(value?: UpdateTimespan | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

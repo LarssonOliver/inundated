@@ -1,4 +1,4 @@
-export interface TimeSpan {
+export interface Timespan {
   id: string;
   name: string;
   startTime: Date;

@@ -18,6 +18,6 @@ declare module 'vue' {
     TheTimesheet: typeof import('./src/components/timesheet/TheTimesheet.vue')['default']
     TimeInput: typeof import('./src/components/inputs/TimeInput.vue')['default']
     TimesheetItem: typeof import('./src/components/timesheet/TimesheetItem.vue')['default']
-    TimeSpanEdit: typeof import('./src/components/inputs/TimeSpanEdit.vue')['default']
+    TimespanEdit: typeof import('./src/components/inputs/TimespanEdit.vue')['default']
   }
 }

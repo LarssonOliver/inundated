@@ -16,50 +16,50 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface CreateTimeSpan
+ * @interface CreateTimespan
  */
-export interface CreateTimeSpan {
+export interface CreateTimespan {
     /**
      * 
      * @type {string}
-     * @memberof CreateTimeSpan
+     * @memberof CreateTimespan
      */
     name: string;
     /**
      * 
      * @type {Date}
-     * @memberof CreateTimeSpan
+     * @memberof CreateTimespan
      */
     startTime: Date;
     /**
      * 
      * @type {Date}
-     * @memberof CreateTimeSpan
+     * @memberof CreateTimespan
      */
     endTime: Date;
     /**
      * 
      * @type {Set<string>}
-     * @memberof CreateTimeSpan
+     * @memberof CreateTimespan
      */
     tagIds?: Set<string>;
 }
 
 /**
- * Check if a given object implements the CreateTimeSpan interface.
+ * Check if a given object implements the CreateTimespan interface.
  */
-export function instanceOfCreateTimeSpan(value: object): value is CreateTimeSpan {
+export function instanceOfCreateTimespan(value: object): value is CreateTimespan {
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('startTime' in value) || value['startTime'] === undefined) return false;
     if (!('endTime' in value) || value['endTime'] === undefined) return false;
     return true;
 }
 
-export function CreateTimeSpanFromJSON(json: any): CreateTimeSpan {
-    return CreateTimeSpanFromJSONTyped(json, false);
+export function CreateTimespanFromJSON(json: any): CreateTimespan {
+    return CreateTimespanFromJSONTyped(json, false);
 }
 
-export function CreateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: boolean): CreateTimeSpan {
+export function CreateTimespanFromJSONTyped(json: any, ignoreDiscriminator: boolean): CreateTimespan {
     if (json == null) {
         return json;
     }
@@ -72,11 +72,11 @@ export function CreateTimeSpanFromJSONTyped(json: any, ignoreDiscriminator: bool
     };
 }
 
-export function CreateTimeSpanToJSON(json: any): CreateTimeSpan {
-    return CreateTimeSpanToJSONTyped(json, false);
+export function CreateTimespanToJSON(json: any): CreateTimespan {
+    return CreateTimespanToJSONTyped(json, false);
 }
 
-export function CreateTimeSpanToJSONTyped(value?: CreateTimeSpan | null, ignoreDiscriminator: boolean = false): any {
+export function CreateTimespanToJSONTyped(value?: CreateTimespan | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

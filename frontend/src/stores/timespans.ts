@@ -1,119 +1,119 @@
-import { timeSpansApi, type TimeSpansApi } from "@/api/timeSpans";
-import type { TimeSpan } from "@/model";
+import { timespansApi, type TimespansApi } from "@/api/timespans";
+import type { Timespan } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-function copyTimeSpan(timeSpan: TimeSpan): TimeSpan {
+function copyTimespan(timespan: Timespan): Timespan {
   return {
-    ...timeSpan,
-    startTime: new Date(timeSpan.startTime),
-    endTime: new Date(timeSpan.endTime),
-    tagIds: new Set(timeSpan.tagIds),
+    ...timespan,
+    startTime: new Date(timespan.startTime),
+    endTime: new Date(timespan.endTime),
+    tagIds: new Set(timespan.tagIds),
   };
 }
 
-function createTimeSpansStore(api: TimeSpansApi) {
-  return defineStore("timeSpans", () => {
-    const timeSpans = ref<Map<string, TimeSpan>>(new Map<string, TimeSpan>());
+function createTimespansStore(api: TimespansApi) {
+  return defineStore("timespans", () => {
+    const timespans = ref<Map<string, Timespan>>(new Map<string, Timespan>());
 
-    const readOnlyTimeSpans = computed<readonly TimeSpan[]>(() =>
-      Array.from(timeSpans.value.values()).map(copyTimeSpan),
+    const readOnlyTimespans = computed<readonly Timespan[]>(() =>
+      Array.from(timespans.value.values()).map(copyTimespan),
     );
 
     /**
-     * Fetches all timeSpans from the API and stores them locally.
+     * Fetches all timespans from the API and stores them locally.
      *
-     * @returns A promise that resolves when the timeSpans have been fetched.
+     * @returns A promise that resolves when the timespans have been fetched.
      */
-    async function fetchTimeSpans(): Promise<void> {
-      const fetched = await api.listTimeSpans();
-      timeSpans.value = new Map(fetched.map((timeSpan) => [timeSpan.id, timeSpan]));
+    async function fetchTimespans(): Promise<void> {
+      const fetched = await api.listTimespans();
+      timespans.value = new Map(fetched.map((timespan) => [timespan.id, timespan]));
     }
 
     /**
-     * Fetch a timeSpan by its ID from the API.
+     * Fetch a timespan by its ID from the API.
      *
-     * @param id - The ID of the timeSpan to fetch.
+     * @param id - The ID of the timespan to fetch.
      *
-     * @returns A promise that resolves to the timeSpan if found, or undefined
+     * @returns A promise that resolves to the timespan if found, or undefined
      */
-    async function fetchTimeSpanById(id: string): Promise<TimeSpan> {
-      const fetched = await api.getTimeSpan(id);
-      timeSpans.value.set(fetched.id, fetched);
-      return copyTimeSpan(fetched);
+    async function fetchTimespanById(id: string): Promise<Timespan> {
+      const fetched = await api.getTimespan(id);
+      timespans.value.set(fetched.id, fetched);
+      return copyTimespan(fetched);
     }
 
     /**
-     * Creates a new timeSpan.
+     * Creates a new timespan.
      *
-     * @param timeSpan - The timeSpan to create.
+     * @param timespan - The timespan to create.
      *
-     * @returns A promise that resolves to the newly created timeSpan with
+     * @returns A promise that resolves to the newly created timespan with
      *   correctly assigned ID.
      */
-    async function createTimeSpan(timeSpan: Omit<TimeSpan, "id">): Promise<TimeSpan> {
-      const newTimeSpan = await api.createTimeSpan(timeSpan);
-      timeSpans.value.set(newTimeSpan.id, newTimeSpan);
-      return copyTimeSpan(newTimeSpan);
+    async function createTimespan(timespan: Omit<Timespan, "id">): Promise<Timespan> {
+      const newTimespan = await api.createTimespan(timespan);
+      timespans.value.set(newTimespan.id, newTimespan);
+      return copyTimespan(newTimespan);
     }
 
     /**
-     * Fetches a timeSpan by its ID.
+     * Fetches a timespan by its ID.
      *
-     * @param id - The ID of the timeSpan to fetch.
+     * @param id - The ID of the timespan to fetch.
      *
-     * @returns A promise that resolves to the timeSpan if found, or undefined
+     * @returns A promise that resolves to the timespan if found, or undefined
      *  if not found.
      */
-    function getTimeSpanById(id: string): TimeSpan | undefined {
-      const timeSpan = timeSpans.value.get(id);
-      if (!timeSpan) return undefined;
-      return copyTimeSpan(timeSpan);
+    function getTimespanById(id: string): Timespan | undefined {
+      const timespan = timespans.value.get(id);
+      if (!timespan) return undefined;
+      return copyTimespan(timespan);
     }
 
     /**
-     * Updates an existing timeSpan.
+     * Updates an existing timespan.
      *
-     * @param timeSpan - The timeSpan to update, identified by timeSpan.id.
+     * @param timespan - The timespan to update, identified by timespan.id.
      *
-     * @returns A promise that resolves to the updated timeSpan, or undefined
+     * @returns A promise that resolves to the updated timespan, or undefined
      *  if not found.
      */
-    async function updateTimeSpan(timeSpan: TimeSpan): Promise<TimeSpan> {
-      const { id, ...fields } = timeSpan;
-      const updated = await api.updateTimeSpan(id, fields);
-      timeSpans.value.set(updated.id, updated);
-      return copyTimeSpan(updated);
+    async function updateTimespan(timespan: Timespan): Promise<Timespan> {
+      const { id, ...fields } = timespan;
+      const updated = await api.updateTimespan(id, fields);
+      timespans.value.set(updated.id, updated);
+      return copyTimespan(updated);
     }
 
     /**
-     * Deletes a timeSpan by its ID.
+     * Deletes a timespan by its ID.
      *
-     * @param id - The ID of the timeSpan to delete.
+     * @param id - The ID of the timespan to delete.
      *
-     * @returns A promise that resolves when the timeSpan is deleted.
+     * @returns A promise that resolves when the timespan is deleted.
      */
-    async function deleteTimeSpan(id: string): Promise<void> {
-      await api.deleteTimeSpan(id);
-      timeSpans.value.delete(id);
+    async function deleteTimespan(id: string): Promise<void> {
+      await api.deleteTimespan(id);
+      timespans.value.delete(id);
     }
 
     return {
-      timeSpans: readOnlyTimeSpans,
-      fetchTimeSpans,
-      fetchTimeSpanById,
-      createTimeSpan,
-      getTimeSpanById,
-      updateTimeSpan,
-      deleteTimeSpan,
+      timespans: readOnlyTimespans,
+      fetchTimespans,
+      fetchTimespanById,
+      createTimespan,
+      getTimespanById,
+      updateTimespan,
+      deleteTimespan,
     };
   });
 }
 
-export const useTimeSpansStore = createTimeSpansStore(timeSpansApi);
-export const __test__ = { createTimeSpansStore };
+export const useTimespansStore = createTimespansStore(timespansApi);
+export const __test__ = { createTimespansStore };
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(useTimeSpansStore, import.meta.hot));
+  import.meta.hot.accept(acceptHMRUpdate(useTimespansStore, import.meta.hot));
 }

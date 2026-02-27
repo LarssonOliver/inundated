@@ -1,11 +1,12 @@
 
-# CreateTimeSpan
+# Timespan
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`id` | string
 `name` | string
 `startTime` | Date
 `endTime` | Date
@@ -14,15 +15,16 @@ Name | Type
 ## Example
 
 ```typescript
-import type { CreateTimeSpan } from ''
+import type { Timespan } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "id": null,
   "name": null,
   "startTime": null,
   "endTime": null,
   "tagIds": null,
-} satisfies CreateTimeSpan
+} satisfies Timespan
 
 console.log(example)
 
@@ -31,7 +33,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as CreateTimeSpan
+const exampleParsed = JSON.parse(exampleJSON) as Timespan
 console.log(exampleParsed)
 ```
 

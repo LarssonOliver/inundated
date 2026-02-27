@@ -15,34 +15,34 @@
 
 import * as runtime from '../runtime';
 import type {
-  CreateTimeSpan,
-  TimeSpan,
-  UpdateTimeSpan,
+  CreateTimespan,
+  Timespan,
+  UpdateTimespan,
 } from '../models/index';
 import {
-    CreateTimeSpanFromJSON,
-    CreateTimeSpanToJSON,
-    TimeSpanFromJSON,
-    TimeSpanToJSON,
-    UpdateTimeSpanFromJSON,
-    UpdateTimeSpanToJSON,
+    CreateTimespanFromJSON,
+    CreateTimespanToJSON,
+    TimespanFromJSON,
+    TimespanToJSON,
+    UpdateTimespanFromJSON,
+    UpdateTimespanToJSON,
 } from '../models/index';
 
-export interface CreateTimeSpanRequest {
-    createTimeSpan: CreateTimeSpan;
+export interface CreateTimespanRequest {
+    createTimespan: CreateTimespan;
 }
 
-export interface DeleteTimeSpanRequest {
-    timeSpanId: string;
+export interface DeleteTimespanRequest {
+    timespanId: string;
 }
 
-export interface GetTimeSpanRequest {
-    timeSpanId: string;
+export interface GetTimespanRequest {
+    timespanId: string;
 }
 
-export interface UpdateTimeSpanRequest {
-    timeSpanId: string;
-    updateTimeSpan: UpdateTimeSpan;
+export interface UpdateTimespanRequest {
+    timespanId: string;
+    updateTimespan: UpdateTimespan;
 }
 
 /**
@@ -53,11 +53,11 @@ export class TimespansApi extends runtime.BaseAPI {
     /**
      * Create time span
      */
-    async createTimeSpanRaw(requestParameters: CreateTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TimeSpan>> {
-        if (requestParameters['createTimeSpan'] == null) {
+    async createTimespanRaw(requestParameters: CreateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        if (requestParameters['createTimespan'] == null) {
             throw new runtime.RequiredError(
-                'createTimeSpan',
-                'Required parameter "createTimeSpan" was null or undefined when calling createTimeSpan().'
+                'createTimespan',
+                'Required parameter "createTimespan" was null or undefined when calling createTimespan().'
             );
         }
 
@@ -75,28 +75,28 @@ export class TimespansApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: CreateTimeSpanToJSON(requestParameters['createTimeSpan']),
+            body: CreateTimespanToJSON(requestParameters['createTimespan']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TimeSpanFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }
 
     /**
      * Create time span
      */
-    async createTimeSpan(requestParameters: CreateTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TimeSpan> {
-        const response = await this.createTimeSpanRaw(requestParameters, initOverrides);
+    async createTimespan(requestParameters: CreateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Timespan> {
+        const response = await this.createTimespanRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      * Delete time span
      */
-    async deleteTimeSpanRaw(requestParameters: DeleteTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        if (requestParameters['timeSpanId'] == null) {
+    async deleteTimespanRaw(requestParameters: DeleteTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
-                'timeSpanId',
-                'Required parameter "timeSpanId" was null or undefined when calling deleteTimeSpan().'
+                'timespanId',
+                'Required parameter "timespanId" was null or undefined when calling deleteTimespan().'
             );
         }
 
@@ -105,8 +105,8 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/time-spans/{timeSpanId}`;
-        urlPath = urlPath.replace(`{${"timeSpanId"}}`, encodeURIComponent(String(requestParameters['timeSpanId'])));
+        let urlPath = `/time-spans/{timespanId}`;
+        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -121,18 +121,18 @@ export class TimespansApi extends runtime.BaseAPI {
     /**
      * Delete time span
      */
-    async deleteTimeSpan(requestParameters: DeleteTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.deleteTimeSpanRaw(requestParameters, initOverrides);
+    async deleteTimespan(requestParameters: DeleteTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteTimespanRaw(requestParameters, initOverrides);
     }
 
     /**
      * Get time span
      */
-    async getTimeSpanRaw(requestParameters: GetTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TimeSpan>> {
-        if (requestParameters['timeSpanId'] == null) {
+    async getTimespanRaw(requestParameters: GetTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
-                'timeSpanId',
-                'Required parameter "timeSpanId" was null or undefined when calling getTimeSpan().'
+                'timespanId',
+                'Required parameter "timespanId" was null or undefined when calling getTimespan().'
             );
         }
 
@@ -141,8 +141,8 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/time-spans/{timeSpanId}`;
-        urlPath = urlPath.replace(`{${"timeSpanId"}}`, encodeURIComponent(String(requestParameters['timeSpanId'])));
+        let urlPath = `/time-spans/{timespanId}`;
+        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -151,21 +151,21 @@ export class TimespansApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TimeSpanFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }
 
     /**
      * Get time span
      */
-    async getTimeSpan(requestParameters: GetTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TimeSpan> {
-        const response = await this.getTimeSpanRaw(requestParameters, initOverrides);
+    async getTimespan(requestParameters: GetTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Timespan> {
+        const response = await this.getTimespanRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      * List time spans
      */
-    async listTimeSpansRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<TimeSpan>>> {
+    async listTimespansRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Timespan>>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -180,32 +180,32 @@ export class TimespansApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(TimeSpanFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(TimespanFromJSON));
     }
 
     /**
      * List time spans
      */
-    async listTimeSpans(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<TimeSpan>> {
-        const response = await this.listTimeSpansRaw(initOverrides);
+    async listTimespans(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Timespan>> {
+        const response = await this.listTimespansRaw(initOverrides);
         return await response.value();
     }
 
     /**
      * Update time span
      */
-    async updateTimeSpanRaw(requestParameters: UpdateTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TimeSpan>> {
-        if (requestParameters['timeSpanId'] == null) {
+    async updateTimespanRaw(requestParameters: UpdateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
-                'timeSpanId',
-                'Required parameter "timeSpanId" was null or undefined when calling updateTimeSpan().'
+                'timespanId',
+                'Required parameter "timespanId" was null or undefined when calling updateTimespan().'
             );
         }
 
-        if (requestParameters['updateTimeSpan'] == null) {
+        if (requestParameters['updateTimespan'] == null) {
             throw new runtime.RequiredError(
-                'updateTimeSpan',
-                'Required parameter "updateTimeSpan" was null or undefined when calling updateTimeSpan().'
+                'updateTimespan',
+                'Required parameter "updateTimespan" was null or undefined when calling updateTimespan().'
             );
         }
 
@@ -216,25 +216,25 @@ export class TimespansApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/time-spans/{timeSpanId}`;
-        urlPath = urlPath.replace(`{${"timeSpanId"}}`, encodeURIComponent(String(requestParameters['timeSpanId'])));
+        let urlPath = `/time-spans/{timespanId}`;
+        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({
             path: urlPath,
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
-            body: UpdateTimeSpanToJSON(requestParameters['updateTimeSpan']),
+            body: UpdateTimespanToJSON(requestParameters['updateTimespan']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TimeSpanFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }
 
     /**
      * Update time span
      */
-    async updateTimeSpan(requestParameters: UpdateTimeSpanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TimeSpan> {
-        const response = await this.updateTimeSpanRaw(requestParameters, initOverrides);
+    async updateTimespan(requestParameters: UpdateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Timespan> {
+        const response = await this.updateTimespanRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

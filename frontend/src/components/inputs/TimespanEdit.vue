@@ -9,17 +9,17 @@
 </template>
 
 <script setup lang="ts">
-import type { TimeSpan } from "@/model/timespan";
+import type { Timespan } from "@/model/timespan";
 import { ref, watch } from "vue";
 import TimeInput from "@/components/inputs/TimeInput.vue";
-import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timeSpan";
+import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
 
-const model = defineModel<TimeSpan>({
+const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
 });
 
 const emit = defineEmits<{
-  "update:model-value": [value: TimeSpan];
+  "update:model-value": [value: Timespan];
 }>();
 
 const startTimeString = ref(getTimeString(model.value.startTime));

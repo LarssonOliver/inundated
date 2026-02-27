@@ -4,17 +4,17 @@ All URIs are relative to */api*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTimeSpan**](TimespansApi.md#createtimespan) | **POST** /time-spans | Create time span |
-| [**deleteTimeSpan**](TimespansApi.md#deletetimespan) | **DELETE** /time-spans/{timeSpanId} | Delete time span |
-| [**getTimeSpan**](TimespansApi.md#gettimespan) | **GET** /time-spans/{timeSpanId} | Get time span |
-| [**listTimeSpans**](TimespansApi.md#listtimespans) | **GET** /time-spans | List time spans |
-| [**updateTimeSpan**](TimespansApi.md#updatetimespan) | **PATCH** /time-spans/{timeSpanId} | Update time span |
+| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /time-spans | Create time span |
+| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /time-spans/{timespanId} | Delete time span |
+| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /time-spans/{timespanId} | Get time span |
+| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /time-spans | List time spans |
+| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /time-spans/{timespanId} | Update time span |
 
 
 
-## createTimeSpan
+## createTimespan
 
-> TimeSpan createTimeSpan(createTimeSpan)
+> Timespan createTimespan(createTimespan)
 
 Create time span
 
@@ -25,19 +25,19 @@ import {
   Configuration,
   TimespansApi,
 } from '';
-import type { CreateTimeSpanRequest } from '';
+import type { CreateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new TimespansApi();
 
   const body = {
-    // CreateTimeSpan
-    createTimeSpan: ...,
-  } satisfies CreateTimeSpanRequest;
+    // CreateTimespan
+    createTimespan: ...,
+  } satisfies CreateTimespanRequest;
 
   try {
-    const data = await api.createTimeSpan(body);
+    const data = await api.createTimespan(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -53,11 +53,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **createTimeSpan** | [CreateTimeSpan](CreateTimeSpan.md) |  | |
+| **createTimespan** | [CreateTimespan](CreateTimespan.md) |  | |
 
 ### Return type
 
-[**TimeSpan**](TimeSpan.md)
+[**Timespan**](Timespan.md)
 
 ### Authorization
 
@@ -78,9 +78,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## deleteTimeSpan
+## deleteTimespan
 
-> deleteTimeSpan(timeSpanId)
+> deleteTimespan(timespanId)
 
 Delete time span
 
@@ -91,7 +91,7 @@ import {
   Configuration,
   TimespansApi,
 } from '';
-import type { DeleteTimeSpanRequest } from '';
+import type { DeleteTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -99,11 +99,11 @@ async function example() {
 
   const body = {
     // string
-    timeSpanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies DeleteTimeSpanRequest;
+    timespanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteTimespanRequest;
 
   try {
-    const data = await api.deleteTimeSpan(body);
+    const data = await api.deleteTimespan(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -119,7 +119,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **timeSpanId** | `string` |  | [Defaults to `undefined`] |
+| **timespanId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -144,9 +144,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## getTimeSpan
+## getTimespan
 
-> TimeSpan getTimeSpan(timeSpanId)
+> Timespan getTimespan(timespanId)
 
 Get time span
 
@@ -157,7 +157,7 @@ import {
   Configuration,
   TimespansApi,
 } from '';
-import type { GetTimeSpanRequest } from '';
+import type { GetTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -165,11 +165,11 @@ async function example() {
 
   const body = {
     // string
-    timeSpanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies GetTimeSpanRequest;
+    timespanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetTimespanRequest;
 
   try {
-    const data = await api.getTimeSpan(body);
+    const data = await api.getTimespan(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -185,11 +185,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **timeSpanId** | `string` |  | [Defaults to `undefined`] |
+| **timespanId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
-[**TimeSpan**](TimeSpan.md)
+[**Timespan**](Timespan.md)
 
 ### Authorization
 
@@ -210,9 +210,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## listTimeSpans
+## listTimespans
 
-> Array&lt;TimeSpan&gt; listTimeSpans()
+> Array&lt;Timespan&gt; listTimespans()
 
 List time spans
 
@@ -223,14 +223,14 @@ import {
   Configuration,
   TimespansApi,
 } from '';
-import type { ListTimeSpansRequest } from '';
+import type { ListTimespansRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new TimespansApi();
 
   try {
-    const data = await api.listTimeSpans();
+    const data = await api.listTimespans();
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -247,7 +247,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Array&lt;TimeSpan&gt;**](TimeSpan.md)
+[**Array&lt;Timespan&gt;**](Timespan.md)
 
 ### Authorization
 
@@ -267,9 +267,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## updateTimeSpan
+## updateTimespan
 
-> TimeSpan updateTimeSpan(timeSpanId, updateTimeSpan)
+> Timespan updateTimespan(timespanId, updateTimespan)
 
 Update time span
 
@@ -280,7 +280,7 @@ import {
   Configuration,
   TimespansApi,
 } from '';
-import type { UpdateTimeSpanRequest } from '';
+import type { UpdateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -288,13 +288,13 @@ async function example() {
 
   const body = {
     // string
-    timeSpanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // UpdateTimeSpan
-    updateTimeSpan: ...,
-  } satisfies UpdateTimeSpanRequest;
+    timespanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateTimespan
+    updateTimespan: ...,
+  } satisfies UpdateTimespanRequest;
 
   try {
-    const data = await api.updateTimeSpan(body);
+    const data = await api.updateTimespan(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -310,12 +310,12 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **timeSpanId** | `string` |  | [Defaults to `undefined`] |
-| **updateTimeSpan** | [UpdateTimeSpan](UpdateTimeSpan.md) |  | |
+| **timespanId** | `string` |  | [Defaults to `undefined`] |
+| **updateTimespan** | [UpdateTimespan](UpdateTimespan.md) |  | |
 
 ### Return type
 
-[**TimeSpan**](TimeSpan.md)
+[**Timespan**](Timespan.md)
 
 ### Authorization
 

@@ -1,6 +1,6 @@
-import type { TimeSpan } from "@/model";
+import type { Timespan } from "@/model";
 
-export function newTimespanWithDefaults(): TimeSpan {
+export function newTimespanWithDefaults(): Timespan {
   const endTime = new Date();
   endTime.setSeconds(0, 0);
   const startTime = new Date(endTime);

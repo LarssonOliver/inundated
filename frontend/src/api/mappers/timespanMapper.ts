@@ -1,12 +1,12 @@
 import type { Mapper } from "./index";
 import type * as Api from "@/api/generated/models";
-import type { TimeSpan } from "@/model";
+import type { Timespan } from "@/model";
 
 /**
- * Full TimeSpan <-> API TimeSpan mapper
+ * Full Timespan <-> API Timespan mapper
  */
-export const timeSpanMapper: Mapper<TimeSpan, Api.TimeSpan> = {
-  fromApi(apiModel: Api.TimeSpan): TimeSpan {
+export const timespanMapper: Mapper<Timespan, Api.Timespan> = {
+  fromApi(apiModel: Api.Timespan): Timespan {
     return {
       id: apiModel.id,
       name: apiModel.name,
@@ -15,7 +15,7 @@ export const timeSpanMapper: Mapper<TimeSpan, Api.TimeSpan> = {
       tagIds: new Set(apiModel.tagIds || []),
     };
   },
-  toApi(domainModel: TimeSpan): Api.TimeSpan {
+  toApi(domainModel: Timespan): Api.Timespan {
     return {
       id: domainModel.id,
       name: domainModel.name,
@@ -27,9 +27,9 @@ export const timeSpanMapper: Mapper<TimeSpan, Api.TimeSpan> = {
 };
 
 /**
- * CreateTimeSpan mapper (domain -> API)
+ * CreateTimespan mapper (domain -> API)
  */
-export function toApiCreateTimeSpan(domain: Omit<TimeSpan, "id">): Api.CreateTimeSpan {
+export function toApiCreateTimespan(domain: Omit<Timespan, "id">): Api.CreateTimespan {
   return {
     name: domain.name,
     startTime: new Date(domain.startTime),
@@ -39,9 +39,9 @@ export function toApiCreateTimeSpan(domain: Omit<TimeSpan, "id">): Api.CreateTim
 }
 
 /**
- * UpdateTimeSpan mapper (partial domain -> API)
+ * UpdateTimespan mapper (partial domain -> API)
  */
-export function toApiUpdateTimeSpan(patch: Partial<Omit<TimeSpan, "id">>): Api.UpdateTimeSpan {
+export function toApiUpdateTimespan(patch: Partial<Omit<Timespan, "id">>): Api.UpdateTimespan {
   return {
     ...(patch.name !== undefined && { name: patch.name }),
     ...(patch.startTime !== undefined && { startTime: new Date(patch.startTime) }),

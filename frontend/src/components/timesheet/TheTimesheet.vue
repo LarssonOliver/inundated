@@ -3,50 +3,50 @@
     <div class="new-timespan-container">
       <TagListEmbedded v-model="tagIds" />
       <div class="right-side">
-        <TimeSpanEdit v-model="timeSpan" />
-        <input type="button" value="Add" @click="createTimeSpan" />
+        <TimespanEdit v-model="timespan" />
+        <input type="button" value="Add" @click="createTimespan" />
       </div>
     </div>
     <div
       class="timespan-list-item"
-      v-for="(timeSpan, index) in timeSpans"
-      :key="timeSpan as unknown as PropertyKey"
+      v-for="(timespan, index) in timespans"
+      :key="timespan as unknown as PropertyKey"
     >
-      <TimesheetItem :model-value="timeSpan" @update:model-value="updateTimeSpan" />
-      <hr class="item-divider" v-if="index < timeSpans.length - 1" />
+      <TimesheetItem :model-value="timespan" @update:model-value="updateTimespan" />
+      <hr class="item-divider" v-if="index < timespans.length - 1" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
-import { newTimespanWithDefaults } from "@/helpers/timeSpan";
-import type { TimeSpan } from "@/model";
-import { useTimeSpansStore } from "@/stores/timeSpans";
+import { newTimespanWithDefaults } from "@/helpers/timespan";
+import type { Timespan } from "@/model";
+import { useTimespansStore } from "@/stores/timespans";
 import { computed, ref, onMounted } from "vue";
 
-const timeSpansStore = useTimeSpansStore();
-const timeSpan = ref(newTimespanWithDefaults());
+const timespansStore = useTimespansStore();
+const timespan = ref(newTimespanWithDefaults());
 const tagIds = ref<Set<string>>(new Set<string>());
 
 onMounted(async () => {
-  await timeSpansStore.fetchTimeSpans();
+  await timespansStore.fetchTimespans();
 });
 
-const timeSpans = computed(() => {
-  const res = [...timeSpansStore.timeSpans];
+const timespans = computed(() => {
+  const res = [...timespansStore.timespans];
   res.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
   return res;
 });
 
-async function updateTimeSpan(value: TimeSpan) {
-  await timeSpansStore.updateTimeSpan(value);
+async function updateTimespan(value: Timespan) {
+  await timespansStore.updateTimespan(value);
 }
 
-async function createTimeSpan() {
-  const newTimeSpan: TimeSpan = { ...timeSpan.value, tagIds: new Set(tagIds.value) };
-  await timeSpansStore.createTimeSpan(newTimeSpan);
-  timeSpan.value.name = "";
+async function createTimespan() {
+  const newTimespan: Timespan = { ...timespan.value, tagIds: new Set(tagIds.value) };
+  await timespansStore.createTimespan(newTimespan);
+  timespan.value.name = "";
 }
 </script>
 
