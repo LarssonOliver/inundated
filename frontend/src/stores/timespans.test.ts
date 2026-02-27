@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import type { TimeSpan } from "@/model";
 import type { TimeSpansApi } from "@/api/timeSpans";
-import { __test__ } from "@/stores/timeSpans";
+import { __test__ } from "@/stores/timespans";
 
 // Helper to create sample timeSpans
 function makeTimeSpan(partial?: Partial<TimeSpan>): TimeSpan {
