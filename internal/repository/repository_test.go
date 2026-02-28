@@ -10,6 +10,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/larssonoliver/inundated/internal/repository/postgres"
 	"github.com/stretchr/testify/require"
 )
 
@@ -117,6 +118,10 @@ func TestTagRepositoryContract(t *testing.T) {
 
 	run(t, func(t *testing.T) repository.TagRepository {
 		return memory.NewMemoryStore()
+	})
+
+	run(t, func(t *testing.T) repository.TagRepository {
+		return postgres.
 	})
 
 	// Later:
