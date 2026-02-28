@@ -121,6 +121,7 @@ func TestCreateTimeSpan_Success(t *testing.T) {
 	ts := aTimeSpan()
 
 	mock.ExpectQuery(`INSERT INTO time_spans`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimeSpanTags(mock, ts.Id, ts.TagIds)
@@ -139,6 +140,7 @@ func TestCreateTimeSpan_GeneratesIdWhenNil(t *testing.T) {
 
 	generatedId := uuid.New()
 	mock.ExpectQuery(`INSERT INTO time_spans`).
+		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(generatedId, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimeSpanTags(mock, generatedId, ts.TagIds)
@@ -183,6 +185,7 @@ func TestCreateTimeSpan_ZeroEndTimeAllowed(t *testing.T) {
 	ts.EndTime = time.Time{}
 
 	mock.ExpectQuery(`INSERT INTO time_spans`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimeSpanTags(mock, ts.Id, ts.TagIds)

@@ -140,6 +140,7 @@ func TestCreateProject_Success(t *testing.T) {
 	p := aProject()
 
 	mock.ExpectQuery(`INSERT INTO projects`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, p.TagIds)
@@ -157,6 +158,7 @@ func TestCreateProject_NoTags(t *testing.T) {
 	p.TagIds = nil
 
 	mock.ExpectQuery(`INSERT INTO projects`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, nil)
@@ -183,6 +185,7 @@ func TestCreateProject_GeneratesIdWhenNil(t *testing.T) {
 
 	generatedId := uuid.New()
 	mock.ExpectQuery(`INSERT INTO projects`).
+		WithArgs(pgxmock.AnyArg(), p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(generatedId, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, generatedId, p.TagIds)
@@ -220,6 +223,7 @@ func TestUpdateProject_NotFound(t *testing.T) {
 	p := aProject()
 
 	mock.ExpectQuery(`UPDATE projects`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
 	_, err := repo.UpdateProject(ctx, p)
