@@ -28,8 +28,8 @@ CREATE TABLE project_tags (
 CREATE TABLE timespans (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 -- TimeSpan-Tag join table
