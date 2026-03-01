@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
@@ -55,6 +57,11 @@ func main() {
 
 	r := chi.NewMux()
 
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Recoverer)
+	r.Use(middleware.SecurityHeaders)
+
 	r.Handle("/health", handlers.HealthHandler())
 
 	r.Route("/api", func(r chi.Router) {
@@ -62,6 +69,7 @@ func main() {
 		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
 			return r.URL.Path == "/health"
 		}))
+		r.Use(middleware.NoSniffJSON)
 
 		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 	})
