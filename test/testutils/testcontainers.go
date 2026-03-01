@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	testcontainerspg "github.com/testcontainers/testcontainers-go/modules/postgres"
+
+	dbpostgres "github.com/larssonoliver/inundated/internal/db/postgres"
 )
 
 // StartPostgresContainer starts a PostgreSQL container for testing and returns a connected pgxpool.Pool, the DSN, and a cleanup function.
@@ -37,4 +39,13 @@ func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, s
 		pool.Close()
 		container.Terminate(ctx)
 	}
+}
+
+// StartPostgresContainerWithMigrationsApplied starts a PostgreSQL container, applies migrations, and returns a connected pgxpool.Pool and a cleanup function.
+func StartPostgresContainerWithMigrationsApplied(ctx context.Context, t *testing.T) (*pgxpool.Pool, func()) {
+	t.Helper()
+	pool, dsn, cleanup := StartPostgresContainer(ctx, t)
+	err := dbpostgres.ApplyMigrations(ctx, dsn)
+	require.NoError(t, err)
+	return pool, cleanup
 }

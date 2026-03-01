@@ -11,6 +11,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/repository/postgres"
+	"github.com/larssonoliver/inundated/test/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +39,7 @@ func seedTags(
 func TestTagRepositoryContract(t *testing.T) {
 	ctx := context.Background()
 
-	run := func(t *testing.T, newRepo func(t *testing.T) repository.TagRepository) {
+	run := func(t *testing.T, newRepo func(t *testing.T) repository.Repository) {
 		t.Run("CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
@@ -95,6 +96,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			_, err := repo.UpdateTag(ctx, model.Tag{
+				Id:   uuid.New(),
 				Name:  "ghost",
 				Color: "#000000",
 			})
@@ -116,18 +118,26 @@ func TestTagRepositoryContract(t *testing.T) {
 		})
 	}
 
-	run(t, func(t *testing.T) repository.TagRepository {
+	// Memory
+
+	run(t, func(t *testing.T) repository.Repository {
 		return memory.NewMemoryStore()
 	})
 
-	run(t, func(t *testing.T) repository.TagRepository {
-		return postgres.
+	// Postgres
+
+	var cleanupfuncs []func() = make([]func(), 0)
+
+	run(t, func(t *testing.T) repository.Repository {
+		t.Parallel()
+		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
+		cleanupfuncs = append(cleanupfuncs, terminate)
+		return postgres.NewPostgresStoreFromPool(pool)
 	})
 
-	// Later:
-	// run(t, func(t *testing.T) repository.TagRepository {
-	//     return newPostgresTagRepo(t)
-	// })
+	for _, cleanup := range cleanupfuncs {
+		defer cleanup()
+	}
 }
 
 func TestProjectRepositoryContract(t *testing.T) {
@@ -235,9 +245,26 @@ func TestProjectRepositoryContract(t *testing.T) {
 		})
 	}
 
+	// Memory
+
 	run(t, func(t *testing.T) repository.Repository {
 		return memory.NewMemoryStore()
 	})
+
+	// Postgres
+
+	var cleanupfuncs []func() = make([]func(), 0)
+
+	run(t, func(t *testing.T) repository.Repository {
+		t.Parallel()
+		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
+		cleanupfuncs = append(cleanupfuncs, terminate)
+		return postgres.NewPostgresStoreFromPool(pool)
+	})
+
+	for _, cleanup := range cleanupfuncs {
+		defer cleanup()
+	}
 }
 
 func TestTimeSpanRepositoryContract(t *testing.T) {
@@ -269,8 +296,8 @@ func TestTimeSpanRepositoryContract(t *testing.T) {
 			got, err := repo.GetTimeSpan(ctx, ts.Id)
 			require.NoError(t, err)
 			require.Equal(t, "Work session", got.Name)
-			require.True(t, got.StartTime.Equal(start))
-			require.True(t, got.EndTime.Equal(end))
+			require.True(t, got.StartTime.Equal(start), "expected start time %v, got %v", start, got.StartTime)
+			require.True(t, got.EndTime.Equal(end), "expected end time %v, got %v", end, got.EndTime)
 			require.ElementsMatch(t, tagIds, got.TagIds)
 		})
 
@@ -324,7 +351,24 @@ func TestTimeSpanRepositoryContract(t *testing.T) {
 		})
 	}
 
+	// Memory
+
 	run(t, func(t *testing.T) repository.Repository {
 		return memory.NewMemoryStore()
 	})
+
+	// Postgres
+
+	var cleanupfuncs []func() = make([]func(), 0)
+
+	run(t, func(t *testing.T) repository.Repository {
+		t.Parallel()
+		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
+		cleanupfuncs = append(cleanupfuncs, terminate)
+		return postgres.NewPostgresStoreFromPool(pool)
+	})
+
+	for _, cleanup := range cleanupfuncs {
+		defer cleanup()
+	}
 }
