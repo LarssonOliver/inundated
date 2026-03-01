@@ -15,7 +15,7 @@ func (r *PostgresStore) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.Ti
 		return model.TimeSpan{}, fmt.Errorf("GetTimeSpan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `SELECT id, name, start_time, end_time FROM time_spans WHERE id = $1`
+	const q = `SELECT id, name, start_time, end_time FROM timespans WHERE id = $1`
 
 	var ts model.TimeSpan
 	err := r.db.QueryRow(ctx, q, id).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
@@ -34,7 +34,7 @@ func (r *PostgresStore) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.Ti
 }
 
 func (r *PostgresStore) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error) {
-	const q = `SELECT id, name, start_time, end_time FROM time_spans ORDER BY start_time DESC`
+	const q = `SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`
 
 	rows, err := r.db.Query(ctx, q)
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *PostgresStore) CreateTimeSpan(ctx context.Context, timeSpan model.TimeS
 	}
 
 	const q = `
-		INSERT INTO time_spans (id, name, start_time, end_time)
+		INSERT INTO timespans (id, name, start_time, end_time)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, start_time, end_time`
 
@@ -105,7 +105,7 @@ func (r *PostgresStore) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeS
 	}
 
 	const q = `
-		UPDATE time_spans SET name = $2, start_time = $3, end_time = $4
+		UPDATE timespans SET name = $2, start_time = $3, end_time = $4
 		WHERE id = $1
 		RETURNING id, name, start_time, end_time`
 
@@ -131,7 +131,7 @@ func (r *PostgresStore) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("DeleteTimeSpan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `DELETE FROM time_spans WHERE id = $1`
+	const q = `DELETE FROM timespans WHERE id = $1`
 
 	res, err := r.db.Exec(ctx, q, id)
 	if err != nil {
@@ -145,7 +145,7 @@ func (r *PostgresStore) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error 
 
 // timeSpanTagIds returns all tag IDs linked to a time span.
 func (r *PostgresStore) timeSpanTagIds(ctx context.Context, timeSpanId uuid.UUID) ([]uuid.UUID, error) {
-	const q = `SELECT tag_id FROM time_span_tags WHERE time_span_id = $1 ORDER BY tag_id`
+	const q = `SELECT tag_id FROM timespan_tags WHERE timespan_id = $1 ORDER BY tag_id`
 
 	rows, err := r.db.Query(ctx, q, timeSpanId)
 	if err != nil {
@@ -166,12 +166,12 @@ func (r *PostgresStore) timeSpanTagIds(ctx context.Context, timeSpanId uuid.UUID
 
 // setTimeSpanTags replaces all tag associations for a time span.
 func (r *PostgresStore) setTimeSpanTags(ctx context.Context, timeSpanId uuid.UUID, tagIds []uuid.UUID) error {
-	if _, err := r.db.Exec(ctx, `DELETE FROM time_span_tags WHERE time_span_id = $1`, timeSpanId); err != nil {
+	if _, err := r.db.Exec(ctx, `DELETE FROM timespan_tags WHERE timespan_id = $1`, timeSpanId); err != nil {
 		return fmt.Errorf("setTimeSpanTags delete: %w", err)
 	}
 	for _, tagId := range tagIds {
 		if _, err := r.db.Exec(ctx,
-			`INSERT INTO time_span_tags (time_span_id, tag_id) VALUES ($1, $2)`,
+			`INSERT INTO timespan_tags (timespan_id, tag_id) VALUES ($1, $2)`,
 			timeSpanId, tagId,
 		); err != nil {
 			return fmt.Errorf("setTimeSpanTags insert: %w", model.ErrInvalidReference)

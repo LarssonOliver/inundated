@@ -22,18 +22,18 @@ func expectTimeSpanTagsQuery(mock pgxmock.PgxPoolIface, timeSpanId uuid.UUID, ta
 	for _, tid := range tagIds {
 		rows.AddRow(tid)
 	}
-	mock.ExpectQuery(`SELECT tag_id FROM time_span_tags WHERE time_span_id = \$1`).
+	mock.ExpectQuery(`SELECT tag_id FROM timespan_tags WHERE timespan_id = \$1`).
 		WithArgs(timeSpanId).
 		WillReturnRows(rows)
 }
 
 // expectSetTimeSpanTags registers the delete + insert expectations.
 func expectSetTimeSpanTags(mock pgxmock.PgxPoolIface, timeSpanId uuid.UUID, tagIds []uuid.UUID) {
-	mock.ExpectExec(`DELETE FROM time_span_tags WHERE time_span_id = \$1`).
+	mock.ExpectExec(`DELETE FROM timespan_tags WHERE timespan_id = \$1`).
 		WithArgs(timeSpanId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
 	for _, tid := range tagIds {
-		mock.ExpectExec(`INSERT INTO time_span_tags`).
+		mock.ExpectExec(`INSERT INTO timespan_tags`).
 			WithArgs(timeSpanId, tid).
 			WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	}
@@ -46,7 +46,7 @@ func TestGetTimeSpan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimeSpan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM time_spans WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
 		WithArgs(ts.Id).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -66,7 +66,7 @@ func TestGetTimeSpan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM time_spans WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols))
 
@@ -89,7 +89,7 @@ func TestListTimeSpans_ReturnsAll(t *testing.T) {
 	repo, mock := newMock(t)
 	ts1, ts2 := aTimeSpan(), aTimeSpan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM time_spans ORDER BY start_time DESC`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime).
 			AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime))
@@ -105,7 +105,7 @@ func TestListTimeSpans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM time_spans ORDER BY start_time DESC`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols))
 
 	got, err := repo.ListTimeSpans(ctx)
@@ -120,7 +120,7 @@ func TestCreateTimeSpan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimeSpan()
 
-	mock.ExpectQuery(`INSERT INTO time_spans`).
+	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -139,7 +139,7 @@ func TestCreateTimeSpan_GeneratesIdWhenNil(t *testing.T) {
 	ts.Id = uuid.Nil
 
 	generatedId := uuid.New()
-	mock.ExpectQuery(`INSERT INTO time_spans`).
+	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(generatedId, ts.Name, ts.StartTime, ts.EndTime))
@@ -184,7 +184,7 @@ func TestCreateTimeSpan_ZeroEndTimeAllowed(t *testing.T) {
 	ts := aTimeSpan()
 	ts.EndTime = time.Time{}
 
-	mock.ExpectQuery(`INSERT INTO time_spans`).
+	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -202,7 +202,7 @@ func TestUpdateTimeSpan_Success(t *testing.T) {
 	ts := aTimeSpan()
 	ts.Name = "renamed session"
 
-	mock.ExpectQuery(`UPDATE time_spans`).
+	mock.ExpectQuery(`UPDATE timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timeSpanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -219,7 +219,7 @@ func TestUpdateTimeSpan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimeSpan()
 
-	mock.ExpectQuery(`UPDATE time_spans`).
+	mock.ExpectQuery(`UPDATE timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnError(pgx.ErrNoRows)
 
@@ -262,7 +262,7 @@ func TestDeleteTimeSpan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM time_spans WHERE id = \$1`).
+	mock.ExpectExec(`DELETE FROM timespans WHERE id = \$1`).
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
@@ -274,7 +274,7 @@ func TestDeleteTimeSpan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM time_spans WHERE id = \$1`).
+	mock.ExpectExec(`DELETE FROM timespans WHERE id = \$1`).
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 
