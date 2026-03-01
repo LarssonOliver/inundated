@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/larssonoliver/inundated/internal/api"
@@ -15,24 +17,38 @@ import (
 	"github.com/larssonoliver/inundated/internal/config"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/larssonoliver/inundated/internal/repository/postgres"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
-func setupRepository() repository.Repository {
-	return memory.NewMemoryStore()
+func setupRepository(ctx context.Context, databaseUrl string) repository.Repository {
+	if databaseUrl == "in-memory" {
+		log.Println("Using in-memory repository (not recommended for production)")
+		return memory.NewMemoryStore()
+	}
+	if strings.HasPrefix(databaseUrl, "postgresql://") {
+		log.Printf("Using postgres repository")
+		repository, err := postgres.NewPostgresStore(ctx, databaseUrl)
+		if err != nil {
+			log.Fatalf("failed to connect to PostgreSQL: %v", err)
+		}
+		return repository
+	}
+	log.Fatalf("unsupported database URL: %s", databaseUrl)
+	return nil
 }
 
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-        if errors.Is(err, flag.ErrHelp) {
-            os.Exit(0) // -help is not an error
-        }
-        fmt.Fprintf(os.Stderr, "configuration error: %v\n", err)
-        os.Exit(1)
-    }
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0) // -help is not an error
+		}
+		fmt.Fprintf(os.Stderr, "configuration error: %v\n", err)
+		os.Exit(1)
+	}
 
-	repo := setupRepository()
+	repo := setupRepository(context.Background(), cfg.DatabaseURL)
 	svc := service.NewService(repo)
 	handler := handlers.NewHandler(svc)
 	server := api.NewServer(handler)
