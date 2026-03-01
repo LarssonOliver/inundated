@@ -22,19 +22,22 @@ func TestDefaults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cfg.Host, "0.0.0.0")
 	assert.Equal(t, cfg.Port, 8080)
+	assert.Equal(t, cfg.DatabaseURL, "in-memory")
 	assert.Equal(t, cfg.LogLevel, "info")
 }
 
 func TestEnvVarOverridesDefault(t *testing.T) {
 	env := map[string]string{
-		"HOST":      "1.1.1.1",
-		"PORT":      "9090",
-		"LOG_LEVEL": "warn",
+		"HOST":         "1.1.1.1",
+		"PORT":         "9090",
+		"DATABASE_URL": "postgres://user:pass@localhost:5432/db",
+		"LOG_LEVEL":    "warn",
 	}
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
 	assert.NoError(t, err)
 	assert.Equal(t, cfg.Host, "1.1.1.1")
 	assert.Equal(t, cfg.Port, 9090)
+	assert.Equal(t, cfg.DatabaseURL, "postgres://user:pass@localhost:5432/db")
 	assert.Equal(t, cfg.LogLevel, "warn")
 }
 
@@ -57,6 +60,14 @@ func TestValidationRejectsInvalidPort(t *testing.T) {
 func TestValidationRejectsInvalidLogLevel(t *testing.T) {
 	_, err := config.Load(
 		config.WithArgs([]string{"-log-level=verbose"}),
+		config.WithEnvLookup(fakeEnv(nil)),
+	)
+	assert.Error(t, err)
+}
+
+func TestValidationRejectsEmptyDatabaseUrl(t *testing.T) {
+	_, err := config.Load(
+		config.WithArgs([]string{"-database-url="}),
 		config.WithEnvLookup(fakeEnv(nil)),
 	)
 	assert.Error(t, err)
