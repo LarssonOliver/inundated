@@ -15,7 +15,7 @@ type MockRepository struct {
 	mock.Mock
 }
 
-var _ repository.Repository= (*MockRepository)(nil)
+var _ repository.Repository = (*MockRepository)(nil)
 
 func (m *MockRepository) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
 	args := m.Called(ctx, id)

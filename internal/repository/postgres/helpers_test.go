@@ -60,5 +60,3 @@ func aTimeSpan() model.TimeSpan {
 		TagIds:    []uuid.UUID{uuid.New()},
 	}
 }
-
-

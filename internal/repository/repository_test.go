@@ -96,7 +96,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			_, err := repo.UpdateTag(ctx, model.Tag{
-				Id:   uuid.New(),
+				Id:    uuid.New(),
 				Name:  "ghost",
 				Color: "#000000",
 			})

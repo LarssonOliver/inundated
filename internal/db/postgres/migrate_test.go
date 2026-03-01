@@ -23,7 +23,6 @@ func sptr(s string) *string {
 	return &s
 }
 
-
 func TestMigrations_ApplyCleanly(t *testing.T) {
 	ctx := context.Background()
 	pool, dsn, terminate := testutils.StartPostgresContainer(ctx, t)

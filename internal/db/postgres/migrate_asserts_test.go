@@ -88,7 +88,6 @@ func assertIndexExists(
 	require.True(t, exists, "expected index %q to exist", indexName)
 }
 
-
 func assertForeignKeyExists(
 	t *testing.T,
 	ctx context.Context,

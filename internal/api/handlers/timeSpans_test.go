@@ -336,7 +336,7 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 			name:      "successfully updates timespan",
 			requestId: existingID,
 			request: api.UpdateTimeSpan{
-				Name: &name,
+				Name:   &name,
 				TagIds: &[]uuid.UUID{},
 			},
 			getFn: func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
@@ -346,8 +346,8 @@ func TestTimeSpanHandler_UpdateTimeSpan(t *testing.T) {
 				return timespan, nil
 			},
 			want: api.TimeSpan{
-				Id:   existingID,
-				Name: name,
+				Id:     existingID,
+				Name:   name,
 				TagIds: nil,
 			},
 			wantErr: false,

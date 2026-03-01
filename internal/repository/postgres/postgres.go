@@ -51,4 +51,3 @@ type Querier interface {
 
 // Ensure *pgxpool.Pool satisfies Querier at compile time.
 var _ Querier = (*pgxpool.Pool)(nil)
-

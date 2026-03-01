@@ -211,4 +211,3 @@ func TestDeleteTag_NilId(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
-
