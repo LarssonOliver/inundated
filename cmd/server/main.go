@@ -21,6 +21,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/repository/postgres"
 	"github.com/larssonoliver/inundated/internal/service"
+	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
 )
 
 var Version = "dev"
@@ -32,6 +33,12 @@ func setupRepository(ctx context.Context, databaseUrl string) repository.Reposit
 	}
 	if strings.HasPrefix(databaseUrl, "postgresql://") {
 		log.Printf("Using postgres repository")
+		log.Printf("Applying database migrations...")
+		err := postgresdb.ApplyMigrations(ctx, databaseUrl)
+		if err != nil {
+			log.Fatalf("failed to apply database migrations: %v", err)
+		}
+
 		repository, err := postgres.NewPostgresStore(ctx, databaseUrl)
 		if err != nil {
 			log.Fatalf("failed to connect to PostgreSQL: %v", err)
