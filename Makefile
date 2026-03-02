@@ -4,7 +4,7 @@ OPENAPI_GENERATOR_TAG ?= latest-release
 BINARY_DIR := bin
 BINARY := ${BINARY_DIR}/inundated
 
-.PHONY: build dev
+.PHONY: build dev build-frontend
 build: ${BINARY}
 
 dev:
@@ -16,6 +16,16 @@ ${BINARY}: build-frontend
 
 build-frontend:
 	cd frontend && npm install && npm run build
+
+
+# Image builds
+.PHONY: image-push
+image-push:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--file build/Dockerfile \
+		--tag larssonoliver/inundated:latest \
+		--push .
 
 # Run tests
 .PHONY: test test-backend test-frontend
