@@ -1,0 +1,10 @@
+.git/
+bin/
+build/
+openapi/
+test/
+
+.dockerignore
+.gitignore
+
+README.md
