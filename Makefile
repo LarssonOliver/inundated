@@ -1,6 +1,8 @@
 # This should probably be pinned in the future
 OPENAPI_GENERATOR_TAG ?= latest-release
 
+VERSION ?= $(shell git describe --tags --always --dirty)
+
 BINARY_DIR := bin
 BINARY := ${BINARY_DIR}/inundated
 
@@ -17,12 +19,12 @@ ${BINARY}: build-frontend
 build-frontend:
 	cd frontend && npm install && npm run build
 
-
 # Image builds
 .PHONY: image-push
 image-push:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
+		--build-arg VERSION=${VERSION} \
 		--file build/Dockerfile \
 		--tag larssonoliver/inundated:latest \
 		--push .

@@ -23,6 +23,8 @@ import (
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
+var Version = "dev"
+
 func setupRepository(ctx context.Context, databaseUrl string) repository.Repository {
 	if databaseUrl == "in-memory" {
 		log.Println("Using in-memory repository (not recommended for production)")
@@ -85,6 +87,6 @@ func main() {
 		Addr:    addrStr,
 	}
 
-	log.Println("Starting server on", addrStr)
+	log.Printf("Starting inundated %s on %s", Version, addrStr)
 	log.Fatal(s.ListenAndServe())
 }
