@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/larssonoliver/inundated/frontend"
 )
 
 func spaHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+
 		// Try to serve static file
-		_, err := frontend.FrontendFS.Open(r.URL.Path)
+		_, err := frontend.FrontendFS.Open(path)
 		if err == nil {
 			handler.ServeHTTP(w, r)
 			return
