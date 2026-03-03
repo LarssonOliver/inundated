@@ -8,34 +8,34 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository"
 )
 
-type TimeSpanServiceImpl struct {
-	repository repository.TimeSpanRepository
+type TimespanServiceImpl struct {
+	repository repository.TimespanRepository
 }
 
-var _ TimeSpanService = (*TimeSpanServiceImpl)(nil)
+var _ TimespanService = (*TimespanServiceImpl)(nil)
 
-func NewTimeSpanService(repo repository.TimeSpanRepository) *TimeSpanServiceImpl {
-	return &TimeSpanServiceImpl{
+func NewTimespanService(repo repository.TimespanRepository) *TimespanServiceImpl {
+	return &TimespanServiceImpl{
 		repository: repo,
 	}
 }
 
-func (s *TimeSpanServiceImpl) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
-	return s.repository.GetTimeSpan(ctx, id)
+func (s *TimespanServiceImpl) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+	return s.repository.GetTimespan(ctx, id)
 }
 
-func (s *TimeSpanServiceImpl) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error) {
-	return s.repository.ListTimeSpans(ctx)
+func (s *TimespanServiceImpl) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
+	return s.repository.ListTimespans(ctx)
 }
 
-func (s *TimeSpanServiceImpl) CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	return s.repository.CreateTimeSpan(ctx, timeSpan)
+func (s *TimespanServiceImpl) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	return s.repository.CreateTimespan(ctx, timespan)
 }
 
-func (s *TimeSpanServiceImpl) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	return s.repository.UpdateTimeSpan(ctx, timeSpan)
+func (s *TimespanServiceImpl) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	return s.repository.UpdateTimespan(ctx, timespan)
 }
 
-func (s *TimeSpanServiceImpl) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error {
-	return s.repository.DeleteTimeSpan(ctx, id)
+func (s *TimespanServiceImpl) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+	return s.repository.DeleteTimespan(ctx, id)
 }

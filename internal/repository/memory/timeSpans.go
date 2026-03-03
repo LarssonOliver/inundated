@@ -9,109 +9,109 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository"
 )
 
-type TimeSpanStore struct {
+type TimespanStore struct {
 	mu   sync.RWMutex
-	data map[uuid.UUID]model.TimeSpan
+	data map[uuid.UUID]model.Timespan
 	tags repository.TagRepository
 }
 
-var _ repository.TimeSpanRepository = (*TimeSpanStore)(nil)
+var _ repository.TimespanRepository = (*TimespanStore)(nil)
 
-func NewTimeSpanStore(tags repository.TagRepository) *TimeSpanStore {
-	return &TimeSpanStore{
+func NewTimespanStore(tags repository.TagRepository) *TimespanStore {
+	return &TimespanStore{
 		mu:   sync.RWMutex{},
-		data: make(map[uuid.UUID]model.TimeSpan),
+		data: make(map[uuid.UUID]model.Timespan),
 		tags: tags,
 	}
 }
 
-// CreateTimeSpan implements [repository.TimeSpanRepository].
-func (t *TimeSpanStore) CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	if timeSpan.Name == "" || timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() || timeSpan.EndTime.Before(timeSpan.StartTime) || timeSpan.EndTime.Equal(timeSpan.StartTime) {
-		return model.TimeSpan{}, model.ErrInvalidArgument
+// CreateTimespan implements [repository.TimespanRepository].
+func (t *TimespanStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	if timespan.Name == "" || timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
+		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
 	var tagIds []uuid.UUID
 
-	if timeSpan.TagIds != nil {
-		if !tagsExist(ctx, t.tags, timeSpan.TagIds) {
-			return model.TimeSpan{}, model.ErrInvalidReference
+	if timespan.TagIds != nil {
+		if !tagsExist(ctx, t.tags, timespan.TagIds) {
+			return model.Timespan{}, model.ErrInvalidReference
 		}
 
-		tagIds = make([]uuid.UUID, len(timeSpan.TagIds))
-		copy(tagIds, timeSpan.TagIds)
+		tagIds = make([]uuid.UUID, len(timespan.TagIds))
+		copy(tagIds, timespan.TagIds)
 	} else {
 		tagIds = []uuid.UUID{}
 	}
 
 	newId := uuid.New()
-	newTimeSpan := model.TimeSpan{
+	newTimespan := model.Timespan{
 		Id:        newId,
-		Name:      timeSpan.Name,
-		StartTime: timeSpan.StartTime,
-		EndTime:   timeSpan.EndTime,
+		Name:      timespan.Name,
+		StartTime: timespan.StartTime,
+		EndTime:   timespan.EndTime,
 		TagIds:    tagIds,
 	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.data[newId] = newTimeSpan
-	return newTimeSpan, nil
+	t.data[newId] = newTimespan
+	return newTimespan, nil
 }
 
-// GetTimeSpan implements [repository.TimeSpanRepository].
-func (t *TimeSpanStore) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
+// GetTimespan implements [repository.TimespanRepository].
+func (t *TimespanStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timeSpan, exists := t.data[id]
+	timespan, exists := t.data[id]
 	if !exists {
-		return model.TimeSpan{}, model.ErrNotFound
+		return model.Timespan{}, model.ErrNotFound
 	}
 
-	return timeSpan, nil
+	return timespan, nil
 }
 
-// ListTimeSpans implements [repository.TimeSpanRepository].
-func (t *TimeSpanStore) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error) {
+// ListTimespans implements [repository.TimespanRepository].
+func (t *TimespanStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timeSpans := make([]model.TimeSpan, 0, len(t.data))
+	timespans := make([]model.Timespan, 0, len(t.data))
 
-	for _, timeSpan := range t.data {
-		timeSpans = append(timeSpans, timeSpan)
+	for _, timespan := range t.data {
+		timespans = append(timespans, timespan)
 	}
 
-	return timeSpans, nil
+	return timespans, nil
 }
 
-// UpdateTimeSpan implements [repository.TimeSpanRepository].
-func (t *TimeSpanStore) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	if timeSpan.Name == "" || timeSpan.StartTime.IsZero() || timeSpan.EndTime.IsZero() || timeSpan.EndTime.Before(timeSpan.StartTime) || timeSpan.EndTime.Equal(timeSpan.StartTime) {
-		return model.TimeSpan{}, model.ErrInvalidArgument
+// UpdateTimespan implements [repository.TimespanRepository].
+func (t *TimespanStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	if timespan.Name == "" || timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
+		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
-	if timeSpan.TagIds != nil && !tagsExist(ctx, t.tags, timeSpan.TagIds) {
-		return model.TimeSpan{}, model.ErrInvalidReference
+	if timespan.TagIds != nil && !tagsExist(ctx, t.tags, timespan.TagIds) {
+		return model.Timespan{}, model.ErrInvalidReference
 	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.data[timeSpan.Id]
+	_, exists := t.data[timespan.Id]
 	if !exists {
-		return model.TimeSpan{}, model.ErrNotFound
+		return model.Timespan{}, model.ErrNotFound
 	}
 
-	t.data[timeSpan.Id] = timeSpan
-	return timeSpan, nil
+	t.data[timespan.Id] = timespan
+	return timespan, nil
 }
 
-// DeleteTimeSpan implements [repository.TimeSpanRepository].
-func (t *TimeSpanStore) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error {
-	// Skip locking for write if the timeSpan does not exist
+// DeleteTimespan implements [repository.TimespanRepository].
+func (t *TimespanStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+	// Skip locking for write if the timespan does not exist
 	t.mu.RLock()
 	_, exists := t.data[id]
 	t.mu.RUnlock()

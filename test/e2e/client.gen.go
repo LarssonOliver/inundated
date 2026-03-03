@@ -32,10 +32,10 @@ type CreateTag struct {
 	Name  string `json:"name"`
 }
 
-// CreateTimeSpan defines model for CreateTimeSpan.
-type CreateTimeSpan struct {
+// CreateTimespan defines model for CreateTimespan.
+type CreateTimespan struct {
 	EndTime   time.Time             `json:"endTime"`
-	Name      string                `json:"name"`
+	Name      *string               `json:"name,omitempty"`
 	StartTime time.Time             `json:"startTime"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
@@ -56,11 +56,11 @@ type Tag struct {
 	Name  string             `json:"name"`
 }
 
-// TimeSpan defines model for TimeSpan.
-type TimeSpan struct {
+// Timespan defines model for Timespan.
+type Timespan struct {
 	EndTime   time.Time             `json:"endTime"`
 	Id        openapi_types.UUID    `json:"id"`
-	Name      string                `json:"name"`
+	Name      *string               `json:"name,omitempty"`
 	StartTime time.Time             `json:"startTime"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
@@ -79,8 +79,8 @@ type UpdateTag struct {
 	Name  *string `json:"name,omitempty"`
 }
 
-// UpdateTimeSpan defines model for UpdateTimeSpan.
-type UpdateTimeSpan struct {
+// UpdateTimespan defines model for UpdateTimespan.
+type UpdateTimespan struct {
 	EndTime   *time.Time            `json:"endTime,omitempty"`
 	Name      *string               `json:"name,omitempty"`
 	StartTime *time.Time            `json:"startTime,omitempty"`
@@ -99,11 +99,11 @@ type CreateTagJSONRequestBody = CreateTag
 // UpdateTagJSONRequestBody defines body for UpdateTag for application/json ContentType.
 type UpdateTagJSONRequestBody = UpdateTag
 
-// CreateTimeSpanJSONRequestBody defines body for CreateTimeSpan for application/json ContentType.
-type CreateTimeSpanJSONRequestBody = CreateTimeSpan
+// CreateTimespanJSONRequestBody defines body for CreateTimespan for application/json ContentType.
+type CreateTimespanJSONRequestBody = CreateTimespan
 
-// UpdateTimeSpanJSONRequestBody defines body for UpdateTimeSpan for application/json ContentType.
-type UpdateTimeSpanJSONRequestBody = UpdateTimeSpan
+// UpdateTimespanJSONRequestBody defines body for UpdateTimespan for application/json ContentType.
+type UpdateTimespanJSONRequestBody = UpdateTimespan
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -216,24 +216,24 @@ type ClientInterface interface {
 
 	UpdateTag(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListTimeSpans request
-	ListTimeSpans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ListTimespans request
+	ListTimespans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateTimeSpanWithBody request with any body
-	CreateTimeSpanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CreateTimespanWithBody request with any body
+	CreateTimespanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTimeSpan(ctx context.Context, body CreateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTimespan(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteTimeSpan request
-	DeleteTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteTimespan request
+	DeleteTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetTimeSpan request
-	GetTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetTimespan request
+	GetTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateTimeSpanWithBody request with any body
-	UpdateTimeSpanWithBody(ctx context.Context, timeSpanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// UpdateTimespanWithBody request with any body
+	UpdateTimespanWithBody(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, body UpdateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTimespan(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -404,8 +404,8 @@ func (c *Client) UpdateTag(ctx context.Context, tagId openapi_types.UUID, body U
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTimeSpans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTimeSpansRequest(c.Server)
+func (c *Client) ListTimespans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTimespansRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -416,8 +416,8 @@ func (c *Client) ListTimeSpans(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTimeSpanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTimeSpanRequestWithBody(c.Server, contentType, body)
+func (c *Client) CreateTimespanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTimespanRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -428,8 +428,8 @@ func (c *Client) CreateTimeSpanWithBody(ctx context.Context, contentType string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTimeSpan(ctx context.Context, body CreateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTimeSpanRequest(c.Server, body)
+func (c *Client) CreateTimespan(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTimespanRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -440,8 +440,8 @@ func (c *Client) CreateTimeSpan(ctx context.Context, body CreateTimeSpanJSONRequ
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTimeSpanRequest(c.Server, timeSpanId)
+func (c *Client) DeleteTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTimespanRequest(c.Server, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -452,8 +452,8 @@ func (c *Client) DeleteTimeSpan(ctx context.Context, timeSpanId openapi_types.UU
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTimeSpanRequest(c.Server, timeSpanId)
+func (c *Client) GetTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTimespanRequest(c.Server, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -464,8 +464,8 @@ func (c *Client) GetTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimeSpanWithBody(ctx context.Context, timeSpanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTimeSpanRequestWithBody(c.Server, timeSpanId, contentType, body)
+func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTimespanRequestWithBody(c.Server, timespanId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -476,8 +476,8 @@ func (c *Client) UpdateTimeSpanWithBody(ctx context.Context, timeSpanId openapi_
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimeSpan(ctx context.Context, timeSpanId openapi_types.UUID, body UpdateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTimeSpanRequest(c.Server, timeSpanId, body)
+func (c *Client) UpdateTimespan(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTimespanRequest(c.Server, timespanId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -852,8 +852,8 @@ func NewUpdateTagRequestWithBody(server string, tagId openapi_types.UUID, conten
 	return req, nil
 }
 
-// NewListTimeSpansRequest generates requests for ListTimeSpans
-func NewListTimeSpansRequest(server string) (*http.Request, error) {
+// NewListTimespansRequest generates requests for ListTimespans
+func NewListTimespansRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -861,7 +861,7 @@ func NewListTimeSpansRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/time-spans")
+	operationPath := fmt.Sprintf("/timespans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -879,19 +879,19 @@ func NewListTimeSpansRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewCreateTimeSpanRequest calls the generic CreateTimeSpan builder with application/json body
-func NewCreateTimeSpanRequest(server string, body CreateTimeSpanJSONRequestBody) (*http.Request, error) {
+// NewCreateTimespanRequest calls the generic CreateTimespan builder with application/json body
+func NewCreateTimespanRequest(server string, body CreateTimespanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTimeSpanRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateTimespanRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewCreateTimeSpanRequestWithBody generates requests for CreateTimeSpan with any type of body
-func NewCreateTimeSpanRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewCreateTimespanRequestWithBody generates requests for CreateTimespan with any type of body
+func NewCreateTimespanRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -899,7 +899,7 @@ func NewCreateTimeSpanRequestWithBody(server string, contentType string, body io
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/time-spans")
+	operationPath := fmt.Sprintf("/timespans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -919,13 +919,13 @@ func NewCreateTimeSpanRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
-// NewDeleteTimeSpanRequest generates requests for DeleteTimeSpan
-func NewDeleteTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*http.Request, error) {
+// NewDeleteTimespanRequest generates requests for DeleteTimespan
+func NewDeleteTimespanRequest(server string, timespanId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timeSpanId", runtime.ParamLocationPath, timeSpanId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timespanId", runtime.ParamLocationPath, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -935,7 +935,7 @@ func NewDeleteTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/time-spans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -953,13 +953,13 @@ func NewDeleteTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*ht
 	return req, nil
 }
 
-// NewGetTimeSpanRequest generates requests for GetTimeSpan
-func NewGetTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*http.Request, error) {
+// NewGetTimespanRequest generates requests for GetTimespan
+func NewGetTimespanRequest(server string, timespanId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timeSpanId", runtime.ParamLocationPath, timeSpanId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timespanId", runtime.ParamLocationPath, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -969,7 +969,7 @@ func NewGetTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/time-spans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -987,24 +987,24 @@ func NewGetTimeSpanRequest(server string, timeSpanId openapi_types.UUID) (*http.
 	return req, nil
 }
 
-// NewUpdateTimeSpanRequest calls the generic UpdateTimeSpan builder with application/json body
-func NewUpdateTimeSpanRequest(server string, timeSpanId openapi_types.UUID, body UpdateTimeSpanJSONRequestBody) (*http.Request, error) {
+// NewUpdateTimespanRequest calls the generic UpdateTimespan builder with application/json body
+func NewUpdateTimespanRequest(server string, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTimeSpanRequestWithBody(server, timeSpanId, "application/json", bodyReader)
+	return NewUpdateTimespanRequestWithBody(server, timespanId, "application/json", bodyReader)
 }
 
-// NewUpdateTimeSpanRequestWithBody generates requests for UpdateTimeSpan with any type of body
-func NewUpdateTimeSpanRequestWithBody(server string, timeSpanId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+// NewUpdateTimespanRequestWithBody generates requests for UpdateTimespan with any type of body
+func NewUpdateTimespanRequestWithBody(server string, timespanId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timeSpanId", runtime.ParamLocationPath, timeSpanId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "timespanId", runtime.ParamLocationPath, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,7 +1014,7 @@ func NewUpdateTimeSpanRequestWithBody(server string, timeSpanId openapi_types.UU
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/time-spans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1115,24 +1115,24 @@ type ClientWithResponsesInterface interface {
 
 	UpdateTagWithResponse(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
-	// ListTimeSpansWithResponse request
-	ListTimeSpansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimeSpansResponse, error)
+	// ListTimespansWithResponse request
+	ListTimespansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
 
-	// CreateTimeSpanWithBodyWithResponse request with any body
-	CreateTimeSpanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimeSpanResponse, error)
+	// CreateTimespanWithBodyWithResponse request with any body
+	CreateTimespanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
 
-	CreateTimeSpanWithResponse(ctx context.Context, body CreateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimeSpanResponse, error)
+	CreateTimespanWithResponse(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
 
-	// DeleteTimeSpanWithResponse request
-	DeleteTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimeSpanResponse, error)
+	// DeleteTimespanWithResponse request
+	DeleteTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error)
 
-	// GetTimeSpanWithResponse request
-	GetTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimeSpanResponse, error)
+	// GetTimespanWithResponse request
+	GetTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error)
 
-	// UpdateTimeSpanWithBodyWithResponse request with any body
-	UpdateTimeSpanWithBodyWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimeSpanResponse, error)
+	// UpdateTimespanWithBodyWithResponse request with any body
+	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
-	UpdateTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, body UpdateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimeSpanResponse, error)
+	UpdateTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 }
 
 type ListProjectsResponse struct {
@@ -1353,14 +1353,14 @@ func (r UpdateTagResponse) StatusCode() int {
 	return 0
 }
 
-type ListTimeSpansResponse struct {
+type ListTimespansResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]TimeSpan
+	JSON200      *[]Timespan
 }
 
 // Status returns HTTPResponse.Status
-func (r ListTimeSpansResponse) Status() string {
+func (r ListTimespansResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1368,21 +1368,21 @@ func (r ListTimeSpansResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ListTimeSpansResponse) StatusCode() int {
+func (r ListTimespansResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type CreateTimeSpanResponse struct {
+type CreateTimespanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *TimeSpan
+	JSON201      *Timespan
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateTimeSpanResponse) Status() string {
+func (r CreateTimespanResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1390,20 +1390,20 @@ func (r CreateTimeSpanResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateTimeSpanResponse) StatusCode() int {
+func (r CreateTimespanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteTimeSpanResponse struct {
+type DeleteTimespanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteTimeSpanResponse) Status() string {
+func (r DeleteTimespanResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1411,21 +1411,21 @@ func (r DeleteTimeSpanResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteTimeSpanResponse) StatusCode() int {
+func (r DeleteTimespanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetTimeSpanResponse struct {
+type GetTimespanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *TimeSpan
+	JSON200      *Timespan
 }
 
 // Status returns HTTPResponse.Status
-func (r GetTimeSpanResponse) Status() string {
+func (r GetTimespanResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1433,21 +1433,21 @@ func (r GetTimeSpanResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetTimeSpanResponse) StatusCode() int {
+func (r GetTimespanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type UpdateTimeSpanResponse struct {
+type UpdateTimespanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *TimeSpan
+	JSON200      *Timespan
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateTimeSpanResponse) Status() string {
+func (r UpdateTimespanResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1455,7 +1455,7 @@ func (r UpdateTimeSpanResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateTimeSpanResponse) StatusCode() int {
+func (r UpdateTimespanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1584,65 +1584,65 @@ func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId o
 	return ParseUpdateTagResponse(rsp)
 }
 
-// ListTimeSpansWithResponse request returning *ListTimeSpansResponse
-func (c *ClientWithResponses) ListTimeSpansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimeSpansResponse, error) {
-	rsp, err := c.ListTimeSpans(ctx, reqEditors...)
+// ListTimespansWithResponse request returning *ListTimespansResponse
+func (c *ClientWithResponses) ListTimespansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error) {
+	rsp, err := c.ListTimespans(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseListTimeSpansResponse(rsp)
+	return ParseListTimespansResponse(rsp)
 }
 
-// CreateTimeSpanWithBodyWithResponse request with arbitrary body returning *CreateTimeSpanResponse
-func (c *ClientWithResponses) CreateTimeSpanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimeSpanResponse, error) {
-	rsp, err := c.CreateTimeSpanWithBody(ctx, contentType, body, reqEditors...)
+// CreateTimespanWithBodyWithResponse request with arbitrary body returning *CreateTimespanResponse
+func (c *ClientWithResponses) CreateTimespanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
+	rsp, err := c.CreateTimespanWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateTimeSpanResponse(rsp)
+	return ParseCreateTimespanResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTimeSpanWithResponse(ctx context.Context, body CreateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimeSpanResponse, error) {
-	rsp, err := c.CreateTimeSpan(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateTimespanWithResponse(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
+	rsp, err := c.CreateTimespan(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateTimeSpanResponse(rsp)
+	return ParseCreateTimespanResponse(rsp)
 }
 
-// DeleteTimeSpanWithResponse request returning *DeleteTimeSpanResponse
-func (c *ClientWithResponses) DeleteTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimeSpanResponse, error) {
-	rsp, err := c.DeleteTimeSpan(ctx, timeSpanId, reqEditors...)
+// DeleteTimespanWithResponse request returning *DeleteTimespanResponse
+func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error) {
+	rsp, err := c.DeleteTimespan(ctx, timespanId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteTimeSpanResponse(rsp)
+	return ParseDeleteTimespanResponse(rsp)
 }
 
-// GetTimeSpanWithResponse request returning *GetTimeSpanResponse
-func (c *ClientWithResponses) GetTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimeSpanResponse, error) {
-	rsp, err := c.GetTimeSpan(ctx, timeSpanId, reqEditors...)
+// GetTimespanWithResponse request returning *GetTimespanResponse
+func (c *ClientWithResponses) GetTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error) {
+	rsp, err := c.GetTimespan(ctx, timespanId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetTimeSpanResponse(rsp)
+	return ParseGetTimespanResponse(rsp)
 }
 
-// UpdateTimeSpanWithBodyWithResponse request with arbitrary body returning *UpdateTimeSpanResponse
-func (c *ClientWithResponses) UpdateTimeSpanWithBodyWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimeSpanResponse, error) {
-	rsp, err := c.UpdateTimeSpanWithBody(ctx, timeSpanId, contentType, body, reqEditors...)
+// UpdateTimespanWithBodyWithResponse request with arbitrary body returning *UpdateTimespanResponse
+func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+	rsp, err := c.UpdateTimespanWithBody(ctx, timespanId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateTimeSpanResponse(rsp)
+	return ParseUpdateTimespanResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTimeSpanWithResponse(ctx context.Context, timeSpanId openapi_types.UUID, body UpdateTimeSpanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimeSpanResponse, error) {
-	rsp, err := c.UpdateTimeSpan(ctx, timeSpanId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+	rsp, err := c.UpdateTimespan(ctx, timespanId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateTimeSpanResponse(rsp)
+	return ParseUpdateTimespanResponse(rsp)
 }
 
 // ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call
@@ -1885,22 +1885,22 @@ func ParseUpdateTagResponse(rsp *http.Response) (*UpdateTagResponse, error) {
 	return response, nil
 }
 
-// ParseListTimeSpansResponse parses an HTTP response from a ListTimeSpansWithResponse call
-func ParseListTimeSpansResponse(rsp *http.Response) (*ListTimeSpansResponse, error) {
+// ParseListTimespansResponse parses an HTTP response from a ListTimespansWithResponse call
+func ParseListTimespansResponse(rsp *http.Response) (*ListTimespansResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ListTimeSpansResponse{
+	response := &ListTimespansResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []TimeSpan
+		var dest []Timespan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1911,22 +1911,22 @@ func ParseListTimeSpansResponse(rsp *http.Response) (*ListTimeSpansResponse, err
 	return response, nil
 }
 
-// ParseCreateTimeSpanResponse parses an HTTP response from a CreateTimeSpanWithResponse call
-func ParseCreateTimeSpanResponse(rsp *http.Response) (*CreateTimeSpanResponse, error) {
+// ParseCreateTimespanResponse parses an HTTP response from a CreateTimespanWithResponse call
+func ParseCreateTimespanResponse(rsp *http.Response) (*CreateTimespanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateTimeSpanResponse{
+	response := &CreateTimespanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest TimeSpan
+		var dest Timespan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1937,15 +1937,15 @@ func ParseCreateTimeSpanResponse(rsp *http.Response) (*CreateTimeSpanResponse, e
 	return response, nil
 }
 
-// ParseDeleteTimeSpanResponse parses an HTTP response from a DeleteTimeSpanWithResponse call
-func ParseDeleteTimeSpanResponse(rsp *http.Response) (*DeleteTimeSpanResponse, error) {
+// ParseDeleteTimespanResponse parses an HTTP response from a DeleteTimespanWithResponse call
+func ParseDeleteTimespanResponse(rsp *http.Response) (*DeleteTimespanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteTimeSpanResponse{
+	response := &DeleteTimespanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1953,22 +1953,22 @@ func ParseDeleteTimeSpanResponse(rsp *http.Response) (*DeleteTimeSpanResponse, e
 	return response, nil
 }
 
-// ParseGetTimeSpanResponse parses an HTTP response from a GetTimeSpanWithResponse call
-func ParseGetTimeSpanResponse(rsp *http.Response) (*GetTimeSpanResponse, error) {
+// ParseGetTimespanResponse parses an HTTP response from a GetTimespanWithResponse call
+func ParseGetTimespanResponse(rsp *http.Response) (*GetTimespanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetTimeSpanResponse{
+	response := &GetTimespanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TimeSpan
+		var dest Timespan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1979,22 +1979,22 @@ func ParseGetTimeSpanResponse(rsp *http.Response) (*GetTimeSpanResponse, error) 
 	return response, nil
 }
 
-// ParseUpdateTimeSpanResponse parses an HTTP response from a UpdateTimeSpanWithResponse call
-func ParseUpdateTimeSpanResponse(rsp *http.Response) (*UpdateTimeSpanResponse, error) {
+// ParseUpdateTimespanResponse parses an HTTP response from a UpdateTimespanWithResponse call
+func ParseUpdateTimespanResponse(rsp *http.Response) (*UpdateTimespanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateTimeSpanResponse{
+	response := &UpdateTimespanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TimeSpan
+		var dest Timespan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

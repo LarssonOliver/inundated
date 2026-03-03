@@ -48,20 +48,20 @@ type ServerInterface interface {
 	// (PATCH /tags/{tagId})
 	UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
 	// List time spans
-	// (GET /time-spans)
-	ListTimeSpans(w http.ResponseWriter, r *http.Request)
+	// (GET /timespans)
+	ListTimespans(w http.ResponseWriter, r *http.Request)
 	// Create time span
-	// (POST /time-spans)
-	CreateTimeSpan(w http.ResponseWriter, r *http.Request)
+	// (POST /timespans)
+	CreateTimespan(w http.ResponseWriter, r *http.Request)
 	// Delete time span
-	// (DELETE /time-spans/{timeSpanId})
-	DeleteTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID)
+	// (DELETE /timespans/{timespanId})
+	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
 	// Get time span
-	// (GET /time-spans/{timeSpanId})
-	GetTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID)
+	// (GET /timespans/{timespanId})
+	GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
 	// Update time span
-	// (PATCH /time-spans/{timeSpanId})
-	UpdateTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID)
+	// (PATCH /timespans/{timespanId})
+	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -129,32 +129,32 @@ func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId o
 }
 
 // List time spans
-// (GET /time-spans)
-func (_ Unimplemented) ListTimeSpans(w http.ResponseWriter, r *http.Request) {
+// (GET /timespans)
+func (_ Unimplemented) ListTimespans(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create time span
-// (POST /time-spans)
-func (_ Unimplemented) CreateTimeSpan(w http.ResponseWriter, r *http.Request) {
+// (POST /timespans)
+func (_ Unimplemented) CreateTimespan(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete time span
-// (DELETE /time-spans/{timeSpanId})
-func (_ Unimplemented) DeleteTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
+// (DELETE /timespans/{timespanId})
+func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get time span
-// (GET /time-spans/{timeSpanId})
-func (_ Unimplemented) GetTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
+// (GET /timespans/{timespanId})
+func (_ Unimplemented) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update time span
-// (PATCH /time-spans/{timeSpanId})
-func (_ Unimplemented) UpdateTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
+// (PATCH /timespans/{timespanId})
+func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -373,11 +373,11 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
-// ListTimeSpans operation middleware
-func (siw *ServerInterfaceWrapper) ListTimeSpans(w http.ResponseWriter, r *http.Request) {
+// ListTimespans operation middleware
+func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListTimeSpans(w, r)
+		siw.Handler.ListTimespans(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -387,11 +387,11 @@ func (siw *ServerInterfaceWrapper) ListTimeSpans(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
-// CreateTimeSpan operation middleware
-func (siw *ServerInterfaceWrapper) CreateTimeSpan(w http.ResponseWriter, r *http.Request) {
+// CreateTimespan operation middleware
+func (siw *ServerInterfaceWrapper) CreateTimespan(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateTimeSpan(w, r)
+		siw.Handler.CreateTimespan(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -401,22 +401,22 @@ func (siw *ServerInterfaceWrapper) CreateTimeSpan(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// DeleteTimeSpan operation middleware
-func (siw *ServerInterfaceWrapper) DeleteTimeSpan(w http.ResponseWriter, r *http.Request) {
+// DeleteTimespan operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTimespan(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
-	// ------------- Path parameter "timeSpanId" -------------
-	var timeSpanId openapi_types.UUID
+	// ------------- Path parameter "timespanId" -------------
+	var timespanId openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "timeSpanId", chi.URLParam(r, "timeSpanId"), &timeSpanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timeSpanId", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timespanId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteTimeSpan(w, r, timeSpanId)
+		siw.Handler.DeleteTimespan(w, r, timespanId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -426,22 +426,22 @@ func (siw *ServerInterfaceWrapper) DeleteTimeSpan(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// GetTimeSpan operation middleware
-func (siw *ServerInterfaceWrapper) GetTimeSpan(w http.ResponseWriter, r *http.Request) {
+// GetTimespan operation middleware
+func (siw *ServerInterfaceWrapper) GetTimespan(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
-	// ------------- Path parameter "timeSpanId" -------------
-	var timeSpanId openapi_types.UUID
+	// ------------- Path parameter "timespanId" -------------
+	var timespanId openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "timeSpanId", chi.URLParam(r, "timeSpanId"), &timeSpanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timeSpanId", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timespanId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetTimeSpan(w, r, timeSpanId)
+		siw.Handler.GetTimespan(w, r, timespanId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -451,22 +451,22 @@ func (siw *ServerInterfaceWrapper) GetTimeSpan(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// UpdateTimeSpan operation middleware
-func (siw *ServerInterfaceWrapper) UpdateTimeSpan(w http.ResponseWriter, r *http.Request) {
+// UpdateTimespan operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
-	// ------------- Path parameter "timeSpanId" -------------
-	var timeSpanId openapi_types.UUID
+	// ------------- Path parameter "timespanId" -------------
+	var timespanId openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "timeSpanId", chi.URLParam(r, "timeSpanId"), &timeSpanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timeSpanId", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timespanId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateTimeSpan(w, r, timeSpanId)
+		siw.Handler.UpdateTimespan(w, r, timespanId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -620,19 +620,19 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/tags/{tagId}", wrapper.UpdateTag)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/time-spans", wrapper.ListTimeSpans)
+		r.Get(options.BaseURL+"/timespans", wrapper.ListTimespans)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/time-spans", wrapper.CreateTimeSpan)
+		r.Post(options.BaseURL+"/timespans", wrapper.CreateTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/time-spans/{timeSpanId}", wrapper.DeleteTimeSpan)
+		r.Delete(options.BaseURL+"/timespans/{timespanId}", wrapper.DeleteTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/time-spans/{timeSpanId}", wrapper.GetTimeSpan)
+		r.Get(options.BaseURL+"/timespans/{timespanId}", wrapper.GetTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/time-spans/{timeSpanId}", wrapper.UpdateTimeSpan)
+		r.Patch(options.BaseURL+"/timespans/{timespanId}", wrapper.UpdateTimespan)
 	})
 
 	return r
@@ -886,126 +886,126 @@ func (response UpdateTag404Response) VisitUpdateTagResponse(w http.ResponseWrite
 	return nil
 }
 
-type ListTimeSpansRequestObject struct {
+type ListTimespansRequestObject struct {
 }
 
-type ListTimeSpansResponseObject interface {
-	VisitListTimeSpansResponse(w http.ResponseWriter) error
+type ListTimespansResponseObject interface {
+	VisitListTimespansResponse(w http.ResponseWriter) error
 }
 
-type ListTimeSpans200JSONResponse []TimeSpan
+type ListTimespans200JSONResponse []Timespan
 
-func (response ListTimeSpans200JSONResponse) VisitListTimeSpansResponse(w http.ResponseWriter) error {
+func (response ListTimespans200JSONResponse) VisitListTimespansResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateTimeSpanRequestObject struct {
-	Body *CreateTimeSpanJSONRequestBody
+type CreateTimespanRequestObject struct {
+	Body *CreateTimespanJSONRequestBody
 }
 
-type CreateTimeSpanResponseObject interface {
-	VisitCreateTimeSpanResponse(w http.ResponseWriter) error
+type CreateTimespanResponseObject interface {
+	VisitCreateTimespanResponse(w http.ResponseWriter) error
 }
 
-type CreateTimeSpan201JSONResponse TimeSpan
+type CreateTimespan201JSONResponse Timespan
 
-func (response CreateTimeSpan201JSONResponse) VisitCreateTimeSpanResponse(w http.ResponseWriter) error {
+func (response CreateTimespan201JSONResponse) VisitCreateTimespanResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateTimeSpan400Response struct {
+type CreateTimespan400Response struct {
 }
 
-func (response CreateTimeSpan400Response) VisitCreateTimeSpanResponse(w http.ResponseWriter) error {
+func (response CreateTimespan400Response) VisitCreateTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(400)
 	return nil
 }
 
-type DeleteTimeSpanRequestObject struct {
-	TimeSpanId openapi_types.UUID `json:"timeSpanId"`
+type DeleteTimespanRequestObject struct {
+	TimespanId openapi_types.UUID `json:"timespanId"`
 }
 
-type DeleteTimeSpanResponseObject interface {
-	VisitDeleteTimeSpanResponse(w http.ResponseWriter) error
+type DeleteTimespanResponseObject interface {
+	VisitDeleteTimespanResponse(w http.ResponseWriter) error
 }
 
-type DeleteTimeSpan204Response struct {
+type DeleteTimespan204Response struct {
 }
 
-func (response DeleteTimeSpan204Response) VisitDeleteTimeSpanResponse(w http.ResponseWriter) error {
+func (response DeleteTimespan204Response) VisitDeleteTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type DeleteTimeSpan404Response struct {
+type DeleteTimespan404Response struct {
 }
 
-func (response DeleteTimeSpan404Response) VisitDeleteTimeSpanResponse(w http.ResponseWriter) error {
+func (response DeleteTimespan404Response) VisitDeleteTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
 
-type GetTimeSpanRequestObject struct {
-	TimeSpanId openapi_types.UUID `json:"timeSpanId"`
+type GetTimespanRequestObject struct {
+	TimespanId openapi_types.UUID `json:"timespanId"`
 }
 
-type GetTimeSpanResponseObject interface {
-	VisitGetTimeSpanResponse(w http.ResponseWriter) error
+type GetTimespanResponseObject interface {
+	VisitGetTimespanResponse(w http.ResponseWriter) error
 }
 
-type GetTimeSpan200JSONResponse TimeSpan
+type GetTimespan200JSONResponse Timespan
 
-func (response GetTimeSpan200JSONResponse) VisitGetTimeSpanResponse(w http.ResponseWriter) error {
+func (response GetTimespan200JSONResponse) VisitGetTimespanResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetTimeSpan404Response struct {
+type GetTimespan404Response struct {
 }
 
-func (response GetTimeSpan404Response) VisitGetTimeSpanResponse(w http.ResponseWriter) error {
+func (response GetTimespan404Response) VisitGetTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
 
-type UpdateTimeSpanRequestObject struct {
-	TimeSpanId openapi_types.UUID `json:"timeSpanId"`
-	Body       *UpdateTimeSpanJSONRequestBody
+type UpdateTimespanRequestObject struct {
+	TimespanId openapi_types.UUID `json:"timespanId"`
+	Body       *UpdateTimespanJSONRequestBody
 }
 
-type UpdateTimeSpanResponseObject interface {
-	VisitUpdateTimeSpanResponse(w http.ResponseWriter) error
+type UpdateTimespanResponseObject interface {
+	VisitUpdateTimespanResponse(w http.ResponseWriter) error
 }
 
-type UpdateTimeSpan200JSONResponse TimeSpan
+type UpdateTimespan200JSONResponse Timespan
 
-func (response UpdateTimeSpan200JSONResponse) VisitUpdateTimeSpanResponse(w http.ResponseWriter) error {
+func (response UpdateTimespan200JSONResponse) VisitUpdateTimespanResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateTimeSpan400Response struct {
+type UpdateTimespan400Response struct {
 }
 
-func (response UpdateTimeSpan400Response) VisitUpdateTimeSpanResponse(w http.ResponseWriter) error {
+func (response UpdateTimespan400Response) VisitUpdateTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(400)
 	return nil
 }
 
-type UpdateTimeSpan404Response struct {
+type UpdateTimespan404Response struct {
 }
 
-func (response UpdateTimeSpan404Response) VisitUpdateTimeSpanResponse(w http.ResponseWriter) error {
+func (response UpdateTimespan404Response) VisitUpdateTimespanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -1043,20 +1043,20 @@ type StrictServerInterface interface {
 	// (PATCH /tags/{tagId})
 	UpdateTag(ctx context.Context, request UpdateTagRequestObject) (UpdateTagResponseObject, error)
 	// List time spans
-	// (GET /time-spans)
-	ListTimeSpans(ctx context.Context, request ListTimeSpansRequestObject) (ListTimeSpansResponseObject, error)
+	// (GET /timespans)
+	ListTimespans(ctx context.Context, request ListTimespansRequestObject) (ListTimespansResponseObject, error)
 	// Create time span
-	// (POST /time-spans)
-	CreateTimeSpan(ctx context.Context, request CreateTimeSpanRequestObject) (CreateTimeSpanResponseObject, error)
+	// (POST /timespans)
+	CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error)
 	// Delete time span
-	// (DELETE /time-spans/{timeSpanId})
-	DeleteTimeSpan(ctx context.Context, request DeleteTimeSpanRequestObject) (DeleteTimeSpanResponseObject, error)
+	// (DELETE /timespans/{timespanId})
+	DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error)
 	// Get time span
-	// (GET /time-spans/{timeSpanId})
-	GetTimeSpan(ctx context.Context, request GetTimeSpanRequestObject) (GetTimeSpanResponseObject, error)
+	// (GET /timespans/{timespanId})
+	GetTimespan(ctx context.Context, request GetTimespanRequestObject) (GetTimespanResponseObject, error)
 	// Update time span
-	// (PATCH /time-spans/{timeSpanId})
-	UpdateTimeSpan(ctx context.Context, request UpdateTimeSpanRequestObject) (UpdateTimeSpanResponseObject, error)
+	// (PATCH /timespans/{timespanId})
+	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -1368,23 +1368,23 @@ func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId
 	}
 }
 
-// ListTimeSpans operation middleware
-func (sh *strictHandler) ListTimeSpans(w http.ResponseWriter, r *http.Request) {
-	var request ListTimeSpansRequestObject
+// ListTimespans operation middleware
+func (sh *strictHandler) ListTimespans(w http.ResponseWriter, r *http.Request) {
+	var request ListTimespansRequestObject
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListTimeSpans(ctx, request.(ListTimeSpansRequestObject))
+		return sh.ssi.ListTimespans(ctx, request.(ListTimespansRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListTimeSpans")
+		handler = middleware(handler, "ListTimespans")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListTimeSpansResponseObject); ok {
-		if err := validResponse.VisitListTimeSpansResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListTimespansResponseObject); ok {
+		if err := validResponse.VisitListTimespansResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1392,11 +1392,11 @@ func (sh *strictHandler) ListTimeSpans(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// CreateTimeSpan operation middleware
-func (sh *strictHandler) CreateTimeSpan(w http.ResponseWriter, r *http.Request) {
-	var request CreateTimeSpanRequestObject
+// CreateTimespan operation middleware
+func (sh *strictHandler) CreateTimespan(w http.ResponseWriter, r *http.Request) {
+	var request CreateTimespanRequestObject
 
-	var body CreateTimeSpanJSONRequestBody
+	var body CreateTimespanJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -1404,18 +1404,18 @@ func (sh *strictHandler) CreateTimeSpan(w http.ResponseWriter, r *http.Request) 
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateTimeSpan(ctx, request.(CreateTimeSpanRequestObject))
+		return sh.ssi.CreateTimespan(ctx, request.(CreateTimespanRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateTimeSpan")
+		handler = middleware(handler, "CreateTimespan")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateTimeSpanResponseObject); ok {
-		if err := validResponse.VisitCreateTimeSpanResponse(w); err != nil {
+	} else if validResponse, ok := response.(CreateTimespanResponseObject); ok {
+		if err := validResponse.VisitCreateTimespanResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1423,25 +1423,25 @@ func (sh *strictHandler) CreateTimeSpan(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// DeleteTimeSpan operation middleware
-func (sh *strictHandler) DeleteTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
-	var request DeleteTimeSpanRequestObject
+// DeleteTimespan operation middleware
+func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+	var request DeleteTimespanRequestObject
 
-	request.TimeSpanId = timeSpanId
+	request.TimespanId = timespanId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteTimeSpan(ctx, request.(DeleteTimeSpanRequestObject))
+		return sh.ssi.DeleteTimespan(ctx, request.(DeleteTimespanRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteTimeSpan")
+		handler = middleware(handler, "DeleteTimespan")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteTimeSpanResponseObject); ok {
-		if err := validResponse.VisitDeleteTimeSpanResponse(w); err != nil {
+	} else if validResponse, ok := response.(DeleteTimespanResponseObject); ok {
+		if err := validResponse.VisitDeleteTimespanResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1449,25 +1449,25 @@ func (sh *strictHandler) DeleteTimeSpan(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-// GetTimeSpan operation middleware
-func (sh *strictHandler) GetTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
-	var request GetTimeSpanRequestObject
+// GetTimespan operation middleware
+func (sh *strictHandler) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+	var request GetTimespanRequestObject
 
-	request.TimeSpanId = timeSpanId
+	request.TimespanId = timespanId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetTimeSpan(ctx, request.(GetTimeSpanRequestObject))
+		return sh.ssi.GetTimespan(ctx, request.(GetTimespanRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetTimeSpan")
+		handler = middleware(handler, "GetTimespan")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetTimeSpanResponseObject); ok {
-		if err := validResponse.VisitGetTimeSpanResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetTimespanResponseObject); ok {
+		if err := validResponse.VisitGetTimespanResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1475,13 +1475,13 @@ func (sh *strictHandler) GetTimeSpan(w http.ResponseWriter, r *http.Request, tim
 	}
 }
 
-// UpdateTimeSpan operation middleware
-func (sh *strictHandler) UpdateTimeSpan(w http.ResponseWriter, r *http.Request, timeSpanId openapi_types.UUID) {
-	var request UpdateTimeSpanRequestObject
+// UpdateTimespan operation middleware
+func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+	var request UpdateTimespanRequestObject
 
-	request.TimeSpanId = timeSpanId
+	request.TimespanId = timespanId
 
-	var body UpdateTimeSpanJSONRequestBody
+	var body UpdateTimespanJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -1489,18 +1489,18 @@ func (sh *strictHandler) UpdateTimeSpan(w http.ResponseWriter, r *http.Request, 
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateTimeSpan(ctx, request.(UpdateTimeSpanRequestObject))
+		return sh.ssi.UpdateTimespan(ctx, request.(UpdateTimespanRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateTimeSpan")
+		handler = middleware(handler, "UpdateTimespan")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateTimeSpanResponseObject); ok {
-		if err := validResponse.VisitUpdateTimeSpanResponse(w); err != nil {
+	} else if validResponse, ok := response.(UpdateTimespanResponseObject); ok {
+		if err := validResponse.VisitUpdateTimespanResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

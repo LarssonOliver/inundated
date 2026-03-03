@@ -68,7 +68,7 @@ export class TimespansApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/time-spans`;
+        let urlPath = `/timespans`;
 
         const response = await this.request({
             path: urlPath,
@@ -105,7 +105,7 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/time-spans/{timespanId}`;
+        let urlPath = `/timespans/{timespanId}`;
         urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({
@@ -141,7 +141,7 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/time-spans/{timespanId}`;
+        let urlPath = `/timespans/{timespanId}`;
         urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({
@@ -171,7 +171,7 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/time-spans`;
+        let urlPath = `/timespans`;
 
         const response = await this.request({
             path: urlPath,
@@ -216,7 +216,7 @@ export class TimespansApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/time-spans/{timespanId}`;
+        let urlPath = `/timespans/{timespanId}`;
         urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
 
         const response = await this.request({

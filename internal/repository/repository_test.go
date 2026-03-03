@@ -267,7 +267,7 @@ func TestProjectRepositoryContract(t *testing.T) {
 	}
 }
 
-func TestTimeSpanRepositoryContract(t *testing.T) {
+func TestTimespanRepositoryContract(t *testing.T) {
 	ctx := context.Background()
 
 	run := func(
@@ -282,18 +282,18 @@ func TestTimeSpanRepositoryContract(t *testing.T) {
 			start := time.Now().Add(-time.Hour)
 			end := time.Now()
 
-			ts := model.TimeSpan{
+			ts := model.Timespan{
 				Name:      "Work session",
 				StartTime: start,
 				EndTime:   end,
 				TagIds:    tagIds,
 			}
 
-			created, err := repo.CreateTimeSpan(ctx, ts)
+			created, err := repo.CreateTimespan(ctx, ts)
 			ts.Id = created.Id
 			require.NoError(t, err)
 
-			got, err := repo.GetTimeSpan(ctx, ts.Id)
+			got, err := repo.GetTimespan(ctx, ts.Id)
 			require.NoError(t, err)
 			require.Equal(t, "Work session", got.Name)
 			require.True(t, got.StartTime.Equal(start), "expected start time %v, got %v", start, got.StartTime)
@@ -301,52 +301,65 @@ func TestTimeSpanRepositoryContract(t *testing.T) {
 			require.ElementsMatch(t, tagIds, got.TagIds)
 		})
 
+		// t.Run("CreateWithEmptyName", func(t *testing.T) {
+		// 	repo := newRepo(t)
+		// 	tagIds := seedTags(t, ctx, repo, 1)
+		// 	start := time.Now().Add(-time.Hour)
+		// 	end := time.Now()
+		// 	ts := model.Timespan{
+		// 		Name:      "",
+		// 		StartTime: start,
+		// 		EndTime:   end,
+		// 		TagIds:    tagIds,
+		// 	}
+		// })
+
 		t.Run("CreateFailsIfTagMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
-			ts := model.TimeSpan{
+			ts := model.Timespan{
 				Name:      "Invalid",
 				StartTime: time.Now(),
 				EndTime:   time.Now().Add(time.Hour),
 				TagIds:    []uuid.UUID{uuid.New()},
 			}
 
-			_, err := repo.CreateTimeSpan(ctx, ts)
+			_, err := repo.CreateTimespan(ctx, ts)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
 		t.Run("UpdateFailsIfTagMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
-			ts := model.TimeSpan{
+			ts := model.Timespan{
 				Name:      "Valid",
 				StartTime: time.Now(),
 				EndTime:   time.Now().Add(time.Hour),
 			}
-			created, _ := repo.CreateTimeSpan(ctx, ts)
+			created, _ := repo.CreateTimespan(ctx, ts)
 			ts.Id = created.Id
 
 			ts.TagIds = []uuid.UUID{uuid.New()}
 
-			_, err := repo.UpdateTimeSpan(ctx, ts)
+			_, err := repo.UpdateTimespan(ctx, ts)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
 		t.Run("Delete", func(t *testing.T) {
 			repo := newRepo(t)
 
-			ts := model.TimeSpan{
+			ts := model.Timespan{
 				Name:      "Temp",
 				StartTime: time.Now(),
 				EndTime:   time.Now().Add(time.Hour),
 			}
-			created, _ := repo.CreateTimeSpan(ctx, ts)
+			created, _ := repo.CreateTimespan(ctx, ts)
 			ts.Id = created.Id
 
-			err := repo.DeleteTimeSpan(ctx, ts.Id)
+			err := repo.DeleteTimespan(ctx, ts.Id)
 			require.NoError(t, err)
 
-			_, err = repo.GetTimeSpan(ctx, ts.Id)
+			_, err = repo.GetTimespan(ctx, ts.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}

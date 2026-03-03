@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type TimeSpan struct {
+type Timespan struct {
 	Id        uuid.UUID
 	Name      string
 	StartTime time.Time

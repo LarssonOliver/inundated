@@ -14,45 +14,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var timeSpanCols = []string{"id", "name", "start_time", "end_time"}
+var timespanCols = []string{"id", "name", "start_time", "end_time"}
 
-// expectTimeSpanTagsQuery registers the secondary tag-fetch expectation.
-func expectTimeSpanTagsQuery(mock pgxmock.PgxPoolIface, timeSpanId uuid.UUID, tagIds []uuid.UUID) {
+// expectTimespanTagsQuery registers the secondary tag-fetch expectation.
+func expectTimespanTagsQuery(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, tagIds []uuid.UUID) {
 	rows := pgxmock.NewRows([]string{"tag_id"})
 	for _, tid := range tagIds {
 		rows.AddRow(tid)
 	}
 	mock.ExpectQuery(`SELECT tag_id FROM timespan_tags WHERE timespan_id = \$1`).
-		WithArgs(timeSpanId).
+		WithArgs(timespanId).
 		WillReturnRows(rows)
 }
 
-// expectSetTimeSpanTags registers the delete + insert expectations.
-func expectSetTimeSpanTags(mock pgxmock.PgxPoolIface, timeSpanId uuid.UUID, tagIds []uuid.UUID) {
+// expectSetTimespanTags registers the delete + insert expectations.
+func expectSetTimespanTags(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, tagIds []uuid.UUID) {
 	mock.ExpectExec(`DELETE FROM timespan_tags WHERE timespan_id = \$1`).
-		WithArgs(timeSpanId).
+		WithArgs(timespanId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
 	for _, tid := range tagIds {
 		mock.ExpectExec(`INSERT INTO timespan_tags`).
-			WithArgs(timeSpanId, tid).
+			WithArgs(timespanId, tid).
 			WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	}
 }
 
-// ── GetTimeSpan ──────────────────────────────────────────────────────────────
+// ── GetTimespan ──────────────────────────────────────────────────────────────
 
-func TestGetTimeSpan_Success(t *testing.T) {
+func TestGetTimespan_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 
 	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
 		WithArgs(ts.Id).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
-	expectTimeSpanTagsQuery(mock, ts.Id, ts.TagIds)
+	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.GetTimeSpan(ctx, ts.Id)
+	got, err := repo.GetTimespan(ctx, ts.Id)
 	require.NoError(t, err)
 	assert.Equal(t, ts.Id, got.Id)
 	assert.Equal(t, ts.Name, got.Name)
@@ -61,203 +61,203 @@ func TestGetTimeSpan_Success(t *testing.T) {
 	assert.ElementsMatch(t, ts.TagIds, got.TagIds)
 }
 
-func TestGetTimeSpan_NotFound(t *testing.T) {
+func TestGetTimespan_NotFound(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	id := uuid.New()
 
 	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
 		WithArgs(id).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols))
+		WillReturnRows(pgxmock.NewRows(timespanCols))
 
-	_, err := repo.GetTimeSpan(ctx, id)
+	_, err := repo.GetTimespan(ctx, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestGetTimeSpan_NilId(t *testing.T) {
+func TestGetTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	_, err := repo.GetTimeSpan(context.Background(), uuid.Nil)
+	_, err := repo.GetTimespan(context.Background(), uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-// ── ListTimeSpans ────────────────────────────────────────────────────────────
+// ── ListTimespans ────────────────────────────────────────────────────────────
 
-func TestListTimeSpans_ReturnsAll(t *testing.T) {
+func TestListTimespans_ReturnsAll(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts1, ts2 := aTimeSpan(), aTimeSpan()
+	ts1, ts2 := aTimespan(), aTimespan()
 
 	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime).
 			AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime))
-	expectTimeSpanTagsQuery(mock, ts1.Id, ts1.TagIds)
-	expectTimeSpanTagsQuery(mock, ts2.Id, ts2.TagIds)
+	expectTimespanTagsQuery(mock, ts1.Id, ts1.TagIds)
+	expectTimespanTagsQuery(mock, ts2.Id, ts2.TagIds)
 
-	got, err := repo.ListTimeSpans(ctx)
+	got, err := repo.ListTimespans(ctx)
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 }
 
-func TestListTimeSpans_Empty(t *testing.T) {
+func TestListTimespans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
 	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols))
+		WillReturnRows(pgxmock.NewRows(timespanCols))
 
-	got, err := repo.ListTimeSpans(ctx)
+	got, err := repo.ListTimespans(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }
 
-// ── CreateTimeSpan ───────────────────────────────────────────────────────────
+// ── CreateTimespan ───────────────────────────────────────────────────────────
 
-func TestCreateTimeSpan_Success(t *testing.T) {
+func TestCreateTimespan_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 
 	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
-	expectSetTimeSpanTags(mock, ts.Id, ts.TagIds)
+	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.CreateTimeSpan(ctx, ts)
+	got, err := repo.CreateTimespan(ctx, ts)
 	require.NoError(t, err)
 	assert.Equal(t, ts.Id, got.Id)
 	assert.ElementsMatch(t, ts.TagIds, got.TagIds)
 }
 
-func TestCreateTimeSpan_GeneratesIdWhenNil(t *testing.T) {
+func TestCreateTimespan_GeneratesIdWhenNil(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.Id = uuid.Nil
 
 	generatedId := uuid.New()
 	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(generatedId, ts.Name, ts.StartTime, ts.EndTime))
-	expectSetTimeSpanTags(mock, generatedId, ts.TagIds)
+	expectSetTimespanTags(mock, generatedId, ts.TagIds)
 
-	got, err := repo.CreateTimeSpan(ctx, ts)
+	got, err := repo.CreateTimespan(ctx, ts)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
 }
 
-func TestCreateTimeSpan_ZeroStartTime(t *testing.T) {
+func TestCreateTimespan_ZeroStartTime(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.StartTime = time.Time{}
-	_, err := repo.CreateTimeSpan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-func TestCreateTimeSpan_EndTimeBeforeStartTime(t *testing.T) {
+func TestCreateTimespan_EndTimeBeforeStartTime(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.EndTime = ts.StartTime.Add(-1 * time.Minute) // end before start
-	_, err := repo.CreateTimeSpan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-func TestCreateTimeSpan_EndTimeEqualToStartTime(t *testing.T) {
+func TestCreateTimespan_EndTimeEqualToStartTime(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.EndTime = ts.StartTime // equal is also invalid
-	_, err := repo.CreateTimeSpan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-func TestCreateTimeSpan_ZeroEndTimeAllowed(t *testing.T) {
+func TestCreateTimespan_ZeroEndTimeAllowed(t *testing.T) {
 	// A zero EndTime represents an open/in-progress span — should be accepted.
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.EndTime = time.Time{}
 
 	mock.ExpectQuery(`INSERT INTO timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
-	expectSetTimeSpanTags(mock, ts.Id, ts.TagIds)
+	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	_, err := repo.CreateTimeSpan(ctx, ts)
+	_, err := repo.CreateTimespan(ctx, ts)
 	require.NoError(t, err)
 }
 
-// ── UpdateTimeSpan ───────────────────────────────────────────────────────────
+// ── UpdateTimespan ───────────────────────────────────────────────────────────
 
-func TestUpdateTimeSpan_Success(t *testing.T) {
+func TestUpdateTimespan_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.Name = "renamed session"
 
 	mock.ExpectQuery(`UPDATE timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
-		WillReturnRows(pgxmock.NewRows(timeSpanCols).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
-	expectSetTimeSpanTags(mock, ts.Id, ts.TagIds)
+	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.UpdateTimeSpan(ctx, ts)
+	got, err := repo.UpdateTimespan(ctx, ts)
 	require.NoError(t, err)
 	assert.Equal(t, "renamed session", got.Name)
 	assert.ElementsMatch(t, ts.TagIds, got.TagIds)
 }
 
-func TestUpdateTimeSpan_NotFound(t *testing.T) {
+func TestUpdateTimespan_NotFound(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 
 	mock.ExpectQuery(`UPDATE timespans`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := repo.UpdateTimeSpan(ctx, ts)
+	_, err := repo.UpdateTimespan(ctx, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestUpdateTimeSpan_NilId(t *testing.T) {
+func TestUpdateTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.Id = uuid.Nil
-	_, err := repo.UpdateTimeSpan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-func TestUpdateTimeSpan_ZeroStartTime(t *testing.T) {
+func TestUpdateTimespan_ZeroStartTime(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.StartTime = time.Time{}
-	_, err := repo.UpdateTimeSpan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-func TestUpdateTimeSpan_EndTimeBeforeStartTime(t *testing.T) {
+func TestUpdateTimespan_EndTimeBeforeStartTime(t *testing.T) {
 	repo, _ := newMock(t)
-	ts := aTimeSpan()
+	ts := aTimespan()
 	ts.EndTime = ts.StartTime.Add(-time.Second)
-	_, err := repo.UpdateTimeSpan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-// ── DeleteTimeSpan ───────────────────────────────────────────────────────────
+// ── DeleteTimespan ───────────────────────────────────────────────────────────
 
-func TestDeleteTimeSpan_Success(t *testing.T) {
+func TestDeleteTimespan_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	id := uuid.New()
@@ -266,10 +266,10 @@ func TestDeleteTimeSpan_Success(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	require.NoError(t, repo.DeleteTimeSpan(ctx, id))
+	require.NoError(t, repo.DeleteTimespan(ctx, id))
 }
 
-func TestDeleteTimeSpan_NotFound(t *testing.T) {
+func TestDeleteTimespan_NotFound(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	id := uuid.New()
@@ -278,14 +278,14 @@ func TestDeleteTimeSpan_NotFound(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 
-	err := repo.DeleteTimeSpan(ctx, id)
+	err := repo.DeleteTimespan(ctx, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestDeleteTimeSpan_NilId(t *testing.T) {
+func TestDeleteTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	err := repo.DeleteTimeSpan(context.Background(), uuid.Nil)
+	err := repo.DeleteTimespan(context.Background(), uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }

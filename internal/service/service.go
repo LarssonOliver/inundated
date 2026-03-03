@@ -11,7 +11,7 @@ import (
 type ServiceImpl struct {
 	TagServiceImpl
 	ProjectServiceImpl
-	TimeSpanServiceImpl
+	TimespanServiceImpl
 }
 
 var _ Service = (*ServiceImpl)(nil)
@@ -20,14 +20,14 @@ func NewService(repository repository.Repository) *ServiceImpl {
 	return &ServiceImpl{
 		*NewTagService(repository),
 		*NewProjectService(repository),
-		*NewTimeSpanService(repository),
+		*NewTimespanService(repository),
 	}
 }
 
 type Service interface {
 	TagService
 	ProjectService
-	TimeSpanService
+	TimespanService
 }
 
 type TagService interface {
@@ -46,10 +46,10 @@ type ProjectService interface {
 	DeleteProject(ctx context.Context, id uuid.UUID) error
 }
 
-type TimeSpanService interface {
-	GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error)
-	ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error)
-	CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-	UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-	DeleteTimeSpan(ctx context.Context, id uuid.UUID) error
+type TimespanService interface {
+	GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+	ListTimespans(ctx context.Context) ([]model.Timespan, error)
+	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	DeleteTimespan(ctx context.Context, id uuid.UUID) error
 }

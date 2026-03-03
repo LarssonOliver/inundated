@@ -12,120 +12,120 @@ import (
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
-var _ repository.TimeSpanRepository = (*timeSpanRepoMock)(nil)
+var _ repository.TimespanRepository = (*timespanRepoMock)(nil)
 
-type timeSpanRepoMock struct {
-	CreateFn func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
+type timespanRepoMock struct {
+	CreateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error)
-	ListFn   func(ctx context.Context) ([]model.TimeSpan, error)
-	UpdateFn func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
+	GetFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+	ListFn   func(ctx context.Context) ([]model.Timespan, error)
+	UpdateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 }
 
-// CreateTimeSpan implements repository.TimeSpanRepository.
-func (t *timeSpanRepoMock) CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	return t.CreateFn(ctx, timeSpan)
+// CreateTimespan implements repository.TimespanRepository.
+func (t *timespanRepoMock) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	return t.CreateFn(ctx, timespan)
 }
 
-// DeleteTimeSpan implements repository.TimeSpanRepository.
-func (t *timeSpanRepoMock) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error {
+// DeleteTimespan implements repository.TimespanRepository.
+func (t *timespanRepoMock) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 	return t.DeleteFn(ctx, id)
 }
 
-// GetTimeSpan implements repository.TimeSpanRepository.
-func (t *timeSpanRepoMock) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
+// GetTimespan implements repository.TimespanRepository.
+func (t *timespanRepoMock) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
 	return t.GetFn(ctx, id)
 }
 
-// ListTimeSpans implements repository.TimeSpanRepository.
-func (t *timeSpanRepoMock) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error) {
+// ListTimespans implements repository.TimespanRepository.
+func (t *timespanRepoMock) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
 	return t.ListFn(ctx)
 }
 
-// UpdateTimeSpan implements repository.TimeSpanRepository.
-func (t *timeSpanRepoMock) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	return t.UpdateFn(ctx, timeSpan)
+// UpdateTimespan implements repository.TimespanRepository.
+func (t *timespanRepoMock) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	return t.UpdateFn(ctx, timespan)
 }
 
-func TestTimeSpanService_GetTimeSpan(t *testing.T) {
+func TestTimespanService_GetTimespan(t *testing.T) {
 	testId := uuid.New()
 	baseTime := time.Now()
 
 	tests := []struct {
 		name    string
 		id      uuid.UUID
-		getFn   func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error)
-		want    model.TimeSpan
+		getFn   func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+		want    model.Timespan
 		wantErr bool
 	}{
 		{
 			name: "successful get",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
-				return model.TimeSpan{Id: id, Name: "Test TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)}, nil
+			getFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{Id: id, Name: "Test Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)}, nil
 			},
-			want:    model.TimeSpan{Id: testId, Name: "Test TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)},
+			want:    model.Timespan{Id: testId, Name: "Test Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)},
 			wantErr: false,
 		},
 		{
 			name: "repository error",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
-				return model.TimeSpan{}, errors.New("not found")
+			getFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{}, errors.New("not found")
 			},
-			want:    model.TimeSpan{},
+			want:    model.Timespan{},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timeSpanRepoMock{
+			repo := &timespanRepoMock{
 				GetFn: tt.getFn,
 			}
 
-			s := service.NewTimeSpanService(repo)
-			got, gotErr := s.GetTimeSpan(context.Background(), tt.id)
+			s := service.NewTimespanService(repo)
+			got, gotErr := s.GetTimespan(context.Background(), tt.id)
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("GetTimeSpan() failed: %v", gotErr)
+					t.Errorf("GetTimespan() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("GetTimeSpan() succeeded unexpectedly")
+				t.Fatal("GetTimespan() succeeded unexpectedly")
 			}
 			if got.Id != tt.want.Id || got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("GetTimeSpan() = %v, want %v", got, tt.want)
+				t.Errorf("GetTimespan() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTimeSpanService_ListTimeSpans(t *testing.T) {
+func TestTimespanService_ListTimespans(t *testing.T) {
 	baseTime := time.Now()
 
-	timeSpans := []model.TimeSpan{
-		{Id: uuid.New(), Name: "TimeSpan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-		{Id: uuid.New(), Name: "TimeSpan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+	timespans := []model.Timespan{
+		{Id: uuid.New(), Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+		{Id: uuid.New(), Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
 	}
 
 	tests := []struct {
 		name    string
-		listFn  func(ctx context.Context) ([]model.TimeSpan, error)
-		want    []model.TimeSpan
+		listFn  func(ctx context.Context) ([]model.Timespan, error)
+		want    []model.Timespan
 		wantErr bool
 	}{
 		{
 			name: "successful list",
-			listFn: func(ctx context.Context) ([]model.TimeSpan, error) {
-				return timeSpans, nil
+			listFn: func(ctx context.Context) ([]model.Timespan, error) {
+				return timespans, nil
 			},
-			want:    timeSpans,
+			want:    timespans,
 			wantErr: false,
 		},
 		{
 			name: "repository error",
-			listFn: func(ctx context.Context) ([]model.TimeSpan, error) {
+			listFn: func(ctx context.Context) ([]model.Timespan, error) {
 				return nil, errors.New("database error")
 			},
 			want:    nil,
@@ -134,141 +134,141 @@ func TestTimeSpanService_ListTimeSpans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timeSpanRepoMock{
+			repo := &timespanRepoMock{
 				ListFn: tt.listFn,
 			}
 
-			s := service.NewTimeSpanService(repo)
-			got, gotErr := s.ListTimeSpans(context.Background())
+			s := service.NewTimespanService(repo)
+			got, gotErr := s.ListTimespans(context.Background())
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("ListTimeSpans() failed: %v", gotErr)
+					t.Errorf("ListTimespans() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("ListTimeSpans() succeeded unexpectedly")
+				t.Fatal("ListTimespans() succeeded unexpectedly")
 			}
 			if len(got) != len(tt.want) {
-				t.Errorf("ListTimeSpans() = %v, want %v", got, tt.want)
+				t.Errorf("ListTimespans() = %v, want %v", got, tt.want)
 				return
 			}
 			for i := range got {
 				if got[i].Id != tt.want[i].Id || got[i].Name != tt.want[i].Name || !got[i].StartTime.Equal(tt.want[i].StartTime) || !got[i].EndTime.Equal(tt.want[i].EndTime) {
-					t.Errorf("ListTimeSpans()[%d] = %v, want %v", i, got[i], tt.want[i])
+					t.Errorf("ListTimespans()[%d] = %v, want %v", i, got[i], tt.want[i])
 				}
 			}
 		})
 	}
 }
 
-func TestTimeSpanService_CreateTimeSpan(t *testing.T) {
+func TestTimespanService_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
 
 	tests := []struct {
 		name     string
-		timeSpan model.TimeSpan
-		createFn func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-		want     model.TimeSpan
+		timespan model.Timespan
+		createFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+		want     model.Timespan
 		wantErr  bool
 	}{
 		{
 			name:     "successful create",
-			timeSpan: model.TimeSpan{Name: "New TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-			createFn: func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-				timeSpan.Id = uuid.New()
-				return timeSpan, nil
+			timespan: model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+				timespan.Id = uuid.New()
+				return timespan, nil
 			},
-			want:    model.TimeSpan{Name: "New TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			want:    model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			wantErr: false,
 		},
 		{
 			name:     "repository error",
-			timeSpan: model.TimeSpan{Name: "New TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-			createFn: func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-				return model.TimeSpan{}, errors.New("database error")
+			timespan: model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, errors.New("database error")
 			},
-			want:    model.TimeSpan{},
+			want:    model.Timespan{},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timeSpanRepoMock{
+			repo := &timespanRepoMock{
 				CreateFn: tt.createFn,
 			}
-			s := service.NewTimeSpanService(repo)
-			got, gotErr := s.CreateTimeSpan(context.Background(), tt.timeSpan)
+			s := service.NewTimespanService(repo)
+			got, gotErr := s.CreateTimespan(context.Background(), tt.timespan)
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("CreateTimeSpan() failed: %v", gotErr)
+					t.Errorf("CreateTimespan() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("CreateTimeSpan() succeeded unexpectedly")
+				t.Fatal("CreateTimespan() succeeded unexpectedly")
 			}
-			if got.Name != tt.want.Name || got.Id == tt.timeSpan.Id || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("CreateTimeSpan() = %v, want %v", got, tt.want)
+			if got.Name != tt.want.Name || got.Id == tt.timespan.Id || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
+				t.Errorf("CreateTimespan() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTimeSpanService_UpdateTimeSpan(t *testing.T) {
+func TestTimespanService_UpdateTimespan(t *testing.T) {
 	baseTime := time.Now()
-	timeSpanId := uuid.New()
+	timespanId := uuid.New()
 
 	tests := []struct {
 		name     string
-		timeSpan model.TimeSpan
-		updateFn func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-		want     model.TimeSpan
+		timespan model.Timespan
+		updateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+		want     model.Timespan
 		wantErr  bool
 	}{
 		{
 			name:     "successful update",
-			timeSpan: model.TimeSpan{Id: timeSpanId, Name: "Updated TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
-			updateFn: func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-				return timeSpan, nil
+			timespan: model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
+			updateFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+				return timespan, nil
 			},
-			want:    model.TimeSpan{Id: timeSpanId, Name: "Updated TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
+			want:    model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
 			wantErr: false,
 		},
 		{
 			name:     "repository error",
-			timeSpan: model.TimeSpan{Id: timeSpanId, Name: "Updated TimeSpan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
-			updateFn: func(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-				return model.TimeSpan{}, errors.New("database error")
+			timespan: model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
+			updateFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, errors.New("database error")
 			},
-			want:    model.TimeSpan{},
+			want:    model.Timespan{},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timeSpanRepoMock{
+			repo := &timespanRepoMock{
 				UpdateFn: tt.updateFn,
 			}
-			s := service.NewTimeSpanService(repo)
-			got, gotErr := s.UpdateTimeSpan(context.Background(), tt.timeSpan)
+			s := service.NewTimespanService(repo)
+			got, gotErr := s.UpdateTimespan(context.Background(), tt.timespan)
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("UpdateTimeSpan() failed: %v", gotErr)
+					t.Errorf("UpdateTimespan() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("UpdateTimeSpan() succeeded unexpectedly")
+				t.Fatal("UpdateTimespan() succeeded unexpectedly")
 			}
 			if got.Id != tt.want.Id || got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("UpdateTimeSpan() = %v, want %v", got, tt.want)
+				t.Errorf("UpdateTimespan() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTimeSpanService_DeleteTimeSpan(t *testing.T) {
+func TestTimespanService_DeleteTimespan(t *testing.T) {
 	tests := []struct {
 		name     string
 		deleteFn func(ctx context.Context, id uuid.UUID) error
@@ -291,19 +291,19 @@ func TestTimeSpanService_DeleteTimeSpan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timeSpanRepoMock{
+			repo := &timespanRepoMock{
 				DeleteFn: tt.deleteFn,
 			}
-			s := service.NewTimeSpanService(repo)
-			gotErr := s.DeleteTimeSpan(context.Background(), uuid.New())
+			s := service.NewTimespanService(repo)
+			gotErr := s.DeleteTimespan(context.Background(), uuid.New())
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("DeleteTimeSpan() failed: %v", gotErr)
+					t.Errorf("DeleteTimespan() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("DeleteTimeSpan() succeeded unexpectedly")
+				t.Fatal("DeleteTimespan() succeeded unexpectedly")
 			}
 		})
 	}

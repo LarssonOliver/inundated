@@ -10,7 +10,7 @@ import (
 type Repository interface {
 	TagRepository
 	ProjectRepository
-	TimeSpanRepository
+	TimespanRepository
 }
 
 type TagRepository interface {
@@ -29,10 +29,10 @@ type ProjectRepository interface {
 	DeleteProject(ctx context.Context, id uuid.UUID) error
 }
 
-type TimeSpanRepository interface {
-	GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error)
-	ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error)
-	CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-	UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error)
-	DeleteTimeSpan(ctx context.Context, id uuid.UUID) error
+type TimespanRepository interface {
+	GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+	ListTimespans(ctx context.Context) ([]model.Timespan, error)
+	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	DeleteTimespan(ctx context.Context, id uuid.UUID) error
 }

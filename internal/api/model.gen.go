@@ -23,10 +23,10 @@ type CreateTag struct {
 	Name  string `json:"name"`
 }
 
-// CreateTimeSpan defines model for CreateTimeSpan.
-type CreateTimeSpan struct {
+// CreateTimespan defines model for CreateTimespan.
+type CreateTimespan struct {
 	EndTime   time.Time             `json:"endTime"`
-	Name      string                `json:"name"`
+	Name      *string               `json:"name,omitempty"`
 	StartTime time.Time             `json:"startTime"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
@@ -47,11 +47,11 @@ type Tag struct {
 	Name  string             `json:"name"`
 }
 
-// TimeSpan defines model for TimeSpan.
-type TimeSpan struct {
+// Timespan defines model for Timespan.
+type Timespan struct {
 	EndTime   time.Time             `json:"endTime"`
 	Id        openapi_types.UUID    `json:"id"`
-	Name      string                `json:"name"`
+	Name      *string               `json:"name,omitempty"`
 	StartTime time.Time             `json:"startTime"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
@@ -70,8 +70,8 @@ type UpdateTag struct {
 	Name  *string `json:"name,omitempty"`
 }
 
-// UpdateTimeSpan defines model for UpdateTimeSpan.
-type UpdateTimeSpan struct {
+// UpdateTimespan defines model for UpdateTimespan.
+type UpdateTimespan struct {
 	EndTime   *time.Time            `json:"endTime,omitempty"`
 	Name      *string               `json:"name,omitempty"`
 	StartTime *time.Time            `json:"startTime,omitempty"`
@@ -90,8 +90,8 @@ type CreateTagJSONRequestBody = CreateTag
 // UpdateTagJSONRequestBody defines body for UpdateTag for application/json ContentType.
 type UpdateTagJSONRequestBody = UpdateTag
 
-// CreateTimeSpanJSONRequestBody defines body for CreateTimeSpan for application/json ContentType.
-type CreateTimeSpanJSONRequestBody = CreateTimeSpan
+// CreateTimespanJSONRequestBody defines body for CreateTimespan for application/json ContentType.
+type CreateTimespanJSONRequestBody = CreateTimespan
 
-// UpdateTimeSpanJSONRequestBody defines body for UpdateTimeSpan for application/json ContentType.
-type UpdateTimeSpanJSONRequestBody = UpdateTimeSpan
+// UpdateTimespanJSONRequestBody defines body for UpdateTimespan for application/json ContentType.
+type UpdateTimespanJSONRequestBody = UpdateTimespan

@@ -8,120 +8,124 @@ import (
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
-type TimeSpanHandler struct {
-	svc service.TimeSpanService
+type TimespanHandler struct {
+	svc service.TimespanService
 }
 
-var _ api.TimeSpanHandler = (*TimeSpanHandler)(nil)
+var _ api.TimespanHandler = (*TimespanHandler)(nil)
 
-func NewTimeSpanHandler(svc service.TimeSpanService) *TimeSpanHandler {
-	return &TimeSpanHandler{
+func NewTimespanHandler(svc service.TimespanService) *TimespanHandler {
+	return &TimespanHandler{
 		svc,
 	}
 }
 
-// CreateTimeSpan implements [api.TimeSpanHandler].
-func (p *TimeSpanHandler) CreateTimeSpan(ctx context.Context, request api.CreateTimeSpanRequestObject) (api.CreateTimeSpanResponseObject, error) {
-	timespan := model.TimeSpan{
-		Name:      request.Body.Name,
+// CreateTimespan implements [api.TimespanHandler].
+func (p *TimespanHandler) CreateTimespan(ctx context.Context, request api.CreateTimespanRequestObject) (api.CreateTimespanResponseObject, error) {
+
+	timespan := model.Timespan{
 		StartTime: request.Body.StartTime,
 		EndTime:   request.Body.EndTime,
+	}
+
+	if request.Body.Name != nil {
+		timespan.Name = *request.Body.Name
 	}
 
 	if request.Body.TagIds != nil {
 		timespan.TagIds = *request.Body.TagIds
 	}
 
-	reply, err := p.svc.CreateTimeSpan(ctx, timespan)
+	reply, err := p.svc.CreateTimespan(ctx, timespan)
 
 	if err == model.ErrInvalidArgument {
-		return api.CreateTimeSpan400Response{}, nil
+		return api.CreateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	apiTimeSpan := api.TimeSpan{
+	apiTimespan := api.Timespan{
 		Id:        reply.Id,
-		Name:      reply.Name,
+		Name:      &reply.Name,
 		StartTime: reply.StartTime,
 		EndTime:   reply.EndTime,
 	}
 
 	if len(reply.TagIds) > 0 {
-		apiTimeSpan.TagIds = &reply.TagIds
+		apiTimespan.TagIds = &reply.TagIds
 	}
 
-	return api.CreateTimeSpan201JSONResponse(apiTimeSpan), nil
+	return api.CreateTimespan201JSONResponse(apiTimespan), nil
 }
 
-// DeleteTimeSpan implements [api.TimeSpanHandler].
-func (p *TimeSpanHandler) DeleteTimeSpan(ctx context.Context, request api.DeleteTimeSpanRequestObject) (api.DeleteTimeSpanResponseObject, error) {
-	err := p.svc.DeleteTimeSpan(ctx, request.TimeSpanId)
+// DeleteTimespan implements [api.TimespanHandler].
+func (p *TimespanHandler) DeleteTimespan(ctx context.Context, request api.DeleteTimespanRequestObject) (api.DeleteTimespanResponseObject, error) {
+	err := p.svc.DeleteTimespan(ctx, request.TimespanId)
 
 	if err == model.ErrNotFound {
-		return api.DeleteTimeSpan404Response{}, nil
+		return api.DeleteTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	return api.DeleteTimeSpan204Response{}, nil
+	return api.DeleteTimespan204Response{}, nil
 }
 
-// GetTimeSpan implements [api.TimeSpanHandler].
-func (p *TimeSpanHandler) GetTimeSpan(ctx context.Context, request api.GetTimeSpanRequestObject) (api.GetTimeSpanResponseObject, error) {
-	reply, err := p.svc.GetTimeSpan(ctx, request.TimeSpanId)
+// GetTimespan implements [api.TimespanHandler].
+func (p *TimespanHandler) GetTimespan(ctx context.Context, request api.GetTimespanRequestObject) (api.GetTimespanResponseObject, error) {
+	reply, err := p.svc.GetTimespan(ctx, request.TimespanId)
 
 	if err == model.ErrNotFound {
-		return api.GetTimeSpan404Response{}, nil
+		return api.GetTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	apiTimeSpan := api.TimeSpan{
+	apiTimespan := api.Timespan{
 		Id:        reply.Id,
-		Name:      reply.Name,
+		Name:      &reply.Name,
 		StartTime: reply.StartTime,
 		EndTime:   reply.EndTime,
 	}
 
 	if len(reply.TagIds) > 0 {
-		apiTimeSpan.TagIds = &reply.TagIds
+		apiTimespan.TagIds = &reply.TagIds
 	}
 
-	return api.GetTimeSpan200JSONResponse(apiTimeSpan), nil
+	return api.GetTimespan200JSONResponse(apiTimespan), nil
 }
 
-// ListTimeSpans implements [api.TimeSpanHandler].
-func (p *TimeSpanHandler) ListTimeSpans(ctx context.Context, request api.ListTimeSpansRequestObject) (api.ListTimeSpansResponseObject, error) {
-	reply, err := p.svc.ListTimeSpans(ctx)
+// ListTimespans implements [api.TimespanHandler].
+func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTimespansRequestObject) (api.ListTimespansResponseObject, error) {
+	reply, err := p.svc.ListTimespans(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	apiTimeSpans := make([]api.TimeSpan, 0, len(reply))
+	apiTimespans := make([]api.Timespan, 0, len(reply))
 	for _, ts := range reply {
-		apiTimeSpan := api.TimeSpan{
+		apiTimespan := api.Timespan{
 			Id:        ts.Id,
-			Name:      ts.Name,
+			Name:      &ts.Name,
 			StartTime: ts.StartTime,
 			EndTime:   ts.EndTime,
 		}
 		if len(ts.TagIds) > 0 {
-			apiTimeSpan.TagIds = &ts.TagIds
+			apiTimespan.TagIds = &ts.TagIds
 		}
-		apiTimeSpans = append(apiTimeSpans, apiTimeSpan)
+		apiTimespans = append(apiTimespans, apiTimespan)
 	}
 
-	return api.ListTimeSpans200JSONResponse(apiTimeSpans), nil
+	return api.ListTimespans200JSONResponse(apiTimespans), nil
 }
 
-// UpdateTimeSpan implements [api.TimeSpanHandler].
-func (p *TimeSpanHandler) UpdateTimeSpan(ctx context.Context, request api.UpdateTimeSpanRequestObject) (api.UpdateTimeSpanResponseObject, error) {
-	timespan, err := p.svc.GetTimeSpan(ctx, request.TimeSpanId)
+// UpdateTimespan implements [api.TimespanHandler].
+func (p *TimespanHandler) UpdateTimespan(ctx context.Context, request api.UpdateTimespanRequestObject) (api.UpdateTimespanResponseObject, error) {
+	timespan, err := p.svc.GetTimespan(ctx, request.TimespanId)
 
 	if err == model.ErrNotFound {
-		return api.UpdateTimeSpan404Response{}, nil
+		return api.UpdateTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -142,24 +146,24 @@ func (p *TimeSpanHandler) UpdateTimeSpan(ctx context.Context, request api.Update
 		timespan.TagIds = *request.Body.TagIds
 	}
 
-	reply, err := p.svc.UpdateTimeSpan(ctx, timespan)
+	reply, err := p.svc.UpdateTimespan(ctx, timespan)
 
 	if err == model.ErrInvalidArgument {
-		return api.UpdateTimeSpan400Response{}, nil
+		return api.UpdateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	apiTimeSpan := api.TimeSpan{
+	apiTimespan := api.Timespan{
 		Id:        reply.Id,
-		Name:      reply.Name,
+		Name:      &reply.Name,
 		StartTime: reply.StartTime,
 		EndTime:   reply.EndTime,
 	}
 
 	if len(reply.TagIds) > 0 {
-		apiTimeSpan.TagIds = &reply.TagIds
+		apiTimespan.TagIds = &reply.TagIds
 	}
 
-	return api.UpdateTimeSpan200JSONResponse(apiTimeSpan), nil
+	return api.UpdateTimespan200JSONResponse(apiTimespan), nil
 }
