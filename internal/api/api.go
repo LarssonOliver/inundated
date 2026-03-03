@@ -69,27 +69,27 @@ func (s *Server) UpdateProject(ctx context.Context, request UpdateProjectRequest
 	return s.handler.UpdateProject(ctx, request)
 }
 
-// CreateTimeSpan implements StrictServerInterface.
-func (s *Server) CreateTimeSpan(ctx context.Context, request CreateTimeSpanRequestObject) (CreateTimeSpanResponseObject, error) {
-	return s.handler.CreateTimeSpan(ctx, request)
+// CreateTimespan implements StrictServerInterface.
+func (s *Server) CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error) {
+	return s.handler.CreateTimespan(ctx, request)
 }
 
-// DeleteTimeSpan implements StrictServerInterface.
-func (s *Server) DeleteTimeSpan(ctx context.Context, request DeleteTimeSpanRequestObject) (DeleteTimeSpanResponseObject, error) {
-	return s.handler.DeleteTimeSpan(ctx, request)
+// DeleteTimespan implements StrictServerInterface.
+func (s *Server) DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error) {
+	return s.handler.DeleteTimespan(ctx, request)
 }
 
-// GetTimeSpan implements StrictServerInterface.
-func (s *Server) GetTimeSpan(ctx context.Context, request GetTimeSpanRequestObject) (GetTimeSpanResponseObject, error) {
-	return s.handler.GetTimeSpan(ctx, request)
+// GetTimespan implements StrictServerInterface.
+func (s *Server) GetTimespan(ctx context.Context, request GetTimespanRequestObject) (GetTimespanResponseObject, error) {
+	return s.handler.GetTimespan(ctx, request)
 }
 
-// ListTimeSpans implements StrictServerInterface.
-func (s *Server) ListTimeSpans(ctx context.Context, request ListTimeSpansRequestObject) (ListTimeSpansResponseObject, error) {
-	return s.handler.ListTimeSpans(ctx, request)
+// ListTimespans implements StrictServerInterface.
+func (s *Server) ListTimespans(ctx context.Context, request ListTimespansRequestObject) (ListTimespansResponseObject, error) {
+	return s.handler.ListTimespans(ctx, request)
 }
 
-// UpdateTimeSpan implements StrictServerInterface.
-func (s *Server) UpdateTimeSpan(ctx context.Context, request UpdateTimeSpanRequestObject) (UpdateTimeSpanResponseObject, error) {
-	return s.handler.UpdateTimeSpan(ctx, request)
+// UpdateTimespan implements StrictServerInterface.
+func (s *Server) UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error) {
+	return s.handler.UpdateTimespan(ctx, request)
 }

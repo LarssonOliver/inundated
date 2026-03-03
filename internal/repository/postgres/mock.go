@@ -65,26 +65,26 @@ func (m *MockRepository) DeleteProject(ctx context.Context, id uuid.UUID) error 
 	return m.Called(ctx, id).Error(0)
 }
 
-func (m *MockRepository) GetTimeSpan(ctx context.Context, id uuid.UUID) (model.TimeSpan, error) {
+func (m *MockRepository) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.TimeSpan), args.Error(1)
+	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) ListTimeSpans(ctx context.Context) ([]model.TimeSpan, error) {
+func (m *MockRepository) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]model.TimeSpan), args.Error(1)
+	return args.Get(0).([]model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) CreateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	args := m.Called(ctx, timeSpan)
-	return args.Get(0).(model.TimeSpan), args.Error(1)
+func (m *MockRepository) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	args := m.Called(ctx, timespan)
+	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) UpdateTimeSpan(ctx context.Context, timeSpan model.TimeSpan) (model.TimeSpan, error) {
-	args := m.Called(ctx, timeSpan)
-	return args.Get(0).(model.TimeSpan), args.Error(1)
+func (m *MockRepository) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	args := m.Called(ctx, timespan)
+	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) DeleteTimeSpan(ctx context.Context, id uuid.UUID) error {
+func (m *MockRepository) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 	return m.Called(ctx, id).Error(0)
 }

@@ -5,7 +5,7 @@ import "context"
 type HttpHandler interface {
 	TagHandler
 	ProjectHandler
-	TimeSpanHandler
+	TimespanHandler
 }
 
 type TagHandler interface {
@@ -24,10 +24,10 @@ type ProjectHandler interface {
 	DeleteProject(ctx context.Context, request DeleteProjectRequestObject) (DeleteProjectResponseObject, error)
 }
 
-type TimeSpanHandler interface {
-	GetTimeSpan(ctx context.Context, request GetTimeSpanRequestObject) (GetTimeSpanResponseObject, error)
-	ListTimeSpans(ctx context.Context, request ListTimeSpansRequestObject) (ListTimeSpansResponseObject, error)
-	CreateTimeSpan(ctx context.Context, request CreateTimeSpanRequestObject) (CreateTimeSpanResponseObject, error)
-	UpdateTimeSpan(ctx context.Context, request UpdateTimeSpanRequestObject) (UpdateTimeSpanResponseObject, error)
-	DeleteTimeSpan(ctx context.Context, request DeleteTimeSpanRequestObject) (DeleteTimeSpanResponseObject, error)
+type TimespanHandler interface {
+	GetTimespan(ctx context.Context, request GetTimespanRequestObject) (GetTimespanResponseObject, error)
+	ListTimespans(ctx context.Context, request ListTimespansRequestObject) (ListTimespansResponseObject, error)
+	CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error)
+	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
+	DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error)
 }

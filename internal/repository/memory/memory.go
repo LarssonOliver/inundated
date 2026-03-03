@@ -5,7 +5,7 @@ import "github.com/larssonoliver/inundated/internal/repository"
 type MemoryStore struct {
 	*TagStore
 	*ProjectStore
-	*TimeSpanStore
+	*TimespanStore
 }
 
 var _ repository.Repository = (*MemoryStore)(nil)
@@ -15,6 +15,6 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		TagStore:      tagStore,
 		ProjectStore:  NewProjectStore(tagStore),
-		TimeSpanStore: NewTimeSpanStore(tagStore),
+		TimespanStore: NewTimespanStore(tagStore),
 	}
 }

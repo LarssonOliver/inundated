@@ -30,7 +30,7 @@ export interface Timespan {
      * @type {string}
      * @memberof Timespan
      */
-    name: string;
+    name?: string;
     /**
      * 
      * @type {Date}
@@ -56,7 +56,6 @@ export interface Timespan {
  */
 export function instanceOfTimespan(value: object): value is Timespan {
     if (!('id' in value) || value['id'] === undefined) return false;
-    if (!('name' in value) || value['name'] === undefined) return false;
     if (!('startTime' in value) || value['startTime'] === undefined) return false;
     if (!('endTime' in value) || value['endTime'] === undefined) return false;
     return true;
@@ -73,7 +72,7 @@ export function TimespanFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return {
         
         'id': json['id'],
-        'name': json['name'],
+        'name': json['name'] == null ? undefined : json['name'],
         'startTime': (new Date(json['startTime'])),
         'endTime': (new Date(json['endTime'])),
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),

@@ -193,11 +193,11 @@ paths:
         '404':
           description: Not found
 
-  /time-spans:
+  /timespans:
     get:
       tags: [timespans]
       summary: List time spans
-      operationId: listTimeSpans
+      operationId: listTimespans
       responses:
         '200':
           description: List of time spans
@@ -206,31 +206,31 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TimeSpan'
+                  $ref: '#/components/schemas/Timespan'
 
     post:
       tags: [timespans]
       summary: Create time span
-      operationId: createTimeSpan
+      operationId: createTimespan
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTimeSpan'
+              $ref: '#/components/schemas/CreateTimespan'
       responses:
         '201':
           description: Time span created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TimeSpan'
+                $ref: '#/components/schemas/Timespan'
         '400':
           description: Bad request
 
-  /time-spans/{timeSpanId}:
+  /timespans/{timespanId}:
     parameters:
-      - name: timeSpanId
+      - name: timespanId
         in: path
         required: true
         schema:
@@ -240,34 +240,34 @@ paths:
     get:
       tags: [timespans]
       summary: Get time span
-      operationId: getTimeSpan
+      operationId: getTimespan
       responses:
         '200':
           description: Time span
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TimeSpan'
+                $ref: '#/components/schemas/Timespan'
         '404':
           description: Not found
 
     patch:
       tags: [timespans]
       summary: Update time span
-      operationId: updateTimeSpan
+      operationId: updateTimespan
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateTimeSpan'
+              $ref: '#/components/schemas/UpdateTimespan'
       responses:
         '200':
           description: Updated time span
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TimeSpan'
+                $ref: '#/components/schemas/Timespan'
         '400':
           description: Bad request
         '404':
@@ -276,7 +276,7 @@ paths:
     delete:
       tags: [timespans]
       summary: Delete time span
-      operationId: deleteTimeSpan
+      operationId: deleteTimespan
       responses:
         '204':
           description: Deleted
@@ -383,16 +383,15 @@ components:
           items:
             type: string
             format: uuid
-    TimeSpan:
+    Timespan:
       type: object
-      required: [id, name, startTime, endTime]
+      required: [id, startTime, endTime]
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
-          minLength: 1
         startTime:
           type: string
           format: date-time
@@ -405,13 +404,12 @@ components:
           items:
             type: string
             format: uuid
-    CreateTimeSpan:
+    CreateTimespan:
       type: object
-      required: [name, startTime, endTime]
+      required: [startTime, endTime]
       properties:
         name:
           type: string
-          minLength: 1
         startTime:
           type: string
           format: date-time
@@ -424,13 +422,12 @@ components:
           items:
             type: string
             format: uuid
-    UpdateTimeSpan:
+    UpdateTimespan:
       type: object
       minProperties: 1
       properties:
         name:
           type: string
-          minLength: 1
         startTime:
           type: string
           format: date-time

@@ -24,7 +24,7 @@ export interface CreateTimespan {
      * @type {string}
      * @memberof CreateTimespan
      */
-    name: string;
+    name?: string;
     /**
      * 
      * @type {Date}
@@ -49,7 +49,6 @@ export interface CreateTimespan {
  * Check if a given object implements the CreateTimespan interface.
  */
 export function instanceOfCreateTimespan(value: object): value is CreateTimespan {
-    if (!('name' in value) || value['name'] === undefined) return false;
     if (!('startTime' in value) || value['startTime'] === undefined) return false;
     if (!('endTime' in value) || value['endTime'] === undefined) return false;
     return true;
@@ -65,7 +64,7 @@ export function CreateTimespanFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'name': json['name'],
+        'name': json['name'] == null ? undefined : json['name'],
         'startTime': (new Date(json['startTime'])),
         'endTime': (new Date(json['endTime'])),
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),

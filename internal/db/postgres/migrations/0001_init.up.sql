@@ -32,7 +32,7 @@ CREATE TABLE timespans (
     end_time TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
--- TimeSpan-Tag join table
+-- Timespan-Tag join table
 CREATE TABLE timespan_tags (
     timespan_id UUID NOT NULL,
     tag_id UUID NOT NULL,

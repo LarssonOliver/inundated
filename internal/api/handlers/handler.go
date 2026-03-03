@@ -8,7 +8,7 @@ import (
 type Handler struct {
 	TagHandler
 	ProjectHandler
-	TimeSpanHandler
+	TimespanHandler
 }
 
 var _ api.HttpHandler = (*Handler)(nil)
@@ -17,6 +17,6 @@ func NewHandler(svc service.Service) *Handler {
 	return &Handler{
 		TagHandler:      *NewTagHandler(svc),
 		ProjectHandler:  *NewProjectHandler(svc),
-		TimeSpanHandler: *NewTimeSpanHandler(svc),
+		TimespanHandler: *NewTimespanHandler(svc),
 	}
 }

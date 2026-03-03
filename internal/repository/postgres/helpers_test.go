@@ -50,9 +50,9 @@ func aProject() model.Project {
 	}
 }
 
-func aTimeSpan() model.TimeSpan {
+func aTimespan() model.Timespan {
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	return model.TimeSpan{
+	return model.Timespan{
 		Id:        uuid.New(),
 		Name:      "morning session",
 		StartTime: now,

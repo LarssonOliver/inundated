@@ -4,11 +4,11 @@ All URIs are relative to */api*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /time-spans | Create time span |
-| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /time-spans/{timespanId} | Delete time span |
-| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /time-spans/{timespanId} | Get time span |
-| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /time-spans | List time spans |
-| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /time-spans/{timespanId} | Update time span |
+| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /timespans | Create time span |
+| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /timespans/{timespanId} | Delete time span |
+| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /timespans/{timespanId} | Get time span |
+| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /timespans | List time spans |
+| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /timespans/{timespanId} | Update time span |
 
 
 
