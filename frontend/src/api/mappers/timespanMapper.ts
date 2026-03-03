@@ -9,7 +9,7 @@ export const timespanMapper: Mapper<Timespan, Api.Timespan> = {
   fromApi(apiModel: Api.Timespan): Timespan {
     return {
       id: apiModel.id,
-      name: apiModel.name,
+      name: apiModel.name || "",
       startTime: new Date(apiModel.startTime),
       endTime: new Date(apiModel.endTime),
       tagIds: new Set(apiModel.tagIds || []),
