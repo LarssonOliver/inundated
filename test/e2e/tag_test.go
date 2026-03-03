@@ -22,7 +22,7 @@ func TestTag_CRUD(t *testing.T) {
 	tagId := createResp.JSON201.Id
 
 	// READ
-	getResp, err := client.GetTagWithResponse(ctx, tagId)
+	getResp, err := client.GetTagWithResponse(ctx, tagId, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, getResp.StatusCode())
 	require.Equal(t, "Test Tag", getResp.JSON200.Name)
@@ -48,7 +48,7 @@ func TestTag_CRUD(t *testing.T) {
 	require.Equal(t, 204, deleteResp.StatusCode())
 
 	// VERIFY DELETION
-	getRespAfterDelete, err := client.GetTagWithResponse(ctx, tagId)
+	getRespAfterDelete, err := client.GetTagWithResponse(ctx, tagId, nil)
 	require.NoError(t, err)
 	require.Equal(t, 404, getRespAfterDelete.StatusCode())
 }

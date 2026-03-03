@@ -28,7 +28,7 @@ type ServerInterface interface {
 	DeleteProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
 	// Get project
 	// (GET /projects/{projectId})
-	GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams)
 	// Update project
 	// (PATCH /projects/{projectId})
 	UpdateProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
@@ -43,7 +43,7 @@ type ServerInterface interface {
 	DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
 	// Get tag
 	// (GET /tags/{tagId})
-	GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
+	GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams)
 	// Update tag
 	// (PATCH /tags/{tagId})
 	UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
@@ -88,7 +88,7 @@ func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, pro
 
 // Get project
 // (GET /projects/{projectId})
-func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -118,7 +118,7 @@ func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId o
 
 // Get tag
 // (GET /tags/{tagId})
-func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -234,8 +234,19 @@ func (siw *ServerInterfaceWrapper) GetProject(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "include", r.URL.Query(), &params.Include)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProject(w, r, projectId)
+		siw.Handler.GetProject(w, r, projectId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -337,8 +348,19 @@ func (siw *ServerInterfaceWrapper) GetTag(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTagParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "include", r.URL.Query(), &params.Include)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetTag(w, r, tagId)
+		siw.Handler.GetTag(w, r, tagId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -705,6 +727,7 @@ func (response DeleteProject404Response) VisitDeleteProjectResponse(w http.Respo
 
 type GetProjectRequestObject struct {
 	ProjectId openapi_types.UUID `json:"projectId"`
+	Params    GetProjectParams
 }
 
 type GetProjectResponseObject interface {
@@ -828,7 +851,8 @@ func (response DeleteTag404Response) VisitDeleteTagResponse(w http.ResponseWrite
 }
 
 type GetTagRequestObject struct {
-	TagId openapi_types.UUID `json:"tagId"`
+	TagId  openapi_types.UUID `json:"tagId"`
+	Params GetTagParams
 }
 
 type GetTagResponseObject interface {
@@ -1170,10 +1194,11 @@ func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, p
 }
 
 // GetProject operation middleware
-func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams) {
 	var request GetProjectRequestObject
 
 	request.ProjectId = projectId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProject(ctx, request.(GetProjectRequestObject))
@@ -1310,10 +1335,11 @@ func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId
 }
 
 // GetTag operation middleware
-func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams) {
 	var request GetTagRequestObject
 
 	request.TagId = tagId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetTag(ctx, request.(GetTagRequestObject))

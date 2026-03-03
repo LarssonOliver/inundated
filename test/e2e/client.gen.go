@@ -18,6 +18,16 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GetProjectParamsInclude.
+const (
+	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
+)
+
+// Defines values for GetTagParamsInclude.
+const (
+	GetTagParamsIncludeTotalTimeMs GetTagParamsInclude = "totalTimeMs"
+)
+
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
 	Color           string                `json:"color"`
@@ -47,13 +57,15 @@ type Project struct {
 	Name            string                `json:"name"`
 	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	TotalTimeMs     *int                  `json:"totalTimeMs,omitempty"`
 }
 
 // Tag defines model for Tag.
 type Tag struct {
-	Color string             `json:"color"`
-	Id    openapi_types.UUID `json:"id"`
-	Name  string             `json:"name"`
+	Color       string             `json:"color"`
+	Id          openapi_types.UUID `json:"id"`
+	Name        string             `json:"name"`
+	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
 }
 
 // Timespan defines model for Timespan.
@@ -86,6 +98,24 @@ type UpdateTimespan struct {
 	StartTime *time.Time            `json:"startTime,omitempty"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
+
+// GetProjectParams defines parameters for GetProject.
+type GetProjectParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
+	Include *[]GetProjectParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetProjectParamsInclude defines parameters for GetProject.
+type GetProjectParamsInclude string
+
+// GetTagParams defines parameters for GetTag.
+type GetTagParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
+	Include *[]GetTagParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetTagParamsInclude defines parameters for GetTag.
+type GetTagParamsInclude string
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject
@@ -190,7 +220,7 @@ type ClientInterface interface {
 	DeleteProject(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProject request
-	GetProject(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProject(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectWithBody request with any body
 	UpdateProjectWithBody(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -209,7 +239,7 @@ type ClientInterface interface {
 	DeleteTag(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTag request
-	GetTag(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTag(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTagWithBody request with any body
 	UpdateTagWithBody(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -284,8 +314,8 @@ func (c *Client) DeleteProject(ctx context.Context, projectId openapi_types.UUID
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProject(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProjectRequest(c.Server, projectId)
+func (c *Client) GetProject(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectRequest(c.Server, projectId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -368,8 +398,8 @@ func (c *Client) DeleteTag(ctx context.Context, tagId openapi_types.UUID, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTag(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTagRequest(c.Server, tagId)
+func (c *Client) GetTag(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTagRequest(c.Server, tagId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +620,7 @@ func NewDeleteProjectRequest(server string, projectId openapi_types.UUID) (*http
 }
 
 // NewGetProjectRequest generates requests for GetProject
-func NewGetProjectRequest(server string, projectId openapi_types.UUID) (*http.Request, error) {
+func NewGetProjectRequest(server string, projectId openapi_types.UUID, params *GetProjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -613,6 +643,28 @@ func NewGetProjectRequest(server string, projectId openapi_types.UUID) (*http.Re
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", false, "include", runtime.ParamLocationQuery, *params.Include); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -772,7 +824,7 @@ func NewDeleteTagRequest(server string, tagId openapi_types.UUID) (*http.Request
 }
 
 // NewGetTagRequest generates requests for GetTag
-func NewGetTagRequest(server string, tagId openapi_types.UUID) (*http.Request, error) {
+func NewGetTagRequest(server string, tagId openapi_types.UUID, params *GetTagParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -795,6 +847,28 @@ func NewGetTagRequest(server string, tagId openapi_types.UUID) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", false, "include", runtime.ParamLocationQuery, *params.Include); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1089,7 +1163,7 @@ type ClientWithResponsesInterface interface {
 	DeleteProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
 
 	// GetProjectWithResponse request
-	GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
+	GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
 
 	// UpdateProjectWithBodyWithResponse request with any body
 	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
@@ -1108,7 +1182,7 @@ type ClientWithResponsesInterface interface {
 	DeleteTagWithResponse(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
 
 	// GetTagWithResponse request
-	GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
+	GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
 
 	// UpdateTagWithBodyWithResponse request with any body
 	UpdateTagWithBodyWithResponse(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
@@ -1498,8 +1572,8 @@ func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, pro
 }
 
 // GetProjectWithResponse request returning *GetProjectResponse
-func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
-	rsp, err := c.GetProject(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
+	rsp, err := c.GetProject(ctx, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1559,8 +1633,8 @@ func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId o
 }
 
 // GetTagWithResponse request returning *GetTagResponse
-func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTagResponse, error) {
-	rsp, err := c.GetTag(ctx, tagId, reqEditors...)
+func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error) {
+	rsp, err := c.GetTag(ctx, tagId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
