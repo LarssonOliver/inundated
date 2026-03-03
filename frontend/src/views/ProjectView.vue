@@ -38,10 +38,15 @@ function updateProjectTags() {
 
 watch(
   () => route.params.id,
-  async (newId) => {
+  async (newId, oldId) => {
     if (!newId) {
       // This is a new project at the /new route
       isNewProject.value = true;
+      return;
+    }
+
+    if (newId === oldId) {
+      // No need to refetch if the ID hasn't changed
       return;
     }
 
