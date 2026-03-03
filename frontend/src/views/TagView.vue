@@ -29,10 +29,15 @@ const isNewTag = ref(false);
 
 watch(
   () => route.params.id,
-  async (newId) => {
+  async (newId, oldId) => {
     if (!newId) {
       // This is a new tag at the /new route
       isNewTag.value = true;
+      return;
+    }
+
+    if (newId === oldId) {
+      // No need to refetch if the ID hasn't changed
       return;
     }
 
