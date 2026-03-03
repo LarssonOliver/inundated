@@ -4,8 +4,6 @@ import { __test__ } from "@/stores/tags";
 import { setActivePinia, createPinia } from "pinia";
 import { expect, beforeEach, vi, it, describe, type Mocked } from "vitest";
 
-const { createTagsStore } = __test__;
-
 function makeTag(overrides?: Partial<Tag>): Tag {
   return {
     id: crypto.randomUUID(),
@@ -15,24 +13,22 @@ function makeTag(overrides?: Partial<Tag>): Tag {
   };
 }
 
-function mockTagsApi(): Mocked<TagsApi> {
-  return {
-    listTags: vi.fn(),
-    getTag: vi.fn(),
-    createTag: vi.fn(),
-    updateTag: vi.fn(),
-    deleteTag: vi.fn(),
-  };
-}
-
 describe("tags store", () => {
   let api: Mocked<TagsApi>;
-  let useTagsStore: ReturnType<typeof createTagsStore>;
+  let useStore: ReturnType<typeof __test__.createTagsStore>;
 
   beforeEach(() => {
     setActivePinia(createPinia());
-    api = mockTagsApi();
-    useTagsStore = createTagsStore(api);
+
+    api = {
+      listTags: vi.fn(),
+      getTag: vi.fn(),
+      createTag: vi.fn(),
+      updateTag: vi.fn(),
+      deleteTag: vi.fn(),
+    };
+
+    useStore = __test__.createTagsStore(api);
   });
 
   it("fetches and replaces all tags", async () => {
@@ -41,7 +37,7 @@ describe("tags store", () => {
 
     api.listTags.mockResolvedValue([t1, t2]);
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     expect(store.tags).toHaveLength(2);
@@ -52,7 +48,7 @@ describe("tags store", () => {
     const created = makeTag({ id: "1" });
     api.createTag.mockResolvedValue(created);
 
-    const store = useTagsStore();
+    const store = useStore();
     const result = await store.createTag({
       name: created.name,
       color: created.color,
@@ -67,7 +63,7 @@ describe("tags store", () => {
     const tag = makeTag({ name: "work" });
     api.listTags.mockResolvedValue([tag]);
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     const result = await store.createTagFromName("work");
@@ -80,7 +76,7 @@ describe("tags store", () => {
     const created = makeTag({ name: "New" });
     api.createTag.mockResolvedValue(created);
 
-    const store = useTagsStore();
+    const store = useStore();
     const result = await store.createTagFromName("New");
 
     expect(api.createTag).toHaveBeenCalledOnce();
@@ -91,7 +87,7 @@ describe("tags store", () => {
     const tag = makeTag({ id: "1" });
     api.listTags.mockResolvedValue([tag]);
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     const fetched = store.getTagById("1")!;
@@ -105,7 +101,7 @@ describe("tags store", () => {
 
     api.listTags.mockResolvedValue(tags);
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     const result = store.searchTags("wrok");
@@ -120,7 +116,7 @@ describe("tags store", () => {
     api.listTags.mockResolvedValue([original]);
     api.updateTag.mockResolvedValue(updated);
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     const result = await store.updateTag(updated);
@@ -136,7 +132,7 @@ describe("tags store", () => {
   it("throws if update fails", async () => {
     api.updateTag.mockRejectedValue(new Error());
 
-    const store = useTagsStore();
+    const store = useStore();
     await expect(store.updateTag(makeTag({ id: "missing" }))).rejects.toThrow();
   });
 
@@ -145,7 +141,7 @@ describe("tags store", () => {
     api.listTags.mockResolvedValue([tag]);
     api.deleteTag.mockResolvedValue();
 
-    const store = useTagsStore();
+    const store = useStore();
     await store.fetchTags();
 
     await store.deleteTag("1");
@@ -159,8 +155,32 @@ describe("tags store", () => {
     const t1 = makeTag({ name: "a" });
     const t2 = makeTag({ name: "b" });
     api.listTags.mockResolvedValue([t1, t2]);
-    const store = useTagsStore();
+    const store = useStore();
     await Promise.all([store.fetchTags(), store.fetchTags(), store.fetchTags()]);
     expect(api.listTags).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches only after TTL expires", async () => {
+    const t1 = makeTag({ name: "a" });
+    const t2 = makeTag({ name: "b" });
+    api.listTags.mockResolvedValue([t1, t2]);
+
+    let fakeTime = 1000;
+    const fakeNow = () => fakeTime;
+
+    const store = __test__.createTagsStore(api, fakeNow)();
+
+    await store.fetchTags();
+    expect(api.listTags).toHaveBeenCalledTimes(1);
+
+    // Within TTL
+    fakeTime += 59_000;
+    await store.fetchTags();
+    expect(api.listTags).toHaveBeenCalledTimes(1);
+
+    // After TTL
+    fakeTime += 60_000;
+    await store.fetchTags();
+    expect(api.listTags).toHaveBeenCalledTimes(2);
   });
 });

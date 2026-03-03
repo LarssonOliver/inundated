@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
-import { __test__, useProjectsStore } from "@/stores/projects";
+import { __test__ } from "@/stores/projects";
 
 function project(partial?: Partial<Project>): Project {
   return {
@@ -122,5 +122,29 @@ describe("projects store", () => {
     const store = useStore();
     await Promise.all([store.fetchProjects(), store.fetchProjects(), store.fetchProjects()]);
     expect(api.listProjects).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches only after TTL expires", async () => {
+    const t1 = project({ name: "a" });
+    const t2 = project({ name: "b" });
+    api.listProjects.mockResolvedValue([t1, t2]);
+
+    let fakeTime = 1000;
+    const fakeNow = () => fakeTime;
+
+    const store = __test__.createProjectsStore(api, fakeNow)();
+
+    await store.fetchProjects();
+    expect(api.listProjects).toHaveBeenCalledTimes(1);
+
+    // Within TTL
+    fakeTime += 59_000;
+    await store.fetchProjects();
+    expect(api.listProjects).toHaveBeenCalledTimes(1);
+
+    // After TTL
+    fakeTime += 60_000;
+    await store.fetchProjects();
+    expect(api.listProjects).toHaveBeenCalledTimes(2);
   });
 });

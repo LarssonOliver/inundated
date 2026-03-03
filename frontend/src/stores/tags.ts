@@ -10,10 +10,13 @@ function copyTag(tag: Tag): Tag {
   return { ...tag };
 }
 
-function createTagsStore(api: TagsApi) {
+function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
   return defineStore("tags", () => {
     const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
-    let _pending = null as Promise<void> | null;
+    const _pending = ref<Promise<void> | null>(null);
+
+    const lastFetched = ref<number | null>(null);
+    const TTL = 60_000; // 1 minute
 
     const readOnlyTags = computed<readonly Tag[]>(() =>
       Array.from(tags.value.values()).map(copyTag),
@@ -24,19 +27,33 @@ function createTagsStore(api: TagsApi) {
      *
      * @returns A promise that resolves when the tags have been fetched.
      */
-    async function fetchTags(): Promise<void> {
-      if (_pending) return _pending;
+    async function fetchTagsAlways(): Promise<void> {
+      if (_pending.value) return _pending.value;
 
-      _pending = (async () => {
+      _pending.value = (async () => {
         const fetched = await api.listTags();
         tags.value = new Map(fetched.map((tag) => [tag.id, tag]));
       })();
 
       try {
-        await _pending;
+        await _pending.value;
       } finally {
-        _pending = null;
+        _pending.value = null;
       }
+    }
+
+    /**
+     * Fetches all tags from the API if the cached tags are stale (older than TTL).
+     *
+     * @returns A promise that resolves when the tags have been fetched or if the cached tags are still valid.
+     */
+    async function fetchTags(): Promise<void> {
+      if (lastFetched.value && now() - lastFetched.value < TTL) {
+        return;
+      }
+
+      await fetchTagsAlways();
+      lastFetched.value = now();
     }
 
     /**

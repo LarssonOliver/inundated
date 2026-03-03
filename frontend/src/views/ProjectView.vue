@@ -45,7 +45,8 @@ watch(
       return;
     }
 
-    const result = await projectsStore.fetchProjectById(newId as string);
+    await projectsStore.fetchProjects();
+    const result = projectsStore.getProjectById(newId as string);
     if (result) {
       project.value = result;
       projectTags.value = new Set<string>(project.value.tagIds);
