@@ -36,7 +36,8 @@ watch(
       return;
     }
 
-    const result = await tagsStore.fetchTagById(newId as string);
+    await tagsStore.fetchTags();
+    const result = tagsStore.getTagById(newId as string);
     if (result) {
       tag.value = result;
       isNewTag.value = false;

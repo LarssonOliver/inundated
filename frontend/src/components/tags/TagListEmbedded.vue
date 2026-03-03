@@ -88,8 +88,10 @@ watch(tagSearchQuery, async (query) => {
 
 async function refreshTags() {
   tags.value.length = 0;
+  await tagsStore.fetchTags();
+
   for (const id of model.value) {
-    const tag = await tagsStore.fetchTagById(id);
+    const tag = tagsStore.getTagById(id);
     if (tag) tags.value.push(tag);
   }
 }
