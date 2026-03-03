@@ -13,10 +13,13 @@ function copyTimespan(timespan: Timespan): Timespan {
   };
 }
 
-function createTimespansStore(api: TimespansApi) {
+function createTimespansStore(api: TimespansApi, now: () => number = () => Date.now()) {
   return defineStore("timespans", () => {
     const timespans = ref<Map<string, Timespan>>(new Map<string, Timespan>());
-    let _pending = null as Promise<void> | null;
+    const _pending = ref<Promise<void> | null>(null);
+
+    const lastFetched = ref<number | null>(null);
+    const TTL = 60_000; // 1 minute
 
     const readOnlyTimespans = computed<readonly Timespan[]>(() =>
       Array.from(timespans.value.values()).map(copyTimespan),
@@ -27,19 +30,33 @@ function createTimespansStore(api: TimespansApi) {
      *
      * @returns A promise that resolves when the timespans have been fetched.
      */
-    async function fetchTimespans(): Promise<void> {
-      if (_pending) return _pending;
+    async function fetchTimespansAlways(): Promise<void> {
+      if (_pending.value) return _pending.value;
 
-      _pending = (async () => {
+      _pending.value = (async () => {
         const fetched = await api.listTimespans();
         timespans.value = new Map(fetched.map((timespan) => [timespan.id, timespan]));
       })();
 
       try {
-        await _pending;
+        await _pending.value;
       } finally {
-        _pending = null;
+        _pending.value = null;
       }
+    }
+
+    /**
+     * Fetches all timespans from the API if the cached timespans are stale (older than TTL).
+     *
+     * @returns A promise that resolves when the timespans have been fetched or if the cached timespans are still valid.
+     */
+    async function fetchTimespans(): Promise<void> {
+      if (lastFetched.value && now() - lastFetched.value < TTL) {
+        return;
+      }
+
+      await fetchTimespansAlways();
+      lastFetched.value = now();
     }
 
     /**

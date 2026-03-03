@@ -11,10 +11,13 @@ function copyProject(project: Project): Project {
   };
 }
 
-function createProjectsStore(api: ProjectsApi) {
+function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.now()) {
   return defineStore("projects", () => {
     const projects = ref<Map<string, Project>>(new Map<string, Project>());
-    let _pending = null as Promise<void> | null;
+    const _pending = ref<Promise<void> | null>(null);
+
+    const lastFetched = ref<number | null>(null);
+    const TTL = 60_000; // 1 minute
 
     const readOnlyProjects = computed<readonly Project[]>(() =>
       Array.from(projects.value.values()).map(copyProject),
@@ -25,19 +28,33 @@ function createProjectsStore(api: ProjectsApi) {
      *
      * @returns A promise that resolves when the projects have been fetched.
      */
-    async function fetchProjects(): Promise<void> {
-      if (_pending) return _pending;
+    async function fetchProjectsAlways(): Promise<void> {
+      if (_pending.value) return _pending.value;
 
-      _pending = (async () => {
+      _pending.value = (async () => {
         const fetched = await api.listProjects();
         projects.value = new Map(fetched.map((project) => [project.id, project]));
       })();
 
       try {
-        await _pending;
+        await _pending.value;
       } finally {
-        _pending = null;
+        _pending.value = null;
       }
+    }
+
+    /**
+     * Fetches all projects from the API if the cached projects are stale (older than TTL).
+     *
+     * @returns A promise that resolves when the projects have been fetched or if the cached projects are still valid.
+     */
+    async function fetchProjects(): Promise<void> {
+      if (lastFetched.value && now() - lastFetched.value < TTL) {
+        return;
+      }
+
+      await fetchProjectsAlways();
+      lastFetched.value = now();
     }
 
     /**

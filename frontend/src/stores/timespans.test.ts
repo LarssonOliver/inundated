@@ -128,4 +128,28 @@ describe("timespans store", () => {
     await Promise.all([store.fetchTimespans(), store.fetchTimespans(), store.fetchTimespans()]);
     expect(api.listTimespans).toHaveBeenCalledTimes(1);
   });
+
+  it("fetches only after TTL expires", async () => {
+    const t1 = makeTimespan({ name: "a" });
+    const t2 = makeTimespan({ name: "b" });
+    api.listTimespans.mockResolvedValue([t1, t2]);
+
+    let fakeTime = 1000;
+    const fakeNow = () => fakeTime;
+
+    const store = __test__.createTimespansStore(api, fakeNow)();
+
+    await store.fetchTimespans();
+    expect(api.listTimespans).toHaveBeenCalledTimes(1);
+
+    // Within TTL
+    fakeTime += 59_000;
+    await store.fetchTimespans();
+    expect(api.listTimespans).toHaveBeenCalledTimes(1);
+
+    // After TTL
+    fakeTime += 60_000;
+    await store.fetchTimespans();
+    expect(api.listTimespans).toHaveBeenCalledTimes(2);
+  });
 });
