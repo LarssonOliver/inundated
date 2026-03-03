@@ -13,6 +13,7 @@ function copyTag(tag: Tag): Tag {
 function createTagsStore(api: TagsApi) {
   return defineStore("tags", () => {
     const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
+    let _pending = null as Promise<void> | null;
 
     const readOnlyTags = computed<readonly Tag[]>(() =>
       Array.from(tags.value.values()).map(copyTag),
@@ -24,24 +25,18 @@ function createTagsStore(api: TagsApi) {
      * @returns A promise that resolves when the tags have been fetched.
      */
     async function fetchTags(): Promise<void> {
-      const fetched = await api.listTags();
-      tags.value = new Map(fetched.map((tag) => [tag.id, tag]));
-    }
+      if (_pending) return _pending;
 
-    /**
-     * Fetches a tag by its ID from the API.
-     *
-     * @param id - The ID of the tag to fetch.
-     *
-     * @returns A promise that resolves to the tag if found, or undefined
-     */
-    async function fetchTagById(id: string): Promise<Tag> {
-      const fetched = await api.getTag(id);
-      if (!fetched) {
-        throw new Error(`Tag with ID ${id} not found`);
+      _pending = (async () => {
+        const fetched = await api.listTags();
+        tags.value = new Map(fetched.map((tag) => [tag.id, tag]));
+      })();
+
+      try {
+        await _pending;
+      } finally {
+        _pending = null;
       }
-      tags.value.set(fetched.id, fetched);
-      return copyTag(fetched);
     }
 
     /**
@@ -154,7 +149,6 @@ function createTagsStore(api: TagsApi) {
     return {
       tags: readOnlyTags,
       fetchTags,
-      fetchTagById,
       createTag,
       createTagFromName,
       getTagById,

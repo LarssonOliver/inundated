@@ -61,18 +61,6 @@ describe("timespans store", () => {
     expect(original.startTime.getFullYear()).not.toBe(2000);
   });
 
-  it("fetches a timespan by id and stores it", async () => {
-    const ts = makeTimespan({ id: "x" });
-    api.getTimespan.mockResolvedValue(ts);
-
-    const store = useStore();
-    const result = await store.fetchTimespanById("x");
-
-    expect(api.getTimespan).toHaveBeenCalledWith("x");
-    expect(result.id).toBe("x");
-    expect(store.getTimespanById("x")?.id).toBe("x");
-  });
-
   it("creates a timespan and stores it", async () => {
     const input = {
       name: "New",
@@ -131,5 +119,13 @@ describe("timespans store", () => {
 
     expect(api.deleteTimespan).toHaveBeenCalledWith("d1");
     expect(store.getTimespanById("d1")).toBeUndefined();
+  });
+
+  it("only call fetch once if called multiple times concurrently", async () => {
+    const spans = [makeTimespan({ id: "a" }), makeTimespan({ id: "b" })];
+    api.listTimespans.mockResolvedValue(spans);
+    const store = useStore();
+    await Promise.all([store.fetchTimespans(), store.fetchTimespans(), store.fetchTimespans()]);
+    expect(api.listTimespans).toHaveBeenCalledTimes(1);
   });
 });

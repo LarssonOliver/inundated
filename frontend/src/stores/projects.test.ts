@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
-import { __test__ } from "@/stores/projects";
+import { __test__, useProjectsStore } from "@/stores/projects";
 
 function project(partial?: Partial<Project>): Project {
   return {
@@ -55,18 +55,6 @@ describe("projects store", () => {
     fetched.tagIds.add("evil");
 
     expect(original.tagIds.has("evil")).toBe(false);
-  });
-
-  it("fetches project by id and stores it", async () => {
-    const p = project({ id: "x" });
-    api.getProject.mockResolvedValue(p);
-
-    const store = useStore();
-    const result = await store.fetchProjectById("x");
-
-    expect(api.getProject).toHaveBeenCalledWith("x");
-    expect(result.id).toBe("x");
-    expect(store.getProjectById("x")?.id).toBe("x");
   });
 
   it("creates a project and stores it", async () => {
@@ -126,5 +114,13 @@ describe("projects store", () => {
 
     expect(api.deleteProject).toHaveBeenCalledWith("d1");
     expect(store.getProjectById("d1")).toBeUndefined();
+  });
+
+  it("only issue one fetch when fetching projects multiple times", async () => {
+    const projects = [project({ id: "a" }), project({ id: "b" })];
+    api.listProjects.mockResolvedValue(projects);
+    const store = useStore();
+    await Promise.all([store.fetchProjects(), store.fetchProjects(), store.fetchProjects()]);
+    expect(api.listProjects).toHaveBeenCalledTimes(1);
   });
 });

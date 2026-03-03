@@ -14,6 +14,7 @@ function copyProject(project: Project): Project {
 function createProjectsStore(api: ProjectsApi) {
   return defineStore("projects", () => {
     const projects = ref<Map<string, Project>>(new Map<string, Project>());
+    let _pending = null as Promise<void> | null;
 
     const readOnlyProjects = computed<readonly Project[]>(() =>
       Array.from(projects.value.values()).map(copyProject),
@@ -25,21 +26,18 @@ function createProjectsStore(api: ProjectsApi) {
      * @returns A promise that resolves when the projects have been fetched.
      */
     async function fetchProjects(): Promise<void> {
-      const fetched = await api.listProjects();
-      projects.value = new Map(fetched.map((project) => [project.id, project]));
-    }
+      if (_pending) return _pending;
 
-    /**
-     * Fetch a project by its ID from the API.
-     *
-     * @param id - The ID of the project to fetch.
-     *
-     * @returns A promise that resolves to the project if found, or undefined
-     */
-    async function fetchProjectById(id: string): Promise<Project> {
-      const fetched = await api.getProject(id);
-      projects.value.set(fetched.id, fetched);
-      return copyProject(fetched);
+      _pending = (async () => {
+        const fetched = await api.listProjects();
+        projects.value = new Map(fetched.map((project) => [project.id, project]));
+      })();
+
+      try {
+        await _pending;
+      } finally {
+        _pending = null;
+      }
     }
 
     /**
@@ -100,7 +98,6 @@ function createProjectsStore(api: ProjectsApi) {
     return {
       projects: readOnlyProjects,
       fetchProjects,
-      fetchProjectById,
       createProject,
       getProjectById,
       updateProject,

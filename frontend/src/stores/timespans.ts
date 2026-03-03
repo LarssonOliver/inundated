@@ -16,6 +16,7 @@ function copyTimespan(timespan: Timespan): Timespan {
 function createTimespansStore(api: TimespansApi) {
   return defineStore("timespans", () => {
     const timespans = ref<Map<string, Timespan>>(new Map<string, Timespan>());
+    let _pending = null as Promise<void> | null;
 
     const readOnlyTimespans = computed<readonly Timespan[]>(() =>
       Array.from(timespans.value.values()).map(copyTimespan),
@@ -27,21 +28,18 @@ function createTimespansStore(api: TimespansApi) {
      * @returns A promise that resolves when the timespans have been fetched.
      */
     async function fetchTimespans(): Promise<void> {
-      const fetched = await api.listTimespans();
-      timespans.value = new Map(fetched.map((timespan) => [timespan.id, timespan]));
-    }
+      if (_pending) return _pending;
 
-    /**
-     * Fetch a timespan by its ID from the API.
-     *
-     * @param id - The ID of the timespan to fetch.
-     *
-     * @returns A promise that resolves to the timespan if found, or undefined
-     */
-    async function fetchTimespanById(id: string): Promise<Timespan> {
-      const fetched = await api.getTimespan(id);
-      timespans.value.set(fetched.id, fetched);
-      return copyTimespan(fetched);
+      _pending = (async () => {
+        const fetched = await api.listTimespans();
+        timespans.value = new Map(fetched.map((timespan) => [timespan.id, timespan]));
+      })();
+
+      try {
+        await _pending;
+      } finally {
+        _pending = null;
+      }
     }
 
     /**
@@ -102,7 +100,6 @@ function createTimespansStore(api: TimespansApi) {
     return {
       timespans: readOnlyTimespans,
       fetchTimespans,
-      fetchTimespanById,
       createTimespan,
       getTimespanById,
       updateTimespan,

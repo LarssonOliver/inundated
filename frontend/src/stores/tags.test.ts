@@ -48,17 +48,6 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.name)).toEqual(["a", "b"]);
   });
 
-  it("upserts a fetched tag", async () => {
-    const tag = makeTag({ id: "1" });
-    api.getTag.mockResolvedValue(tag);
-
-    const store = useTagsStore();
-    const result = await store.fetchTagById("1");
-
-    expect(result).toEqual(tag);
-    expect(store.getTagById("1")).toEqual(tag);
-  });
-
   it("creates a tag and stores it", async () => {
     const created = makeTag({ id: "1" });
     api.createTag.mockResolvedValue(created);
@@ -164,5 +153,14 @@ describe("tags store", () => {
     expect(api.deleteTag).toHaveBeenCalledWith("1");
     expect(store.getTagById("1")).toBeUndefined();
     expect(store.tags).toHaveLength(0);
+  });
+
+  it("only issue one API call when fetching tags multiple times", async () => {
+    const t1 = makeTag({ name: "a" });
+    const t2 = makeTag({ name: "b" });
+    api.listTags.mockResolvedValue([t1, t2]);
+    const store = useTagsStore();
+    await Promise.all([store.fetchTags(), store.fetchTags(), store.fetchTags()]);
+    expect(api.listTags).toHaveBeenCalledTimes(1);
   });
 });
