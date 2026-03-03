@@ -9,6 +9,16 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GetProjectParamsInclude.
+const (
+	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
+)
+
+// Defines values for GetTagParamsInclude.
+const (
+	GetTagParamsIncludeTotalTimeMs GetTagParamsInclude = "totalTimeMs"
+)
+
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
 	Color           string                `json:"color"`
@@ -38,13 +48,15 @@ type Project struct {
 	Name            string                `json:"name"`
 	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	TotalTimeMs     *int                  `json:"totalTimeMs,omitempty"`
 }
 
 // Tag defines model for Tag.
 type Tag struct {
-	Color string             `json:"color"`
-	Id    openapi_types.UUID `json:"id"`
-	Name  string             `json:"name"`
+	Color       string             `json:"color"`
+	Id          openapi_types.UUID `json:"id"`
+	Name        string             `json:"name"`
+	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
 }
 
 // Timespan defines model for Timespan.
@@ -77,6 +89,24 @@ type UpdateTimespan struct {
 	StartTime *time.Time            `json:"startTime,omitempty"`
 	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
 }
+
+// GetProjectParams defines parameters for GetProject.
+type GetProjectParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
+	Include *[]GetProjectParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetProjectParamsInclude defines parameters for GetProject.
+type GetProjectParamsInclude string
+
+// GetTagParams defines parameters for GetTag.
+type GetTagParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
+	Include *[]GetTagParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetTagParamsInclude defines parameters for GetTag.
+type GetTagParamsInclude string
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject

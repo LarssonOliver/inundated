@@ -38,7 +38,7 @@ func TestProject_CRUD(t *testing.T) {
 	projectId := createResp.JSON201.Id
 
 	// READ
-	getResp, err := client.GetProjectWithResponse(ctx, projectId)
+	getResp, err := client.GetProjectWithResponse(ctx, projectId, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, getResp.StatusCode())
 	require.Equal(t, "Test Project", getResp.JSON200.Name)
@@ -66,7 +66,7 @@ func TestProject_CRUD(t *testing.T) {
 	require.Equal(t, 204, deleteResp.StatusCode())
 
 	// VERIFY DELETION
-	getRespAfterDelete, err := client.GetProjectWithResponse(ctx, projectId)
+	getRespAfterDelete, err := client.GetProjectWithResponse(ctx, projectId, nil)
 	require.NoError(t, err)
 	require.Equal(t, 404, getRespAfterDelete.StatusCode())
 }

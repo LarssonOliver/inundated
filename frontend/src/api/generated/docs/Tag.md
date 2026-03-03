@@ -9,6 +9,7 @@ Name | Type
 `id` | string
 `name` | string
 `color` | string
+`totalTimeMs` | number
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "id": null,
   "name": null,
   "color": null,
+  "totalTimeMs": null,
 } satisfies Tag
 
 console.log(example)

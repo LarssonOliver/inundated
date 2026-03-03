@@ -146,7 +146,7 @@ No authorization required
 
 ## getTag
 
-> Tag getTag(tagId)
+> Tag getTag(tagId, include)
 
 Get tag
 
@@ -166,6 +166,8 @@ async function example() {
   const body = {
     // string
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Set<'totalTimeMs'> | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs  (optional)
+    include: ...,
   } satisfies GetTagRequest;
 
   try {
@@ -186,6 +188,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **tagId** | `string` |  | [Defaults to `undefined`] |
+| **include** | `totalTimeMs` | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs  | [Optional] [Enum: totalTimeMs] |
 
 ### Return type
 

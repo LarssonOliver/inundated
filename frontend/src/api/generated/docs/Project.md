@@ -11,6 +11,7 @@ Name | Type
 `color` | string
 `timeBudgetHours` | number
 `tagIds` | Set&lt;string&gt;
+`totalTimeMs` | number
 
 ## Example
 
@@ -24,6 +25,7 @@ const example = {
   "color": null,
   "timeBudgetHours": null,
   "tagIds": null,
+  "totalTimeMs": null,
 } satisfies Project
 
 console.log(example)

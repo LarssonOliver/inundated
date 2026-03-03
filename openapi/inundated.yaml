@@ -3,7 +3,7 @@
 openapi: 3.1.2
 info:
   title: Inundated
-  version: 0.0.1
+  version: 0.1.0
 
 servers:
   - url: /api
@@ -61,6 +61,22 @@ paths:
       tags: [tags]
       summary: Get tag
       operationId: getTag
+      parameters:
+        - name: include
+          in: query
+          description: >
+            Comma-separated list of optional computed fields to include.
+            Supported values: totalTimeMs
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - totalTimeMs
+            uniqueItems: true
       responses:
         '200':
           description: Tag
@@ -151,6 +167,22 @@ paths:
       tags: [projects]
       summary: Get project
       operationId: getProject
+      parameters:
+        - name: include
+          in: query
+          description: >
+            Comma-separated list of optional computed fields to include.
+            Supported values: totalTimeMs
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - totalTimeMs
+            uniqueItems: true
       responses:
         '200':
           description: Project
@@ -303,6 +335,8 @@ components:
         color:
           type: string
           pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
+        totalTimeMs:
+          type: integer
     CreateTag:
       type: object
       required: [name, color]
@@ -345,6 +379,8 @@ components:
           items:
             type: string
             format: uuid
+        totalTimeMs:
+          type: integer
     CreateProject:
       type: object
       required: [name, color]
