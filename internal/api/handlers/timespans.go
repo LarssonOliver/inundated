@@ -30,6 +30,8 @@ func (p *TimespanHandler) CreateTimespan(ctx context.Context, request api.Create
 
 	if request.Body.Name != nil {
 		timespan.Name = *request.Body.Name
+	} else {
+		timespan.Name = ""
 	}
 
 	if request.Body.TagIds != nil {

@@ -38,9 +38,8 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 		{
 			name:     "Test CreateTimespan with empty name",
 			timespan: model.Timespan{Name: "", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour)},
-			want:     model.Timespan{},
-			wantErr:  true,
-			errType:  model.ErrInvalidArgument,
+			want:     model.Timespan{Name: "", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour)},
+			wantErr:  false,
 		},
 		{
 			name:     "Test CreateTimespan with EndTime before StartTime",
@@ -307,9 +306,8 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 			editTimespanId: func(createdTimespan *model.Timespan) uuid.UUID {
 				return createdTimespan.Id
 			},
-			want:    model.Timespan{},
-			wantErr: true,
-			errType: model.ErrInvalidArgument,
+			want:    model.Timespan{Name: "", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+			wantErr: false,
 		},
 		{
 			name:         "Test UpdateTimespan with EndTime before StartTime",

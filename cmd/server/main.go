@@ -17,11 +17,11 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/config"
+	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/repository/postgres"
 	"github.com/larssonoliver/inundated/internal/service"
-	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
 )
 
 var Version = "dev"
