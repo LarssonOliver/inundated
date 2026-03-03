@@ -272,9 +272,10 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 	run := func(
 		t *testing.T,
+		repoName string,
 		newRepo func(t *testing.T) repository.Repository,
 	) {
-		t.Run("CreateAndGet", func(t *testing.T) {
+		t.Run(repoName+"CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
 			tagIds := seedTags(t, ctx, repo, 2)
@@ -301,20 +302,23 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.ElementsMatch(t, tagIds, got.TagIds)
 		})
 
-		// t.Run("CreateWithEmptyName", func(t *testing.T) {
-		// 	repo := newRepo(t)
-		// 	tagIds := seedTags(t, ctx, repo, 1)
-		// 	start := time.Now().Add(-time.Hour)
-		// 	end := time.Now()
-		// 	ts := model.Timespan{
-		// 		Name:      "",
-		// 		StartTime: start,
-		// 		EndTime:   end,
-		// 		TagIds:    tagIds,
-		// 	}
-		// })
+		t.Run(repoName+"CreateWithEmptyName", func(t *testing.T) {
+			repo := newRepo(t)
+			tagIds := seedTags(t, ctx, repo, 1)
+			start := time.Now().Add(-time.Hour)
+			end := time.Now()
+			ts := model.Timespan{
+				Name:      "",
+				StartTime: start,
+				EndTime:   end,
+				TagIds:    tagIds,
+			}
 
-		t.Run("CreateFailsIfTagMissing", func(t *testing.T) {
+			_, err := repo.CreateTimespan(ctx, ts)
+			require.NoError(t, err)
+		})
+
+		t.Run(repoName+"CreateFailsIfTagMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
 			ts := model.Timespan{
@@ -328,7 +332,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
-		t.Run("UpdateFailsIfTagMissing", func(t *testing.T) {
+		t.Run(repoName+"UpdateFailsIfTimespanMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
 			ts := model.Timespan{
@@ -345,7 +349,23 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
-		t.Run("Delete", func(t *testing.T) {
+		t.Run(repoName+"UpdateSetEmptyName", func(t *testing.T) {
+			repo := newRepo(t)
+			ts := model.Timespan{
+				Name:      "Non-empty",
+				StartTime: time.Now(),
+				EndTime:   time.Now().Add(time.Hour),
+			}
+
+			created, _ := repo.CreateTimespan(ctx, ts)
+			ts.Id = created.Id
+			ts.Name = ""
+			uts, err := repo.UpdateTimespan(ctx, ts)
+			require.NoError(t, err)
+			require.Equal(t, "", uts.Name)
+		})
+
+		t.Run(repoName+"Delete", func(t *testing.T) {
 			repo := newRepo(t)
 
 			ts := model.Timespan{
@@ -366,7 +386,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 	// Memory
 
-	run(t, func(t *testing.T) repository.Repository {
+	run(t, "memory", func(t *testing.T) repository.Repository {
 		return memory.NewMemoryStore()
 	})
 
@@ -374,7 +394,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 	var cleanupfuncs []func() = make([]func(), 0)
 
-	run(t, func(t *testing.T) repository.Repository {
+	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
 		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 		cleanupfuncs = append(cleanupfuncs, terminate)

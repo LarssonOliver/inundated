@@ -27,7 +27,7 @@ func NewTimespanStore(tags repository.TagRepository) *TimespanStore {
 
 // CreateTimespan implements [repository.TimespanRepository].
 func (t *TimespanStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	if timespan.Name == "" || timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
+	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
@@ -89,7 +89,7 @@ func (t *TimespanStore) ListTimespans(ctx context.Context) ([]model.Timespan, er
 
 // UpdateTimespan implements [repository.TimespanRepository].
 func (t *TimespanStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	if timespan.Name == "" || timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
+	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 

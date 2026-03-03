@@ -84,9 +84,7 @@ func TestTimespan_Create_InvalidInput(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	resp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
-		Name: nil,
-	})
+	resp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{})
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode())
 }
