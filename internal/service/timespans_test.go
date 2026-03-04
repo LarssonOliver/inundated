@@ -8,44 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
-
-var _ repository.TimespanRepository = (*timespanRepoMock)(nil)
-
-type timespanRepoMock struct {
-	CreateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListFn   func(ctx context.Context) ([]model.Timespan, error)
-	UpdateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-}
-
-// CreateTimespan implements repository.TimespanRepository.
-func (t *timespanRepoMock) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return t.CreateFn(ctx, timespan)
-}
-
-// DeleteTimespan implements repository.TimespanRepository.
-func (t *timespanRepoMock) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	return t.DeleteFn(ctx, id)
-}
-
-// GetTimespan implements repository.TimespanRepository.
-func (t *timespanRepoMock) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
-	return t.GetFn(ctx, id)
-}
-
-// ListTimespans implements repository.TimespanRepository.
-func (t *timespanRepoMock) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
-	return t.ListFn(ctx)
-}
-
-// UpdateTimespan implements repository.TimespanRepository.
-func (t *timespanRepoMock) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return t.UpdateFn(ctx, timespan)
-}
 
 func TestTimespanService_GetTimespan(t *testing.T) {
 	testId := uuid.New()
@@ -79,11 +43,11 @@ func TestTimespanService_GetTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timespanRepoMock{
-				GetFn: tt.getFn,
+			repo := &repoMock{
+				GetTimespanFn: tt.getFn,
 			}
 
-			s := service.NewTimespanService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.GetTimespan(context.Background(), tt.id)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -134,11 +98,11 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timespanRepoMock{
-				ListFn: tt.listFn,
+			repo := &repoMock{
+				ListTimespanFn: tt.listFn,
 			}
 
-			s := service.NewTimespanService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.ListTimespans(context.Background())
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -194,10 +158,10 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timespanRepoMock{
-				CreateFn: tt.createFn,
+			repo := &repoMock{
+				CreateTimespanFn: tt.createFn,
 			}
-			s := service.NewTimespanService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.CreateTimespan(context.Background(), tt.timespan)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -247,10 +211,10 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timespanRepoMock{
-				UpdateFn: tt.updateFn,
+			repo := &repoMock{
+				UpdateTimespanFn: tt.updateFn,
 			}
-			s := service.NewTimespanService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.UpdateTimespan(context.Background(), tt.timespan)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -291,10 +255,10 @@ func TestTimespanService_DeleteTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &timespanRepoMock{
-				DeleteFn: tt.deleteFn,
+			repo := &repoMock{
+				DeleteTimespanFn: tt.deleteFn,
 			}
-			s := service.NewTimespanService(repo)
+			s := service.NewService(repo)
 			gotErr := s.DeleteTimespan(context.Background(), uuid.New())
 			if gotErr != nil {
 				if !tt.wantErr {

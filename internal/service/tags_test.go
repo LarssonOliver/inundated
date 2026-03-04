@@ -7,44 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
-
-var _ repository.TagRepository = (*tagRepoMock)(nil)
-
-type tagRepoMock struct {
-	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
-	ListFn   func(ctx context.Context) ([]model.Tag, error)
-	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-}
-
-// CreateTag implements repository.TagRepository.
-func (t *tagRepoMock) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return t.CreateFn(ctx, tag)
-}
-
-// DeleteTag implements repository.TagRepository.
-func (t *tagRepoMock) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return t.DeleteFn(ctx, id)
-}
-
-// GetTag implements repository.TagRepository.
-func (t *tagRepoMock) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-	return t.GetFn(ctx, id)
-}
-
-// ListTags implements repository.TagRepository.
-func (t *tagRepoMock) ListTags(ctx context.Context) ([]model.Tag, error) {
-	return t.ListFn(ctx)
-}
-
-// UpdateTag implements repository.TagRepository.
-func (t *tagRepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return t.UpdateFn(ctx, tag)
-}
 
 func TestTagService_GetTag(t *testing.T) {
 	testId := uuid.New()
@@ -77,11 +41,11 @@ func TestTagService_GetTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &tagRepoMock{
-				GetFn: tt.getFn,
+			repo := &repoMock{
+				GetTagFn: tt.getFn,
 			}
 
-			s := service.NewTagService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.GetTag(context.Background(), tt.id)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -130,11 +94,11 @@ func TestTagService_ListTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &tagRepoMock{
-				ListFn: tt.listFn,
+			repo := &repoMock{
+				ListTagFn: tt.listFn,
 			}
 
-			s := service.NewTagService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.ListTags(context.Background())
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -188,10 +152,10 @@ func TestTagService_CreateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &tagRepoMock{
-				CreateFn: tt.createFn,
+			repo := &repoMock{
+				CreateTagFn: tt.createFn,
 			}
-			s := service.NewTagService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.CreateTag(context.Background(), tt.tag)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -239,10 +203,10 @@ func TestTagService_UpdateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &tagRepoMock{
-				UpdateFn: tt.updateFn,
+			repo := &repoMock{
+				UpdateTagFn: tt.updateFn,
 			}
-			s := service.NewTagService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.UpdateTag(context.Background(), tt.tag)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -283,10 +247,10 @@ func TestTagService_DeleteTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &tagRepoMock{
-				DeleteFn: tt.deleteFn,
+			repo := &repoMock{
+				DeleteTagFn: tt.deleteFn,
 			}
-			s := service.NewTagService(repo)
+			s := service.NewService(repo)
 			gotErr := s.DeleteTag(context.Background(), uuid.New())
 			if gotErr != nil {
 				if !tt.wantErr {

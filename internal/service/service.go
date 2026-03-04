@@ -9,18 +9,14 @@ import (
 )
 
 type ServiceImpl struct {
-	TagServiceImpl
-	ProjectServiceImpl
-	TimespanServiceImpl
+	repository repository.Repository
 }
 
 var _ Service = (*ServiceImpl)(nil)
 
 func NewService(repository repository.Repository) *ServiceImpl {
 	return &ServiceImpl{
-		*NewTagService(repository),
-		*NewProjectService(repository),
-		*NewTimespanService(repository),
+		repository: repository,
 	}
 }
 

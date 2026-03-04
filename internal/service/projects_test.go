@@ -7,44 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
-
-var _ repository.ProjectRepository = (*projectRepoMock)(nil)
-
-type projectRepoMock struct {
-	CreateFn func(ctx context.Context, project model.Project) (model.Project, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Project, error)
-	ListFn   func(ctx context.Context) ([]model.Project, error)
-	UpdateFn func(ctx context.Context, project model.Project) (model.Project, error)
-}
-
-// CreateProject implements repository.ProjectRepository.
-func (t *projectRepoMock) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	return t.CreateFn(ctx, project)
-}
-
-// DeleteProject implements repository.ProjectRepository.
-func (t *projectRepoMock) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	return t.DeleteFn(ctx, id)
-}
-
-// GetProject implements repository.ProjectRepository.
-func (t *projectRepoMock) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
-	return t.GetFn(ctx, id)
-}
-
-// ListProjects implements repository.ProjectRepository.
-func (t *projectRepoMock) ListProjects(ctx context.Context) ([]model.Project, error) {
-	return t.ListFn(ctx)
-}
-
-// UpdateProject implements repository.ProjectRepository.
-func (t *projectRepoMock) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	return t.UpdateFn(ctx, project)
-}
 
 func TestProjectService_GetProject(t *testing.T) {
 	testId := uuid.New()
@@ -77,11 +41,11 @@ func TestProjectService_GetProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &projectRepoMock{
-				GetFn: tt.getFn,
+			repo := &repoMock{
+				GetProjectFn: tt.getFn,
 			}
 
-			s := service.NewProjectService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.GetProject(context.Background(), tt.id)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -130,11 +94,11 @@ func TestProjectService_ListProjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &projectRepoMock{
-				ListFn: tt.listFn,
+			repo := &repoMock{
+				ListProjectFn: tt.listFn,
 			}
 
-			s := service.NewProjectService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.ListProjects(context.Background())
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -188,10 +152,10 @@ func TestProjectService_CreateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &projectRepoMock{
-				CreateFn: tt.createFn,
+			repo := &repoMock{
+				CreateProjectFn: tt.createFn,
 			}
-			s := service.NewProjectService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.CreateProject(context.Background(), tt.project)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -239,10 +203,10 @@ func TestProjectService_UpdateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &projectRepoMock{
-				UpdateFn: tt.updateFn,
+			repo := &repoMock{
+				UpdateProjectFn: tt.updateFn,
 			}
-			s := service.NewProjectService(repo)
+			s := service.NewService(repo)
 			got, gotErr := s.UpdateProject(context.Background(), tt.project)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -283,10 +247,10 @@ func TestProjectService_DeleteProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &projectRepoMock{
-				DeleteFn: tt.deleteFn,
+			repo := &repoMock{
+				DeleteProjectFn: tt.deleteFn,
 			}
-			s := service.NewProjectService(repo)
+			s := service.NewService(repo)
 			gotErr := s.DeleteProject(context.Background(), uuid.New())
 			if gotErr != nil {
 				if !tt.wantErr {
