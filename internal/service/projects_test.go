@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
@@ -41,7 +42,7 @@ func TestProjectService_GetProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				GetProjectFn: tt.getFn,
 			}
 
@@ -94,7 +95,7 @@ func TestProjectService_ListProjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				ListProjectFn: tt.listFn,
 			}
 
@@ -152,7 +153,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				CreateProjectFn: tt.createFn,
 			}
 			s := service.NewService(repo)
@@ -203,7 +204,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				UpdateProjectFn: tt.updateFn,
 			}
 			s := service.NewService(repo)
@@ -247,7 +248,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				DeleteProjectFn: tt.deleteFn,
 			}
 			s := service.NewService(repo)

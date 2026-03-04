@@ -2,31 +2,15 @@ package memory
 
 import (
 	"context"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-type TagStore struct {
-	mu   sync.RWMutex
-	data map[uuid.UUID]model.Tag
-}
-
-var _ repository.TagRepository = (*TagStore)(nil)
-
-func NewTagStore() *TagStore {
-	return &TagStore{
-		mu:   sync.RWMutex{},
-		data: make(map[uuid.UUID]model.Tag),
-	}
-}
-
-func tagsExist(ctx context.Context, tags repository.TagRepository, tagIds []uuid.UUID) bool {
+func (t *MemoryStore) tagsExist(ctx context.Context, tagIds []uuid.UUID) bool {
 	for _, tagId := range tagIds {
-		if _, err := tags.GetTag(ctx, tagId); err != nil {
+		if _, err := t.GetTag(ctx, tagId); err != nil {
 			return false
 		}
 	}
@@ -34,7 +18,7 @@ func tagsExist(ctx context.Context, tags repository.TagRepository, tagIds []uuid
 }
 
 // CreateTag implements [repository.TagRepository].
-func (t *TagStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
@@ -49,16 +33,16 @@ func (t *TagStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, err
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.data[newId] = newTag
+	t.tags[newId] = newTag
 	return newTag, nil
 }
 
 // GetTag implements [repository.TagRepository].
-func (t *TagStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+func (t *MemoryStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	tag, exists := t.data[id]
+	tag, exists := t.tags[id]
 	if !exists {
 		return model.Tag{}, model.ErrNotFound
 	}
@@ -67,13 +51,13 @@ func (t *TagStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) 
 }
 
 // ListTags implements [repository.TagRepository].
-func (t *TagStore) ListTags(ctx context.Context) ([]model.Tag, error) {
+func (t *MemoryStore) ListTags(ctx context.Context) ([]model.Tag, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	tags := make([]model.Tag, 0, len(t.data))
+	tags := make([]model.Tag, 0, len(t.tags))
 
-	for _, tag := range t.data {
+	for _, tag := range t.tags {
 		tags = append(tags, tag)
 	}
 
@@ -81,7 +65,7 @@ func (t *TagStore) ListTags(ctx context.Context) ([]model.Tag, error) {
 }
 
 // UpdateTag implements [repository.TagRepository].
-func (t *TagStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (t *MemoryStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
@@ -89,20 +73,20 @@ func (t *TagStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, err
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.data[tag.Id]
+	_, exists := t.tags[tag.Id]
 	if !exists {
 		return model.Tag{}, model.ErrNotFound
 	}
 
-	t.data[tag.Id] = tag
+	t.tags[tag.Id] = tag
 	return tag, nil
 }
 
 // DeleteTag implements [repository.TagRepository].
-func (t *TagStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	// Skip locking for write if the tag does not exist
 	t.mu.RLock()
-	_, exists := t.data[id]
+	_, exists := t.tags[id]
 	t.mu.RUnlock()
 
 	if !exists {
@@ -114,6 +98,6 @@ func (t *TagStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
 
 	// delete is a noop if the key does not exist
 	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.data, id)
+	delete(t.tags, id)
 	return nil
 }
