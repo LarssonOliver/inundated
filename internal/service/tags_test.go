@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
@@ -41,7 +42,7 @@ func TestTagService_GetTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				GetTagFn: tt.getFn,
 			}
 
@@ -94,7 +95,7 @@ func TestTagService_ListTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				ListTagFn: tt.listFn,
 			}
 
@@ -152,7 +153,7 @@ func TestTagService_CreateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				CreateTagFn: tt.createFn,
 			}
 			s := service.NewService(repo)
@@ -203,7 +204,7 @@ func TestTagService_UpdateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				UpdateTagFn: tt.updateFn,
 			}
 			s := service.NewService(repo)
@@ -247,7 +248,7 @@ func TestTagService_DeleteTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				DeleteTagFn: tt.deleteFn,
 			}
 			s := service.NewService(repo)

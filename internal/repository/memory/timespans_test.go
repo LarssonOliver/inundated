@@ -21,7 +21,6 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 		want     model.Timespan
 		wantErr  bool
 		errType  error
-		getTagFn func(ctx context.Context, id uuid.UUID) (model.Tag, error)
 	}{
 		{
 			name:     "Test CreateTimespan with valid input",
@@ -77,7 +76,7 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTimespanStore(&tagRepoMock{GetFn: tt.getTagFn})
+			ta := memory.NewMemoryStore()
 			got, gotErr := ta.CreateTimespan(context.Background(), tt.timespan)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -152,7 +151,7 @@ func TestTimespanStore_GetTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTimespanStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 			timespan, _ := ta.CreateTimespan(context.Background(), tt.createTimespan)
 			getId := tt.getId(&timespan)
 			tt.want.Id = getId
@@ -210,7 +209,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTimespanStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 
 			for i, timespan := range tt.insertTimespans {
 				createdTimespan, _ := ta.CreateTimespan(context.Background(), timespan)
@@ -265,7 +264,6 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 		want           model.Timespan
 		wantErr        bool
 		errType        error
-		getTagFn       func(ctx context.Context, id uuid.UUID) (model.Tag, error)
 	}{
 		{
 			name:         "Test UpdateTimespan with existing ID",
@@ -365,7 +363,7 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTimespanStore(&tagRepoMock{GetFn: tt.getTagFn})
+			ta := memory.NewMemoryStore()
 
 			insertedTimespan, _ := ta.CreateTimespan(context.Background(), tt.timespan)
 			editId := tt.editTimespanId(&insertedTimespan)
@@ -439,7 +437,7 @@ func TestTimespanStore_DeleteTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTimespanStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 
 			timespan, _ := ta.CreateTimespan(context.Background(), tt.insertTimespan)
 			deleteId := tt.deleteId(&timespan)

@@ -6,47 +6,46 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 )
 
-var _ repository.TagRepository = (*tagRepoMock)(nil)
+// var _ repository.TagRepository = (*tagRepoMock)(nil)
 
-type tagRepoMock struct {
-	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
-	ListFn   func(ctx context.Context) ([]model.Tag, error)
-	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-}
+// type tagRepoMock struct {
+// 	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
+// 	DeleteFn func(ctx context.Context, id uuid.UUID) error
+// 	GetFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+// 	ListFn   func(ctx context.Context) ([]model.Tag, error)
+// 	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
+// }
 
-// CreateTag implements repository.TagRepository.
-func (t *tagRepoMock) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return t.CreateFn(ctx, tag)
-}
+// // CreateTag implements repository.TagRepository.
+// func (t *tagRepoMock) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+// 	return t.CreateFn(ctx, tag)
+// }
 
-// DeleteTag implements repository.TagRepository.
-func (t *tagRepoMock) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return t.DeleteFn(ctx, id)
-}
+// // DeleteTag implements repository.TagRepository.
+// func (t *tagRepoMock) DeleteTag(ctx context.Context, id uuid.UUID) error {
+// 	return t.DeleteFn(ctx, id)
+// }
 
-// GetTag implements repository.TagRepository.
-func (t *tagRepoMock) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-	if t.GetFn == nil {
-		return model.Tag{Id: id, Name: "MockTag", Color: "#FFFFFF"}, nil
-	}
-	return t.GetFn(ctx, id)
-}
+// // GetTag implements repository.TagRepository.
+// func (t *tagRepoMock) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+// 	if t.GetFn == nil {
+// 		return model.Tag{Id: id, Name: "MockTag", Color: "#FFFFFF"}, nil
+// 	}
+// 	return t.GetFn(ctx, id)
+// }
 
-// ListTags implements repository.TagRepository.
-func (t *tagRepoMock) ListTags(ctx context.Context) ([]model.Tag, error) {
-	return t.ListFn(ctx)
-}
+// // ListTags implements repository.TagRepository.
+// func (t *tagRepoMock) ListTags(ctx context.Context) ([]model.Tag, error) {
+// 	return t.ListFn(ctx)
+// }
 
-// UpdateTag implements repository.TagRepository.
-func (t *tagRepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return t.UpdateFn(ctx, tag)
-}
+// // UpdateTag implements repository.TagRepository.
+// func (t *tagRepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+// 	return t.UpdateFn(ctx, tag)
+// }
 
 func TestTagStore_CreateTag(t *testing.T) {
 	tests := []struct {
@@ -105,7 +104,7 @@ func TestTagStore_CreateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTagStore()
+			ta := memory.NewMemoryStore()
 			got, gotErr := ta.CreateTag(context.Background(), tt.tag)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -167,7 +166,7 @@ func TestTagStore_GetTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTagStore()
+			ta := memory.NewMemoryStore()
 			tag, _ := ta.CreateTag(context.Background(), tt.createTag)
 			getId := tt.getId(&tag)
 
@@ -226,7 +225,7 @@ func TestTagStore_ListTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTagStore()
+			ta := memory.NewMemoryStore()
 
 			for i, tag := range tt.insertTags {
 				createdTag, _ := ta.CreateTag(context.Background(), tag)
@@ -341,7 +340,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTagStore()
+			ta := memory.NewMemoryStore()
 
 			insertedTag, _ := ta.CreateTag(context.Background(), tt.tag)
 			editId := tt.editTagId(&insertedTag)
@@ -406,7 +405,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewTagStore()
+			ta := memory.NewMemoryStore()
 
 			tag, _ := ta.CreateTag(context.Background(), tt.insertTag)
 			deleteId := tt.deleteId(&tag)

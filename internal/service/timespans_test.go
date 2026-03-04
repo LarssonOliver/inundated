@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
@@ -43,7 +44,7 @@ func TestTimespanService_GetTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				GetTimespanFn: tt.getFn,
 			}
 
@@ -98,7 +99,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				ListTimespanFn: tt.listFn,
 			}
 
@@ -158,7 +159,7 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				CreateTimespanFn: tt.createFn,
 			}
 			s := service.NewService(repo)
@@ -211,7 +212,7 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				UpdateTimespanFn: tt.updateFn,
 			}
 			s := service.NewService(repo)
@@ -255,7 +256,7 @@ func TestTimespanService_DeleteTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &repoMock{
+			repo := &repository.RepoMock{
 				DeleteTimespanFn: tt.deleteFn,
 			}
 			s := service.NewService(repo)

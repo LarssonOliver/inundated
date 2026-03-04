@@ -2,32 +2,14 @@ package memory
 
 import (
 	"context"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-type ProjectStore struct {
-	mu   sync.RWMutex
-	data map[uuid.UUID]model.Project
-	tags repository.TagRepository
-}
-
-var _ repository.ProjectRepository = (*ProjectStore)(nil)
-
-func NewProjectStore(tags repository.TagRepository) *ProjectStore {
-	return &ProjectStore{
-		mu:   sync.RWMutex{},
-		data: make(map[uuid.UUID]model.Project),
-		tags: tags,
-	}
-}
-
 // CreateProject implements [repository.ProjectRepository].
-func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (t *MemoryStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
 	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
@@ -35,7 +17,7 @@ func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project)
 	var tagIds []uuid.UUID
 
 	if project.TagIds != nil {
-		if !tagsExist(ctx, t.tags, project.TagIds) {
+		if !t.tagsExist(ctx, project.TagIds) {
 			return model.Project{}, model.ErrInvalidReference
 		}
 
@@ -57,16 +39,16 @@ func (t *ProjectStore) CreateProject(ctx context.Context, project model.Project)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.data[newId] = newProject
+	t.projects[newId] = newProject
 	return newProject, nil
 }
 
 // GetProject implements [repository.ProjectRepository].
-func (t *ProjectStore) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
+func (t *MemoryStore) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	project, exists := t.data[id]
+	project, exists := t.projects[id]
 	if !exists {
 		return model.Project{}, model.ErrNotFound
 	}
@@ -75,13 +57,13 @@ func (t *ProjectStore) GetProject(ctx context.Context, id uuid.UUID) (model.Proj
 }
 
 // ListProjects implements [repository.ProjectRepository].
-func (t *ProjectStore) ListProjects(ctx context.Context) ([]model.Project, error) {
+func (t *MemoryStore) ListProjects(ctx context.Context) ([]model.Project, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	projects := make([]model.Project, 0, len(t.data))
+	projects := make([]model.Project, 0, len(t.projects))
 
-	for _, project := range t.data {
+	for _, project := range t.projects {
 		projects = append(projects, project)
 	}
 
@@ -89,32 +71,32 @@ func (t *ProjectStore) ListProjects(ctx context.Context) ([]model.Project, error
 }
 
 // UpdateProject implements [repository.ProjectRepository].
-func (t *ProjectStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (t *MemoryStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
 	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
 
-	if project.TagIds != nil && !tagsExist(ctx, t.tags, project.TagIds) {
+	if project.TagIds != nil && !t.tagsExist(ctx, project.TagIds) {
 		return model.Project{}, model.ErrInvalidReference
 	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.data[project.Id]
+	_, exists := t.projects[project.Id]
 	if !exists {
 		return model.Project{}, model.ErrNotFound
 	}
 
-	t.data[project.Id] = project
+	t.projects[project.Id] = project
 	return project, nil
 }
 
 // DeleteProject implements [repository.ProjectRepository].
-func (t *ProjectStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
 	// Skip locking for write if the project does not exist
 	t.mu.RLock()
-	_, exists := t.data[id]
+	_, exists := t.projects[id]
 	t.mu.RUnlock()
 
 	if !exists {
@@ -126,6 +108,6 @@ func (t *ProjectStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
 
 	// delete is a noop if the key does not exist
 	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.data, id)
+	delete(t.projects, id)
 	return nil
 }

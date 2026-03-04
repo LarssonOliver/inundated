@@ -2,31 +2,13 @@ package memory
 
 import (
 	"context"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
-	"github.com/larssonoliver/inundated/internal/repository"
 )
 
-type TimespanStore struct {
-	mu   sync.RWMutex
-	data map[uuid.UUID]model.Timespan
-	tags repository.TagRepository
-}
-
-var _ repository.TimespanRepository = (*TimespanStore)(nil)
-
-func NewTimespanStore(tags repository.TagRepository) *TimespanStore {
-	return &TimespanStore{
-		mu:   sync.RWMutex{},
-		data: make(map[uuid.UUID]model.Timespan),
-		tags: tags,
-	}
-}
-
 // CreateTimespan implements [repository.TimespanRepository].
-func (t *TimespanStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (t *MemoryStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
@@ -34,7 +16,7 @@ func (t *TimespanStore) CreateTimespan(ctx context.Context, timespan model.Times
 	var tagIds []uuid.UUID
 
 	if timespan.TagIds != nil {
-		if !tagsExist(ctx, t.tags, timespan.TagIds) {
+		if !t.tagsExist(ctx, timespan.TagIds) {
 			return model.Timespan{}, model.ErrInvalidReference
 		}
 
@@ -56,16 +38,16 @@ func (t *TimespanStore) CreateTimespan(ctx context.Context, timespan model.Times
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.data[newId] = newTimespan
+	t.timespans[newId] = newTimespan
 	return newTimespan, nil
 }
 
 // GetTimespan implements [repository.TimespanRepository].
-func (t *TimespanStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+func (t *MemoryStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespan, exists := t.data[id]
+	timespan, exists := t.timespans[id]
 	if !exists {
 		return model.Timespan{}, model.ErrNotFound
 	}
@@ -74,13 +56,13 @@ func (t *TimespanStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 }
 
 // ListTimespans implements [repository.TimespanRepository].
-func (t *TimespanStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
+func (t *MemoryStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespans := make([]model.Timespan, 0, len(t.data))
+	timespans := make([]model.Timespan, 0, len(t.timespans))
 
-	for _, timespan := range t.data {
+	for _, timespan := range t.timespans {
 		timespans = append(timespans, timespan)
 	}
 
@@ -88,32 +70,32 @@ func (t *TimespanStore) ListTimespans(ctx context.Context) ([]model.Timespan, er
 }
 
 // UpdateTimespan implements [repository.TimespanRepository].
-func (t *TimespanStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (t *MemoryStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
-	if timespan.TagIds != nil && !tagsExist(ctx, t.tags, timespan.TagIds) {
+	if timespan.TagIds != nil && !t.tagsExist(ctx, timespan.TagIds) {
 		return model.Timespan{}, model.ErrInvalidReference
 	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.data[timespan.Id]
+	_, exists := t.timespans[timespan.Id]
 	if !exists {
 		return model.Timespan{}, model.ErrNotFound
 	}
 
-	t.data[timespan.Id] = timespan
+	t.timespans[timespan.Id] = timespan
 	return timespan, nil
 }
 
 // DeleteTimespan implements [repository.TimespanRepository].
-func (t *TimespanStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 	// Skip locking for write if the timespan does not exist
 	t.mu.RLock()
-	_, exists := t.data[id]
+	_, exists := t.timespans[id]
 	t.mu.RUnlock()
 
 	if !exists {
@@ -125,6 +107,6 @@ func (t *TimespanStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error 
 
 	// delete is a noop if the key does not exist
 	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.data, id)
+	delete(t.timespans, id)
 	return nil
 }

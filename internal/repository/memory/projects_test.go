@@ -18,30 +18,23 @@ func TestProjectStore_CreateProject(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
 	tests := []struct {
-		name     string
-		project  model.Project
-		want     model.Project
-		wantErr  bool
-		errType  error
-		getTagFn func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+		name    string
+		project model.Project
+		want    model.Project
+		wantErr bool
+		errType error
 	}{
 		{
 			name:    "Test CreateProject with valid input",
 			project: model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: ptrd(0), TagIds: tagIds},
 			want:    model.Project{Name: "Urgent", Color: "#FF0000", TimeBudget: ptrd(0), TagIds: tagIds},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with another valid input",
 			project: model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: ptrd(4 * time.Hour), TagIds: nil},
 			want:    model.Project{Name: "Optional", Color: "#00FF00", TimeBudget: ptrd(4 * time.Hour), TagIds: []uuid.UUID{}},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with empty name",
@@ -49,9 +42,6 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with invalid color",
@@ -59,9 +49,6 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with empty color",
@@ -69,9 +56,6 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with nil project",
@@ -79,26 +63,21 @@ func TestProjectStore_CreateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:    "Test CreateProject with set ID (should be ignored)",
 			project: model.Project{Id: uuid.New(), Name: "WithID", Color: "#123456"},
 			want:    model.Project{Name: "WithID", Color: "#123456"},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := tagRepoMock{
-				GetFn: tt.getTagFn,
+			ta := memory.NewMemoryStore()
+			for i, tagId := range tt.project.TagIds {
+				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				tagIds[i] = tag.Id
 			}
-			ta := memory.NewProjectStore(&tags)
 			got, gotErr := ta.CreateProject(context.Background(), tt.project)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -176,7 +155,7 @@ func TestProjectStore_GetProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewProjectStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 			project, _ := ta.CreateProject(context.Background(), tt.createProject)
 			getId := tt.getId(&project)
 
@@ -252,7 +231,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewProjectStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 
 			for i, project := range tt.insertProjects {
 				createdProject, _ := ta.CreateProject(context.Background(), project)
@@ -310,7 +289,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 		want          model.Project
 		wantErr       bool
 		errType       error
-		getTagFn      func(ctx context.Context, id uuid.UUID) (model.Tag, error)
 	}{
 		{
 			name:        "Test UpdateProject with valid input",
@@ -321,9 +299,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{Name: "NewName", Color: "#00FF00", TimeBudget: ptrd(2 * time.Hour), TagIds: tagIds},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with non-existing ID",
@@ -335,9 +310,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrNotFound,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with empty name",
@@ -349,9 +321,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with invalid color",
@@ -363,9 +332,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrInvalidArgument,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with empty ID",
@@ -377,9 +343,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			want:    model.Project{},
 			wantErr: true,
 			errType: model.ErrNotFound,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with same name and color",
@@ -390,9 +353,6 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{Name: "Project5", Color: "#ABCDEF"},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 		{
 			name:        "Test UpdateProject with nil TagIds (should become empty slice)",
@@ -403,14 +363,15 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			},
 			want:    model.Project{Name: "Project6Updated", Color: "#ABC123", TagIds: []uuid.UUID{}},
 			wantErr: false,
-			getTagFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-				return model.Tag{Id: id, Name: "Tag", Color: "#FFFFFF"}, nil
-			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewProjectStore(&tagRepoMock{GetFn: tt.getTagFn})
+			ta := memory.NewMemoryStore()
+			for i, tagId := range tt.project.TagIds {
+				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				tagIds[i] = tag.Id
+			}
 
 			insertedProject, _ := ta.CreateProject(context.Background(), tt.project)
 			editId := tt.editProjectId(&insertedProject)
@@ -489,7 +450,7 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := memory.NewProjectStore(&tagRepoMock{})
+			ta := memory.NewMemoryStore()
 
 			project, _ := ta.CreateProject(context.Background(), tt.insertProject)
 			deleteId := tt.deleteId(&project)
