@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/stretchr/testify/require"
 )
 
 func ptrd(d time.Duration) *time.Duration {
@@ -74,41 +75,31 @@ func TestProjectStore_CreateProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
-			for i, tagId := range tt.project.TagIds {
-				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
-				tagIds[i] = tag.Id
-			}
-			got, gotErr := ta.CreateProject(context.Background(), tt.project)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateProject() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
-				}
-				return
-			}
-			if tt.wantErr {
-				t.Fatal("CreateProject() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || got.Color != tt.want.Color || got.Id == tt.want.Id || len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("CreateProject() = %v, want %v", got, tt.want)
-				return
-			}
-			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("CreateProject() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
-				}
+			for _, tagId := range tt.project.TagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
+			got, gotErr := ta.CreateProject(context.Background(), tt.project)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
+				}
+				return
+			}
+
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
+
+			if tt.want.TimeBudget == nil {
+				require.Nil(t, got.TimeBudget)
+			} else {
+				require.NotNil(t, got.TimeBudget)
+				require.Equal(t, *tt.want.TimeBudget, *got.TimeBudget)
+			}
 		})
 	}
 }
@@ -156,38 +147,32 @@ func TestProjectStore_GetProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
+			for _, tagId := range tt.createProject.TagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+			}
 			project, _ := ta.CreateProject(context.Background(), tt.createProject)
 			getId := tt.getId(&project)
 
 			got, gotErr := ta.GetProject(context.Background(), getId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetProject() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("GetProject() succeeded unexpectedly")
-			}
-			if project.Name != tt.want.Name || project.Color != tt.want.Color || project.Id != got.Id || len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("GetProject() = %v, want %v", got, tt.want)
-				return
-			}
-			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("GetProject() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
+				return
+			}
+
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
+
+			if tt.want.TimeBudget == nil {
+				require.Nil(t, got.TimeBudget)
+			} else {
+				require.NotNil(t, got.TimeBudget)
+				require.Equal(t, *tt.want.TimeBudget, *got.TimeBudget)
 			}
 		})
 	}
@@ -233,28 +218,26 @@ func TestProjectStore_ListProjects(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
+			for _, tagId := range tagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+			}
+
 			for i, project := range tt.insertProjects {
 				createdProject, _ := ta.CreateProject(context.Background(), project)
 				tt.insertProjects[i].Id = createdProject.Id
 			}
 
 			got, gotErr := ta.ListProjects(context.Background())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListProjects() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("ListProjects() succeeded unexpectedly")
-			}
 
-			if len(got) != len(tt.insertProjects) {
-				t.Errorf("ListProjects() = %v, want %v", got, tt.insertProjects)
-			}
+			require.NoError(t, gotErr)
+			require.Len(t, got, len(tt.insertProjects))
 
 			for _, project := range tt.insertProjects {
 				found := false
@@ -368,6 +351,9 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
+			for _, tagId := range tagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+			}
 			for i, tagId := range tt.project.TagIds {
 				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				tagIds[i] = tag.Id
@@ -380,34 +366,25 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			tt.want.Id = editId
 
 			got, gotErr := ta.UpdateProject(context.Background(), tt.editProject)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateProject() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("UpdateProject() succeeded unexpectedly")
-			}
-			if tt.want.Name != got.Name || tt.want.Color != got.Color || tt.want.Id != got.Id || len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("UpdateProject() = %v, want %v", got, tt.want)
-				return
-			}
-			if (tt.want.TimeBudget == nil && got.TimeBudget != nil) || (tt.want.TimeBudget != nil && got.TimeBudget == nil) {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			if tt.want.TimeBudget != nil && got.TimeBudget != nil && *got.TimeBudget != *tt.want.TimeBudget {
-				t.Errorf("CreateProject() TimeBudget = %v, want %v", got.TimeBudget, tt.want.TimeBudget)
-				return
-			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("UpdateProject() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
+				return
+			}
+
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
+
+			if tt.want.TimeBudget == nil {
+				require.Nil(t, got.TimeBudget)
+			} else {
+				require.NotNil(t, got.TimeBudget)
+				require.Equal(t, *tt.want.TimeBudget, *got.TimeBudget)
 			}
 		})
 	}
@@ -456,22 +433,17 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 			deleteId := tt.deleteId(&project)
 
 			gotErr := ta.DeleteProject(context.Background(), deleteId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteProject() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateProject() error = %v, wantErrType %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteProject() succeeded unexpectedly")
-			}
+
+			require.NoError(t, gotErr)
 			project, err := ta.GetProject(context.Background(), deleteId)
-			if err == nil {
-				t.Errorf("Project with ID %v was not deleted, still exists: %v", deleteId, project)
-			}
+			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
 }

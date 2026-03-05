@@ -23,9 +23,12 @@ func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 		return model.Tag{}, model.ErrInvalidArgument
 	}
 
-	newId := uuid.New()
+	if tag.Id == uuid.Nil {
+		tag.Id = uuid.New()
+	}
+
 	newTag := model.Tag{
-		Id:    newId,
+		Id:    tag.Id,
 		Name:  tag.Name,
 		Color: tag.Color,
 	}
@@ -33,7 +36,7 @@ func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.tags[newId] = newTag
+	t.tags[newTag.Id] = newTag
 	return newTag, nil
 }
 
