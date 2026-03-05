@@ -16,6 +16,7 @@ func (s *ServiceImpl) ListTimespans(ctx context.Context) ([]model.Timespan, erro
 }
 
 func (s *ServiceImpl) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	timespan.Id = uuid.New()
 	return s.repository.CreateTimespan(ctx, timespan)
 }
 

@@ -16,6 +16,7 @@ func (s *ServiceImpl) ListProjects(ctx context.Context) ([]model.Project, error)
 }
 
 func (s *ServiceImpl) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
+	project.Id = uuid.New()
 	return s.repository.CreateProject(ctx, project)
 }
 

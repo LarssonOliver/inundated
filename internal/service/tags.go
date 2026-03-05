@@ -16,6 +16,7 @@ func (s *ServiceImpl) ListTags(ctx context.Context) ([]model.Tag, error) {
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+	tag.Id = uuid.New()
 	return s.repository.CreateTag(ctx, tag)
 }
 
