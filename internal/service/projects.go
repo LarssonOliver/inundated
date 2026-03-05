@@ -8,7 +8,23 @@ import (
 )
 
 func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *ProjectServiceGetIncludes) (model.Project, error) {
-	return s.repository.GetProject(ctx, id)
+	project, err := s.repository.GetProject(ctx, id)
+
+	if err != nil {
+		return model.Project{}, model.ErrNotFound
+	}
+
+	if includes != nil {
+		if includes.TotalTime && project.TagIds != nil && len(project.TagIds) > 0 {
+			totalTime, err := s.repository.GetTotalDurationByTags(ctx, project.TagIds)
+			if err != nil {
+				return model.Project{}, model.ErrNotFound
+			}
+			project.TotalTime = &totalTime
+		}
+	}
+
+	return project, nil
 }
 
 func (s *ServiceImpl) ListProjects(ctx context.Context) ([]model.Project, error) {

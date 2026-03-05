@@ -12,4 +12,5 @@ type Project struct {
 	Color      string
 	TimeBudget *time.Duration
 	TagIds     []uuid.UUID
+	TotalTime  *time.Duration
 }
