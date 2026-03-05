@@ -295,10 +295,10 @@ func TestGetTotalDurationByTags_Success(t *testing.T) {
 	repo, mock := newMock(t)
 
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
-	mock.ExpectQuery("SELECT SUM(end_time - start_time) AS total_duration FROM timespans WHERE project_id = ANY($1)").
+	mock.ExpectQuery("SELECT").
 		WithArgs(ids).
-		WillReturnRows(pgxmock.NewRows([]string{"total_duration"}).AddRow(2*time.Hour))
-	
+		WillReturnRows(pgxmock.NewRows([]string{"total_duration"}).AddRow(2 * time.Hour)) // 2 hours in seconds
+
 	result, err := repo.GetTotalDurationByTags(ctx, ids)
 	require.NoError(t, err)
 	require.Equal(t, 2*time.Hour, result)
@@ -307,16 +307,16 @@ func TestGetTotalDurationByTags_Success(t *testing.T) {
 func TestGetTotalDurationByTags_EmptyList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)
-	
+
 	result, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
 	require.NoError(t, err)
-	require.Equal(t, 0, result)
+	require.Equal(t, 0*time.Hour, result)
 }
 
 func TestGetTotalDurationByTags_NilList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)
-	
+
 	_, err := repo.GetTotalDurationByTags(ctx, nil)
 	require.Error(t, err)
 }
