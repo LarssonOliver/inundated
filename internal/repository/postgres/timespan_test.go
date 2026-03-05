@@ -289,3 +289,34 @@ func TestDeleteTimespan_NilId(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
+
+func TestGetTotalDurationByTags_Success(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+	mock.ExpectQuery("SELECT SUM(end_time - start_time) AS total_duration FROM timespans WHERE project_id = ANY($1)").
+		WithArgs(ids).
+		WillReturnRows(pgxmock.NewRows([]string{"total_duration"}).AddRow(2*time.Hour))
+	
+	result, err := repo.GetTotalDurationByTags(ctx, ids)
+	require.NoError(t, err)
+	require.Equal(t, 2*time.Hour, result)
+}
+
+func TestGetTotalDurationByTags_EmptyList(t *testing.T) {
+	ctx := context.Background()
+	repo, _ := newMock(t)
+	
+	result, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
+	require.NoError(t, err)
+	require.Equal(t, 0, result)
+}
+
+func TestGetTotalDurationByTags_NilList(t *testing.T) {
+	ctx := context.Background()
+	repo, _ := newMock(t)
+	
+	_, err := repo.GetTotalDurationByTags(ctx, nil)
+	require.Error(t, err)
+}

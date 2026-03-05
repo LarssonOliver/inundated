@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -87,4 +88,9 @@ func (m *MockRepository) UpdateTimespan(ctx context.Context, timespan model.Time
 
 func (m *MockRepository) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 	return m.Called(ctx, id).Error(0)
+}
+
+func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+	args := m.Called(ctx, tagIds)
+	return args.Get(0).(time.Duration), args.Error(1)
 }

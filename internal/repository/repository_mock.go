@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -22,11 +23,12 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context) ([]model.Tag, error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	CreateTimespanFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	DeleteTimespanFn func(ctx context.Context, id uuid.UUID) error
-	GetTimespanFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListTimespanFn   func(ctx context.Context) ([]model.Timespan, error)
-	UpdateTimespanFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	DeleteTimespanFn         func(ctx context.Context, id uuid.UUID) error
+	GetTimespanFn            func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+	ListTimespanFn           func(ctx context.Context) ([]model.Timespan, error)
+	UpdateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	GetTotalDurationByTagsFn func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
 }
 
 // CreateProject implements repository.ProjectRepository.
@@ -102,4 +104,9 @@ func (t *RepoMock) ListTimespans(ctx context.Context) ([]model.Timespan, error) 
 // UpdateTimespan implements repository.TimespanRepository.
 func (t *RepoMock) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
 	return t.UpdateTimespanFn(ctx, timespan)
+}
+
+// GetTotalDurationByTags implements repository.TimespanRepository.
+func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+	return t.GetTotalDurationByTagsFn(ctx, tagIds)
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -35,4 +36,5 @@ type TimespanRepository interface {
 	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
+	GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
 }
