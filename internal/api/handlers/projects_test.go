@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/require"
 )
 
 type mockProjectService struct {
@@ -159,10 +161,13 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 }
 
 func TestProjectHandler_GetProject(t *testing.T) {
+	duration := 2 * time.Hour
+	ms := int(duration.Milliseconds())
 	tests := []struct {
 		name    string
 		getFn   func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 		request uuid.UUID
+		include []api.GetProjectParamsInclude
 		want    api.Project
 		wantErr bool
 	}{
@@ -184,6 +189,16 @@ func TestProjectHandler_GetProject(t *testing.T) {
 			want:    api.Project{},
 			wantErr: true,
 		},
+		{
+			name: "include totalTimeMs",
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
+				return model.Project{Id: id, Name: "Sample Project", Color: "#abcdef", TotalTime: &duration}, nil
+			},
+			request: uuid.New(),
+			include: []api.GetProjectParamsInclude{"totalTimeMs"},
+			want:    api.Project{Name: "Sample Project", Color: "#abcdef", TotalTimeMs: &ms},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,21 +211,26 @@ func TestProjectHandler_GetProject(t *testing.T) {
 			request := api.GetProjectRequestObject{
 				ProjectId: tt.request,
 			}
+			if tt.include != nil && len(tt.include) > 0 {
+				request.Params.Include = &tt.include
+			}
 
 			got, gotErr := ta.GetProject(context.Background(), request)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetProject() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetProject() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 
 			res := got.(api.GetProject200JSONResponse)
-			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
-				t.Errorf("GetProject() = %v, want %v", got, tt.want)
+			require.Equal(t, tt.request, res.Id)
+			require.Equal(t, tt.want.Name, res.Name)
+			require.Equal(t, tt.want.Color, res.Color)
+			require.Equal(t, tt.want.TimeBudgetHours, res.TimeBudgetHours)
+
+			if tt.want.TotalTimeMs != nil {
+				require.NotNil(t, res.TotalTimeMs)
+				require.Equal(t, *tt.want.TotalTimeMs, *res.TotalTimeMs)
 			}
 		})
 	}

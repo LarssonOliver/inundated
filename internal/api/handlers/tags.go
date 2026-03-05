@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"slices"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -59,7 +60,13 @@ func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequest
 
 // GetTag implements [api.TagHandler].
 func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject) (api.GetTagResponseObject, error) {
-	reply, err := t.svc.GetTag(ctx, request.TagId, nil)
+	includes := service.TagServiceGetIncludes{}
+
+	if request.Params.Include != nil {
+		includes.TotalTime = slices.Contains(*request.Params.Include, api.GetTagParamsIncludeTotalTimeMs)
+	}
+
+	reply, err := t.svc.GetTag(ctx, request.TagId, &includes)
 
 	if err == model.ErrNotFound {
 		return api.GetTag404Response{}, nil
@@ -71,6 +78,11 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 		Id:    reply.Id,
 		Name:  reply.Name,
 		Color: reply.Color,
+	}
+
+	if includes.TotalTime {
+		TotalTimeMs := int(reply.TotalTime.Milliseconds())
+		apiTag.TotalTimeMs = &TotalTimeMs
 	}
 
 	return api.GetTag200JSONResponse(apiTag), nil

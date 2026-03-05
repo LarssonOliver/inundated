@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"slices"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -73,7 +74,13 @@ func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeletePr
 
 // GetProject implements [api.ProjectHandler].
 func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectRequestObject) (api.GetProjectResponseObject, error) {
-	reply, err := p.svc.GetProject(ctx, request.ProjectId, nil)
+	includes := service.ProjectServiceGetIncludes{}
+
+	if request.Params.Include != nil {
+		includes.TotalTime = slices.Contains(*request.Params.Include, api.GetProjectParamsIncludeTotalTimeMs)
+	}
+
+	reply, err := p.svc.GetProject(ctx, request.ProjectId, &includes)
 
 	if err == model.ErrNotFound {
 		return api.GetProject404Response{}, nil
@@ -86,6 +93,11 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
+	}
+
+	if includes.TotalTime {
+		TotalTimeMs := int(reply.TotalTime.Milliseconds())
+		apiProject.TotalTimeMs = &TotalTimeMs
 	}
 
 	if len(reply.TagIds) > 0 {
