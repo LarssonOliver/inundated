@@ -192,18 +192,22 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 	}
 
 	const q = `
-		SELECT SUM(end_time - start_time) AS total_time 
-		FROM timespans
-		WHERE timespan_id = ANY($1)`
+		SELECT
+			SUM(t.end_time - t.start_time) AS total_time
+		FROM timespans t
+		WHERE EXISTS (
+			SELECT 1 FROM timespan_tags tt
+			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
+		)`
 	
-	var duration time.Duration
+	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, fmt.Errorf("GetTotalDurationByTags %s: %w", tagIds, model.ErrNotFound)
+	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
+		return 0, fmt.Errorf("GetTotalDurationByTags %s: %w", tagIds, model.ErrInvalidReference)
 	}
 	if err != nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags: %w", err)
 	}
 
-	return duration, nil
+	return *duration, nil
 }
