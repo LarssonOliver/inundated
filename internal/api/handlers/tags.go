@@ -59,7 +59,7 @@ func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequest
 
 // GetTag implements [api.TagHandler].
 func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject) (api.GetTagResponseObject, error) {
-	reply, err := t.svc.GetTag(ctx, request.TagId)
+	reply, err := t.svc.GetTag(ctx, request.TagId, nil)
 
 	if err == model.ErrNotFound {
 		return api.GetTag404Response{}, nil
@@ -99,7 +99,7 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 
 // UpdateTag implements [api.TagHandler].
 func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequestObject) (api.UpdateTagResponseObject, error) {
-	tag, err := t.svc.GetTag(ctx, request.TagId)
+	tag, err := t.svc.GetTag(ctx, request.TagId, nil)
 	if err == model.ErrNotFound {
 		return api.UpdateTag404Response{}, nil
 	} else if err != nil {

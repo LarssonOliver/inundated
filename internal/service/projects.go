@@ -7,7 +7,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
+func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *ProjectServiceGetIncludes) (model.Project, error) {
 	return s.repository.GetProject(ctx, id)
 }
 

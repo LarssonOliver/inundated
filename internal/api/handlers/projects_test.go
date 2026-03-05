@@ -15,7 +15,7 @@ import (
 type mockProjectService struct {
 	CreateFn func(ctx context.Context, project model.Project) (model.Project, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Project, error)
+	GetFn    func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 	ListFn   func(ctx context.Context) ([]model.Project, error)
 	UpdateFn func(ctx context.Context, project model.Project) (model.Project, error)
 }
@@ -33,8 +33,8 @@ func (m *mockProjectService) DeleteProject(ctx context.Context, id uuid.UUID) er
 }
 
 // GetProject implements [service.ProjectService].
-func (m *mockProjectService) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
-	return m.GetFn(ctx, id)
+func (m *mockProjectService) GetProject(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
+	return m.GetFn(ctx, id, i)
 }
 
 // ListProjects implements [service.ProjectService].
@@ -161,14 +161,14 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 func TestProjectHandler_GetProject(t *testing.T) {
 	tests := []struct {
 		name    string
-		getFn   func(ctx context.Context, id uuid.UUID) (model.Project, error)
+		getFn   func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 		request uuid.UUID
 		want    api.Project
 		wantErr bool
 	}{
 		{
 			name: "successful get",
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
 				return model.Project{Id: id, Name: "Sample Project", Color: "#abcdef"}, nil
 			},
 			request: uuid.New(),
@@ -177,7 +177,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 		},
 		{
 			name: "service error",
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
 				return model.Project{}, errors.New("service error")
 			},
 			request: uuid.New(),
@@ -319,7 +319,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		getFn     func(ctx context.Context, id uuid.UUID) (model.Project, error)
+		getFn     func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 		updateFn  func(ctx context.Context, project model.Project) (model.Project, error)
 		requestId uuid.UUID
 		request   api.UpdateProject
@@ -334,7 +334,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 				Color:  &color,
 				TagIds: &[]uuid.UUID{},
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
 				return model.Project{Id: id, Name: "old-name", Color: "#000000", TagIds: []uuid.UUID{tagId}}, nil
 			},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
@@ -355,7 +355,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 				Name:  &name,
 				Color: &color,
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
 				return model.Project{Id: id, Name: "old-name", Color: "#000000"}, nil
 			},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
@@ -369,7 +369,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 			request: api.UpdateProject{
 				Name: &newName,
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
 				return model.Project{Id: id, Name: "old-name", Color: "#000000"}, nil
 			},
 			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {

@@ -7,7 +7,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error) {
 	return s.repository.GetTag(ctx, id)
 }
 
