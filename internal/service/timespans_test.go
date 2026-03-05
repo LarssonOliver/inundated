@@ -10,6 +10,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimespanService_GetTimespan(t *testing.T) {
@@ -50,18 +51,15 @@ func TestTimespanService_GetTimespan(t *testing.T) {
 
 			s := service.NewService(repo)
 			got, gotErr := s.GetTimespan(context.Background(), tt.id)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetTimespan() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetTimespan() succeeded unexpectedly")
-			}
-			if got.Id != tt.want.Id || got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("GetTimespan() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
 		})
 	}
 }
@@ -105,30 +103,19 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 
 			s := service.NewService(repo)
 			got, gotErr := s.ListTimespans(context.Background())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListTimespans() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("ListTimespans() succeeded unexpectedly")
-			}
-			if len(got) != len(tt.want) {
-				t.Errorf("ListTimespans() = %v, want %v", got, tt.want)
+				require.Error(t, gotErr)
 				return
 			}
-			for i := range got {
-				if got[i].Id != tt.want[i].Id || got[i].Name != tt.want[i].Name || !got[i].StartTime.Equal(tt.want[i].StartTime) || !got[i].EndTime.Equal(tt.want[i].EndTime) {
-					t.Errorf("ListTimespans()[%d] = %v, want %v", i, got[i], tt.want[i])
-				}
-			}
+			require.NoError(t, gotErr)
+			require.ElementsMatch(t, tt.want, got)
 		})
 	}
 }
 
 func TestTimespanService_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
+	id := uuid.New()
 
 	tests := []struct {
 		name     string
@@ -148,6 +135,15 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:     "ensure create generates new ID",
+			timespan: model.Timespan{Id: id, Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+				return timespan, nil
+			},
+			want:    model.Timespan{Id: id, Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			wantErr: false,
+		},
+		{
 			name:     "repository error",
 			timespan: model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
@@ -164,18 +160,16 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			got, gotErr := s.CreateTimespan(context.Background(), tt.timespan)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateTimespan() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("CreateTimespan() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || got.Id == tt.timespan.Id || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("CreateTimespan() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.NotEqual(t, tt.want.Id, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
 		})
 	}
 }
@@ -217,18 +211,16 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			got, gotErr := s.UpdateTimespan(context.Background(), tt.timespan)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateTimespan() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("UpdateTimespan() succeeded unexpectedly")
-			}
-			if got.Id != tt.want.Id || got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) {
-				t.Errorf("UpdateTimespan() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Id, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
 		})
 	}
 }
@@ -261,15 +253,11 @@ func TestTimespanService_DeleteTimespan(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			gotErr := s.DeleteTimespan(context.Background(), uuid.New())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteTimespan() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteTimespan() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 		})
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProjectService_GetProject(t *testing.T) {
@@ -48,18 +49,15 @@ func TestProjectService_GetProject(t *testing.T) {
 
 			s := service.NewService(repo)
 			got, gotErr := s.GetProject(context.Background(), tt.id)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetProject() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetProject() succeeded unexpectedly")
-			}
-			if got.Id != tt.want.Id || got.Name != tt.want.Name || got.Color != tt.want.Color {
-				t.Errorf("GetProject() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Id, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
 		})
 	}
 }
@@ -101,29 +99,19 @@ func TestProjectService_ListProjects(t *testing.T) {
 
 			s := service.NewService(repo)
 			got, gotErr := s.ListProjects(context.Background())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListProjects() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("ListProjects() succeeded unexpectedly")
-			}
-			if len(got) != len(tt.want) {
-				t.Errorf("ListProjects() = %v, want %v", got, tt.want)
+				require.Error(t, gotErr)
 				return
 			}
-			for i := range got {
-				if got[i].Id != tt.want[i].Id || got[i].Name != tt.want[i].Name || got[i].Color != tt.want[i].Color {
-					t.Errorf("ListProjects()[%d] = %v, want %v", i, got[i], tt.want[i])
-				}
-			}
+			require.NoError(t, gotErr)
+			require.ElementsMatch(t, tt.want, got)
 		})
 	}
 }
 
 func TestProjectService_CreateProject(t *testing.T) {
+	id := uuid.New()
+
 	tests := []struct {
 		name     string
 		project  model.Project
@@ -139,6 +127,15 @@ func TestProjectService_CreateProject(t *testing.T) {
 				return project, nil
 			},
 			want:    model.Project{Name: "New Project", Color: "#123456"},
+			wantErr: false,
+		},
+		{
+			name:    "ensure create generates Id",
+			project: model.Project{Id: id, Name: "New Project", Color: "#123456"},
+			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+				return project, nil
+			},
+			want:    model.Project{Id: id, Name: "New Project", Color: "#123456"},
 			wantErr: false,
 		},
 		{
@@ -158,18 +155,15 @@ func TestProjectService_CreateProject(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			got, gotErr := s.CreateProject(context.Background(), tt.project)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateProject() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("CreateProject() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || got.Color != tt.want.Color || got.Id == tt.project.Id {
-				t.Errorf("CreateProject() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.NotEqual(t, tt.want.Id, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
 		})
 	}
 }
@@ -209,18 +203,15 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			got, gotErr := s.UpdateProject(context.Background(), tt.project)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateProject() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("UpdateProject() succeeded unexpectedly")
-			}
-			if got.Id != tt.want.Id || got.Name != tt.want.Name || got.Color != tt.want.Color {
-				t.Errorf("UpdateProject() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.Equal(t, tt.want.Id, got.Id)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
 		})
 	}
 }
@@ -253,15 +244,11 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			}
 			s := service.NewService(repo)
 			gotErr := s.DeleteProject(context.Background(), uuid.New())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteProject() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteProject() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 		})
 	}
 }
