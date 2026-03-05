@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/require"
 )
 
 type mockTagService struct {
@@ -88,22 +90,15 @@ func TestTagHandler_CreateTag(t *testing.T) {
 			}
 
 			raw, gotErr := ta.CreateTag(context.Background(), request)
-
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateTag() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("CreateTag() succeeded unexpectedly")
-			}
-
+			require.NoError(t, gotErr)
 			got := raw.(api.CreateTag201JSONResponse)
 
-			if tt.want.Name != got.Name || tt.want.Color != got.Color {
-				t.Errorf("CreateTag() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.request.Name, got.Name)
+			require.Equal(t, tt.request.Color, got.Color)
 		})
 	}
 }
@@ -144,25 +139,23 @@ func TestTagHandler_DeleteTag(t *testing.T) {
 
 			ta := handlers.NewTagHandler(svc)
 			_, gotErr := ta.DeleteTag(context.Background(), request)
-
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteTag() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteTag() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 		})
 	}
 }
 
 func TestTagHandler_GetTag(t *testing.T) {
+	duration := 2 * time.Hour
+	ms := int(duration.Milliseconds())
 	tests := []struct {
 		name    string
 		getFn   func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error)
 		request uuid.UUID
+		include []api.GetTagParamsInclude
 		want    api.Tag
 		wantErr bool
 	}{
@@ -184,6 +177,16 @@ func TestTagHandler_GetTag(t *testing.T) {
 			want:    api.Tag{},
 			wantErr: true,
 		},
+		{
+			name: "include totalTimeMs",
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
+				return model.Tag{Id: id, Name: "Sample Tag", Color: "#abcdef", TotalTime: &duration}, nil
+			},
+			request: uuid.New(),
+			include: []api.GetTagParamsInclude{"totalTimeMs"},
+			want:    api.Tag{Name: "Sample Tag", Color: "#abcdef", TotalTimeMs: &ms},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,21 +199,24 @@ func TestTagHandler_GetTag(t *testing.T) {
 			request := api.GetTagRequestObject{
 				TagId: tt.request,
 			}
+			if tt.include != nil && len(tt.include) > 0 {
+				request.Params.Include = &tt.include
+			}
 
 			got, gotErr := ta.GetTag(context.Background(), request)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetTag() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetTag() succeeded unexpectedly")
-			}
-
+			require.NoError(t, gotErr)
 			res := got.(api.GetTag200JSONResponse)
-			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
-				t.Errorf("GetTag() = %v, want %v", got, tt.want)
+			require.Equal(t, tt.request, res.Id)
+			require.Equal(t, tt.want.Name, res.Name)
+			require.Equal(t, tt.want.Color, res.Color)
+
+			if tt.want.TotalTimeMs != nil {
+				require.NotNil(t, res.TotalTimeMs)
+				require.Equal(t, *tt.want.TotalTimeMs, *res.TotalTimeMs)
 			}
 		})
 	}
@@ -287,25 +293,13 @@ func TestTagHandler_ListTags(t *testing.T) {
 			ta := handlers.NewTagHandler(svc)
 			request := api.ListTagsRequestObject{}
 			got, gotErr := ta.ListTags(context.Background(), request)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListTags() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("ListTags() succeeded unexpectedly")
-			}
-			res := got.(api.ListTags200JSONResponse)
-			if len(res) != len(tt.want) {
-				t.Errorf("ListTags() = %v, want %v", got, tt.want)
+				require.Error(t, gotErr)
 				return
 			}
-			for i, tag := range res {
-				if tag.Id == uuid.Nil || tag.Name != tt.want[i].Name || tag.Color != tt.want[i].Color {
-					t.Errorf("ListTags() = %v, want %v", got, tt.want)
-				}
-			}
+			require.NoError(t, gotErr)
+			res := got.(api.ListTags200JSONResponse)
+			require.ElementsMatch(t, tt.want, res)
 		})
 	}
 }
@@ -392,19 +386,15 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 			}
 
 			got, gotErr := ta.UpdateTag(context.Background(), request)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateTag() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("UpdateTag() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 			res := got.(api.UpdateTag200JSONResponse)
-			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
-				t.Errorf("UpdateTag() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.requestId, res.Id)
+			require.Equal(t, tt.want.Name, res.Name)
+			require.Equal(t, tt.want.Color, res.Color)
 		})
 	}
 }
