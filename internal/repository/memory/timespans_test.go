@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimespanStore_CreateTimespan(t *testing.T) {
@@ -24,8 +25,8 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 	}{
 		{
 			name:     "Test CreateTimespan with valid input",
-			timespan: model.Timespan{Name: "Morning", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{uuid.MustParse("53e00291-feba-4605-bc3f-fbfe2eefea1b")}},
-			want:     model.Timespan{Name: "Morning", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{uuid.MustParse("53e00291-feba-4605-bc3f-fbfe2eefea1b")}},
+			timespan: model.Timespan{Name: "Morning", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{tagIds[0]}},
+			want:     model.Timespan{Name: "Morning", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{tagIds[0]}},
 			wantErr:  false,
 		},
 		{
@@ -77,31 +78,27 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
+			for _, tagId := range tagIds {
+				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				require.NoError(t, err)
+			}
+
 			got, gotErr := ta.CreateTimespan(context.Background(), tt.timespan)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateTimespan() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTimespan() error type = %v, want %v", gotErr, tt.errType)
-				}
-				return
-			}
+
 			if tt.wantErr {
-				t.Fatal("CreateTimespan() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || got.StartTime != tt.want.StartTime || got.EndTime != tt.want.EndTime || got.Id == tt.want.Id {
-				t.Errorf("CreateTimespan() = %v, want %v", got, tt.want)
-			}
-			if len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("CreateTimespan() TagIds length = %v, want %v", len(got.TagIds), len(tt.want.TagIds))
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
+				}
 				return
 			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("CreateTimespan() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
-				}
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
+			require.NotEqual(t, uuid.Nil, got.Id)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
 		})
 	}
 }
@@ -152,38 +149,38 @@ func TestTimespanStore_GetTimespan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
+			for _, tagId := range tagIds {
+				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				require.NoError(t, err)
+			}
+
 			timespan, _ := ta.CreateTimespan(context.Background(), tt.createTimespan)
 			getId := tt.getId(&timespan)
 			tt.want.Id = getId
 
 			got, gotErr := ta.GetTimespan(context.Background(), getId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetTimespan() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTimespan() error type = %v, want %v", gotErr, tt.errType)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("GetTimespan() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) || got.Id != tt.want.Id || len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("GetTimespan() = %v, want %v", got, tt.want)
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
+				}
 				return
 			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("CreateTimespan() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
-				}
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
+			require.Equal(t, tt.want.Id, got.Id)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
 		})
 	}
 }
 
 func TestTimespanStore_ListTimespans(t *testing.T) {
 	baseTime := time.Now()
+
+	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
 	tests := []struct {
 		name            string // description of this test case
@@ -193,7 +190,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 	}{
 		{
 			name:            "Test ListTimespans with multiple entries",
-			insertTimespans: []model.Timespan{{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{uuid.New()}}, {Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)}},
+			insertTimespans: []model.Timespan{{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tagIds[0]}}, {Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)}},
 			wantErr:         false,
 		},
 		{
@@ -211,29 +208,28 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
+			for _, tagId := range tagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+			}
+
+
 			for i, timespan := range tt.insertTimespans {
 				createdTimespan, _ := ta.CreateTimespan(context.Background(), timespan)
 				tt.insertTimespans[i].Id = createdTimespan.Id
 			}
 
 			got, gotErr := ta.ListTimespans(context.Background())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListTimespans() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTimespan() error type = %v, want %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
-			}
-			if tt.wantErr {
-				t.Fatal("ListTimespans() succeeded unexpectedly")
 			}
 
-			if len(got) != len(tt.insertTimespans) {
-				t.Errorf("ListTimespans() = %v, want %v", got, tt.insertTimespans)
-				return
-			}
+			require.NoError(t, gotErr)
+			require.NotNil(t, got)
+			require.Len(t, got, len(tt.insertTimespans))
 
 			for _, timespan := range tt.insertTimespans {
 				found := false
@@ -365,6 +361,10 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
+			for _, tagId := range tagIds {
+				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+			}
+
 			insertedTimespan, _ := ta.CreateTimespan(context.Background(), tt.timespan)
 			editId := tt.editTimespanId(&insertedTimespan)
 
@@ -372,28 +372,21 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 			tt.want.Id = editId
 
 			got, gotErr := ta.UpdateTimespan(context.Background(), tt.editTimespan)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateTimespan() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTimespan() error type = %v, want %v", gotErr, tt.errType)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("UpdateTimespan() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || !got.StartTime.Equal(tt.want.StartTime) || !got.EndTime.Equal(tt.want.EndTime) || got.Id != tt.want.Id || len(got.TagIds) != len(tt.want.TagIds) {
-				t.Errorf("UpdateTimespan() = %v, want %v", got, tt.want)
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
+				}
 				return
 			}
-			for i, tagId := range tt.want.TagIds {
-				if got.TagIds[i] != tagId {
-					t.Errorf("UpdateTimespan() TagIds = %v, want %v", got.TagIds, tt.want.TagIds)
-					return
-				}
-			}
+
+			require.NoError(t, gotErr)
+			require.NotNil(t, got)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.True(t, got.StartTime.Equal(tt.want.StartTime))
+			require.True(t, got.EndTime.Equal(tt.want.EndTime))
+			require.Equal(t, tt.want.Id, got.Id)
+			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
 		})
 	}
 }
@@ -443,22 +436,17 @@ func TestTimespanStore_DeleteTimespan(t *testing.T) {
 			deleteId := tt.deleteId(&timespan)
 
 			gotErr := ta.DeleteTimespan(context.Background(), deleteId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteTimespan() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTimespan() error type = %v, want %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteTimespan() succeeded unexpectedly")
-			}
+
+			require.NoError(t, gotErr)
 			timespan, err := ta.GetTimespan(context.Background(), deleteId)
-			if err == nil {
-				t.Errorf("Timespan with ID %v was not deleted, still exists: %v", deleteId, timespan)
-			}
+			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
 }

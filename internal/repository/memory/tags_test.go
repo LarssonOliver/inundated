@@ -7,45 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
+	"github.com/stretchr/testify/require"
 )
-
-// var _ repository.TagRepository = (*tagRepoMock)(nil)
-
-// type tagRepoMock struct {
-// 	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-// 	DeleteFn func(ctx context.Context, id uuid.UUID) error
-// 	GetFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
-// 	ListFn   func(ctx context.Context) ([]model.Tag, error)
-// 	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-// }
-
-// // CreateTag implements repository.TagRepository.
-// func (t *tagRepoMock) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-// 	return t.CreateFn(ctx, tag)
-// }
-
-// // DeleteTag implements repository.TagRepository.
-// func (t *tagRepoMock) DeleteTag(ctx context.Context, id uuid.UUID) error {
-// 	return t.DeleteFn(ctx, id)
-// }
-
-// // GetTag implements repository.TagRepository.
-// func (t *tagRepoMock) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-// 	if t.GetFn == nil {
-// 		return model.Tag{Id: id, Name: "MockTag", Color: "#FFFFFF"}, nil
-// 	}
-// 	return t.GetFn(ctx, id)
-// }
-
-// // ListTags implements repository.TagRepository.
-// func (t *tagRepoMock) ListTags(ctx context.Context) ([]model.Tag, error) {
-// 	return t.ListFn(ctx)
-// }
-
-// // UpdateTag implements repository.TagRepository.
-// func (t *tagRepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-// 	return t.UpdateFn(ctx, tag)
-// }
 
 func TestTagStore_CreateTag(t *testing.T) {
 	tests := []struct {
@@ -106,21 +69,18 @@ func TestTagStore_CreateTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			got, gotErr := ta.CreateTag(context.Background(), tt.tag)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CreateTag() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTag() error = %v, want %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("CreateTag() succeeded unexpectedly")
-			}
-			if got.Name != tt.want.Name || got.Color != tt.want.Color || got.Id == tt.want.Id {
-				t.Errorf("CreateTag() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 	}
 }
@@ -171,21 +131,18 @@ func TestTagStore_GetTag(t *testing.T) {
 			getId := tt.getId(&tag)
 
 			got, gotErr := ta.GetTag(context.Background(), getId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetTag() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("CreateTag() error = %v, want %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetTag() succeeded unexpectedly")
-			}
-			if tag.Name != tt.want.Name || tag.Color != tt.want.Color || tag.Id != got.Id {
-				t.Errorf("GetTag() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 	}
 }
@@ -233,19 +190,13 @@ func TestTagStore_ListTags(t *testing.T) {
 			}
 
 			got, gotErr := ta.ListTags(context.Background())
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListTags() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("ListTags() succeeded unexpectedly")
-			}
 
-			if len(got) != len(tt.insertTags) {
-				t.Errorf("ListTags() = %v, want %v", got, tt.insertTags)
-			}
+			require.NoError(t, gotErr)
+			require.Len(t, got, len(tt.insertTags))
 
 			for _, tag := range tt.insertTags {
 				found := false
@@ -349,21 +300,18 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			tt.want.Id = editId
 
 			got, gotErr := ta.UpdateTag(context.Background(), tt.editTag)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("UpdateTag() failed: %v", gotErr)
-				}
-				if tt.errType != nil && gotErr != tt.errType {
-					t.Errorf("UpdateTag() error = %v, want %v", gotErr, tt.errType)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("UpdateTag() succeeded unexpectedly")
-			}
-			if tt.want.Name != got.Name || tt.want.Color != got.Color || tt.want.Id != got.Id {
-				t.Errorf("UpdateTag() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Name, got.Name)
+			require.Equal(t, tt.want.Color, got.Color)
+			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 	}
 }
@@ -411,19 +359,17 @@ func TestTagStore_DeleteTag(t *testing.T) {
 			deleteId := tt.deleteId(&tag)
 
 			gotErr := ta.DeleteTag(context.Background(), deleteId)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("DeleteTag() failed: %v", gotErr)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
 				}
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("DeleteTag() succeeded unexpectedly")
-			}
-			tag, err := ta.GetTag(context.Background(), deleteId)
-			if err == nil {
-				t.Errorf("Tag with ID %v was not deleted, still exists: %v", deleteId, tag)
-			}
+
+			require.NoError(t, gotErr)
+			_, err := ta.GetTag(context.Background(), deleteId)
+			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
 }
