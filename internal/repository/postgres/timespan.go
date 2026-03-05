@@ -186,7 +186,6 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 	if tagIds == nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags: tagIds: %w", model.ErrInvalidArgument)
 	}
-
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
@@ -202,6 +201,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 	
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
+	fmt.Println("duration:", duration, "err:", err)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags %s: %w", tagIds, model.ErrInvalidReference)
 	}
