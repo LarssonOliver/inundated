@@ -382,6 +382,39 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			_, err = repo.GetTimespan(ctx, ts.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
+
+		t.Run(repoName+"GetTotalDurationByTags", func(t *testing.T) {
+			repo := newRepo(t)
+
+			tags := seedTags(t, ctx, repo, 3)
+			baseTime := time.Now().Add(-3 * time.Hour)
+
+			ts1 := model.Timespan{StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
+			ts2 := model.Timespan{StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(4 * time.Hour), TagIds: []uuid.UUID{tags[1], tags[2]}}
+			_, err := repo.CreateTimespan(ctx, ts1)
+			require.NoError(t, err)
+			_, err = repo.CreateTimespan(ctx, ts2)
+			require.NoError(t, err)
+
+			d1, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[0]})
+			require.NoError(t, err)
+			require.Equal(t, time.Hour, d1)
+
+			d2, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[1]})
+			require.NoError(t, err)
+			require.Equal(t, 3*time.Hour, d2)
+
+			d3, err := repo.GetTotalDurationByTags(ctx, tags)
+			require.NoError(t, err)
+			require.Equal(t, 3*time.Hour, d3)
+
+			_, err = repo.GetTotalDurationByTags(ctx, []uuid.UUID{uuid.New()})
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+
+			d4, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
+			require.NoError(t, err)
+			require.Equal(t, 0*time.Hour, d4)
+		})
 	}
 
 	// Memory

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -178,4 +179,31 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, timespanId uuid.UUI
 		}
 	}
 	return nil
+}
+
+// GetTotalDurationByTags implements [repository.Repository].
+func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+	if tagIds == nil {
+		return 0, fmt.Errorf("GetTotalDurationByTags: tagIds: %w", model.ErrInvalidArgument)
+	}
+
+	if len(tagIds) == 0 {
+		return 0, nil
+	}
+
+	const q = `
+		SELECT SUM(end_time - start_time) AS total_time 
+		FROM timespans
+		WHERE timespan_id = ANY($1)`
+	
+	var duration time.Duration
+	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("GetTotalDurationByTags %s: %w", tagIds, model.ErrNotFound)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("GetTotalDurationByTags: %w", err)
+	}
+
+	return duration, nil
 }

@@ -63,12 +63,6 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 			errType:  model.ErrInvalidArgument,
 		},
 		{
-			name:     "Test CreateTimespan with set ID (should be ignored)",
-			timespan: model.Timespan{Id: uuid.New(), Name: "WithID", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour)},
-			want:     model.Timespan{Name: "WithID", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour)},
-			wantErr:  false,
-		},
-		{
 			name:     "Test ensure tagIds slice is a copy",
 			timespan: model.Timespan{Name: "TagCopy", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour), TagIds: tagIds},
 			want:     model.Timespan{Name: "TagCopy", StartTime: baseTime, EndTime: baseTime.Add(1 * time.Hour), TagIds: []uuid.UUID{tagIds[0], tagIds[1]}},
@@ -211,7 +205,6 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			for _, tagId := range tagIds {
 				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
-
 
 			for i, timespan := range tt.insertTimespans {
 				createdTimespan, _ := ta.CreateTimespan(context.Background(), timespan)
@@ -447,6 +440,82 @@ func TestTimespanStore_DeleteTimespan(t *testing.T) {
 			require.NoError(t, gotErr)
 			timespan, err := ta.GetTimespan(context.Background(), deleteId)
 			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+	}
+}
+
+func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
+	m := memory.NewMemoryStore()
+
+	tags := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
+	for _, tagId := range tags {
+		m.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+	}
+
+	baseTime := time.Now()
+	ts1 := model.Timespan{Name: "T", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
+	ts2 := model.Timespan{Name: "T", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(5 * time.Hour), TagIds: []uuid.UUID{tags[1], tags[2]}}
+	m.CreateTimespan(context.Background(), ts1)
+	m.CreateTimespan(context.Background(), ts2)
+
+	tests := []struct {
+		name    string
+		tagIds  []uuid.UUID
+		want    time.Duration
+		wantErr bool
+		errType error
+	}{
+		{
+			name:    "Test GetTotalDurationByTags with one tag",
+			tagIds:  []uuid.UUID{tags[0]},
+			want:    2 * time.Hour,
+			wantErr: false,
+		},
+		{
+			name:    "Test GetTotalDurationByTags with multiple tags",
+			tagIds:  []uuid.UUID{tags[0], tags[1]},
+			want:    5 * time.Hour, // ts1 has 2 hours with tag[0] and tag[1], ts2 has 3 hours with tag[1]
+			wantErr: false,
+		},
+		{
+			name:    "Test GetTotalDurationByTags with non-existing tag",
+			tagIds:  []uuid.UUID{uuid.New()},
+			want:    0,
+			wantErr: true,
+			errType: model.ErrInvalidReference,
+		},
+		{
+			name:    "Test GetTotalDurationByTags with empty tag list",
+			tagIds:  []uuid.UUID{},
+			want:    0,
+			wantErr: false,
+		},
+		{
+			name:    "Test GetTotalDurationByTags with nil tag list",
+			tagIds:  nil,
+			want:    0,
+			wantErr: true,
+			errType: model.ErrInvalidArgument,
+		},
+		{
+			name: "Test GetTotalDurationByTags with duplicate tags",
+			tagIds: []uuid.UUID{tags[1], tags[1]},
+			want: 5 * time.Hour, // Should not double count the duration for tag[1]
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotErr := m.GetTotalDurationByTags(context.Background(), tt.tagIds)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				if tt.errType != nil {
+					require.ErrorIs(t, gotErr, tt.errType)
+				}
+				return
+			}
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

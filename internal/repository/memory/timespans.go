@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"slices"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -109,4 +111,42 @@ func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 	// thus, it does not matter if it has been deleted by another thread before this line
 	delete(t.timespans, id)
 	return nil
+}
+
+// GetTotalDurationByTags implements [repository.Repository].
+func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+	if tagIds == nil {
+		return 0, model.ErrInvalidArgument
+	}
+
+	if len(tagIds) == 0 {
+		return 0, nil
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	// Check for invalid tag IDs
+	for _, tagId := range tagIds {
+		if _, exists := t.tags[tagId]; !exists {
+			return 0, model.ErrInvalidReference
+		}
+	}
+
+	timespanIds := []uuid.UUID{}
+	for _, inputTagId := range tagIds {
+		for _, timespan := range t.timespans {
+			if slices.Contains(timespan.TagIds, inputTagId) && !slices.Contains(timespanIds, timespan.Id) {
+				timespanIds = append(timespanIds, timespan.Id)
+			}
+		}
+	}
+
+	totalDuration := time.Duration(0)
+	for _, timespanId := range timespanIds {
+		ts := t.timespans[timespanId]
+		totalDuration += ts.EndTime.Sub(ts.StartTime)
+	}
+
+	return totalDuration, nil
 }
