@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -12,15 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func durPtr(d time.Duration) *time.Duration {
+	return &d
+}
+
 func TestTagService_GetTag(t *testing.T) {
 	testId := uuid.New()
 
 	tests := []struct {
-		name    string
-		id      uuid.UUID
-		getFn   func(ctx context.Context, id uuid.UUID) (model.Tag, error)
-		want    model.Tag
-		wantErr bool
+		name        string
+		id          uuid.UUID
+		getFn       func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+		includes    *service.TagServiceGetIncludes
+		totalTimeFn func(ctx context.Context, ids []uuid.UUID) (time.Duration, error)
+		want        model.Tag
+		wantErr     bool
 	}{
 		{
 			name: "successful get",
@@ -40,15 +47,31 @@ func TestTagService_GetTag(t *testing.T) {
 			want:    model.Tag{},
 			wantErr: true,
 		},
+		{
+			name: "Include total time",
+			id:   testId,
+			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+				return model.Tag{Id: id, Name: "Test Tag", Color: "#abcdef"}, nil
+			},
+			includes: &service.TagServiceGetIncludes{TotalTime: true},
+			totalTimeFn: func(ctx context.Context, ids []uuid.UUID) (time.Duration, error) {
+				return 2 * time.Hour, nil
+			},
+			want: model.Tag{Id: testId, Name: "Test Tag", Color: "#abcdef", TotalTime: durPtr(2 * time.Hour)},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
 				GetTagFn: tt.getFn,
 			}
+			if tt.totalTimeFn != nil {
+				repo.GetTotalDurationByTagsFn = tt.totalTimeFn
+			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.GetTag(context.Background(), tt.id, nil)
+			got, gotErr := s.GetTag(context.Background(), tt.id, tt.includes)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
@@ -57,6 +80,13 @@ func TestTagService_GetTag(t *testing.T) {
 			require.NotEqual(t, uuid.Nil, got.Id)
 			require.Equal(t, tt.want.Name, got.Name)
 			require.Equal(t, tt.want.Color, got.Color)
+
+			if tt.includes != nil && tt.includes.TotalTime {
+				require.NotNil(t, got.TotalTime)
+				require.Equal(t, *tt.want.TotalTime, *got.TotalTime)
+			} else {
+				require.Nil(t, got.TotalTime)
+			}
 		})
 	}
 }

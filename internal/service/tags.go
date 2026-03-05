@@ -8,7 +8,23 @@ import (
 )
 
 func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error) {
-	return s.repository.GetTag(ctx, id)
+	tag, err := s.repository.GetTag(ctx, id)
+
+	if err != nil {
+		return model.Tag{}, model.ErrNotFound
+	}
+
+	if includes != nil {
+		if includes.TotalTime {
+			totalTime, err := s.repository.GetTotalDurationByTags(ctx, []uuid.UUID{tag.Id})
+			if err != nil {
+				return model.Tag{}, model.ErrNotFound
+			}
+			tag.TotalTime = &totalTime
+		}
+	}
+
+	return tag, nil
 }
 
 func (s *ServiceImpl) ListTags(ctx context.Context) ([]model.Tag, error) {
