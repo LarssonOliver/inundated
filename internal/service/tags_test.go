@@ -48,7 +48,7 @@ func TestTagService_GetTag(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.GetTag(context.Background(), tt.id)
+			got, gotErr := s.GetTag(context.Background(), tt.id, nil)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return

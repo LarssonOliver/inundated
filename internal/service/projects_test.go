@@ -48,7 +48,7 @@ func TestProjectService_GetProject(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.GetProject(context.Background(), tt.id)
+			got, gotErr := s.GetProject(context.Background(), tt.id, nil)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return

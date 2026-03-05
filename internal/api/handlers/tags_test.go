@@ -15,7 +15,7 @@ import (
 type mockTagService struct {
 	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+	GetFn    func(ctx context.Context, id uuid.UUID, includes *service.TagServiceGetIncludes) (model.Tag, error)
 	ListFn   func(ctx context.Context) ([]model.Tag, error)
 	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 }
@@ -33,8 +33,8 @@ func (m *mockTagService) DeleteTag(ctx context.Context, id uuid.UUID) error {
 }
 
 // GetTag implements [service.TagService].
-func (m *mockTagService) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-	return m.GetFn(ctx, id)
+func (m *mockTagService) GetTag(ctx context.Context, id uuid.UUID, includes *service.TagServiceGetIncludes) (model.Tag, error) {
+	return m.GetFn(ctx, id, includes)
 }
 
 // ListTags implements [service.TagService].
@@ -161,14 +161,14 @@ func TestTagHandler_DeleteTag(t *testing.T) {
 func TestTagHandler_GetTag(t *testing.T) {
 	tests := []struct {
 		name    string
-		getFn   func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+		getFn   func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error)
 		request uuid.UUID
 		want    api.Tag
 		wantErr bool
 	}{
 		{
 			name: "successful get",
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
 				return model.Tag{Id: id, Name: "Sample Tag", Color: "#abcdef"}, nil
 			},
 			request: uuid.New(),
@@ -177,7 +177,7 @@ func TestTagHandler_GetTag(t *testing.T) {
 		},
 		{
 			name: "service error",
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
 				return model.Tag{}, errors.New("service error")
 			},
 			request: uuid.New(),
@@ -318,7 +318,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		getFn     func(ctx context.Context, id uuid.UUID) (model.Tag, error)
+		getFn     func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error)
 		updateFn  func(ctx context.Context, tag model.Tag) (model.Tag, error)
 		requestId uuid.UUID
 		request   api.UpdateTag
@@ -332,7 +332,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 				Name:  &name,
 				Color: &color,
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
 				return model.Tag{Id: id, Name: "old-name", Color: "#000000"}, nil
 			},
 			updateFn: func(ctx context.Context, tag model.Tag) (model.Tag, error) {
@@ -352,7 +352,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 				Name:  &name,
 				Color: &color,
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
 				return model.Tag{Id: id, Name: "old-name", Color: "#000000"}, nil
 			},
 			updateFn: func(ctx context.Context, tag model.Tag) (model.Tag, error) {
@@ -366,7 +366,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 			request: api.UpdateTag{
 				Name: &newName,
 			},
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
 				return model.Tag{Id: id, Name: "old-name", Color: "#000000"}, nil
 			},
 			updateFn: func(ctx context.Context, tag model.Tag) (model.Tag, error) {

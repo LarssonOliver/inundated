@@ -26,16 +26,24 @@ type Service interface {
 	TimespanService
 }
 
+type TagServiceGetIncludes struct {
+	TotalTime bool
+}
+
 type TagService interface {
-	GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error)
+	GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error)
 	ListTags(ctx context.Context) ([]model.Tag, error)
 	CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
 }
 
+type ProjectServiceGetIncludes struct {
+	TotalTime bool
+}
+
 type ProjectService interface {
-	GetProject(ctx context.Context, id uuid.UUID) (model.Project, error)
+	GetProject(ctx context.Context, id uuid.UUID, includes *ProjectServiceGetIncludes) (model.Project, error)
 	ListProjects(ctx context.Context) ([]model.Project, error)
 	CreateProject(ctx context.Context, project model.Project) (model.Project, error)
 	UpdateProject(ctx context.Context, project model.Project) (model.Project, error)

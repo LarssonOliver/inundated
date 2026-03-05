@@ -73,7 +73,7 @@ func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeletePr
 
 // GetProject implements [api.ProjectHandler].
 func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectRequestObject) (api.GetProjectResponseObject, error) {
-	reply, err := p.svc.GetProject(ctx, request.ProjectId)
+	reply, err := p.svc.GetProject(ctx, request.ProjectId, nil)
 
 	if err == model.ErrNotFound {
 		return api.GetProject404Response{}, nil
@@ -122,7 +122,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 
 // UpdateProject implements [api.ProjectHandler].
 func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdateProjectRequestObject) (api.UpdateProjectResponseObject, error) {
-	project, err := p.svc.GetProject(ctx, request.ProjectId)
+	project, err := p.svc.GetProject(ctx, request.ProjectId, nil)
 
 	if err == model.ErrNotFound {
 		return api.UpdateProject404Response{}, nil
