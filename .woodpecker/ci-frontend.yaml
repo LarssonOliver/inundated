@@ -14,6 +14,14 @@ steps:
           include: 
             - frontend/**
             - .woodpecker/**
+    backend_options: &backops
+      kubernetes:
+        tolerations:
+          - key: amd64
+            value: "true"
+            effect: PreferNoSchedule
+        nodeSelector:
+          kubernetes.io/arch: amd64
 
   - name: lint
     image: node:24-alpine
@@ -25,6 +33,7 @@ steps:
           include: 
             - frontend/**
             - .woodpecker/**
+    backend_options: *backops
 
   - name: test
     image: node:24-alpine
@@ -36,6 +45,7 @@ steps:
           include: 
             - frontend/**
             - .woodpecker/**
+    backend_options: *backops
 
   - name: build
     image: node:24-alpine
@@ -47,3 +57,4 @@ steps:
           include: 
             - frontend/**
             - .woodpecker/**
+    backend_options: *backops
