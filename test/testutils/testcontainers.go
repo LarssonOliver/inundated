@@ -16,6 +16,10 @@ import (
 func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, string, func()) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping container tests in short mode")
+	}
+
 	container, err := testcontainerspg.Run(ctx, "postgres:16-alpine",
 		testcontainerspg.WithDatabase("testdb"),
 		testcontainerspg.WithUsername("user"),
