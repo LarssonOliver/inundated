@@ -1,0 +1,43 @@
+when:
+  - event: pull_request
+  - event: push
+    branch: main
+  - event: push
+    branch: ci-test
+
+steps:
+  - name: install
+    image: node:24-alpine
+    commands:
+      - npm ci
+    when:
+      - path:
+          include: 
+            - frontend/**
+
+  - name: lint
+    image: node:24-alpine
+    commands:
+      - npm run lint
+    when:
+      - path:
+          include: 
+            - frontend/**
+
+  - name: test
+    image: node:24-alpine
+    commands:
+      - npm run test
+    when:
+      - path:
+          include: 
+            - frontend/**
+
+  - name: build
+    image: node:24-alpine
+    commands:
+      - npm run build
+    when:
+      - path:
+          include: 
+            - frontend/**
