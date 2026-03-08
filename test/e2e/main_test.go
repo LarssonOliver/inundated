@@ -74,7 +74,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	s.Shutdown(ctx)
+	_ = s.Shutdown(ctx)
 
 	os.Exit(code)
 }

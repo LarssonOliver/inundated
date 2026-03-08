@@ -37,7 +37,7 @@ func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, s
 
 	return pool, dsn, func() {
 		pool.Close()
-		container.Terminate(ctx)
+		_ = container.Terminate(ctx)
 	}
 }
 
