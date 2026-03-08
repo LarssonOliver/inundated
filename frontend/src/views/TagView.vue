@@ -10,6 +10,8 @@
     <input type="color" v-model="tag.color" />
     <input v-if="!isNewTag" type="button" value="Save Tag" @click="saveTag" />
     <input v-else type="button" value="Create Tag" @click="createTag" />
+
+    <h3 v-if="tag.totalTimeMs">Total Time Spent: {{ formatTimeDuration(tag.totalTimeMs) }}</h3>
   </div>
 </template>
 
@@ -19,6 +21,7 @@ import { watch, ref } from "vue";
 import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";
 import { newTagWithDefaults } from "@/helpers/tag";
+import { formatTimeDuration } from "@/helpers/time";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
@@ -41,8 +44,7 @@ watch(
       return;
     }
 
-    await tagsStore.fetchTags();
-    const result = tagsStore.getTagById(newId as string);
+    const result = await tagsStore.fetchDetailedTagById(newId as string);
     if (result) {
       tag.value = result;
       isNewTag.value = false;

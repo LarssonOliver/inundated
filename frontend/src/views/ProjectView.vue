@@ -11,6 +11,9 @@
     </div>
     <input v-if="!isNewProject" type="button" value="Save Project" @click="saveProject" />
     <input v-else type="button" value="Create Project" @click="createProject" />
+    <h3 v-if="project.totalTimeMs">
+      Total Time Spent: {{ formatTimeDuration(project.totalTimeMs) }}
+    </h3>
   </div>
 </template>
 
@@ -21,6 +24,7 @@ import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
+import { formatTimeDuration } from "@/helpers/time";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -34,6 +38,17 @@ const projectTags = ref<Set<string>>(new Set<string>());
 
 function updateProjectTags() {
   project.value.tagIds = new Set<string>(projectTags.value);
+}
+
+async function updateProject(id: string) {
+  const result = await projectsStore.fetchDetailedProjectById(id);
+  if (result) {
+    project.value = result;
+    projectTags.value = new Set<string>(project.value.tagIds);
+    isNewProject.value = false;
+  } else {
+    // Handle case where project is not found
+  }
 }
 
 watch(
@@ -50,21 +65,14 @@ watch(
       return;
     }
 
-    await projectsStore.fetchProjects();
-    const result = projectsStore.getProjectById(newId as string);
-    if (result) {
-      project.value = result;
-      projectTags.value = new Set<string>(project.value.tagIds);
-      isNewProject.value = false;
-    } else {
-      // Handle case where project is not found
-    }
+    updateProject(newId as string);
   },
   { immediate: true },
 );
 
 async function saveProject() {
   await projectsStore.updateProject(project.value);
+  await updateProject(project.value.id);
 }
 
 async function createProject() {
