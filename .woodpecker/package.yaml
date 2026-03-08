@@ -4,9 +4,9 @@ when:
   - event: push
     branch: ci-test
 
-depends_on:
-  - ci-api
-  - ci-frontend
+# depends_on:
+#   - ci-api
+#   - ci-frontend
 
 steps:
   - name: build-and-push
