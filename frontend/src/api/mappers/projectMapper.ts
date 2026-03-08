@@ -13,6 +13,7 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       color: apiModel.color,
       timeBudgetHours: apiModel.timeBudgetHours,
       tagIds: new Set(apiModel.tagIds || []),
+      totalTimeMs: apiModel.totalTimeMs,
     };
   },
   toApi(domainModel: Project): Api.Project {

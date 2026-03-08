@@ -7,10 +7,10 @@ describe("tagMapper", () => {
       id: "550e8400-e29b-41d4-a716-446655440000",
       name: "Test",
       color: "#ff0000",
+      totalTimeMs: 12345,
     };
 
     const domain = tagMapper.fromApi(apiTag);
-
     expect(domain).toEqual(apiTag);
   });
 
@@ -21,7 +21,7 @@ describe("tagMapper", () => {
       color: "#00ff00",
     };
 
-    const api = tagMapper.toApi(domainTag);
+    const api = tagMapper.toApi({ totalTimeMs: 12345, ...domainTag });
 
     expect(api).toEqual(domainTag);
   });

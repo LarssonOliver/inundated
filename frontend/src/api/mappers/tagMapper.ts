@@ -11,6 +11,7 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       id: apiModel.id,
       name: apiModel.name,
       color: apiModel.color,
+      totalTimeMs: apiModel.totalTimeMs,
     };
   },
   toApi(domainModel: Tag): Api.Tag {

@@ -183,4 +183,24 @@ describe("tags store", () => {
     await store.fetchTags();
     expect(api.listTags).toHaveBeenCalledTimes(2);
   });
+
+  it("fetch detailed tag by ID", async () => {
+    const detailedTag = makeTag({
+      id: "1",
+      name: "detailed",
+      color: "#00ff00",
+      totalTimeMs: 3600000,
+    });
+    api.getTag.mockResolvedValue(detailedTag);
+    const store = useStore();
+    const result = await store.fetchDetailedTagById("1");
+    expect(api.getTag).toHaveBeenCalledWith("1", true);
+    expect(result).toEqual(detailedTag);
+  });
+
+  it("throws if fetching detailed tag by ID fails", async () => {
+    api.getTag.mockRejectedValue(new Error());
+    const store = useStore();
+    await expect(store.fetchDetailedTagById("missing")).rejects.toThrow();
+  });
 });

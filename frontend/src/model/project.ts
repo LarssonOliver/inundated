@@ -4,4 +4,5 @@ export interface Project {
   color: string;
   timeBudgetHours?: number;
   tagIds: Set<string>;
+  totalTimeMs?: number;
 }

@@ -1,11 +1,11 @@
 import type { Project } from "@/model";
-import { ProjectsApi as GeneratedProjectsApi } from "@/api/generated";
+import { ProjectsApi as GeneratedProjectsApi, GetProjectIncludeEnum } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";
 
 export interface ProjectsApi {
   listProjects(): Promise<Project[]>;
-  getProject(id: string): Promise<Project>;
+  getProject(id: string, detailed: boolean): Promise<Project>;
   createProject(project: Omit<Project, "id">): Promise<Project>;
   updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project>;
   deleteProject(id: string): Promise<void>;
@@ -20,8 +20,13 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
       return mapFromApiArray(projectMapper, response);
     },
 
-    async getProject(id: string): Promise<Project> {
-      const response = await api.getProject({ projectId: id });
+    async getProject(id: string, detailed: boolean): Promise<Project> {
+      const include = new Set<GetProjectIncludeEnum>();
+      if (detailed) {
+        include.add(GetProjectIncludeEnum.TotalTimeMs);
+      }
+
+      const response = await api.getProject({ projectId: id, include: include });
       return projectMapper.fromApi(response);
     },
 

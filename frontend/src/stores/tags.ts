@@ -114,6 +114,20 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Fetches a tag by its ID from the API, bypassing the local cache.
+     * This includes additional details such as totalTimeMs which may not
+     * be present in the local cache.
+     *
+     * @param id - The ID of the tag to fetch.
+     *
+     * @returns A promise that resolves to the tag with detailed information if found, or rejects if not found.
+     */
+    async function fetchDetailedTagById(id: string): Promise<Tag> {
+      const detailedTag = await api.getTag(id, true);
+      return copyTag(detailedTag);
+    }
+
+    /**
      * Searches for tags based on a query string. The search is
      * case-insensitive and matches the beginning of the tag name.
      *
@@ -169,6 +183,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       createTag,
       createTagFromName,
       getTagById,
+      fetchDetailedTagById,
       searchTags,
       updateTag,
       deleteTag,
