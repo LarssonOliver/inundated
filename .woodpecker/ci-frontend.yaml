@@ -2,8 +2,6 @@ when:
   - event: pull_request
   - event: push
     branch: main
-  - event: push
-    branch: ci-test
 
 steps:
   - name: install

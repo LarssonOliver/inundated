@@ -14,7 +14,7 @@ steps:
       - path:
           exclude: 
             - frontend/**
-    backend_options:
+    backend_options: &backops
       kubernetes:
         tolerations:
           - key: amd64
@@ -22,8 +22,6 @@ steps:
             effect: PreferNoSchedule
         nodeSelector:
           kubernetes.io/arch: amd64
-
-
 
   - name: test
     image: golang:1.25.5-alpine
@@ -34,6 +32,7 @@ steps:
       - path:
           exclude: 
             - frontend/**
+    backend_options: *backops
 
   - name: test
     image: golang:1.25.5-alpine
@@ -43,3 +42,4 @@ steps:
       - path:
           exclude: 
             - frontend/**
+    backend_options: *backops
