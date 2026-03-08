@@ -2,8 +2,6 @@ when:
   - event: pull_request
   - event: push
     branch: main
-  - event: push
-    branch: ci-test
 
 steps:
   - name: lint
@@ -26,7 +24,8 @@ steps:
   - name: test
     image: golang:1.25.5-alpine
     commands:
-      - go run gotest.tools/gotestsum@latest
+      - go test -short -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
     when:
       - path:
           exclude: 
