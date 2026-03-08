@@ -126,7 +126,7 @@ func TestTagRepositoryContract(t *testing.T) {
 
 	// Postgres
 
-	var cleanupfuncs []func() = make([]func(), 0)
+	var cleanupfuncs = make([]func(), 0)
 
 	run(t, func(t *testing.T) repository.Repository {
 		t.Parallel()
@@ -253,7 +253,7 @@ func TestProjectRepositoryContract(t *testing.T) {
 
 	// Postgres
 
-	var cleanupfuncs []func() = make([]func(), 0)
+	var cleanupfuncs = make([]func(), 0)
 
 	run(t, func(t *testing.T) repository.Repository {
 		t.Parallel()
@@ -392,7 +392,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 	// Postgres
 
-	var cleanupfuncs []func() = make([]func(), 0)
+	var cleanupfuncs = make([]func(), 0)
 
 	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()

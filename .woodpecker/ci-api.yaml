@@ -1,0 +1,43 @@
+when:
+  - event: pull_request
+  - event: push
+    branch: main
+
+steps:
+  - name: lint
+    image: golangci/golangci-lint:v2.11.2-alpine
+    commands:
+      - golangci-lint run ./...
+    when:
+      - path:
+          exclude: 
+            - frontend/**
+    backend_options: &backops
+      kubernetes:
+        tolerations:
+          - key: amd64
+            value: "true"
+            effect: PreferNoSchedule
+        nodeSelector:
+          kubernetes.io/arch: amd64
+
+  - name: test
+    image: golang:1.25.5-alpine
+    commands:
+      - go test -short -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+    when:
+      - path:
+          exclude: 
+            - frontend/**
+    backend_options: *backops
+
+  - name: build
+    image: golang:1.25.5-alpine
+    commands:
+      - go build -o inundated cmd/server/main.go
+    when:
+      - path:
+          exclude: 
+            - frontend/**
+    backend_options: *backops

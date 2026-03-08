@@ -41,6 +41,17 @@ test-frontend:
 	@echo "==> Running frontend tests..."
 	cd frontend && npm test
 
+.PHONY: lint lint-backend lint-frontend
+lint: lint-backend lint-frontend
+
+lint-backend:
+	@echo "==> Running backend linters..."
+	golangci-lint run ./...
+
+lint-frontend:
+	@echo "==> Running frontend linters..."
+	cd frontend && npm run lint
+
 # Regenerate code from OpenAPI spec
 .PHONY: generate generate-backend-api generate-frontend-api
 generate: generate-backend-api generate-frontend-api

@@ -18,13 +18,12 @@ func ApplyMigrations(ctx context.Context, dsn string) error {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return err
 	}
 
-	return nil
+	return cleanup()
 }
 
 func ApplyMigrationsUpTo(ctx context.Context, dsn string, version uint) error {
@@ -36,12 +35,11 @@ func ApplyMigrationsUpTo(ctx context.Context, dsn string, version uint) error {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
 
 	if err := m.Migrate(version); err != nil && err != migrate.ErrNoChange {
 		return err
 	}
-	return nil
+	return cleanup()
 }
 
 func ApplyMigrationsSteps(ctx context.Context, dsn string, steps int) error {
@@ -49,12 +47,11 @@ func ApplyMigrationsSteps(ctx context.Context, dsn string, steps int) error {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
 
 	if err := m.Steps(steps); err != nil && err != migrate.ErrNoChange {
 		return err
 	}
-	return nil
+	return cleanup()
 }
 
 func newMigrator(dsn string) (*migrate.Migrate, func() error, error) {
@@ -70,13 +67,13 @@ func newMigrator(dsn string) (*migrate.Migrate, func() error, error) {
 
 	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, nil, err
 	}
 
 	m, err := migrate.NewWithInstance("iofs", fs, "pgx", driver)
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, nil, err
 	}
 

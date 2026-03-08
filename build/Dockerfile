@@ -25,7 +25,8 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY --from=frontend-builder /app/*.go /app/dist ./frontend/
+COPY --from=frontend-builder /app/*.go ./frontend/
+COPY --from=frontend-builder /app/dist ./frontend/dist/
 
 COPY . .
 
