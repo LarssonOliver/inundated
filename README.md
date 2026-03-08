@@ -1,18 +1,9 @@
 # 🌊 inundated
 
-> A personal time and task management system — stay on top of your work without getting swept away.
+> A personal time and task management system.
 
-**inundated** is a lightweight, self-hosted app that helps you track time across projects and tasks. Define projects with optional time budgets, organize work with colorful tags, and log timespans as you go — all through a clean, fast interface.
-
----
-
-## ✨ Features
-
-- 🗂 **Projects** — create projects, set optional time budgets, and watch your hours add up in real time
-- 🏷 **Tags** — color-coded tags to organize both projects and individual timespans
-- ⏱ **Timespans** — log time intervals with a name and tags; durations are calculated automatically
-- 📊 **Aggregated totals** — see the total time spent on any project or tag at a glance
-- 🔌 **OpenAPI-first backend** — clean REST API with auto-generated client code for the frontend
+**inundated** is a lightweight, self-hosted app that helps me track time across 
+projects and tasks. It is developed for me, by me. 
 
 ---
 
@@ -20,12 +11,10 @@
 
 | Layer | Technology |
 |---|---|
-| Backend | Go + [Chi](https://github.com/go-chi/chi) |
-| Frontend | Vue 3 + TypeScript + Vite |
-| State | Pinia |
+| Backend | Go |
+| Frontend | Vue 3 + Pinia + TypeScript + Vite |
 | Database | PostgreSQL (or in-memory for dev) |
 | API spec | OpenAPI 3 |
-| Container | Docker (multi-arch) |
 
 ---
 
@@ -33,8 +22,8 @@
 
 ### Prerequisites
 
-- [Go](https://go.dev/) 1.21+
-- [Node.js](https://nodejs.org/) 20+ and npm
+- [Go](https://go.dev/) 
+- [Node.js](https://nodejs.org/) 
 - [PostgreSQL](https://www.postgresql.org/) (or use the built-in in-memory store for quick local testing)
 
 ### Running in development
@@ -82,7 +71,7 @@ make build
 ./bin/inundated
 ```
 
-Or build and push a multi-arch Docker image:
+Or build and push a multi-arch Docker image using buildx:
 
 ```bash
 make image-push
