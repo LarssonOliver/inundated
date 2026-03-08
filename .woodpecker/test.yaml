@@ -6,7 +6,7 @@ steps:
   - name: build
     image: debian
     commands:
-      - echo "This is the build step 2"
+      - echo "This is the build step 3"
       - echo "binary-data-123" > executable
   - name: a-test-step
     image: golang:1.16
