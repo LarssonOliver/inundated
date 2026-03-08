@@ -76,7 +76,7 @@ func TestProjectStore_CreateProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tt.project.TagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
 			got, gotErr := ta.CreateProject(context.Background(), tt.project)
@@ -148,7 +148,7 @@ func TestProjectStore_GetProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tt.createProject.TagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 			project, _ := ta.CreateProject(context.Background(), tt.createProject)
 			getId := tt.getId(&project)
@@ -219,7 +219,7 @@ func TestProjectStore_ListProjects(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
 			for i, project := range tt.insertProjects {
@@ -352,7 +352,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 			for i, tagId := range tt.project.TagIds {
 				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})

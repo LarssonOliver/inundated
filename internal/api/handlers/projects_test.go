@@ -211,7 +211,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 			request := api.GetProjectRequestObject{
 				ProjectId: tt.request,
 			}
-			if tt.include != nil && len(tt.include) > 0 {
+			if len(tt.include) > 0 {
 				request.Params.Include = &tt.include
 			}
 
