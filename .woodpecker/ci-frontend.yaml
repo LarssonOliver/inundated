@@ -8,6 +8,7 @@ when:
 steps:
   - name: install
     image: node:24-alpine
+    directory: frontend
     commands:
       - npm ci
     when:
@@ -18,6 +19,7 @@ steps:
 
   - name: lint
     image: node:24-alpine
+    directory: frontend
     commands:
       - npm run lint
     when:
@@ -28,6 +30,7 @@ steps:
 
   - name: test
     image: node:24-alpine
+    directory: frontend
     commands:
       - npm run test
     when:
@@ -38,6 +41,7 @@ steps:
 
   - name: build
     image: node:24-alpine
+    directory: frontend
     commands:
       - npm run build
     when:

@@ -18,3 +18,13 @@ steps:
         - latest
       dockerfile: build/Dockerfile
       platforms: linux/amd64,linux/arm64
+    backend_options:
+      kubernetes:
+        tolerations:
+          - key: amd64
+            value: "true"
+            effect: PreferNoSchedule
+        nodeSelector:
+          kubernetes.io/arch: amd64
+
+
