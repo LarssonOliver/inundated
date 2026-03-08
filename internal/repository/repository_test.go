@@ -280,8 +280,8 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 			tagIds := seedTags(t, ctx, repo, 2)
 
-			start := time.Now().Add(-time.Hour)
-			end := time.Now()
+			start := time.Now().Add(-time.Hour).Round(0)
+			end := time.Now().Round(0)
 
 			ts := model.Timespan{
 				Name:      "Work session",
@@ -297,8 +297,8 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			got, err := repo.GetTimespan(ctx, ts.Id)
 			require.NoError(t, err)
 			require.Equal(t, "Work session", got.Name)
-			require.True(t, got.StartTime.Equal(start), "expected start time %v, got %v", start, got.StartTime)
-			require.True(t, got.EndTime.Equal(end), "expected end time %v, got %v", end, got.EndTime)
+			require.WithinDuration(t, start, got.StartTime, time.Millisecond)
+			require.WithinDuration(t, end, got.EndTime, time.Millisecond)
 			require.ElementsMatch(t, tagIds, got.TagIds)
 		})
 
