@@ -29,9 +29,9 @@ import { ref, computed } from "vue";
 import { version } from "@/../package.json";
 
 const isExpanded = ref(true);
-const toggleSidebar = () => {
-  isExpanded.value = !isExpanded.value;
-};
+// const toggleSidebar = () => {
+//   isExpanded.value = !isExpanded.value;
+// };
 
 const sidebarStyle = computed(() => ({
   width: isExpanded.value ? "200px" : "80px",
