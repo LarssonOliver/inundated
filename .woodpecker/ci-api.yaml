@@ -26,15 +26,14 @@ steps:
   - name: test
     image: golang:1.25.5-alpine
     commands:
-      - go test -short -coverprofile=coverage.out ./...
-      - go tool cover -func=coverage.out
+      - go run gotest.tools/gotestsum@latest
     when:
       - path:
           exclude: 
             - frontend/**
     backend_options: *backops
 
-  - name: test
+  - name: build
     image: golang:1.25.5-alpine
     commands:
       - go build -o inundated cmd/server/main.go
