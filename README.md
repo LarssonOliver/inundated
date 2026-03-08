@@ -2,6 +2,12 @@
 
 > A personal time and task management system.
 
+<p align="center">
+  <a href="https://woodpecker.larssonoliver.com/repos/3" target="_blank">
+    <img src="https://woodpecker.larssonoliver.com/api/badges/3/status.svg" alt="status-badge" />
+  </a>
+</p>
+
 **inundated** is a lightweight, self-hosted app that helps me track time across 
 projects and tasks. It is developed for me, by me. 
 
