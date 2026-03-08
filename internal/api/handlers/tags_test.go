@@ -199,7 +199,7 @@ func TestTagHandler_GetTag(t *testing.T) {
 			request := api.GetTagRequestObject{
 				TagId: tt.request,
 			}
-			if tt.include != nil && len(tt.include) > 0 {
+			if len(tt.include) > 0 {
 				request.Params.Include = &tt.include
 			}
 

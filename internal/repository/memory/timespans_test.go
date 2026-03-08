@@ -203,7 +203,8 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				require.NoError(t, err)
 			}
 
 			for i, timespan := range tt.insertTimespans {
@@ -355,7 +356,8 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				require.NoError(t, err)
 			}
 
 			insertedTimespan, _ := ta.CreateTimespan(context.Background(), tt.timespan)
@@ -449,14 +451,17 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 
 	tags := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
 	for _, tagId := range tags {
-		m.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+		_, err := m.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+		require.NoError(t, err)
 	}
 
 	baseTime := time.Now()
 	ts1 := model.Timespan{Name: "T", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
 	ts2 := model.Timespan{Name: "T", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(5 * time.Hour), TagIds: []uuid.UUID{tags[1], tags[2]}}
-	m.CreateTimespan(context.Background(), ts1)
-	m.CreateTimespan(context.Background(), ts2)
+	_, err := m.CreateTimespan(context.Background(), ts1)
+	require.NoError(t, err)
+	_, err = m.CreateTimespan(context.Background(), ts2)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
