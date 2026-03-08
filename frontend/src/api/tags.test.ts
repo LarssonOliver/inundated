@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./tags";
-import type { TagsApi } from "./generated";
+import { GetTagIncludeEnum, type TagsApi } from "./generated";
 
 const { createTagsApi } = __test__;
 
@@ -47,7 +47,7 @@ describe("tags API", () => {
     });
 
     const sut = createTagsApi(api);
-    const result = await sut.getTag("abc");
+    const result = await sut.getTag("abc", false);
 
     expect(result).toEqual({
       id: "abc",
@@ -55,7 +55,13 @@ describe("tags API", () => {
       color: "#fff",
     });
 
-    expect(api.getTag).toHaveBeenCalledWith({ tagId: "abc" });
+    expect(api.getTag).toHaveBeenCalledWith({ tagId: "abc", include: new Set() });
+
+    await sut.getTag("abc", true);
+    expect(api.getTag).toHaveBeenCalledWith({
+      tagId: "abc",
+      include: new Set([GetTagIncludeEnum.TotalTimeMs]),
+    });
   });
 
   it("createTag maps domain input and output correctly", async () => {

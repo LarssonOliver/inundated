@@ -86,6 +86,18 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     }
 
     /**
+     * Fetches a project by its ID with detailed information (e.g., total time spent).
+     *
+     * @param id - The ID of the project to fetch.
+     *
+     * @returns A promise that resolves to the project with detailed information if found, or undefined
+     */
+    async function fetchDetailedProjectById(id: string): Promise<Project> {
+      const project = await api.getProject(id, true);
+      return copyProject(project);
+    }
+
+    /**
      * Updates an existing project.
      *
      * @param project - The project to update, identified by project.id.
@@ -117,6 +129,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       fetchProjects,
       createProject,
       getProjectById,
+      fetchDetailedProjectById,
       updateProject,
       deleteProject,
     };

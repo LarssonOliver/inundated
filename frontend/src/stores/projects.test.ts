@@ -147,4 +147,24 @@ describe("projects store", () => {
     await store.fetchProjects();
     expect(api.listProjects).toHaveBeenCalledTimes(2);
   });
+
+  it("fetch detailed project by ID", async () => {
+    const detailedProj = project({
+      id: "1",
+      name: "detailed",
+      color: "#00ff00",
+      totalTimeMs: 3600000,
+    });
+    api.getProject.mockResolvedValue(detailedProj);
+    const store = useStore();
+    const result = await store.fetchDetailedProjectById("1");
+    expect(api.getProject).toHaveBeenCalledWith("1", true);
+    expect(result).toEqual(detailedProj);
+  });
+
+  it("throws if fetching detailed project by ID fails", async () => {
+    api.getProject.mockRejectedValue(new Error());
+    const store = useStore();
+    await expect(store.fetchDetailedProjectById("missing")).rejects.toThrow();
+  });
 });

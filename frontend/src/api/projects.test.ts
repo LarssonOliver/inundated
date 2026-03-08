@@ -48,7 +48,7 @@ describe("projects API", () => {
     });
 
     const sut = createProjectsApi(api);
-    const result = await sut.getProject("abc");
+    const result = await sut.getProject("abc", false);
 
     expect(result).toEqual({
       id: "abc",
@@ -57,7 +57,7 @@ describe("projects API", () => {
       tagIds: new Set(),
     });
 
-    expect(api.getProject).toHaveBeenCalledWith({ projectId: "abc" });
+    expect(api.getProject).toHaveBeenCalledWith({ projectId: "abc", include: new Set() });
   });
 
   it("createProject maps domain input and output correctly", async () => {

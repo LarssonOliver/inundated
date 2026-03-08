@@ -1,11 +1,11 @@
 import type { Tag } from "@/model";
-import { TagsApi as GeneratedTagsApi } from "@/api/generated";
+import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
-  getTag(id: string): Promise<Tag>;
+  getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
   deleteTag(id: string): Promise<void>;
@@ -20,8 +20,13 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
       return mapFromApiArray(tagMapper, response);
     },
 
-    async getTag(id: string): Promise<Tag> {
-      const response = await api.getTag({ tagId: id });
+    async getTag(id: string, detailed: boolean): Promise<Tag> {
+      const include = new Set<GetTagIncludeEnum>();
+      if (detailed) {
+        include.add(GetTagIncludeEnum.TotalTimeMs);
+      }
+
+      const response = await api.getTag({ tagId: id, include: include });
       return tagMapper.fromApi(response);
     },
 
