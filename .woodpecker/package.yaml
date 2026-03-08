@@ -17,9 +17,5 @@ steps:
       repo: git.larssonoliver.com/oliver/inundated
       tags:
         - latest
-      username:
-        from_secret: registry_user
-      password:
-        from_secret: registry_password
       dockerfile: build/Dockerfile
       platforms: linux/amd64,linux/arm64
