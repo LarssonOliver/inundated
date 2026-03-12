@@ -6,6 +6,7 @@
       v-model="model.name"
       @change="$emit('update:model-value', model)"
       style="width: 20em"
+      @keydown.enter="$emit('submit')"
     />
     <TimeInput v-model="startTimeString" />
     <span class="centered-text">-</span>
@@ -26,6 +27,7 @@ const model = defineModel<Timespan>({
 
 const emit = defineEmits<{
   "update:model-value": [value: Timespan];
+  submit: [];
 }>();
 
 const startTimeString = ref(getTimeString(model.value.startTime));
