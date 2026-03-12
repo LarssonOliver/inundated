@@ -146,7 +146,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
           tag,
           distance: levenshteinDistance(tag.name.toLowerCase(), q),
         }))
-        .filter(({ distance }) => distance < 3)
+        .filter(({ distance }) => distance)
         .sort((a, b) => a.distance - b.distance)
         .map(({ tag }) => copyTag(tag));
     }

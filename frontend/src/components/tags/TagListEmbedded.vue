@@ -83,7 +83,7 @@ watch(tagSearchQuery, async (query) => {
   tagSearchResult.value = [];
   if (!query) return;
   const tags = tagsStore.searchTags(query);
-  tagSearchResult.value = tags.filter((tag) => !model.value.has(tag.id));
+  tagSearchResult.value = tags.filter((tag) => !model.value.has(tag.id)).slice(0, 5);
 });
 
 async function refreshTags() {
