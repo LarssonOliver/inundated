@@ -386,7 +386,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		t.Run(repoName+"GetTotalDurationByTags", func(t *testing.T) {
 			repo := newRepo(t)
 
-			tags := seedTags(t, ctx, repo, 3)
+			tags := seedTags(t, ctx, repo, 4)
 			baseTime := time.Now().Add(-3 * time.Hour)
 
 			ts1 := model.Timespan{StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
@@ -409,11 +409,15 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Equal(t, 3*time.Hour, d3)
 
 			_, err = repo.GetTotalDurationByTags(ctx, []uuid.UUID{uuid.New()})
-			require.ErrorIs(t, err, model.ErrInvalidReference)
+			require.NoError(t, err)
 
 			d4, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
 			require.NoError(t, err)
 			require.Equal(t, 0*time.Hour, d4)
+
+			d5, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[3]})
+			require.NoError(t, err)
+			require.Equal(t, 0*time.Hour, d5)
 		})
 	}
 

@@ -183,9 +183,6 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, timespanId uuid.UUI
 
 // GetTotalDurationByTags implements [repository.Repository].
 func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
-	if tagIds == nil {
-		return 0, fmt.Errorf("GetTotalDurationByTags: tagIds: %w", model.ErrInvalidArgument)
-	}
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
@@ -202,7 +199,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
-		return 0, fmt.Errorf("GetTotalDurationByTags %s: %w", tagIds, model.ErrInvalidReference)
+		return 0, nil
 	}
 	if err != nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags: %w", err)
