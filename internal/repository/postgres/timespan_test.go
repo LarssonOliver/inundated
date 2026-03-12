@@ -315,7 +315,7 @@ func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(nil))
 
 	_, err := repo.GetTotalDurationByTags(ctx, id)
-	require.ErrorIs(t, err, model.ErrInvalidReference)
+	require.NoError(t, err)
 }
 
 func TestGetTotalDurationByTags_EmptyList(t *testing.T) {
@@ -331,6 +331,7 @@ func TestGetTotalDurationByTags_NilList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)
 
-	_, err := repo.GetTotalDurationByTags(ctx, nil)
-	require.Error(t, err)
+	out, err := repo.GetTotalDurationByTags(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 0*time.Hour, out)
 }

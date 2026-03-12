@@ -486,8 +486,7 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 			name:    "Test GetTotalDurationByTags with non-existing tag",
 			tagIds:  []uuid.UUID{uuid.New()},
 			want:    0,
-			wantErr: true,
-			errType: model.ErrInvalidReference,
+			wantErr: false,
 		},
 		{
 			name:    "Test GetTotalDurationByTags with empty tag list",
@@ -499,8 +498,7 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 			name:    "Test GetTotalDurationByTags with nil tag list",
 			tagIds:  nil,
 			want:    0,
-			wantErr: true,
-			errType: model.ErrInvalidArgument,
+			wantErr: false,
 		},
 		{
 			name: "Test GetTotalDurationByTags with duplicate tags",

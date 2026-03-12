@@ -115,23 +115,12 @@ func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 
 // GetTotalDurationByTags implements [repository.Repository].
 func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
-	if tagIds == nil {
-		return 0, model.ErrInvalidArgument
-	}
-
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
 
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-
-	// Check for invalid tag IDs
-	for _, tagId := range tagIds {
-		if _, exists := t.tags[tagId]; !exists {
-			return 0, model.ErrInvalidReference
-		}
-	}
 
 	timespanIds := []uuid.UUID{}
 	for _, inputTagId := range tagIds {
