@@ -3,7 +3,7 @@
     <div class="new-timespan-container">
       <TagListEmbedded v-model="tagIds" />
       <div class="right-side">
-        <TimespanEdit v-model="timespan" />
+        <TimespanEdit @submit="createTimespan" v-model="timespan" />
         <input type="button" value="Add" @click="createTimespan" />
       </div>
     </div>
