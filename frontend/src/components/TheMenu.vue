@@ -18,7 +18,7 @@
         </ul>
       </nav>
       <div class="footer">
-        <strong> Inundated v{{ version }} </strong>
+        <strong> Inundated {{ version }} </strong>
       </div>
     </div>
   </div>
