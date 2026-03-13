@@ -199,6 +199,16 @@ func TestProjectHandler_GetProject(t *testing.T) {
 			want:    api.Project{Name: "Sample Project", Color: "#abcdef", TotalTimeMs: &ms},
 			wantErr: false,
 		},
+		{
+			name: "include totalTimeMs without tags",
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
+				return model.Project{Id: id, Name: "Sample Project", Color: "#abcdef", TotalTime: nil}, nil
+			},
+			request: uuid.New(),
+			include: []api.GetProjectParamsInclude{"totalTimeMs"},
+			want:    api.Project{Name: "Sample Project", Color: "#abcdef", TotalTimeMs: nil},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
