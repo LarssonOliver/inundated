@@ -44,6 +44,14 @@ watch(
       return;
     }
 
+    // Start by grabbing the tag from the store if cached
+    const storeResult = tagsStore.getTagById(newId as string);
+    if (storeResult) {
+      tag.value = storeResult;
+      isNewTag.value = false;
+    }
+
+    // Fetch detailed tag info from the server to ensure we have the latest data (including total time)
     const result = await tagsStore.fetchDetailedTagById(newId as string);
     if (result) {
       tag.value = result;

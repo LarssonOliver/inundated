@@ -41,6 +41,15 @@ function updateProjectTags() {
 }
 
 async function updateProject(id: string) {
+  // First try to get the project from the store if it's cached
+  const storeResult = projectsStore.getProjectById(id);
+  if (storeResult) {
+    project.value = storeResult;
+    projectTags.value = new Set<string>(project.value.tagIds);
+    isNewProject.value = false;
+  }
+
+  // Get detailed project info from the server to ensure we have the latest data (including total time)
   const result = await projectsStore.fetchDetailedProjectById(id);
   if (result) {
     project.value = result;
