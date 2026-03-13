@@ -95,7 +95,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
 	}
 
-	if includes.TotalTime {
+	if includes.TotalTime && reply.TotalTime != nil {
 		TotalTimeMs := int(reply.TotalTime.Milliseconds())
 		apiProject.TotalTimeMs = &TotalTimeMs
 	}
