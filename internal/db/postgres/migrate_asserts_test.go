@@ -66,27 +66,27 @@ func assertColumnExists(
 	}
 }
 
-// func assertIndexExists(
-// 	t *testing.T,
-// 	ctx context.Context,
-// 	pool *pgxpool.Pool,
-// 	indexName string,
-// ) {
-// 	t.Helper()
+func assertIndexExists(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	indexName string,
+) {
+	t.Helper()
 
-// 	var exists bool
-// 	err := pool.QueryRow(ctx, `
-// 		SELECT EXISTS (
-// 			SELECT 1
-// 			FROM pg_indexes
-// 			WHERE schemaname = 'public'
-// 			  AND indexname = $1
-// 		)
-// 	`, indexName).Scan(&exists)
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_indexes
+			WHERE schemaname = 'public'
+			  AND indexname = $1
+		)
+	`, indexName).Scan(&exists)
 
-// 	require.NoError(t, err)
-// 	require.True(t, exists, "expected index %q to exist", indexName)
-// }
+	require.NoError(t, err)
+	require.True(t, exists, "expected index %q to exist", indexName)
+}
 
 // func assertForeignKeyExists(
 // 	t *testing.T,
