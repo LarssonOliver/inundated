@@ -6,6 +6,12 @@ when:
 services:
   - name: dind
     image: docker:29.3.0-dind
+    command:
+      - > 
+        dockerd
+        --host=tcp://0.0.0.0:2375
+        --host=unix:///var/run/docker.sock
+        --tls=false
     backend_options: &backops
       kubernetes:
         tolerations:
@@ -33,9 +39,7 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://dind:2376
-      DOCKER_TLS: "true"
-      DOCKER_TLS_VERIFY: "false"
+      DOCKER_HOST: tcp://dind:2375
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
