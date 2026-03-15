@@ -6,8 +6,8 @@ when:
 services:
   - name: dind
     image: docker:29.3.0-dind
-    environment:
-      DOCKER_TLS_CERTDIR: "" # Disables TLS
+    # environment:
+    #   DOCKER_TLS_CERTDIR: "" # Disables TLS
     backend_options: &backops
       kubernetes:
         tolerations:
