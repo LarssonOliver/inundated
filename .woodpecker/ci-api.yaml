@@ -25,6 +25,7 @@ steps:
           exclude: 
             - frontend/**
     backend_options: *backops
+    depends_on: []
 
   - name: test
     image: golang:1.25.5-alpine
@@ -32,13 +33,15 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://docker:2375
+      DOCKER_HOST: tcp://docker:2376
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
           exclude: 
             - frontend/**
     backend_options: *backops
+    depends_on:
+      - dind
 
   - name: build
     image: golang:1.25.5-alpine
@@ -49,3 +52,5 @@ steps:
           exclude: 
             - frontend/**
     backend_options: *backops
+    depends_on:
+      - lint
