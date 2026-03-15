@@ -5,7 +5,7 @@ when:
 
 services:
   - name: dind
-    image: docker:29.3.0-dind-rootless
+    image: docker:29.3.0-dind
     environment:
       DOCKER_TLS_CERTDIR: "" # Disables TLS
     backend_options: &backops
