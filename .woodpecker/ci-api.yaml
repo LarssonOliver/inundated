@@ -6,7 +6,6 @@ when:
 services:
   - name: dind
     image: docker:29.3.0-dind-rootless
-    privileged: true
 
 steps:
   - name: lint
