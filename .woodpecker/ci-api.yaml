@@ -35,6 +35,7 @@ steps:
     environment:
       DOCKER_HOST: tcp://dind:2376
       DOCKER_TLS_VERIFY: "0"
+      DOCKER_TLS: "1"
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
