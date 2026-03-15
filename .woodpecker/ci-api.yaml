@@ -3,6 +3,11 @@ when:
   - event: push
     branch: main
 
+services:
+  - name: dind
+    image: docker:29.3.0-dind-rootless
+    privileged: true
+
 steps:
   - name: lint
     image: golangci/golangci-lint:v2.11.2-alpine
@@ -23,12 +28,12 @@ steps:
 
   - name: test
     image: golang:1.25.5-alpine
-    environment:
-      TESTCONTAINERS_KUBERNETES_ENABLED: "true"
-      TESTCONTAINERS_RYUK_DISABLED: "true"
     commands:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
+    environment:
+      DOCKER_HOST: tcp://docker:2375
+      TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
           exclude: 
