@@ -3,9 +3,10 @@ when:
   - event: push
     branch: main
 
-services:
+steps:
   - name: dind
     image: docker:29.3.0-dind-rootless
+    detach: true
     backend_options: &backops
       kubernetes:
         tolerations:
@@ -15,7 +16,6 @@ services:
         nodeSelector:
           kubernetes.io/arch: amd64
 
-steps:
   - name: lint
     image: golangci/golangci-lint:v2.11.2-alpine
     commands:
