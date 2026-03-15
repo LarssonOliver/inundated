@@ -6,8 +6,6 @@ when:
 services:
   - name: dind
     image: docker:29.3.0-dind
-    # environment:
-    #   DOCKER_TLS_CERTDIR: "" # Disables TLS
     backend_options: &backops
       kubernetes:
         tolerations:
@@ -35,7 +33,8 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://dind:2375
+      DOCKER_HOST: tcp://dind:2376
+      DOCKER_TLS_VERIFY: "0"
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
