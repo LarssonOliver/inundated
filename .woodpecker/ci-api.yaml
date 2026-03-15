@@ -42,7 +42,8 @@ steps:
           exclude: 
             - frontend/**
     backend_options: *backops
-    depends_on: []
+    depends_on:
+      - dind
 
   - name: build
     image: golang:1.25.5-alpine
