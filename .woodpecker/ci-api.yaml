@@ -33,7 +33,7 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://dind:2375
+      DOCKER_HOST: unix:///run/user/1000/docker.sock
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
