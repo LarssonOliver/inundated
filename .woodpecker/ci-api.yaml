@@ -4,10 +4,14 @@ when:
     branch: main
 
 steps:
-  - name: download
-    image: golang:1.25.5-alpine
+  - name: lint
+    image: golangci/golangci-lint:v2.11.2-alpine
     commands:
-      - go mod download
+      - golangci-lint run ./...
+    when:
+      - path:
+          exclude: 
+            - frontend/**
     backend_options: &backops
       kubernetes:
         serviceAccountName: kubedock
@@ -19,18 +23,6 @@ steps:
           kubernetes.io/arch: amd64
     depends_on: []
 
-  - name: lint
-    image: golangci/golangci-lint:v2.11.2-alpine
-    commands:
-      - golangci-lint run ./...
-    when:
-      - path:
-          exclude: 
-            - frontend/**
-    backend_options: *backops
-    depends_on: 
-      - download
-
   - name: test
     image: golang:1.25.5-alpine
     commands:
@@ -41,8 +33,7 @@ steps:
           exclude: 
             - frontend/**
     backend_options: *backops
-    depends_on: 
-      - download
+    depends_on: []
 
   - name: build
     image: golang:1.25.5-alpine
@@ -53,5 +44,4 @@ steps:
           exclude: 
             - frontend/**
     backend_options: *backops
-    depends_on: 
-      - download
+    depends_on: []
