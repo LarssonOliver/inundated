@@ -3,19 +3,6 @@ when:
   - event: push
     branch: main
 
-services:
-  - name: kubedock
-    image: ghcr.io/joyrex2001/kubedock:0.20.3
-    backend_options: &backops
-      kubernetes:
-        serviceAccountName: kubedock
-        tolerations:
-          - key: amd64
-            value: "true"
-            effect: PreferNoSchedule
-        nodeSelector:
-          kubernetes.io/arch: amd64
-
 steps:
   - name: lint
     image: golangci/golangci-lint:v2.11.2-alpine
@@ -41,9 +28,6 @@ steps:
     commands:
       - go test -short -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
-    environment:
-      DOCKER_HOST: tcp://kubedock:2475
-      # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
           exclude: 
