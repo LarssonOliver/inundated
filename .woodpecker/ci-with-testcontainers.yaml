@@ -10,7 +10,7 @@ services:
   - name: kubedock
     image: ghcr.io/joyrex2001/kubedock:0.20.3
     commands:
-      - /usr/local/bin/kubedock server --disable-dind
+      - /usr/local/bin/kubedock server --disable-dind --node=selector=kubernetes.io/arch=amd64
     backend_options: &backops
       kubernetes:
         serviceAccountName: kubedock
