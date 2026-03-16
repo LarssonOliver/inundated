@@ -32,6 +32,7 @@ steps:
       - path:
           exclude: 
             - frontend/**
+    backend_options: *backops
     depends_on: []
 
   - name: build
