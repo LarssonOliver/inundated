@@ -46,7 +46,7 @@ steps:
             - frontend/**
     environment:
       DOCKER_HOST: tcp://kubedock:2475
-      # TESTCONTAINERS_RYUK_DISABLED: "true"
+      TESTCONTAINERS_RYUK_DISABLED: "true"
       # TESTCONTAINERS_CHECKS_DISABLE: "true"
     backend_options: *backend_options
     depends_on: []
