@@ -19,14 +19,9 @@ services:
     commands:
       - /usr/local/bin/kubedock server --reverse-proxy --disable-dind --node-selector=kubernetes.io/arch=amd64
     backend_options: 
+      <<: *backend_options
       kubernetes:
         serviceAccountName: kubedock
-        tolerations:
-          - key: amd64
-            value: "true"
-            effect: PreferNoSchedule
-        nodeSelector:
-          kubernetes.io/arch: amd64
 
 steps:
   - name: lint
