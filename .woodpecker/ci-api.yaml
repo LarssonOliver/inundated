@@ -4,16 +4,11 @@ when:
     branch: main
 
 services:
-  - name: dind
-    image: docker:29.3.0-dind
-    commands:
-      - > 
-        dockerd
-        --host=tcp://0.0.0.0:2375
-        --host=unix:///var/run/docker.sock
-        --tls=false
+  - name: kubedock
+    image: ghcr.io/joyrex2001/kubedock:0.20.3
     backend_options: &backops
       kubernetes:
+        serviceAccountName: kubedock
         tolerations:
           - key: amd64
             value: "true"
@@ -39,7 +34,7 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://dind:2375
+      DOCKER_HOST: tcp://kubedock:2375
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
