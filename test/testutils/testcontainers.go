@@ -13,7 +13,7 @@ import (
 )
 
 // StartPostgresContainer starts a PostgreSQL container for testing and returns a connected pgxpool.Pool, the DSN, and a cleanup function.
-func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, string, func()) {
+func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 
 	if testing.Short() {
@@ -39,17 +39,19 @@ func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, s
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 
-	return pool, dsn, func() {
+	t.Cleanup(func() {
 		pool.Close()
 		_ = container.Terminate(ctx)
-	}
+	})
+
+	return pool, dsn
 }
 
 // StartPostgresContainerWithMigrationsApplied starts a PostgreSQL container, applies migrations, and returns a connected pgxpool.Pool and a cleanup function.
-func StartPostgresContainerWithMigrationsApplied(ctx context.Context, t *testing.T) (*pgxpool.Pool, func()) {
+func StartPostgresContainerWithMigrationsApplied(ctx context.Context, t *testing.T) (*pgxpool.Pool) {
 	t.Helper()
-	pool, dsn, cleanup := StartPostgresContainer(ctx, t)
+	pool, dsn := StartPostgresContainer(ctx, t)
 	err := dbpostgres.ApplyMigrations(ctx, dsn)
 	require.NoError(t, err)
-	return pool, cleanup
+	return pool
 }

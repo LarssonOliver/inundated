@@ -125,19 +125,11 @@ func TestTagRepositoryContract(t *testing.T) {
 	})
 
 	// Postgres
-
-	var cleanupfuncs = make([]func(), 0)
-
 	run(t, func(t *testing.T) repository.Repository {
 		t.Parallel()
-		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		cleanupfuncs = append(cleanupfuncs, terminate)
+		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 		return postgres.NewPostgresStoreFromPool(pool)
 	})
-
-	for _, cleanup := range cleanupfuncs {
-		defer cleanup()
-	}
 }
 
 func TestProjectRepositoryContract(t *testing.T) {
@@ -252,19 +244,11 @@ func TestProjectRepositoryContract(t *testing.T) {
 	})
 
 	// Postgres
-
-	var cleanupfuncs = make([]func(), 0)
-
 	run(t, func(t *testing.T) repository.Repository {
 		t.Parallel()
-		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		cleanupfuncs = append(cleanupfuncs, terminate)
+		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 		return postgres.NewPostgresStoreFromPool(pool)
 	})
-
-	for _, cleanup := range cleanupfuncs {
-		defer cleanup()
-	}
 }
 
 func TestTimespanRepositoryContract(t *testing.T) {
@@ -428,17 +412,9 @@ func TestTimespanRepositoryContract(t *testing.T) {
 	})
 
 	// Postgres
-
-	var cleanupfuncs = make([]func(), 0)
-
 	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
-		pool, terminate := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		cleanupfuncs = append(cleanupfuncs, terminate)
+		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 		return postgres.NewPostgresStoreFromPool(pool)
 	})
-
-	for _, cleanup := range cleanupfuncs {
-		defer cleanup()
-	}
 }
