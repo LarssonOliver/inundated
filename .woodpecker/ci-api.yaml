@@ -34,7 +34,7 @@ steps:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
     environment:
-      DOCKER_HOST: tcp://kubedock:2375
+      DOCKER_HOST: tcp://kubedock:2475
       # TESTCONTAINERS_RYUK_DISABLED: "true"
     when:
       - path:
