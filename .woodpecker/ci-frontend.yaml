@@ -34,6 +34,8 @@ steps:
             - frontend/**
             - .woodpecker/**
     backend_options: *backops
+    depends_on: 
+      - install
 
   - name: test
     image: node:24-alpine
@@ -46,6 +48,8 @@ steps:
             - frontend/**
             - .woodpecker/**
     backend_options: *backops
+    depends_on: 
+      - install
 
   - name: build
     image: node:24-alpine
@@ -58,3 +62,5 @@ steps:
             - frontend/**
             - .woodpecker/**
     backend_options: *backops
+    depends_on: 
+      - install
