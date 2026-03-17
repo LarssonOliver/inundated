@@ -25,8 +25,7 @@ func sptr(s string) *string {
 
 func TestMigrations_ApplyCleanly(t *testing.T) {
 	ctx := context.Background()
-	pool, dsn, terminate := testutils.StartPostgresContainer(ctx, t)
-	defer terminate()
+	pool, dsn := testutils.StartPostgresContainer(ctx, t)
 
 	err := postgres.ApplyMigrations(ctx, dsn)
 	require.NoError(t, err)
@@ -69,8 +68,7 @@ func TestIndividualMigrations(t *testing.T) {
 		t.Run(tcase.name, func(t *testing.T) {
 			t.Parallel()
 
-			pool, dsn, terminate := testutils.StartPostgresContainer(ctx, t)
-			defer terminate()
+			pool, dsn := testutils.StartPostgresContainer(ctx, t)
 
 			require.NoError(t,
 				postgres.ApplyMigrationsUpTo(ctx, dsn, tcase.fromVersion),
