@@ -15,7 +15,10 @@ func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Pro
 		return model.Project{}, fmt.Errorf("GetProject: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `SELECT id, name, color, time_budget FROM projects WHERE id = $1`
+	const q = `
+		SELECT id, name, color, time_budget 
+		FROM projects 
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	var p model.Project
 	err := r.db.QueryRow(ctx, q, id).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget)
@@ -34,7 +37,11 @@ func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Pro
 }
 
 func (r *PostgresStore) ListProjects(ctx context.Context) ([]model.Project, error) {
-	const q = `SELECT id, name, color, time_budget FROM projects ORDER BY name`
+	const q = `
+		SELECT id, name, color, time_budget 
+		FROM projects 
+		WHERE deleted_at IS NULL
+		ORDER BY name`
 
 	rows, err := r.db.Query(ctx, q)
 	if err != nil {
@@ -100,7 +107,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, project model.Project
 
 	const q = `
 		UPDATE projects SET name = $2, color = $3, time_budget = $4
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, name, color, time_budget`
 
 	var updated model.Project
@@ -125,7 +132,10 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("DeleteProject: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `DELETE FROM projects WHERE id = $1`
+	const q = `
+		UPDATE projects
+		SET deleted_at = now()
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	res, err := r.db.Exec(ctx, q, id)
 	if err != nil {
@@ -139,7 +149,11 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
 
 // projectTagIds returns all tag IDs linked to a project.
 func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) ([]uuid.UUID, error) {
-	const q = `SELECT tag_id FROM project_tags WHERE project_id = $1 ORDER BY tag_id`
+	const q = `
+		SELECT tag_id 
+		FROM project_tags 
+		WHERE project_id = $1 
+		ORDER BY tag_id`
 
 	rows, err := r.db.Query(ctx, q, projectId)
 	if err != nil {

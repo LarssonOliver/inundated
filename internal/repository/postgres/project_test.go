@@ -48,7 +48,7 @@ func TestGetProject_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	p := aProject()
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(p.Id).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
@@ -69,7 +69,7 @@ func TestGetProject_NilTimeBudget(t *testing.T) {
 	p := aProject()
 	p.TimeBudget = nil
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(p.Id).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, nil))
@@ -85,7 +85,7 @@ func TestGetProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
@@ -108,7 +108,7 @@ func TestListProjects_ReturnsAll(t *testing.T) {
 	repo, mock := newMock(t)
 	p1, p2 := aProject(), aProject()
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects ORDER BY name`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name`).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p1.Id, p1.Name, p1.Color, p1.TimeBudget).
 			AddRow(p2.Id, p2.Name, p2.Color, p2.TimeBudget))
@@ -124,7 +124,7 @@ func TestListProjects_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects ORDER BY name`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name`).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
 	got, err := repo.ListProjects(ctx)
@@ -205,7 +205,7 @@ func TestUpdateProject_Success(t *testing.T) {
 	newBudget := 4 * time.Hour
 	p.TimeBudget = &newBudget
 
-	mock.ExpectQuery(`UPDATE projects`).
+	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
@@ -222,7 +222,7 @@ func TestUpdateProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	p := aProject()
 
-	mock.ExpectQuery(`UPDATE projects`).
+	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
@@ -256,9 +256,9 @@ func TestDeleteProject_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM projects WHERE id = \$1`).
+	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(id).
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteProject(ctx, id))
 }
@@ -268,9 +268,9 @@ func TestDeleteProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM projects WHERE id = \$1`).
+	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(id).
-		WillReturnResult(pgxmock.NewResult("DELETE", 0))
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteProject(ctx, id)
 	require.Error(t, err)

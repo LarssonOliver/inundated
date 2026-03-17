@@ -61,6 +61,19 @@ func TestIndividualMigrations(t *testing.T) {
 				assertTableExists(t, ctx, pool, "timespan_tags")
 			},
 		},
+		{
+			name:        "0002_deleted_at",
+			fromVersion: 1,
+			toVersion:   2,
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "tags", "deleted_at", sptr("timestamp with time zone"))
+				assertIndexExists(t, ctx, pool, "idx_tags_active")
+				assertColumnExists(t, ctx, pool, "projects", "deleted_at", sptr("timestamp with time zone"))
+				assertIndexExists(t, ctx, pool, "idx_projects_active")
+				assertColumnExists(t, ctx, pool, "timespans", "deleted_at", sptr("timestamp with time zone"))
+				assertIndexExists(t, ctx, pool, "idx_timespans_active")
+			},
+		},
 	}
 
 	for _, tc := range tests {

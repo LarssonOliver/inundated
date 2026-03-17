@@ -16,7 +16,10 @@ func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, er
 		return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `SELECT id, name, color FROM tags WHERE id = $1`
+	const q = `
+		SELECT id, name, color 
+		FROM tags 
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	var t model.Tag
 	err := r.db.QueryRow(ctx, q, id).Scan(&t.Id, &t.Name, &t.Color)
@@ -30,7 +33,11 @@ func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, er
 }
 
 func (r *PostgresStore) ListTags(ctx context.Context) ([]model.Tag, error) {
-	const q = `SELECT id, name, color FROM tags ORDER BY name`
+	const q = `
+		SELECT id, name, color 
+		FROM tags 
+		WHERE deleted_at IS NULL
+		ORDER BY name`
 
 	rows, err := r.db.Query(ctx, q)
 	if err != nil {
@@ -83,8 +90,9 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag
 	}
 
 	const q = `
-		UPDATE tags SET name = $2, color = $3
-		WHERE id = $1
+		UPDATE tags 
+		SET name = $2, color = $3
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, name, color`
 
 	var updated model.Tag
@@ -104,7 +112,10 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("DeleteTag: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `DELETE FROM tags WHERE id = $1`
+	const q = `
+		UPDATE tags 
+		SET deleted_at = now()
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	res, err := r.db.Exec(ctx, q, id)
 	if err != nil {
