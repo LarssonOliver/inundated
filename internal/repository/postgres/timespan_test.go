@@ -46,7 +46,7 @@ func TestGetTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 .* deleted_at IS NULL`).
 		WithArgs(ts.Id).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -66,7 +66,7 @@ func TestGetTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 .* deleted_at IS NULL`).
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows(timespanCols))
 
@@ -89,7 +89,7 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 	repo, mock := newMock(t)
 	ts1, ts2 := aTimespan(), aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC`).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime).
 			AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime))
@@ -105,7 +105,7 @@ func TestListTimespans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC`).
 		WillReturnRows(pgxmock.NewRows(timespanCols))
 
 	got, err := repo.ListTimespans(ctx)
@@ -202,7 +202,7 @@ func TestUpdateTimespan_Success(t *testing.T) {
 	ts := aTimespan()
 	ts.Name = "renamed session"
 
-	mock.ExpectQuery(`UPDATE timespans`).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
@@ -219,7 +219,7 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	mock.ExpectQuery(`UPDATE timespans`).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnError(pgx.ErrNoRows)
 
@@ -262,9 +262,9 @@ func TestDeleteTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM timespans WHERE id = \$1`).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(id).
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteTimespan(ctx, id))
 }
@@ -274,9 +274,9 @@ func TestDeleteTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`DELETE FROM timespans WHERE id = \$1`).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(id).
-		WillReturnResult(pgxmock.NewResult("DELETE", 0))
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteTimespan(ctx, id)
 	require.Error(t, err)
@@ -295,7 +295,7 @@ func TestGetTotalDurationByTags_Success(t *testing.T) {
 	repo, mock := newMock(t)
 
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
-	mock.ExpectQuery("SELECT SUM").
+	mock.ExpectQuery("SELECT .* FROM timespans t .* t.deleted_at IS NULL").
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(dur(2 * time.Hour)))
 
@@ -310,7 +310,7 @@ func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
 
 	id := []uuid.UUID{uuid.New()}
 
-	mock.ExpectQuery("SELECT SUM").
+	mock.ExpectQuery("SELECT .+ FROM timespans t .* t.deleted_at IS NULL").
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(nil))
 

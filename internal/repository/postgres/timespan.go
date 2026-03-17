@@ -16,7 +16,10 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 		return model.Timespan{}, fmt.Errorf("GetTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `SELECT id, name, start_time, end_time FROM timespans WHERE id = $1`
+	const q = `
+		SELECT id, name, start_time, end_time 
+		FROM timespans 
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	var ts model.Timespan
 	err := r.db.QueryRow(ctx, q, id).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
@@ -35,7 +38,11 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 }
 
 func (r *PostgresStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
-	const q = `SELECT id, name, start_time, end_time FROM timespans ORDER BY start_time DESC`
+	const q = `
+		SELECT id, name, start_time, end_time 
+		FROM timespans 
+		WHERE deleted_at IS NULL
+		ORDER BY start_time DESC`
 
 	rows, err := r.db.Query(ctx, q)
 	if err != nil {
@@ -107,7 +114,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, timespan model.Times
 
 	const q = `
 		UPDATE timespans SET name = $2, start_time = $3, end_time = $4
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, name, start_time, end_time`
 
 	var updated model.Timespan
@@ -132,7 +139,10 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("DeleteTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `DELETE FROM timespans WHERE id = $1`
+	const q = `
+		UPDATE timespans 
+		SET deleted_at = now()
+		WHERE id = $1 AND deleted_at IS NULL`
 
 	res, err := r.db.Exec(ctx, q, id)
 	if err != nil {
@@ -146,7 +156,11 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error 
 
 // timespanTagIds returns all tag IDs linked to a time span.
 func (r *PostgresStore) timespanTagIds(ctx context.Context, timespanId uuid.UUID) ([]uuid.UUID, error) {
-	const q = `SELECT tag_id FROM timespan_tags WHERE timespan_id = $1 ORDER BY tag_id`
+	const q = `
+		SELECT tag_id 
+		FROM timespan_tags 
+		WHERE timespan_id = $1 
+		ORDER BY tag_id`
 
 	rows, err := r.db.Query(ctx, q, timespanId)
 	if err != nil {
@@ -191,7 +205,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 		SELECT
 			SUM(t.end_time - t.start_time) AS total_time
 		FROM timespans t
-		WHERE EXISTS (
+		WHERE t.deleted_at IS NULL AND EXISTS (
 			SELECT 1 FROM timespan_tags tt
 			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 		)`

@@ -75,7 +75,7 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags AND deleted_at IS NULL ORDER BY name`).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name`).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
 
 	got, err := repo.ListTags(ctx)
@@ -184,7 +184,7 @@ func TestDeleteTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags .+ SET deleted_at = now() .+ WHERE .+ deleted_at IS NULL`).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
@@ -196,7 +196,7 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags .+ SET deleted_at = now() .+ WHERE .+ deleted_at IS NULL`).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
