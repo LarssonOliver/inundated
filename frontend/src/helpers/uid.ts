@@ -1,11 +1,9 @@
-import { webcrypto } from "crypto";
-
 export function generateSecureUid(length: number): string {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
   const array = new Uint8Array(length);
 
   // Use Web Crypto API for cryptographically secure randomness
-  webcrypto.getRandomValues(array);
+  (window.crypto || self.crypto).getRandomValues(array);
 
   let id = "";
 
