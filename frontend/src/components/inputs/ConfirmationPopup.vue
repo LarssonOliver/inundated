@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { generateSecureUid } from "@/helpers/uid";
 import { ref, watch, onMounted, onUnmounted, computed } from "vue";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ const emit = defineEmits<{
 const cancelRef = ref<HTMLButtonElement | null>(null);
 
 // Unique IDs for ARIA
-const uid = Math.random().toString(36).slice(2, 8);
+const uid = generateSecureUid(6);
 const titleId = computed(() => `popup-title-${uid}`);
 const descId = computed(() => `popup-desc-${uid}`);
 
