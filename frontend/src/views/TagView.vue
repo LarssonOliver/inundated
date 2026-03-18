@@ -11,7 +11,23 @@
     <input v-if="!isNewTag" type="button" value="Save Tag" @click="saveTag" />
     <input v-else type="button" value="Create Tag" @click="createTag" />
 
+    <input
+      v-if="!isNewTag"
+      type="button"
+      value="Delete Tag"
+      @click="showDeletionConfirmation = true"
+    />
+
     <h3 v-if="tag.totalTimeMs">Total Time Spent: {{ formatTimeDuration(tag.totalTimeMs) }}</h3>
+
+    <ConfirmationPopup
+      v-model="showDeletionConfirmation"
+      :message="`Deleting tag ${tag.name} cannot
+    be undone.`"
+      confirm-label="Delete"
+      variant="error"
+      @confirm="deleteTag"
+    />
   </div>
 </template>
 
@@ -29,6 +45,8 @@ const route = useRoute();
 
 const tag = ref<Tag>(newTagWithDefaults());
 const isNewTag = ref(false);
+
+const showDeletionConfirmation = ref(false);
 
 watch(
   () => route.params.id,
@@ -70,6 +88,20 @@ async function saveTag() {
 async function createTag() {
   const newTag = await tagsStore.createTagFromName(tag.value.name, tag.value.color);
   router.push({ name: "Tag", params: { id: newTag.id } });
+}
+
+async function deleteTag() {
+  showDeletionConfirmation.value = false;
+
+  try {
+    await tagsStore.deleteTag(tag.value.id);
+  } catch (error) {
+    console.error("Failed to delete tag:", error);
+    return;
+  }
+
+  // Only navigate if deletion was successful
+  router.push({ name: "Tags" });
 }
 </script>
 
