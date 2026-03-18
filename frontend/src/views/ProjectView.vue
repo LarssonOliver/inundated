@@ -11,9 +11,26 @@
     </div>
     <input v-if="!isNewProject" type="button" value="Save Project" @click="saveProject" />
     <input v-else type="button" value="Create Project" @click="createProject" />
+
+    <input
+      v-if="!isNewProject"
+      type="button"
+      value="Delete Project"
+      @click="showDeleteConfirmation = true"
+    />
+
     <h3 v-if="project.totalTimeMs">
       Total Time Spent: {{ formatTimeDuration(project.totalTimeMs) }}
     </h3>
+
+    <ConfirmationPopup
+      v-model="showDeleteConfirmation"
+      :message="`Deleting project ${project.name}
+    cannot be undone.`"
+      variant="error"
+      confirm-label="Delete"
+      @confirm="deleteProject"
+    />
   </div>
 </template>
 
@@ -35,6 +52,8 @@ const isNewProject = ref(false);
 // Reactive state
 const project = ref(newProjectWithDefaults());
 const projectTags = ref<Set<string>>(new Set<string>());
+
+const showDeleteConfirmation = ref(false);
 
 function updateProjectTags() {
   project.value.tagIds = new Set<string>(projectTags.value);
@@ -87,6 +106,19 @@ async function saveProject() {
 async function createProject() {
   const newProject = await projectsStore.createProject(project.value);
   router.push({ name: "Project", params: { id: newProject.id } });
+}
+
+async function deleteProject() {
+  showDeleteConfirmation.value = false;
+
+  try {
+    await projectsStore.deleteProject(project.value.id);
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    return; // Only navigate away if deletion was successful
+  }
+
+  router.push({ name: "Projects" });
 }
 </script>
 

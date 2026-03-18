@@ -61,7 +61,7 @@ const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   title: "Are you sure?",
   message: "This action cannot be undone.",
-  confirmLabel: "Delete",
+  confirmLabel: "Confirm",
   cancelLabel: "Cancel",
   variant: "info",
   closeOnBackdrop: true,
