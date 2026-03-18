@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { fileURLToPath, URL } from "node:url";
 
 import { defineConfig } from "vite";
@@ -22,5 +23,8 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  test: {
+    environment: "jsdom",
   },
 });
