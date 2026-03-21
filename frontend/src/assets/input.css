@@ -5,10 +5,12 @@ input {
   padding: 0.5em 0.75em;
   color: inherit;
   border: 1px solid var(--nord0);
-  transition:
-    border-color 0.1s,
-    background-color 0.1s;
   background-color: var(--nord0);
+  transition:
+    background 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    filter 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 80ms ease;
 }
 
 input:focus {
@@ -34,6 +36,21 @@ input[type="reset"]:hover,
 input[type="button"]:hover {
   cursor: pointer;
   background-color: var(--nord1);
+}
+
+button:active,
+input[type="submit"]:active,
+input[type="reset"]:active,
+input[type="button"]:active {
+  transform: scale(0.97);
+}
+
+button:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="reset"]:focus-visible,
+input[type="button"]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 input[type="text"] {

@@ -179,23 +179,6 @@ watch(
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────────── */
-.btn {
-  transition:
-    background var(--transition),
-    box-shadow var(--transition),
-    filter var(--transition),
-    transform 80ms ease;
-}
-
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
 .btn--error {
   background: var(--nord11);
 }
@@ -238,41 +221,5 @@ watch(
 
 .btn--info:hover {
   filter: brightness(0.8);
-}
-
-/* ── Transitions ────────────────────────────────────────────────────────────── */
-
-/* Backdrop fade */
-.overlay-enter-active,
-.overlay-leave-active {
-  transition: opacity var(--transition);
-}
-
-.overlay-enter-from,
-.overlay-leave-to {
-  opacity: 0;
-}
-
-/* Popup scale + fade */
-.popup-enter-active {
-  transition:
-    opacity var(--transition),
-    transform var(--transition);
-}
-
-.popup-leave-active {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.popup-enter-from {
-  opacity: 0;
-  transform: scale(0.94) translateY(8px);
-}
-
-.popup-leave-to {
-  opacity: 0;
-  transform: scale(0.96) translateY(4px);
 }
 </style>
