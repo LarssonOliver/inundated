@@ -71,9 +71,8 @@ input {
 
 sup {
   font-size: 0.6em;
-  position: absolute;
-  margin-left: -1.75em;
-  margin-top: 0.75em;
+  position: relative;
+  margin-left: -2em;
   font-family: monospace;
 }
 </style>
