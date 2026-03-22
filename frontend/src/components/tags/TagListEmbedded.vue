@@ -7,7 +7,7 @@
       @select="onTagSelect"
       @create="onTagCreate"
     >
-      <template v-slot="item">
+      <template #default="item">
         <TagItem :tag="item" />
       </template>
     </SearchBox>
@@ -28,11 +28,7 @@ import SearchBox from "@/components/inputs/SearchBox.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import type { Tag } from "@/model";
 import { useTagsStore } from "@/stores/tags";
-import { onMounted, ref, watch } from "vue";
-
-const emit = defineEmits<{
-  "update:model-value": [value: Set<string>];
-}>();
+import { computed, ref, watch } from "vue";
 
 const model = defineModel<Set<string>>({ default: new Set<string>() });
 const { readOnly } = defineProps<{
@@ -41,18 +37,24 @@ const { readOnly } = defineProps<{
 
 const tagsStore = useTagsStore();
 const tags = ref<Tag[]>([]);
-
 const tagSearchQuery = ref("");
-const tagSearchResult = ref<Tag[]>([]);
 
-onMounted(async () => {
-  await refreshTags();
+const tagSearchResult = computed(() => {
+  if (!tagSearchQuery.value) return [];
+  return tagsStore
+    .searchTags(tagSearchQuery.value)
+    .filter((tag) => !model.value.has(tag.id))
+    .slice(0, 5);
 });
-watch(
-  () => Array.from(model.value),
-  async () => await refreshTags(),
-  { deep: true },
-);
+
+watch(model, async () => await refreshTags(), { deep: true, immediate: true });
+
+async function refreshTags() {
+  await tagsStore.fetchTags();
+  tags.value = [...model.value]
+    .map((id) => tagsStore.getTagById(id))
+    .filter((tag): tag is Tag => tag != null);
+}
 
 function onTagSearch(query: string) {
   tagSearchQuery.value = query;
@@ -60,12 +62,10 @@ function onTagSearch(query: string) {
 
 function onTagSelect(tag: Tag) {
   model.value.add(tag.id);
-  emit("update:model-value", model.value);
 }
 
 function onTagClose(tag: Tag) {
   model.value.delete(tag.id);
-  emit("update:model-value", model.value);
 }
 
 async function onTagCreate(name: string) {
@@ -75,24 +75,6 @@ async function onTagCreate(name: string) {
   const tag = await tagsStore.createTagFromName(name);
   if (tag) {
     model.value.add(tag.id);
-    emit("update:model-value", model.value);
-  }
-}
-
-watch(tagSearchQuery, async (query) => {
-  tagSearchResult.value = [];
-  if (!query) return;
-  const tags = tagsStore.searchTags(query);
-  tagSearchResult.value = tags.filter((tag) => !model.value.has(tag.id)).slice(0, 5);
-});
-
-async function refreshTags() {
-  tags.value.length = 0;
-  await tagsStore.fetchTags();
-
-  for (const id of model.value) {
-    const tag = tagsStore.getTagById(id);
-    if (tag) tags.value.push(tag);
   }
 }
 </script>
