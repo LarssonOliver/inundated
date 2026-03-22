@@ -19,7 +19,7 @@ input:focus {
 }
 
 input::placeholder {
-  color: var(--nord-c1);
+  color: var(--nord3);
 }
 
 input:disabled {
