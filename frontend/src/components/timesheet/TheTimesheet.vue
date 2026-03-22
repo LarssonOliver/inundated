@@ -4,15 +4,27 @@
       <TagListEmbedded v-model="tagIds" />
       <div class="right-side">
         <TimespanEdit @submit="createTimespan" v-model="timespan" />
-        <input type="button" value="Add" @click="createTimespan" />
+        <button class="btn-info btn-add" @click="createTimespan">Add</button>
       </div>
     </div>
-    <div
-      class="timespan-list-item"
-      v-for="(timespan, index) in timespans"
-      :key="timespan as unknown as PropertyKey"
-    >
-      <TimesheetItem :model-value="timespan" @update:model-value="updateTimespan" />
+    <div v-for="(timespan, index) in timespans" :key="timespan.id">
+      <div v-if="timespan.isNewDay">
+        <p class="date-divider">
+          {{
+            timespan.startTime.toLocaleDateString(undefined, {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+          }}
+        </p>
+        <hr class="item-divider" />
+      </div>
+      <TimesheetItem
+        v-model="timespans[index]"
+        @update:model-value="timespansStore.updateTimespan"
+      />
       <hr class="item-divider" v-if="index < timespans.length - 1" />
     </div>
   </div>
@@ -21,7 +33,6 @@
 <script setup lang="ts">
 import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
-import type { Timespan } from "@/model";
 import { useTimespansStore } from "@/stores/timespans";
 import { computed, ref, onMounted } from "vue";
 
@@ -34,18 +45,18 @@ onMounted(async () => {
 });
 
 const timespans = computed(() => {
-  const res = [...timespansStore.timespans];
-  res.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
-  return res;
+  const sorted = [...timespansStore.timespans].sort(
+    (a, b) => b.startTime.getTime() - a.startTime.getTime(),
+  );
+  return sorted.map((t, index) => {
+    const prev = sorted[index - 1];
+    const isNewDay = prev ? t.startTime.toDateString() !== prev.startTime.toDateString() : true;
+    return { ...t, isNewDay };
+  });
 });
 
-async function updateTimespan(value: Timespan) {
-  await timespansStore.updateTimespan(value);
-}
-
 async function createTimespan() {
-  const newTimespan: Timespan = { ...timespan.value, tagIds: new Set(tagIds.value) };
-  await timespansStore.createTimespan(newTimespan);
+  await timespansStore.createTimespan({ ...timespan.value, tagIds: new Set(tagIds.value) });
   timespan.value.name = "";
 }
 </script>
@@ -74,18 +85,14 @@ async function createTimespan() {
   margin: 0.1em 0.5em;
 }
 
-input[type="button"] {
+.btn-add {
   margin-left: 1em;
   width: 6em;
-  background-color: var(--nord8);
-  filter: brightness(100%);
-  -webkit-filter: brightness(100%);
-  color: var(--nord0);
 }
 
-input[type="button"]:hover {
-  filter: brightness(80%);
-  -webkit-filter: brightness(80%);
-  transition: all 0.3s ease;
+.date-divider {
+  text-align: center;
+  margin: 0.5em;
+  color: var(--nord3);
 }
 </style>

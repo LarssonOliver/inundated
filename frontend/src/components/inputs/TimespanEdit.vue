@@ -88,7 +88,7 @@ input[type="date"] {
   width: 11.5em;
   margin-left: 1em;
   padding: 0.5em 0.75em;
-  height: 2.385em;
+  height: 2.5em;
 }
 
 input[type="text"] {
