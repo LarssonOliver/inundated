@@ -3,9 +3,11 @@
 > A personal time and task management system.
 
 <p align="center">
+  <img alt="GitHub License" src="https://img.shields.io/github/license/LarssonOliver/inundated">
   <a href="https://woodpecker.larssonoliver.com/repos/3" target="_blank">
     <img src="https://woodpecker.larssonoliver.com/api/badges/3/status.svg" alt="status-badge" />
   </a>
+  <img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/LarssonOliver/inundated">
 </p>
 
 **inundated** is a lightweight, self-hosted app that helps me track time across 
