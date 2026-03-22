@@ -57,7 +57,15 @@ const timespans = computed(() => {
 
 async function createTimespan() {
   await timespansStore.createTimespan({ ...timespan.value, tagIds: new Set(tagIds.value) });
-  timespan.value.name = "";
+  const timeDiffMs = timespan.value.endTime.getTime() - timespan.value.startTime.getTime();
+  const newStartTime = new Date(timespan.value.endTime.getTime());
+  const newEndTime = new Date(newStartTime.getTime() + timeDiffMs);
+  timespan.value = {
+    ...timespan.value,
+    name: "",
+    startTime: newStartTime,
+    endTime: newEndTime,
+  };
 }
 </script>
 
