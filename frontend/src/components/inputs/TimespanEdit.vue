@@ -4,8 +4,7 @@
       type="text"
       placeholder="Description..."
       v-model="model.name"
-      @change="$emit('update:model-value', model)"
-      style="width: 20em"
+      @change="model = { ...model, name: ($event.target as HTMLInputElement).value }"
       @keydown.enter="$emit('submit')"
     />
     <TimeInput v-model="startTimeString" />
@@ -17,7 +16,7 @@
 
 <script setup lang="ts">
 import type { Timespan } from "@/model/timespan";
-import { ref, watch } from "vue";
+import { computed } from "vue";
 import TimeInput from "@/components/inputs/TimeInput.vue";
 import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
 
@@ -25,50 +24,72 @@ const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
 });
 
-const emit = defineEmits<{
-  "update:model-value": [value: Timespan];
+defineEmits<{
   submit: [];
 }>();
 
-const startTimeString = ref(getTimeString(model.value.startTime));
-const endTimeString = ref(getTimeString(model.value.endTime));
-const startDateString = ref(getDateString(model.value.startTime));
+const isEndNextDay = computed(
+  () => model.value.endTime.getDate() !== model.value.startTime.getDate(),
+);
 
-const isEndNextDay = ref(false);
-
-watch(startTimeString, (value) => {
-  const [h, m] = value.split(":").map((s) => +s);
-  model.value.startTime.setHours(h, m);
-  checkIfEndIsNextDay();
+const startTimeString = computed({
+  get: () => getTimeString(model.value.startTime),
+  set: (v) => {
+    const [h, m] = v.split(":").map((s) => +s);
+    const newStartTime = setTime(model.value.startTime, h, m);
+    model.value = {
+      ...model.value,
+      startTime: newStartTime,
+      endTime: adjustedEndTime(newStartTime, model.value.endTime),
+    };
+  },
 });
 
-watch(endTimeString, (value) => {
-  const [h, m] = value.split(":").map((s) => +s);
-  model.value.endTime.setHours(h, m);
-  checkIfEndIsNextDay();
+const endTimeString = computed({
+  get: () => getTimeString(model.value.endTime),
+  set: (v) => {
+    const [h, m] = v.split(":").map((s) => +s);
+    const newEndTime = setTime(model.value.endTime, h, m);
+    model.value = {
+      ...model.value,
+      endTime: adjustedEndTime(model.value.startTime, newEndTime),
+    };
+  },
 });
 
-watch(startDateString, (value) => {
-  const [y, m, d] = value.split("-").map((s) => +s);
-  if (isNaN(y) || isNaN(m) || isNaN(d)) return;
-  model.value.startTime.setFullYear(y, m - 1, d);
-  checkIfEndIsNextDay();
+const startDateString = computed({
+  get: () => getDateString(model.value.startTime),
+  set: (v) => {
+    const [y, m, d] = v.split("-").map((s) => +s);
+    if ([y, m, d].some(isNaN)) return;
+    const newStartTime = setDate(model.value.startTime, y, m - 1, d);
+    model.value = {
+      ...model.value,
+      startTime: newStartTime,
+      endTime: adjustedEndTime(newStartTime, model.value.endTime),
+    };
+  },
 });
 
-function checkIfEndIsNextDay() {
-  const start = model.value.startTime;
-  const end = model.value.endTime;
+function setTime(date: Date, hours: number, minutes: number): Date {
+  const newDate = new Date(date);
+  newDate.setHours(hours, minutes);
+  return newDate;
+}
 
-  end.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
+function setDate(date: Date, year: number, month: number, day: number): Date {
+  const newDate = new Date(date);
+  newDate.setFullYear(year, month, day);
+  return newDate;
+}
 
-  isEndNextDay.value = end <= start;
-
-  if (isEndNextDay.value) {
-    end.setDate(end.getDate() + 1);
+function adjustedEndTime(start: Date, end: Date): Date {
+  const newEnd = new Date(end);
+  newEnd.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
+  if (newEnd < start) {
+    newEnd.setDate(newEnd.getDate() + 1);
   }
-
-  model.value.endTime = end;
-  emit("update:model-value", model.value);
+  return newEnd;
 }
 </script>
 
@@ -92,7 +113,7 @@ input[type="date"] {
 }
 
 input[type="text"] {
-  width: 16em;
+  width: 20em;
   margin-right: 1em;
 }
 </style>
