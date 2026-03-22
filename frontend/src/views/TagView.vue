@@ -29,6 +29,7 @@
       @confirm="deleteTag"
     />
   </div>
+  <TagEdit v-model="tag" />
 </template>
 
 <script setup lang="ts">
@@ -38,6 +39,7 @@ import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";
 import { newTagWithDefaults } from "@/helpers/tag";
 import { formatTimeDuration } from "@/helpers/time";
+import TagEdit from "@/components/tags/TagEdit.vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
