@@ -6,16 +6,15 @@
       placeholder="00:00"
       @keydown.enter="valueEntered"
       @focusout="valueEntered"
-      onfocus="this.select()"
-      onmouseup="return false;"
-      ref="input"
+      @focus="($event.target as HTMLInputElement).select()"
+      @onmouseup.prevent
     />
     <sup v-if="showNextDay">+1</sup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 defineProps<{
   showNextDay?: boolean;
@@ -25,11 +24,21 @@ const model = defineModel<string>({ default: "00:00" });
 const currentValue = ref<string>(model.value);
 const lastValidValue = ref<string>(model.value);
 
-const input = ref<HTMLInputElement | null>(null);
+watch(model, (newValue) => {
+  currentValue.value = newValue;
+  lastValidValue.value = newValue;
+});
+
+function formatTime(hours: number, minutes: number): string {
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function resetToLastValid() {
+  model.value = currentValue.value = lastValidValue.value;
+}
 
 function valueEntered() {
   const value = currentValue.value;
-
   let hours = 0;
   let minutes = 0;
 
@@ -41,20 +50,16 @@ function valueEntered() {
     hours = +value.slice(0, -2);
     minutes = +value.slice(-2);
   } else {
-    currentValue.value = lastValidValue.value;
-    model.value = currentValue.value;
+    resetToLastValid();
     return;
   }
 
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    currentValue.value = lastValidValue.value;
-    model.value = currentValue.value;
-    return;
+  if (hours > 23 || minutes > 59) {
+    resetToLastValid();
   }
 
-  lastValidValue.value = `${("00" + hours).slice(-2)}:${("00" + minutes).slice(-2)}`;
-  currentValue.value = lastValidValue.value;
-  model.value = currentValue.value;
+  lastValidValue.value = formatTime(hours, minutes);
+  model.value = currentValue.value = lastValidValue.value;
 }
 </script>
 
