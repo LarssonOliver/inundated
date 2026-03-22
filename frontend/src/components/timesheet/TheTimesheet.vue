@@ -102,5 +102,6 @@ async function createTimespan() {
   text-align: center;
   margin: 0.5em;
   color: var(--nord3);
+  background-color: var(--nord0);
 }
 </style>
