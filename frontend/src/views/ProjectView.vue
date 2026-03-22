@@ -1,93 +1,57 @@
 <template>
-  <div class="project-page">
-    <h2 v-if="!isNewProject">Project: {{ project.name }}</h2>
+  <div v-if="!notFound" class="project-page">
+    <h2 v-if="!isNewProject">Project Details</h2>
     <h2 v-else>New Project</h2>
-
-    <input type="text" v-model="project.name" />
-    <input type="color" v-model="project.color" />
-    <input type="number" v-model.number="project.timeBudgetHours" />
-    <div class="tags-container">
-      <TagListEmbedded v-model="projectTags" @update:model-value="updateProjectTags" />
-    </div>
-    <input v-if="!isNewProject" type="button" value="Save Project" @click="saveProject" />
-    <input v-else type="button" value="Create Project" @click="createProject" />
-
-    <input
-      v-if="!isNewProject"
-      type="button"
-      value="Delete Project"
-      @click="showDeleteConfirmation = true"
-    />
-
-    <h3 v-if="project.totalTimeMs">
-      Total Time Spent: {{ formatTimeDuration(project.totalTimeMs) }}
-    </h3>
-
-    <ConfirmationPopup
-      v-model="showDeleteConfirmation"
-      :message="`Deleting project ${project.name}
-    cannot be undone.`"
-      variant="error"
-      confirm-label="Delete"
-      @confirm="deleteProject"
+    <ProjectEdit
+      v-model="project"
+      :is-new-project="isNewProject"
+      @create="createProject"
+      @save="saveProject"
+      @delete="deleteProject"
     />
   </div>
+  <NotFoundView v-else />
 </template>
 
 <script setup lang="ts">
-import { watch, ref } from "vue";
+import NotFoundView from "@/views/NotFoundView.vue";
+import ProjectEdit from "@/components/project/ProjectEdit.vue";
+import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
-
-import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
-import { formatTimeDuration } from "@/helpers/time";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
 const route = useRoute();
 
-const isNewProject = ref(false);
+const isNewProject = computed(() => route.name === "New Project");
 
 // Reactive state
 const project = ref(newProjectWithDefaults());
-const projectTags = ref<Set<string>>(new Set<string>());
-
-const showDeleteConfirmation = ref(false);
-
-function updateProjectTags() {
-  project.value.tagIds = new Set<string>(projectTags.value);
-}
+const notFound = ref(false);
 
 async function updateProject(id: string) {
   // First try to get the project from the store if it's cached
   const storeResult = projectsStore.getProjectById(id);
   if (storeResult) {
     project.value = storeResult;
-    projectTags.value = new Set<string>(project.value.tagIds);
-    isNewProject.value = false;
   }
 
   // Get detailed project info from the server to ensure we have the latest data (including total time)
-  const result = await projectsStore.fetchDetailedProjectById(id);
-  if (result) {
-    project.value = result;
-    projectTags.value = new Set<string>(project.value.tagIds);
-    isNewProject.value = false;
-  } else {
-    // Handle case where project is not found
+  try {
+    const result = await projectsStore.fetchDetailedProjectById(id);
+    if (result) {
+      project.value = result;
+    }
+  } catch {
+    notFound.value = true;
   }
 }
 
 watch(
   () => route.params.id,
   async (newId, oldId) => {
-    if (!newId) {
-      // This is a new project at the /new route
-      isNewProject.value = true;
-      return;
-    }
-
     if (newId === oldId) {
       // No need to refetch if the ID hasn't changed
       return;
@@ -109,8 +73,6 @@ async function createProject() {
 }
 
 async function deleteProject() {
-  showDeleteConfirmation.value = false;
-
   try {
     await projectsStore.deleteProject(project.value.id);
   } catch (error) {
@@ -129,14 +91,7 @@ async function deleteProject() {
   flex-direction: column;
 }
 
-input {
-  margin-top: 1em;
-}
-
-.tags-container {
-  margin-top: 1em;
-  flex-direction: row;
-  display: flex;
-  margin-left: -0.5em;
+h2 {
+  margin-bottom: 0;
 }
 </style>
