@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ColorInput: typeof import('./src/components/inputs/ColorInput.vue')['default']
     ConfirmationPopup: typeof import('./src/components/inputs/ConfirmationPopup.vue')['default']
     MaterialIcon: typeof import('./src/components/icons/MaterialIcon.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
