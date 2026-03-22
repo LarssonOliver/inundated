@@ -23,7 +23,7 @@
               <button class="btn btn--ghost" @click="onCancel" ref="cancelRef">
                 {{ cancelLabel }}
               </button>
-              <button class="btn" :class="`btn--${variant}`" @click="onConfirm">
+              <button class="btn" :class="`btn-${variant}`" @click="onConfirm">
                 {{ confirmLabel }}
               </button>
             </div>
@@ -176,50 +176,5 @@ watch(
   gap: 0.625rem;
   justify-content: flex-end;
   padding-top: 0.25rem;
-}
-
-/* ── Buttons ────────────────────────────────────────────────────────────────── */
-.btn--error {
-  background: var(--nord11);
-}
-
-.btn--error:hover {
-  filter: brightness(0.8);
-}
-
-.btn--danger {
-  background: var(--nord12);
-  color: var(--nord-c0);
-}
-
-.btn--danger:hover {
-  filter: brightness(0.8);
-}
-
-.btn--warning {
-  background: var(--nord13);
-  color: var(--nord-c0);
-}
-
-.btn--warning:hover {
-  filter: brightness(0.8);
-}
-
-.btn--success {
-  background: var(--nord14);
-  color: var(--nord-c0);
-}
-
-.btn--success:hover {
-  filter: brightness(0.8);
-}
-
-.btn--info {
-  background: var(--nord8);
-  color: var(--nord-c0);
-}
-
-.btn--info:hover {
-  filter: brightness(0.8);
 }
 </style>
