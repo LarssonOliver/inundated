@@ -8,6 +8,7 @@
     <img src="https://woodpecker.larssonoliver.com/api/badges/3/status.svg" alt="status-badge" />
   </a>
   <img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/LarssonOliver/inundated">
+  <img alt="GitHub go.mod Go version" src="https://img.shields.io/github/go-mod/go-version/LarssonOliver/inundated">
 </p>
 
 **inundated** is a lightweight, self-hosted app that helps me track time across 
