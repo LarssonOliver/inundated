@@ -2,13 +2,53 @@
   <div v-if="!notFound" class="project-page">
     <h2 v-if="!isNewProject">Project Details</h2>
     <h2 v-else>New Project</h2>
-    <ProjectEdit
-      v-model="project"
-      :is-new-project="isNewProject"
-      @create="createProject"
-      @save="saveProject"
-      @delete="deleteProject"
-    />
+    <div class="content">
+      <div class="project-edit">
+        <ProjectEdit
+          v-model="project"
+          :is-new-project="isNewProject"
+          @create="createProject"
+          @save="saveProject"
+          @delete="deleteProject"
+        />
+      </div>
+      <div class="chart-container">
+        <Doughnut
+          :data="{
+            labels: ['Time Spent', 'Remaining Time'],
+            datasets: [
+              {
+                data: [
+                  (project?.totalTimeMs || 0) / (1000 * 60 * 60),
+                  Math.max(
+                    0,
+                    (project?.timeBudgetHours || 0) -
+                      (project?.totalTimeMs || 0) / (1000 * 60 * 60),
+                  ),
+                ],
+                backgroundColor: [nord.nord14, nord.nord2],
+                borderColor: nord.nordc0,
+                borderWidth: 2,
+              },
+            ],
+          }"
+          :options="{
+            responsive: true,
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                    return `${label}: ${value}h`;
+                  },
+                },
+              },
+            },
+          }"
+        />
+      </div>
+    </div>
   </div>
   <NotFoundView v-else />
 </template>
@@ -20,6 +60,11 @@ import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
+import { Doughnut } from "vue-chartjs";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { nord } from "@/helpers/nord";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -89,6 +134,19 @@ async function deleteProject() {
   margin: 0 1em;
   display: flex;
   flex-direction: column;
+}
+
+.content {
+  display: flex;
+}
+
+.project-edit {
+  flex: 1;
+  max-width: 400px;
+}
+
+.chart-container {
+  margin-left: 2em;
 }
 
 h2 {

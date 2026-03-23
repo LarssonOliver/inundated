@@ -1,17 +1,19 @@
 <template>
-  <div class="tag-edit">
-    <p class="field-label">Preview</p>
-    <TagItem :tag="model" />
-    <p class="field-label">Name</p>
-    <input v-model="model.name" type="text" />
-    <p class="field-label">Color</p>
-    <ColorInput v-model="model.color" />
-    <div class="button-container" v-if="!props.isNewTag">
-      <button class="btn-info" @click="$emit('save', model)">Save</button>
-      <button class="btn-error" @click="showDeletionConfirmation = true">Delete</button>
-    </div>
-    <div class="button-container" v-else>
-      <button class="btn-info" @click="$emit('create', model)">Create</button>
+  <div class="edit-page">
+    <div class="tag-edit">
+      <p class="field-label">Preview</p>
+      <TagItem :tag="model" />
+      <p class="field-label">Name</p>
+      <input v-model="model.name" type="text" />
+      <p class="field-label">Color</p>
+      <ColorInput v-model="model.color" />
+      <div class="button-container" v-if="!props.isNewTag">
+        <button class="btn-info" @click="$emit('save', model)">Save</button>
+        <button class="btn-error" @click="showDeletionConfirmation = true">Delete</button>
+      </div>
+      <div class="button-container" v-else>
+        <button class="btn-info" @click="$emit('create', model)">Create</button>
+      </div>
     </div>
   </div>
 
@@ -49,8 +51,13 @@ const showDeletionConfirmation = ref(false);
 </script>
 
 <style scoped>
+.edit-page {
+  display: flex;
+}
+
 .tag-edit {
   display: flex;
+  flex: 1;
   flex-direction: column;
   max-width: 400px;
 }
