@@ -1,0 +1,82 @@
+tags:
+  get:
+    tags: [tags]
+    summary: List tags
+    operationId: listTags
+    responses:
+      '200':
+        description: List of tags
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/tags.yaml#/Tag'
+  post:
+    tags: [tags]
+    summary: Create tag
+    operationId: createTag
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/tags.yaml#/CreateTag'
+    responses:
+      '201':
+        description: Tag created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tags.yaml#/Tag'
+      '400':
+        description: Bad request
+
+tags-id:
+  parameters:
+    - $ref: '../parameters/shared.yaml#/tagIdPath'
+  get:
+    tags: [tags]
+    summary: Get tag
+    operationId: getTag
+    parameters:
+      - $ref: '../parameters/shared.yaml#/includeQuery'
+    responses:
+      '200':
+        description: Tag
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tags.yaml#/Tag'
+      '404':
+        description: Not found
+  patch:
+    tags: [tags]
+    summary: Update tag
+    operationId: updateTag
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/tags.yaml#/UpdateTag'
+    responses:
+      '200':
+        description: Updated tag
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tags.yaml#/Tag'
+      '400':
+        description: Bad request
+      '404':
+        description: Not found
+  delete:
+    tags: [tags]
+    summary: Delete tag
+    operationId: deleteTag
+    responses:
+      '204':
+        description: Deleted
+      '404':
+        description: Not found

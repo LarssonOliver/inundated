@@ -30,79 +30,97 @@ const (
 
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
-	Color           string                `json:"color"`
-	Name            string                `json:"name"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	Color           HexColor   `json:"color"`
+	Name            string     `json:"name"`
+	TagIds          *TagIdList `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
 }
 
 // CreateTag defines model for CreateTag.
 type CreateTag struct {
-	Color string `json:"color"`
-	Name  string `json:"name"`
+	Color HexColor `json:"color"`
+	Name  string   `json:"name"`
 }
 
 // CreateTimespan defines model for CreateTimespan.
 type CreateTimespan struct {
-	EndTime   time.Time             `json:"endTime"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime time.Time             `json:"startTime"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   time.Time  `json:"endTime"`
+	Name      *string    `json:"name,omitempty"`
+	StartTime time.Time  `json:"startTime"`
+	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// HexColor defines model for HexColor.
+type HexColor = string
 
 // Project defines model for Project.
 type Project struct {
-	Color           string                `json:"color"`
-	Id              openapi_types.UUID    `json:"id"`
-	Name            string                `json:"name"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
-	TotalTimeMs     *int                  `json:"totalTimeMs,omitempty"`
+	Color           HexColor           `json:"color"`
+	Id              openapi_types.UUID `json:"id"`
+	Name            string             `json:"name"`
+	TagIds          *TagIdList         `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64           `json:"timeBudgetHours,omitempty"`
+	TotalTimeMs     *int               `json:"totalTimeMs,omitempty"`
 }
 
 // Tag defines model for Tag.
 type Tag struct {
-	Color       string             `json:"color"`
+	Color       HexColor           `json:"color"`
 	Id          openapi_types.UUID `json:"id"`
 	Name        string             `json:"name"`
 	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
 }
 
+// TagIdList defines model for TagIdList.
+type TagIdList = []openapi_types.UUID
+
 // Timespan defines model for Timespan.
 type Timespan struct {
-	EndTime   time.Time             `json:"endTime"`
-	Id        openapi_types.UUID    `json:"id"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime time.Time             `json:"startTime"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   time.Time          `json:"endTime"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      *string            `json:"name,omitempty"`
+	StartTime time.Time          `json:"startTime"`
+	TagIds    *TagIdList         `json:"tagIds,omitempty"`
 }
 
 // UpdateProject defines model for UpdateProject.
 type UpdateProject struct {
-	Color           *string               `json:"color,omitempty"`
-	Name            *string               `json:"name,omitempty"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	Color           *HexColor  `json:"color,omitempty"`
+	Name            *string    `json:"name,omitempty"`
+	TagIds          *TagIdList `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
 }
 
 // UpdateTag defines model for UpdateTag.
 type UpdateTag struct {
-	Color *string `json:"color,omitempty"`
-	Name  *string `json:"name,omitempty"`
+	Color *HexColor `json:"color,omitempty"`
+	Name  *string   `json:"name,omitempty"`
 }
 
 // UpdateTimespan defines model for UpdateTimespan.
 type UpdateTimespan struct {
-	EndTime   *time.Time            `json:"endTime,omitempty"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime *time.Time            `json:"startTime,omitempty"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   *time.Time `json:"endTime,omitempty"`
+	Name      *string    `json:"name,omitempty"`
+	StartTime *time.Time `json:"startTime,omitempty"`
+	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// IncludeQuery defines model for includeQuery.
+type IncludeQuery = []string
+
+// ProjectIdPath defines model for projectIdPath.
+type ProjectIdPath = openapi_types.UUID
+
+// TagIdPath defines model for tagIdPath.
+type TagIdPath = openapi_types.UUID
+
+// TimespanIdPath defines model for timespanIdPath.
+type TimespanIdPath = openapi_types.UUID
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
-	Include *[]GetProjectParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+	Include *IncludeQuery `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProjectParamsInclude defines parameters for GetProject.
@@ -111,7 +129,7 @@ type GetProjectParamsInclude string
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
-	Include *[]GetTagParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+	Include *IncludeQuery `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetTagParamsInclude defines parameters for GetTag.
@@ -217,15 +235,15 @@ type ClientInterface interface {
 	CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteProject request
-	DeleteProject(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteProject(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProject request
-	GetProject(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProject(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectWithBody request with any body
-	UpdateProjectWithBody(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProject(ctx context.Context, projectId openapi_types.UUID, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTags request
 	ListTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -236,15 +254,15 @@ type ClientInterface interface {
 	CreateTag(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTag request
-	DeleteTag(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTag(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTag request
-	GetTag(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTag(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTagWithBody request with any body
-	UpdateTagWithBody(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTagWithBody(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTag(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTimespans request
 	ListTimespans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -255,15 +273,15 @@ type ClientInterface interface {
 	CreateTimespan(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTimespan request
-	DeleteTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimespan request
-	GetTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTimespanWithBody request with any body
-	UpdateTimespanWithBody(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTimespan(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -302,7 +320,7 @@ func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONReques
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteProject(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteProject(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteProjectRequest(c.Server, projectId)
 	if err != nil {
 		return nil, err
@@ -314,7 +332,7 @@ func (c *Client) DeleteProject(ctx context.Context, projectId openapi_types.UUID
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProject(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProject(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProjectRequest(c.Server, projectId, params)
 	if err != nil {
 		return nil, err
@@ -326,7 +344,7 @@ func (c *Client) GetProject(ctx context.Context, projectId openapi_types.UUID, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProjectRequestWithBody(c.Server, projectId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -338,7 +356,7 @@ func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId openapi_ty
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateProject(ctx context.Context, projectId openapi_types.UUID, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProjectRequest(c.Server, projectId, body)
 	if err != nil {
 		return nil, err
@@ -386,7 +404,7 @@ func (c *Client) CreateTag(ctx context.Context, body CreateTagJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTag(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTag(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTagRequest(c.Server, tagId)
 	if err != nil {
 		return nil, err
@@ -398,7 +416,7 @@ func (c *Client) DeleteTag(ctx context.Context, tagId openapi_types.UUID, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTag(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTag(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTagRequest(c.Server, tagId, params)
 	if err != nil {
 		return nil, err
@@ -410,7 +428,7 @@ func (c *Client) GetTag(ctx context.Context, tagId openapi_types.UUID, params *G
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTagWithBody(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTagWithBody(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTagRequestWithBody(c.Server, tagId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -422,7 +440,7 @@ func (c *Client) UpdateTagWithBody(ctx context.Context, tagId openapi_types.UUID
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTag(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTagRequest(c.Server, tagId, body)
 	if err != nil {
 		return nil, err
@@ -470,7 +488,7 @@ func (c *Client) CreateTimespan(ctx context.Context, body CreateTimespanJSONRequ
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTimespanRequest(c.Server, timespanId)
 	if err != nil {
 		return nil, err
@@ -482,7 +500,7 @@ func (c *Client) DeleteTimespan(ctx context.Context, timespanId openapi_types.UU
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTimespan(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTimespanRequest(c.Server, timespanId)
 	if err != nil {
 		return nil, err
@@ -494,7 +512,7 @@ func (c *Client) GetTimespan(ctx context.Context, timespanId openapi_types.UUID,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTimespanRequestWithBody(c.Server, timespanId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -506,7 +524,7 @@ func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId openapi_
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimespan(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTimespanRequest(c.Server, timespanId, body)
 	if err != nil {
 		return nil, err
@@ -586,7 +604,7 @@ func NewCreateProjectRequestWithBody(server string, contentType string, body io.
 }
 
 // NewDeleteProjectRequest generates requests for DeleteProject
-func NewDeleteProjectRequest(server string, projectId openapi_types.UUID) (*http.Request, error) {
+func NewDeleteProjectRequest(server string, projectId ProjectIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -620,7 +638,7 @@ func NewDeleteProjectRequest(server string, projectId openapi_types.UUID) (*http
 }
 
 // NewGetProjectRequest generates requests for GetProject
-func NewGetProjectRequest(server string, projectId openapi_types.UUID, params *GetProjectParams) (*http.Request, error) {
+func NewGetProjectRequest(server string, projectId ProjectIdPath, params *GetProjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -676,7 +694,7 @@ func NewGetProjectRequest(server string, projectId openapi_types.UUID, params *G
 }
 
 // NewUpdateProjectRequest calls the generic UpdateProject builder with application/json body
-func NewUpdateProjectRequest(server string, projectId openapi_types.UUID, body UpdateProjectJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectRequest(server string, projectId ProjectIdPath, body UpdateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -687,7 +705,7 @@ func NewUpdateProjectRequest(server string, projectId openapi_types.UUID, body U
 }
 
 // NewUpdateProjectRequestWithBody generates requests for UpdateProject with any type of body
-func NewUpdateProjectRequestWithBody(server string, projectId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -790,7 +808,7 @@ func NewCreateTagRequestWithBody(server string, contentType string, body io.Read
 }
 
 // NewDeleteTagRequest generates requests for DeleteTag
-func NewDeleteTagRequest(server string, tagId openapi_types.UUID) (*http.Request, error) {
+func NewDeleteTagRequest(server string, tagId TagIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -824,7 +842,7 @@ func NewDeleteTagRequest(server string, tagId openapi_types.UUID) (*http.Request
 }
 
 // NewGetTagRequest generates requests for GetTag
-func NewGetTagRequest(server string, tagId openapi_types.UUID, params *GetTagParams) (*http.Request, error) {
+func NewGetTagRequest(server string, tagId TagIdPath, params *GetTagParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -880,7 +898,7 @@ func NewGetTagRequest(server string, tagId openapi_types.UUID, params *GetTagPar
 }
 
 // NewUpdateTagRequest calls the generic UpdateTag builder with application/json body
-func NewUpdateTagRequest(server string, tagId openapi_types.UUID, body UpdateTagJSONRequestBody) (*http.Request, error) {
+func NewUpdateTagRequest(server string, tagId TagIdPath, body UpdateTagJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -891,7 +909,7 @@ func NewUpdateTagRequest(server string, tagId openapi_types.UUID, body UpdateTag
 }
 
 // NewUpdateTagRequestWithBody generates requests for UpdateTag with any type of body
-func NewUpdateTagRequestWithBody(server string, tagId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -994,7 +1012,7 @@ func NewCreateTimespanRequestWithBody(server string, contentType string, body io
 }
 
 // NewDeleteTimespanRequest generates requests for DeleteTimespan
-func NewDeleteTimespanRequest(server string, timespanId openapi_types.UUID) (*http.Request, error) {
+func NewDeleteTimespanRequest(server string, timespanId TimespanIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1028,7 +1046,7 @@ func NewDeleteTimespanRequest(server string, timespanId openapi_types.UUID) (*ht
 }
 
 // NewGetTimespanRequest generates requests for GetTimespan
-func NewGetTimespanRequest(server string, timespanId openapi_types.UUID) (*http.Request, error) {
+func NewGetTimespanRequest(server string, timespanId TimespanIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1062,7 +1080,7 @@ func NewGetTimespanRequest(server string, timespanId openapi_types.UUID) (*http.
 }
 
 // NewUpdateTimespanRequest calls the generic UpdateTimespan builder with application/json body
-func NewUpdateTimespanRequest(server string, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody) (*http.Request, error) {
+func NewUpdateTimespanRequest(server string, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1073,7 +1091,7 @@ func NewUpdateTimespanRequest(server string, timespanId openapi_types.UUID, body
 }
 
 // NewUpdateTimespanRequestWithBody generates requests for UpdateTimespan with any type of body
-func NewUpdateTimespanRequestWithBody(server string, timespanId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1160,15 +1178,15 @@ type ClientWithResponsesInterface interface {
 	CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
 
 	// DeleteProjectWithResponse request
-	DeleteProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
+	DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
 
 	// GetProjectWithResponse request
-	GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
+	GetProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
 
 	// UpdateProjectWithBodyWithResponse request with any body
-	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
-	UpdateProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
 	// ListTagsWithResponse request
 	ListTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
@@ -1179,15 +1197,15 @@ type ClientWithResponsesInterface interface {
 	CreateTagWithResponse(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
 
 	// DeleteTagWithResponse request
-	DeleteTagWithResponse(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
+	DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
 
 	// GetTagWithResponse request
-	GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
+	GetTagWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
 
 	// UpdateTagWithBodyWithResponse request with any body
-	UpdateTagWithBodyWithResponse(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
+	UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
-	UpdateTagWithResponse(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
+	UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
 	// ListTimespansWithResponse request
 	ListTimespansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
@@ -1198,15 +1216,15 @@ type ClientWithResponsesInterface interface {
 	CreateTimespanWithResponse(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
 
 	// DeleteTimespanWithResponse request
-	DeleteTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error)
+	DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error)
 
 	// GetTimespanWithResponse request
-	GetTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error)
+	GetTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error)
 
 	// UpdateTimespanWithBodyWithResponse request with any body
-	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
-	UpdateTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 }
 
 type ListProjectsResponse struct {
@@ -1563,7 +1581,7 @@ func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, bod
 }
 
 // DeleteProjectWithResponse request returning *DeleteProjectResponse
-func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
+func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
 	rsp, err := c.DeleteProject(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1572,7 +1590,7 @@ func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, pro
 }
 
 // GetProjectWithResponse request returning *GetProjectResponse
-func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
+func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
 	rsp, err := c.GetProject(ctx, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1581,7 +1599,7 @@ func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projec
 }
 
 // UpdateProjectWithBodyWithResponse request with arbitrary body returning *UpdateProjectResponse
-func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
 	rsp, err := c.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1589,7 +1607,7 @@ func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId openapi_types.UUID, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
 	rsp, err := c.UpdateProject(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1624,7 +1642,7 @@ func (c *ClientWithResponses) CreateTagWithResponse(ctx context.Context, body Cr
 }
 
 // DeleteTagWithResponse request returning *DeleteTagResponse
-func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error) {
+func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error) {
 	rsp, err := c.DeleteTag(ctx, tagId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1633,7 +1651,7 @@ func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId o
 }
 
 // GetTagWithResponse request returning *GetTagResponse
-func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId openapi_types.UUID, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error) {
+func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error) {
 	rsp, err := c.GetTag(ctx, tagId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1642,7 +1660,7 @@ func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId open
 }
 
 // UpdateTagWithBodyWithResponse request with arbitrary body returning *UpdateTagResponse
-func (c *ClientWithResponses) UpdateTagWithBodyWithResponse(ctx context.Context, tagId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
+func (c *ClientWithResponses) UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
 	rsp, err := c.UpdateTagWithBody(ctx, tagId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1650,7 +1668,7 @@ func (c *ClientWithResponses) UpdateTagWithBodyWithResponse(ctx context.Context,
 	return ParseUpdateTagResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId openapi_types.UUID, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
+func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
 	rsp, err := c.UpdateTag(ctx, tagId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1685,7 +1703,7 @@ func (c *ClientWithResponses) CreateTimespanWithResponse(ctx context.Context, bo
 }
 
 // DeleteTimespanWithResponse request returning *DeleteTimespanResponse
-func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error) {
+func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error) {
 	rsp, err := c.DeleteTimespan(ctx, timespanId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1694,7 +1712,7 @@ func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, ti
 }
 
 // GetTimespanWithResponse request returning *GetTimespanResponse
-func (c *ClientWithResponses) GetTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error) {
+func (c *ClientWithResponses) GetTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error) {
 	rsp, err := c.GetTimespan(ctx, timespanId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1703,7 +1721,7 @@ func (c *ClientWithResponses) GetTimespanWithResponse(ctx context.Context, times
 }
 
 // UpdateTimespanWithBodyWithResponse request with arbitrary body returning *UpdateTimespanResponse
-func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
 	rsp, err := c.UpdateTimespanWithBody(ctx, timespanId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1711,7 +1729,7 @@ func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Con
 	return ParseUpdateTimespanResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, timespanId openapi_types.UUID, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
 	rsp, err := c.UpdateTimespan(ctx, timespanId, body, reqEditors...)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,80 @@
+timespans:
+  get:
+    tags: [timespans]
+    summary: List time spans
+    operationId: listTimespans
+    responses:
+      '200':
+        description: List of time spans
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/timespans.yaml#/Timespan'
+  post:
+    tags: [timespans]
+    summary: Create time span
+    operationId: createTimespan
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/timespans.yaml#/CreateTimespan'
+    responses:
+      '201':
+        description: Time span created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/timespans.yaml#/Timespan'
+      '400':
+        description: Bad request
+
+timespans-id:
+  parameters:
+    - $ref: '../parameters/shared.yaml#/timespanIdPath'
+  get:
+    tags: [timespans]
+    summary: Get time span
+    operationId: getTimespan
+    responses:
+      '200':
+        description: Time span
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/timespans.yaml#/Timespan'
+      '404':
+        description: Not found
+  patch:
+    tags: [timespans]
+    summary: Update time span
+    operationId: updateTimespan
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/timespans.yaml#/UpdateTimespan'
+    responses:
+      '200':
+        description: Updated time span
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/timespans.yaml#/Timespan'
+      '400':
+        description: Bad request
+      '404':
+        description: Not found
+  delete:
+    tags: [timespans]
+    summary: Delete time span
+    operationId: deleteTimespan
+    responses:
+      '204':
+        description: Deleted
+      '404':
+        description: Not found

@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
@@ -25,13 +24,13 @@ type ServerInterface interface {
 	CreateProject(w http.ResponseWriter, r *http.Request)
 	// Delete project
 	// (DELETE /projects/{projectId})
-	DeleteProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
 	// Get project
 	// (GET /projects/{projectId})
-	GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams)
+	GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams)
 	// Update project
 	// (PATCH /projects/{projectId})
-	UpdateProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
 	// List tags
 	// (GET /tags)
 	ListTags(w http.ResponseWriter, r *http.Request)
@@ -40,13 +39,13 @@ type ServerInterface interface {
 	CreateTag(w http.ResponseWriter, r *http.Request)
 	// Delete tag
 	// (DELETE /tags/{tagId})
-	DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
+	DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
 	// Get tag
 	// (GET /tags/{tagId})
-	GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams)
+	GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams)
 	// Update tag
 	// (PATCH /tags/{tagId})
-	UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
+	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
 	// List time spans
 	// (GET /timespans)
 	ListTimespans(w http.ResponseWriter, r *http.Request)
@@ -55,13 +54,13 @@ type ServerInterface interface {
 	CreateTimespan(w http.ResponseWriter, r *http.Request)
 	// Delete time span
 	// (DELETE /timespans/{timespanId})
-	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
+	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 	// Get time span
 	// (GET /timespans/{timespanId})
-	GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
+	GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 	// Update time span
 	// (PATCH /timespans/{timespanId})
-	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID)
+	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -82,19 +81,19 @@ func (_ Unimplemented) CreateProject(w http.ResponseWriter, r *http.Request) {
 
 // Delete project
 // (DELETE /projects/{projectId})
-func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get project
 // (GET /projects/{projectId})
-func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams) {
+func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update project
 // (PATCH /projects/{projectId})
-func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -112,19 +111,19 @@ func (_ Unimplemented) CreateTag(w http.ResponseWriter, r *http.Request) {
 
 // Delete tag
 // (DELETE /tags/{tagId})
-func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get tag
 // (GET /tags/{tagId})
-func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams) {
+func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update tag
 // (PATCH /tags/{tagId})
-func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -142,19 +141,19 @@ func (_ Unimplemented) CreateTimespan(w http.ResponseWriter, r *http.Request) {
 
 // Delete time span
 // (DELETE /timespans/{timespanId})
-func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get time span
 // (GET /timespans/{timespanId})
-func (_ Unimplemented) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (_ Unimplemented) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update time span
 // (PATCH /timespans/{timespanId})
-func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -201,7 +200,7 @@ func (siw *ServerInterfaceWrapper) DeleteProject(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "projectId" -------------
-	var projectId openapi_types.UUID
+	var projectId ProjectIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "projectId", chi.URLParam(r, "projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -226,7 +225,7 @@ func (siw *ServerInterfaceWrapper) GetProject(w http.ResponseWriter, r *http.Req
 	var err error
 
 	// ------------- Path parameter "projectId" -------------
-	var projectId openapi_types.UUID
+	var projectId ProjectIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "projectId", chi.URLParam(r, "projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -262,7 +261,7 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "projectId" -------------
-	var projectId openapi_types.UUID
+	var projectId ProjectIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "projectId", chi.URLParam(r, "projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -315,7 +314,7 @@ func (siw *ServerInterfaceWrapper) DeleteTag(w http.ResponseWriter, r *http.Requ
 	var err error
 
 	// ------------- Path parameter "tagId" -------------
-	var tagId openapi_types.UUID
+	var tagId TagIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -340,7 +339,7 @@ func (siw *ServerInterfaceWrapper) GetTag(w http.ResponseWriter, r *http.Request
 	var err error
 
 	// ------------- Path parameter "tagId" -------------
-	var tagId openapi_types.UUID
+	var tagId TagIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -376,7 +375,7 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 	var err error
 
 	// ------------- Path parameter "tagId" -------------
-	var tagId openapi_types.UUID
+	var tagId TagIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -429,7 +428,7 @@ func (siw *ServerInterfaceWrapper) DeleteTimespan(w http.ResponseWriter, r *http
 	var err error
 
 	// ------------- Path parameter "timespanId" -------------
-	var timespanId openapi_types.UUID
+	var timespanId TimespanIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -454,7 +453,7 @@ func (siw *ServerInterfaceWrapper) GetTimespan(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "timespanId" -------------
-	var timespanId openapi_types.UUID
+	var timespanId TimespanIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -479,7 +478,7 @@ func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http
 	var err error
 
 	// ------------- Path parameter "timespanId" -------------
-	var timespanId openapi_types.UUID
+	var timespanId TimespanIdPath
 
 	err = runtime.BindStyledParameterWithOptions("simple", "timespanId", chi.URLParam(r, "timespanId"), &timespanId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -702,7 +701,7 @@ func (response CreateProject400Response) VisitCreateProjectResponse(w http.Respo
 }
 
 type DeleteProjectRequestObject struct {
-	ProjectId openapi_types.UUID `json:"projectId"`
+	ProjectId ProjectIdPath `json:"projectId"`
 }
 
 type DeleteProjectResponseObject interface {
@@ -726,7 +725,7 @@ func (response DeleteProject404Response) VisitDeleteProjectResponse(w http.Respo
 }
 
 type GetProjectRequestObject struct {
-	ProjectId openapi_types.UUID `json:"projectId"`
+	ProjectId ProjectIdPath `json:"projectId"`
 	Params    GetProjectParams
 }
 
@@ -752,7 +751,7 @@ func (response GetProject404Response) VisitGetProjectResponse(w http.ResponseWri
 }
 
 type UpdateProjectRequestObject struct {
-	ProjectId openapi_types.UUID `json:"projectId"`
+	ProjectId ProjectIdPath `json:"projectId"`
 	Body      *UpdateProjectJSONRequestBody
 }
 
@@ -827,7 +826,7 @@ func (response CreateTag400Response) VisitCreateTagResponse(w http.ResponseWrite
 }
 
 type DeleteTagRequestObject struct {
-	TagId openapi_types.UUID `json:"tagId"`
+	TagId TagIdPath `json:"tagId"`
 }
 
 type DeleteTagResponseObject interface {
@@ -851,7 +850,7 @@ func (response DeleteTag404Response) VisitDeleteTagResponse(w http.ResponseWrite
 }
 
 type GetTagRequestObject struct {
-	TagId  openapi_types.UUID `json:"tagId"`
+	TagId  TagIdPath `json:"tagId"`
 	Params GetTagParams
 }
 
@@ -877,7 +876,7 @@ func (response GetTag404Response) VisitGetTagResponse(w http.ResponseWriter) err
 }
 
 type UpdateTagRequestObject struct {
-	TagId openapi_types.UUID `json:"tagId"`
+	TagId TagIdPath `json:"tagId"`
 	Body  *UpdateTagJSONRequestBody
 }
 
@@ -952,7 +951,7 @@ func (response CreateTimespan400Response) VisitCreateTimespanResponse(w http.Res
 }
 
 type DeleteTimespanRequestObject struct {
-	TimespanId openapi_types.UUID `json:"timespanId"`
+	TimespanId TimespanIdPath `json:"timespanId"`
 }
 
 type DeleteTimespanResponseObject interface {
@@ -976,7 +975,7 @@ func (response DeleteTimespan404Response) VisitDeleteTimespanResponse(w http.Res
 }
 
 type GetTimespanRequestObject struct {
-	TimespanId openapi_types.UUID `json:"timespanId"`
+	TimespanId TimespanIdPath `json:"timespanId"`
 }
 
 type GetTimespanResponseObject interface {
@@ -1001,7 +1000,7 @@ func (response GetTimespan404Response) VisitGetTimespanResponse(w http.ResponseW
 }
 
 type UpdateTimespanRequestObject struct {
-	TimespanId openapi_types.UUID `json:"timespanId"`
+	TimespanId TimespanIdPath `json:"timespanId"`
 	Body       *UpdateTimespanJSONRequestBody
 }
 
@@ -1168,7 +1167,7 @@ func (sh *strictHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteProject operation middleware
-func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	var request DeleteProjectRequestObject
 
 	request.ProjectId = projectId
@@ -1194,7 +1193,7 @@ func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, p
 }
 
 // GetProject operation middleware
-func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params GetProjectParams) {
+func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams) {
 	var request GetProjectRequestObject
 
 	request.ProjectId = projectId
@@ -1221,7 +1220,7 @@ func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, proj
 }
 
 // UpdateProject operation middleware
-func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	var request UpdateProjectRequestObject
 
 	request.ProjectId = projectId
@@ -1309,7 +1308,7 @@ func (sh *strictHandler) CreateTag(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteTag operation middleware
-func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	var request DeleteTagRequestObject
 
 	request.TagId = tagId
@@ -1335,7 +1334,7 @@ func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId
 }
 
 // GetTag operation middleware
-func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID, params GetTagParams) {
+func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams) {
 	var request GetTagRequestObject
 
 	request.TagId = tagId
@@ -1362,7 +1361,7 @@ func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId op
 }
 
 // UpdateTag operation middleware
-func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	var request UpdateTagRequestObject
 
 	request.TagId = tagId
@@ -1450,7 +1449,7 @@ func (sh *strictHandler) CreateTimespan(w http.ResponseWriter, r *http.Request) 
 }
 
 // DeleteTimespan operation middleware
-func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	var request DeleteTimespanRequestObject
 
 	request.TimespanId = timespanId
@@ -1476,7 +1475,7 @@ func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, 
 }
 
 // GetTimespan operation middleware
-func (sh *strictHandler) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (sh *strictHandler) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	var request GetTimespanRequestObject
 
 	request.TimespanId = timespanId
@@ -1502,7 +1501,7 @@ func (sh *strictHandler) GetTimespan(w http.ResponseWriter, r *http.Request, tim
 }
 
 // UpdateTimespan operation middleware
-func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId openapi_types.UUID) {
+func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	var request UpdateTimespanRequestObject
 
 	request.TimespanId = timespanId

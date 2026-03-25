@@ -167,7 +167,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 		name    string
 		getFn   func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 		request uuid.UUID
-		include []api.GetProjectParamsInclude
+		include []string
 		want    api.Project
 		wantErr bool
 	}{
@@ -195,7 +195,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 				return model.Project{Id: id, Name: "Sample Project", Color: "#abcdef", TotalTime: &duration}, nil
 			},
 			request: uuid.New(),
-			include: []api.GetProjectParamsInclude{"totalTimeMs"},
+			include: []string{"totalTimeMs"},
 			want:    api.Project{Name: "Sample Project", Color: "#abcdef", TotalTimeMs: &ms},
 			wantErr: false,
 		},
@@ -205,7 +205,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 				return model.Project{Id: id, Name: "Sample Project", Color: "#abcdef", TotalTime: nil}, nil
 			},
 			request: uuid.New(),
-			include: []api.GetProjectParamsInclude{"totalTimeMs"},
+			include: []string{"totalTimeMs"},
 			want:    api.Project{Name: "Sample Project", Color: "#abcdef", TotalTimeMs: nil},
 			wantErr: false,
 		},

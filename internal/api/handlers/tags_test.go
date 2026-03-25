@@ -155,7 +155,7 @@ func TestTagHandler_GetTag(t *testing.T) {
 		name    string
 		getFn   func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error)
 		request uuid.UUID
-		include []api.GetTagParamsInclude
+		include []string
 		want    api.Tag
 		wantErr bool
 	}{
@@ -183,7 +183,7 @@ func TestTagHandler_GetTag(t *testing.T) {
 				return model.Tag{Id: id, Name: "Sample Tag", Color: "#abcdef", TotalTime: &duration}, nil
 			},
 			request: uuid.New(),
-			include: []api.GetTagParamsInclude{"totalTimeMs"},
+			include: []string{"totalTimeMs"},
 			want:    api.Tag{Name: "Sample Tag", Color: "#abcdef", TotalTimeMs: &ms},
 			wantErr: false,
 		},

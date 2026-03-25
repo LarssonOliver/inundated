@@ -1,4 +1,4 @@
-//go:generate go tool oapi-codegen --config oapi-codegen/client.cfg.yaml ../../openapi/inundated.yaml
+//go:generate go tool oapi-codegen --config oapi-codegen/client.cfg.yaml ../../openapi/dist/inundated.yaml
 
 package e2e_test
 
