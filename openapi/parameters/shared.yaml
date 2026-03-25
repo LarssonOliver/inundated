@@ -1,0 +1,40 @@
+includeQuery:
+  name: include
+  in: query
+  description: >
+    Comma-separated list of optional computed fields to include.
+    Supported values: totalTimeMs
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      type: string
+      enum:
+        - totalTimeMs
+    uniqueItems: true
+
+tagIdPath:
+  name: tagId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+
+projectIdPath:
+  name: projectId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+
+timespanIdPath:
+  name: timespanId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid

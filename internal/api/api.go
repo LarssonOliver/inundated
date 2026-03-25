@@ -1,5 +1,5 @@
-//go:generate go tool oapi-codegen --config oapi-codegen/model.cfg.yaml ../../openapi/inundated.yaml
-//go:generate go tool oapi-codegen --config oapi-codegen/server.cfg.yaml ../../openapi/inundated.yaml
+//go:generate go tool oapi-codegen --config oapi-codegen/model.cfg.yaml ../../openapi/dist/inundated.yaml
+//go:generate go tool oapi-codegen --config oapi-codegen/server.cfg.yaml ../../openapi/dist/inundated.yaml
 
 package api
 

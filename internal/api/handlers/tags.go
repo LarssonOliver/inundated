@@ -63,7 +63,7 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 	includes := service.TagServiceGetIncludes{}
 
 	if request.Params.Include != nil {
-		includes.TotalTime = slices.Contains(*request.Params.Include, api.GetTagParamsIncludeTotalTimeMs)
+		includes.TotalTime = slices.Contains(*request.Params.Include, string(api.GetTagParamsIncludeTotalTimeMs))
 	}
 
 	reply, err := t.svc.GetTag(ctx, request.TagId, &includes)

@@ -1,0 +1,47 @@
+Timespan:
+  type: object
+  required: [id, startTime, endTime]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    startTime:
+      type: string
+      format: date-time
+    endTime:
+      type: string
+      format: date-time
+    tagIds:
+      $ref: './shared.yaml#/TagIdList'
+
+CreateTimespan:
+  type: object
+  required: [startTime, endTime]
+  properties:
+    name:
+      type: string
+    startTime:
+      type: string
+      format: date-time
+    endTime:
+      type: string
+      format: date-time
+    tagIds:
+      $ref: './shared.yaml#/TagIdList'
+
+UpdateTimespan:
+  type: object
+  minProperties: 1
+  properties:
+    name:
+      type: string
+    startTime:
+      type: string
+      format: date-time
+    endTime:
+      type: string
+      format: date-time
+    tagIds:
+      $ref: './shared.yaml#/TagIdList'

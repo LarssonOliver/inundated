@@ -1,5 +1,6 @@
 # This should probably be pinned in the future
 OPENAPI_GENERATOR_TAG ?= latest-release
+REDOCLY_VERSION ?= 2.25.1
 
 VERSION ?= $(shell git describe --tags --always --dirty)
 
@@ -56,11 +57,14 @@ lint-frontend:
 .PHONY: generate generate-backend-api generate-frontend-api
 generate: generate-backend-api generate-frontend-api
 
-generate-backend-api:
+generate-backend-api: openapi/dist/inundated.yaml
 	@echo "==> Running backend code generators..."
 	go generate ./...
 
-generate-frontend-api:
+generate-frontend-api: openapi/dist/inundated.yaml
 	@echo "==> Running frontend code generators..."
-	docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_TAG} generate -i /local/openapi/inundated.yaml -g typescript-fetch --additional-properties=supportsES6=true -o /local/frontend/src/api/generated
+	docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_TAG} generate -i /local/openapi/dist/inundated.yaml -g typescript-fetch --additional-properties=supportsES6=true -o /local/frontend/src/api/generated
 
+openapi/dist/inundated.yaml: $(shell find openapi -type d -name dist -prune -o -type f \( -name "*.yaml" \) -print)
+	mkdir -p openapi/dist
+	docker run --rm -v ${PWD}/openapi:/local/openapi redocly/cli:${REDOCLY_VERSION} bundle /local/openapi/inundated.yaml -o /local/openapi/dist/inundated.yaml

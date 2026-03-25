@@ -1,0 +1,82 @@
+projects:
+  get:
+    tags: [projects]
+    summary: List projects
+    operationId: listProjects
+    responses:
+      '200':
+        description: List of projects
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/projects.yaml#/Project'
+  post:
+    tags: [projects]
+    summary: Create project
+    operationId: createProject
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/projects.yaml#/CreateProject'
+    responses:
+      '201':
+        description: Project created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/projects.yaml#/Project'
+      '400':
+        description: Bad request
+
+projects-id:
+  parameters:
+    - $ref: '../parameters/shared.yaml#/projectIdPath'
+  get:
+    tags: [projects]
+    summary: Get project
+    operationId: getProject
+    parameters:
+      - $ref: '../parameters/shared.yaml#/includeQuery'
+    responses:
+      '200':
+        description: Project
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/projects.yaml#/Project'
+      '404':
+        description: Not found
+  patch:
+    tags: [projects]
+    summary: Update project
+    operationId: updateProject
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/projects.yaml#/UpdateProject'
+    responses:
+      '200':
+        description: Updated project
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/projects.yaml#/Project'
+      '400':
+        description: Bad request
+      '404':
+        description: Not found
+  delete:
+    tags: [projects]
+    summary: Delete project
+    operationId: deleteProject
+    responses:
+      '204':
+        description: Deleted
+      '404':
+        description: Not found

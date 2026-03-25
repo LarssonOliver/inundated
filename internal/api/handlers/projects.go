@@ -77,7 +77,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 	includes := service.ProjectServiceGetIncludes{}
 
 	if request.Params.Include != nil {
-		includes.TotalTime = slices.Contains(*request.Params.Include, api.GetProjectParamsIncludeTotalTimeMs)
+		includes.TotalTime = slices.Contains(*request.Params.Include, string(api.GetProjectParamsIncludeTotalTimeMs))
 	}
 
 	reply, err := p.svc.GetProject(ctx, request.ProjectId, &includes)

@@ -21,79 +21,97 @@ const (
 
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
-	Color           string                `json:"color"`
-	Name            string                `json:"name"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	Color           HexColor   `json:"color"`
+	Name            string     `json:"name"`
+	TagIds          *TagIdList `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
 }
 
 // CreateTag defines model for CreateTag.
 type CreateTag struct {
-	Color string `json:"color"`
-	Name  string `json:"name"`
+	Color HexColor `json:"color"`
+	Name  string   `json:"name"`
 }
 
 // CreateTimespan defines model for CreateTimespan.
 type CreateTimespan struct {
-	EndTime   time.Time             `json:"endTime"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime time.Time             `json:"startTime"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   time.Time  `json:"endTime"`
+	Name      *string    `json:"name,omitempty"`
+	StartTime time.Time  `json:"startTime"`
+	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// HexColor defines model for HexColor.
+type HexColor = string
 
 // Project defines model for Project.
 type Project struct {
-	Color           string                `json:"color"`
-	Id              openapi_types.UUID    `json:"id"`
-	Name            string                `json:"name"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
-	TotalTimeMs     *int                  `json:"totalTimeMs,omitempty"`
+	Color           HexColor           `json:"color"`
+	Id              openapi_types.UUID `json:"id"`
+	Name            string             `json:"name"`
+	TagIds          *TagIdList         `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64           `json:"timeBudgetHours,omitempty"`
+	TotalTimeMs     *int               `json:"totalTimeMs,omitempty"`
 }
 
 // Tag defines model for Tag.
 type Tag struct {
-	Color       string             `json:"color"`
+	Color       HexColor           `json:"color"`
 	Id          openapi_types.UUID `json:"id"`
 	Name        string             `json:"name"`
 	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
 }
 
+// TagIdList defines model for TagIdList.
+type TagIdList = []openapi_types.UUID
+
 // Timespan defines model for Timespan.
 type Timespan struct {
-	EndTime   time.Time             `json:"endTime"`
-	Id        openapi_types.UUID    `json:"id"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime time.Time             `json:"startTime"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   time.Time          `json:"endTime"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      *string            `json:"name,omitempty"`
+	StartTime time.Time          `json:"startTime"`
+	TagIds    *TagIdList         `json:"tagIds,omitempty"`
 }
 
 // UpdateProject defines model for UpdateProject.
 type UpdateProject struct {
-	Color           *string               `json:"color,omitempty"`
-	Name            *string               `json:"name,omitempty"`
-	TagIds          *[]openapi_types.UUID `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64              `json:"timeBudgetHours,omitempty"`
+	Color           *HexColor  `json:"color,omitempty"`
+	Name            *string    `json:"name,omitempty"`
+	TagIds          *TagIdList `json:"tagIds,omitempty"`
+	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
 }
 
 // UpdateTag defines model for UpdateTag.
 type UpdateTag struct {
-	Color *string `json:"color,omitempty"`
-	Name  *string `json:"name,omitempty"`
+	Color *HexColor `json:"color,omitempty"`
+	Name  *string   `json:"name,omitempty"`
 }
 
 // UpdateTimespan defines model for UpdateTimespan.
 type UpdateTimespan struct {
-	EndTime   *time.Time            `json:"endTime,omitempty"`
-	Name      *string               `json:"name,omitempty"`
-	StartTime *time.Time            `json:"startTime,omitempty"`
-	TagIds    *[]openapi_types.UUID `json:"tagIds,omitempty"`
+	EndTime   *time.Time `json:"endTime,omitempty"`
+	Name      *string    `json:"name,omitempty"`
+	StartTime *time.Time `json:"startTime,omitempty"`
+	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// IncludeQuery defines model for includeQuery.
+type IncludeQuery = []string
+
+// ProjectIdPath defines model for projectIdPath.
+type ProjectIdPath = openapi_types.UUID
+
+// TagIdPath defines model for tagIdPath.
+type TagIdPath = openapi_types.UUID
+
+// TimespanIdPath defines model for timespanIdPath.
+type TimespanIdPath = openapi_types.UUID
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
-	Include *[]GetProjectParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+	Include *IncludeQuery `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProjectParamsInclude defines parameters for GetProject.
@@ -102,7 +120,7 @@ type GetProjectParamsInclude string
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
-	Include *[]GetTagParamsInclude `form:"include,omitempty" json:"include,omitempty"`
+	Include *IncludeQuery `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetTagParamsInclude defines parameters for GetTag.
