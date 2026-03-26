@@ -1,0 +1,26 @@
+when:
+  - event: pull_request
+  - event: push
+    branch: main
+
+variables:
+  backend_options: &backend_options
+    kubernetes:
+      tolerations:
+        - key: amd64
+          value: "true"
+          effect: PreferNoSchedule
+      nodeSelector:
+        kubernetes.io/arch: amd64
+
+steps:
+  - name: lint
+    image: redocly/cli:2.25.1
+    commands:
+      - redocly lint openapi/inundated.yaml
+    when:
+      - path:
+          include: 
+            - openapi/**
+    backend_options: *backend_options
+    depends_on: []

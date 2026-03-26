@@ -53,6 +53,10 @@ lint-frontend:
 	@echo "==> Running frontend linters..."
 	cd frontend && npm run lint
 
+lint-openapi:
+	@echo "==> Linting OpenAPI spec..."
+	docker run --rm -v ${PWD}/openapi:/local/openapi redocly/cli:${REDOCLY_VERSION} lint /local/openapi/inundated.yaml
+
 # Regenerate code from OpenAPI spec
 .PHONY: generate generate-backend-api generate-frontend-api
 generate: generate-backend-api generate-frontend-api
