@@ -12,7 +12,7 @@
 </p>
 
 **inundated** is a lightweight, self-hosted app that helps me track time across 
-projects and tasks. It is developed for me, by me. 
+projects and tasks. It is developed by me, for me. 
 
 ---
 
