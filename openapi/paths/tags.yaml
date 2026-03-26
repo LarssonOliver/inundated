@@ -12,6 +12,8 @@ tags:
               type: array
               items:
                 $ref: '../schemas/tags.yaml#/Tag'
+      '400':
+        description: Bad request
   post:
     tags: [tags]
     summary: Create tag
