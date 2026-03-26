@@ -12,6 +12,8 @@ timespans:
               type: array
               items:
                 $ref: '../schemas/timespans.yaml#/Timespan'
+      '400':
+        description: Bad request
   post:
     tags: [timespans]
     summary: Create time span

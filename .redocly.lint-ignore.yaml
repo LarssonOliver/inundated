@@ -1,0 +1,23 @@
+# This file instructs Redocly's linter to ignore the rules contained for specific parts of your API.
+# See https://redocly.com/docs/cli/ for more information.
+openapi/paths/tags.yaml:
+  security-defined:
+    - '#/tags/get'
+    - '#/tags/post'
+    - '#/tags-id/get'
+    - '#/tags-id/delete'
+    - '#/tags-id/patch'
+openapi/paths/projects.yaml:
+  security-defined:
+    - '#/projects/get'
+    - '#/projects/post'
+    - '#/projects-id/get'
+    - '#/projects-id/delete'
+    - '#/projects-id/patch'
+openapi/paths/timespans.yaml:
+  security-defined:
+    - '#/timespans/get'
+    - '#/timespans/post'
+    - '#/timespans-id/get'
+    - '#/timespans-id/delete'
+    - '#/timespans-id/patch'

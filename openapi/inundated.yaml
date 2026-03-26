@@ -3,12 +3,18 @@ openapi: 3.1.2
 info:
   title: Inundated
   version: 0.1.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 servers:
   - url: /api
 tags:
   - name: tags
+    description: Tag-related operations
   - name: projects
+    description: Project-related operations
   - name: timespans
+    description: Timespan-related operations
 paths:
   /tags:
     $ref: "./paths/tags.yaml#/tags"

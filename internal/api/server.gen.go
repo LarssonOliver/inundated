@@ -675,6 +675,14 @@ func (response ListProjects200JSONResponse) VisitListProjectsResponse(w http.Res
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListProjects400Response struct {
+}
+
+func (response ListProjects400Response) VisitListProjectsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type CreateProjectRequestObject struct {
 	Body *CreateProjectJSONRequestBody
 }
@@ -800,6 +808,14 @@ func (response ListTags200JSONResponse) VisitListTagsResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListTags400Response struct {
+}
+
+func (response ListTags400Response) VisitListTagsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type CreateTagRequestObject struct {
 	Body *CreateTagJSONRequestBody
 }
@@ -923,6 +939,14 @@ func (response ListTimespans200JSONResponse) VisitListTimespansResponse(w http.R
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type ListTimespans400Response struct {
+}
+
+func (response ListTimespans400Response) VisitListTimespansResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
 }
 
 type CreateTimespanRequestObject struct {

@@ -12,6 +12,8 @@ projects:
               type: array
               items:
                 $ref: '../schemas/projects.yaml#/Project'
+      '400':
+        description: Bad request
   post:
     tags: [projects]
     summary: Create project
