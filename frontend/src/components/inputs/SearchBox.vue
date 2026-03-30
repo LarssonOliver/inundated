@@ -162,6 +162,7 @@ watch(showDropdown, () => {
   width: 100%;
   --max-width: 400px;
   max-width: var(--max-width);
+  position: relative;
 }
 
 .search-dropdown {
