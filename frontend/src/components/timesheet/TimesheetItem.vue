@@ -1,31 +1,18 @@
 <template>
   <div class="timesheet-row">
-    <TagListEmbedded
-      v-model="model.tagIds"
-      @update:model-value="() => $emit('update:model-value', model)"
-    />
+    <TagListEmbedded v-model="model.tagIds" />
     <div class="right-side">
-      <TimespanEdit
-        :model-value="model"
-        @update:model-value="(value) => $emit('update:model-value', value)"
-      />
-      <MaterialIcon
-        class="centered-text more-icon"
-        icon="more_horiz"
-        size="1.5em"
-        @mousedown="contextMenuClick"
-      />
+      <TimespanEdit v-model="model" />
+      <button class="icon-button" @click="toggleMenu" :aria-expanded="showMenu">
+        <MaterialIcon class="centered-text more-icon" icon="more_horiz" size="1.5em" />
+      </button>
     </div>
   </div>
+
   <div v-if="showMenu" class="timesheet-row menu-row">
     <div class="right-side">
-      <button class="delete-button">
-        <MaterialIcon
-          class="centered-text delete-icon"
-          icon="delete"
-          size="1.5em"
-          @mousedown="deleteThisTimespan"
-        />
+      <button class="delete-button" @click="deleteThisTimespan">
+        <MaterialIcon class="centered-text delete-icon" icon="delete" size="1.5em" />
       </button>
     </div>
   </div>
@@ -48,11 +35,7 @@ const model = defineModel<Timespan>({
 
 const showMenu = ref(false);
 
-defineEmits<{
-  "update:model-value": [value: Timespan];
-}>();
-
-function contextMenuClick() {
+function toggleMenu() {
   showMenu.value = !showMenu.value;
 }
 
