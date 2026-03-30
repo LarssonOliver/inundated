@@ -1,6 +1,6 @@
 <template>
   <div class="timesheet-row">
-    <TagListEmbedded v-model="model.tagIds" />
+    <TagListEmbedded v-model="tagIds" />
     <div class="right-side">
       <TimespanEdit v-model="model" />
       <button class="icon-button" @click="toggleMenu" :aria-expanded="showMenu">
@@ -24,13 +24,20 @@ import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import type { Timespan } from "@/model";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useTimespansStore } from "@/stores/timespans";
 
 const timespansStore = useTimespansStore();
 
 const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
+});
+
+const tagIds = computed({
+  get: () => model.value.tagIds,
+  set: (value: Set<string>) => {
+    model.value = { ...model.value, tagIds: value };
+  },
 });
 
 const showMenu = ref(false);
