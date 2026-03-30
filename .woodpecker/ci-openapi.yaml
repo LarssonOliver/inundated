@@ -1,7 +1,13 @@
 when:
   - event: pull_request
+    path:
+      include: 
+        - openapi/**
   - event: push
     branch: main
+    path:
+      include: 
+        - openapi/**
 
 variables:
   backend_options: &backend_options
@@ -18,9 +24,5 @@ steps:
     image: redocly/cli:2.25.1
     commands:
       - redocly lint openapi/inundated.yaml
-    when:
-      - path:
-          include: 
-            - openapi/**
     backend_options: *backend_options
     depends_on: []
