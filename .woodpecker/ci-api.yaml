@@ -1,7 +1,13 @@
 when:
   - event: pull_request
+    path:
+      exclude: 
+        - frontend/**
   - event: push
     branch: main
+    path:
+      exclude: 
+        - frontend/**
 
 variables:
   backend_options: &backend_options
@@ -28,10 +34,6 @@ steps:
     image: golangci/golangci-lint:v2.11.2-alpine
     commands:
       - golangci-lint run ./...
-    when:
-      - path:
-          exclude: 
-            - frontend/**
     backend_options: *backend_options
     depends_on: []
 
@@ -40,10 +42,6 @@ steps:
     commands:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
-    when:
-      - path:
-          exclude: 
-            - frontend/**
     environment:
       DOCKER_HOST: tcp://kubedock:2475
       TESTCONTAINERS_RYUK_DISABLED: "true"
@@ -55,9 +53,5 @@ steps:
     image: golang:1.25.5-alpine
     commands:
       - go build -o inundated cmd/server/main.go
-    when:
-      - path:
-          exclude: 
-            - frontend/**
     backend_options: *backend_options
     depends_on: []

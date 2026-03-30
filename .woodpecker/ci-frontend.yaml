@@ -1,7 +1,25 @@
 when:
   - event: pull_request
+    path:
+      include: 
+        - frontend/**
+        - .woodpecker/**
   - event: push
     branch: main
+    path:
+      include: 
+        - frontend/**
+        - .woodpecker/**
+
+variables:
+  backend_options: &backend_options
+    kubernetes:
+      tolerations:
+        - key: amd64
+          value: "true"
+          effect: PreferNoSchedule
+      nodeSelector:
+        kubernetes.io/arch: amd64
 
 steps:
   - name: install
@@ -9,31 +27,14 @@ steps:
     directory: frontend
     commands:
       - npm ci
-    when:
-      - path:
-          include: 
-            - frontend/**
-            - .woodpecker/**
-    backend_options: &backops
-      kubernetes:
-        tolerations:
-          - key: amd64
-            value: "true"
-            effect: PreferNoSchedule
-        nodeSelector:
-          kubernetes.io/arch: amd64
+    backend_options: *backend_options
 
   - name: lint
     image: node:24-alpine
     directory: frontend
     commands:
       - npm run lint
-    when:
-      - path:
-          include: 
-            - frontend/**
-            - .woodpecker/**
-    backend_options: *backops
+    backend_options: *backend_options
     depends_on: 
       - install
 
@@ -42,12 +43,7 @@ steps:
     directory: frontend
     commands:
       - npm run test
-    when:
-      - path:
-          include: 
-            - frontend/**
-            - .woodpecker/**
-    backend_options: *backops
+    backend_options: *backend_options
     depends_on: 
       - install
 
@@ -56,11 +52,6 @@ steps:
     directory: frontend
     commands:
       - npm run build
-    when:
-      - path:
-          include: 
-            - frontend/**
-            - .woodpecker/**
-    backend_options: *backops
+    backend_options: *backend_options
     depends_on: 
       - install
