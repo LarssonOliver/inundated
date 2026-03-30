@@ -61,20 +61,19 @@ function onTagSearch(query: string) {
 }
 
 function onTagSelect(tag: Tag) {
-  model.value.add(tag.id);
+  model.value = new Set([...model.value, tag.id]);
 }
 
 function onTagClose(tag: Tag) {
-  model.value.delete(tag.id);
+  model.value = new Set([...model.value].filter((id) => id !== tag.id));
 }
 
 async function onTagCreate(name: string) {
   name = name.trim();
   if (!name) return;
-
   const tag = await tagsStore.createTagFromName(name);
   if (tag) {
-    model.value.add(tag.id);
+    model.value = new Set([...model.value, tag.id]);
   }
 }
 </script>
