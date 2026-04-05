@@ -10,3 +10,35 @@ TagIdList:
   items:
     type: string
     format: uuid
+
+SeriesPoint:
+  type: object
+  required:
+    - interval
+    - value
+  properties:
+    interval:
+      type: string
+      description: >
+        The time bucket for this data point as an ISO 8601 interval in
+        `{start}/{duration}` form (e.g. `2024-01-01T00:00:00Z/P1W`).
+      example: "2024-01-01T00:00:00Z/P1W"
+    value:
+      type: number
+      description: The aggregated metric value for this bucket.
+      minimum: 0
+
+ErrorResponse:
+  type: object
+  required:
+    - error
+    - message
+  properties:
+    error:
+      type: string
+      description: A stable machine-readable error code.
+      example: invalid_parameter
+    message:
+      type: string
+      description: A human-readable explanation of the error.
+      example: "`from` must be before `to`"

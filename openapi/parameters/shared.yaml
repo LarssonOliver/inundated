@@ -15,6 +15,74 @@ includeQuery:
         - totalTimeMs
     uniqueItems: true
 
+interval:
+  name: interval
+  in: query
+  required: false
+  description: >
+    The time range to query as an ISO 8601 interval. Supports all three forms:
+
+    - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z`
+    - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M`
+    - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+
+    Defaults to `P30D/{now}` (the last 30 days) if omitted.
+  schema:
+    type: string
+    pattern: >-
+      ^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?|P[0-9YMWDTHS]+)\/(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?|P[0-9YMWDTHS]+)$
+  examples:
+    explicit_range:
+      summary: Explicit start and end
+      value: "2024-01-01T00:00:00Z/2024-03-31T23:59:59Z"
+    start_plus_duration:
+      summary: Start datetime + duration
+      value: "2024-01-01T00:00:00Z/P3M"
+    duration_to_end:
+      summary: Duration ending at a specific date
+      value: "P30D/2024-03-31T23:59:59Z"
+
+granularity:
+  name: granularity
+  in: query
+  required: false
+  description: >
+    The bucket size for each data point, expressed as an ISO 8601 duration.
+    Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month).
+    Defaults to `P1D`.
+  schema:
+    type: string
+    pattern: "^P([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+S)?)?$"
+    default: P1D
+  examples:
+    minute:
+      summary: One minute buckets
+      value: "PT1M"
+    hour:
+      summary: One hour buckets
+      value: "PT1H"
+    day:
+      summary: One day buckets
+      value: "P1D"
+    week:
+      summary: One week buckets
+      value: "P1W"
+    month:
+      summary: One month buckets
+      value: "P1M"
+
+timezone:
+  name: timezone
+  in: query
+  required: false
+  description: >
+    IANA timezone used for bucketing (e.g. `Europe/Stockholm`).
+    Defaults to UTC. Affects how day/week/month boundaries are computed.
+  schema:
+    type: string
+    default: UTC
+  example: "Europe/Stockholm"
+
 tagIdPath:
   name: tagId
   in: path
@@ -30,6 +98,17 @@ projectIdPath:
   schema:
     type: string
     format: uuid
+
+projectStatsMetrics:
+  name: metric
+  in: query
+  required: true
+  description: The metric to aggregate over time.
+  schema:
+    type: string
+    enum:
+      - time_spent
+  example: time_spent
 
 timespanIdPath:
   name: timespanId
