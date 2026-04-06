@@ -221,3 +221,49 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 
 	return *duration, nil
 }
+
+// ListTimespansByTagsAndTimeRange implements [repository.TimespanRepository].
+// Returns timespans that have ANY tag in tagIds AND overlap with the time range [start, end)
+func (r *PostgresStore) ListTimespansByTagsAndTimeRange(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error) {
+	if len(tagIds) == 0 {
+		return []model.Timespan{}, nil
+	}
+
+	const q = `
+		SELECT DISTINCT t.id, t.name, t.start_time, t.end_time
+		FROM timespans t
+		INNER JOIN timespan_tags tt ON t.id = tt.timespan_id
+		WHERE t.deleted_at IS NULL
+			AND tt.tag_id = ANY($1)
+			AND t.start_time < $3
+			AND t.end_time > $2
+		ORDER BY t.start_time DESC`
+
+	rows, err := r.db.Query(ctx, q, tagIds, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("ListTimespansByTagsAndTimeRange: %w", err)
+	}
+	defer rows.Close()
+
+	var timespans []model.Timespan
+	for rows.Next() {
+		var ts model.Timespan
+		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime); err != nil {
+			return nil, fmt.Errorf("ListTimespansByTagsAndTimeRange scan: %w", err)
+		}
+		timespans = append(timespans, ts)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ListTimespansByTagsAndTimeRange rows: %w", err)
+	}
+
+	// Load tag IDs for each timespan
+	for i := range timespans {
+		timespans[i].TagIds, err = r.timespanTagIds(ctx, timespans[i].Id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return timespans, nil
+}

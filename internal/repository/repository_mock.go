@@ -23,12 +23,13 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context) ([]model.Tag, error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	DeleteTimespanFn         func(ctx context.Context, id uuid.UUID) error
-	GetTimespanFn            func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListTimespanFn           func(ctx context.Context) ([]model.Timespan, error)
-	UpdateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	GetTotalDurationByTagsFn func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
+	CreateTimespanFn                         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	DeleteTimespanFn                         func(ctx context.Context, id uuid.UUID) error
+	GetTimespanFn                            func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+	ListTimespanFn                           func(ctx context.Context) ([]model.Timespan, error)
+	UpdateTimespanFn                         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+	GetTotalDurationByTagsFn                 func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
+	ListTimespansByTagsAndTimeRangeFn        func(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error)
 }
 
 // CreateProject implements repository.ProjectRepository.
@@ -109,4 +110,9 @@ func (t *RepoMock) UpdateTimespan(ctx context.Context, timespan model.Timespan) 
 // GetTotalDurationByTags implements repository.TimespanRepository.
 func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
 	return t.GetTotalDurationByTagsFn(ctx, tagIds)
+}
+
+// ListTimespansByTagsAndTimeRange implements repository.TimespanRepository.
+func (t *RepoMock) ListTimespansByTagsAndTimeRange(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error) {
+	return t.ListTimespansByTagsAndTimeRangeFn(ctx, tagIds, start, end)
 }

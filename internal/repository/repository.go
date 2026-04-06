@@ -37,4 +37,7 @@ type TimespanRepository interface {
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
 	GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
+	// ListTimespansByTagsAndTimeRange returns timespans that have ANY tag in tagIds
+	// AND overlap with the time range [start, end)
+	ListTimespansByTagsAndTimeRange(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error)
 }

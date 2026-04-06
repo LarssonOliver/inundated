@@ -139,3 +139,38 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.
 
 	return totalDuration, nil
 }
+
+// ListTimespansByTagsAndTimeRange implements [repository.TimespanRepository].
+// Returns timespans that have ANY tag in tagIds AND overlap with the time range [start, end)
+func (t *MemoryStore) ListTimespansByTagsAndTimeRange(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error) {
+	if len(tagIds) == 0 {
+		return []model.Timespan{}, nil
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	var result []model.Timespan
+	for _, timespan := range t.timespans {
+		// Check if timespan has any of the requested tags
+		hasTag := false
+		for _, timespanTagId := range timespan.TagIds {
+			if slices.Contains(tagIds, timespanTagId) {
+				hasTag = true
+				break
+			}
+		}
+
+		if !hasTag {
+			continue
+		}
+
+		// Check if timespan overlaps with the time range
+		// Timespan overlaps if: timespan.Start < end AND timespan.End > start
+		if timespan.StartTime.Before(end) && timespan.EndTime.After(start) {
+			result = append(result, timespan)
+		}
+	}
+
+	return result, nil
+}
