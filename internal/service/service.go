@@ -48,6 +48,7 @@ type ProjectService interface {
 	CreateProject(ctx context.Context, project model.Project) (model.Project, error)
 	UpdateProject(ctx context.Context, project model.Project) (model.Project, error)
 	DeleteProject(ctx context.Context, id uuid.UUID) error
+	GetProjectStats(ctx context.Context, projectID uuid.UUID, metric string, interval string, granularity string, timezone string) (model.ProjectStats, error)
 }
 
 type TimespanService interface {
