@@ -69,6 +69,11 @@ func (s *Server) UpdateProject(ctx context.Context, request UpdateProjectRequest
 	return s.handler.UpdateProject(ctx, request)
 }
 
+// GetProjectStats implements StrictServerInterface.
+func (s *Server) GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error) {
+	return s.handler.GetProjectStats(ctx, request)
+}
+
 // CreateTimespan implements StrictServerInterface.
 func (s *Server) CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error) {
 	return s.handler.CreateTimespan(ctx, request)

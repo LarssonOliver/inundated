@@ -94,3 +94,8 @@ func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, tagIds []uu
 	args := m.Called(ctx, tagIds)
 	return args.Get(0).(time.Duration), args.Error(1)
 }
+
+func (m *MockRepository) ListTimespansByTagsAndTimeRange(ctx context.Context, tagIds []uuid.UUID, start, end time.Time) ([]model.Timespan, error) {
+	args := m.Called(ctx, tagIds, start, end)
+	return args.Get(0).([]model.Timespan), args.Error(1)
+}

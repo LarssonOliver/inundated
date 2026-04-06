@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
@@ -178,4 +179,87 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 	}
 
 	return api.UpdateProject200JSONResponse(apiProject), nil
+}
+
+// GetProjectStats implements [api.ProjectHandler].
+func (p *ProjectHandler) GetProjectStats(ctx context.Context, request api.GetProjectStatsRequestObject) (api.GetProjectStatsResponseObject, error) {
+	// Extract and validate parameters
+	metric := string(request.Params.Metric)
+
+	intervalStr := ""
+	if request.Params.Interval != nil {
+		intervalStr = string(*request.Params.Interval)
+	}
+
+	granularity := "P1D" // default
+	if request.Params.Granularity != nil {
+		granularity = string(*request.Params.Granularity)
+	}
+
+	timezone := "UTC" // default
+	if request.Params.Timezone != nil {
+		timezone = string(*request.Params.Timezone)
+	}
+
+	// Call service
+	stats, err := p.svc.GetProjectStats(ctx, request.ProjectId, metric, intervalStr, granularity, timezone)
+
+	// Handle errors
+	if err == model.ErrNotFound {
+		return api.GetProjectStats404Response{}, nil
+	}
+
+	// Check for validation errors (400 or 422)
+	if err != nil {
+		errMsg := err.Error()
+		// Semantic errors (interval validation) return 422
+		if containsAny(errMsg, "start must be before end", "after", "before") {
+			return api.GetProjectStats422Response{}, nil
+		}
+		// Format/parse errors return 400
+		if containsAny(errMsg, "invalid", "unsupported", "failed to parse") {
+			return api.GetProjectStats400Response{}, nil
+		}
+		// Other errors
+		return nil, err
+	}
+
+	// Convert to API response
+	series := make([]api.SeriesPoint, len(stats.Series))
+	for i, point := range stats.Series {
+		series[i] = api.SeriesPoint{
+			Interval: point.Interval,
+			Value:    float32(point.Value),
+		}
+	}
+
+	projectUUID, err := uuid.Parse(stats.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := api.ProjectStats{
+		ProjectId:   projectUUID,
+		Metric:      api.ProjectStatsMetric(stats.Metric),
+		Interval:    stats.Interval,
+		Granularity: stats.Granularity,
+		Unit:        stats.Unit,
+		Series:      series,
+	}
+
+	return api.GetProjectStats200JSONResponse(response), nil
+}
+
+// containsAny checks if s contains any of the substrings
+func containsAny(s string, substrs ...string) bool {
+	for _, substr := range substrs {
+		if len(substr) > 0 && len(s) >= len(substr) {
+			for i := 0; i <= len(s)-len(substr); i++ {
+				if s[i:i+len(substr)] == substr {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

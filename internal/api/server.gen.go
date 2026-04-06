@@ -31,6 +31,9 @@ type ServerInterface interface {
 	// Update project
 	// (PATCH /projects/{projectId})
 	UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
+	// Get timeseries stats for a project
+	// (GET /projects/{projectId}/stats)
+	GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams)
 	// List tags
 	// (GET /tags)
 	ListTags(w http.ResponseWriter, r *http.Request)
@@ -94,6 +97,12 @@ func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projec
 // Update project
 // (PATCH /projects/{projectId})
 func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get timeseries stats for a project
+// (GET /projects/{projectId}/stats)
+func (_ Unimplemented) GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -271,6 +280,73 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProject(w, r, projectId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProjectStats operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectStats(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId ProjectIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", chi.URLParam(r, "projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectStatsParams
+
+	// ------------- Required query parameter "metric" -------------
+
+	if paramValue := r.URL.Query().Get("metric"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "metric"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "metric", r.URL.Query(), &params.Metric)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "metric", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "interval" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "interval", r.URL.Query(), &params.Interval)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "interval", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "granularity", r.URL.Query(), &params.Granularity)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "granularity", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "timezone" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "timezone", r.URL.Query(), &params.Timezone)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timezone", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectStats(w, r, projectId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -626,6 +702,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/projects/{projectId}", wrapper.UpdateProject)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{projectId}/stats", wrapper.GetProjectStats)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tags", wrapper.ListTags)
 	})
 	r.Group(func(r chi.Router) {
@@ -789,6 +868,48 @@ type UpdateProject404Response struct {
 
 func (response UpdateProject404Response) VisitUpdateProjectResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
+	return nil
+}
+
+type GetProjectStatsRequestObject struct {
+	ProjectId ProjectIdPath `json:"projectId"`
+	Params    GetProjectStatsParams
+}
+
+type GetProjectStatsResponseObject interface {
+	VisitGetProjectStatsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectStats200JSONResponse ProjectStats
+
+func (response GetProjectStats200JSONResponse) VisitGetProjectStatsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetProjectStats400Response struct {
+}
+
+func (response GetProjectStats400Response) VisitGetProjectStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetProjectStats404Response struct {
+}
+
+func (response GetProjectStats404Response) VisitGetProjectStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetProjectStats422Response struct {
+}
+
+func (response GetProjectStats422Response) VisitGetProjectStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(422)
 	return nil
 }
 
@@ -1074,6 +1195,9 @@ type StrictServerInterface interface {
 	// Update project
 	// (PATCH /projects/{projectId})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
+	// Get timeseries stats for a project
+	// (GET /projects/{projectId}/stats)
+	GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error)
 	// List tags
 	// (GET /tags)
 	ListTags(ctx context.Context, request ListTagsRequestObject) (ListTagsResponseObject, error)
@@ -1269,6 +1393,33 @@ func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, p
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateProjectResponseObject); ok {
 		if err := validResponse.VisitUpdateProjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectStats operation middleware
+func (sh *strictHandler) GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams) {
+	var request GetProjectStatsRequestObject
+
+	request.ProjectId = projectId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectStats(ctx, request.(GetProjectStatsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectStats")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectStatsResponseObject); ok {
+		if err := validResponse.VisitGetProjectStatsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
