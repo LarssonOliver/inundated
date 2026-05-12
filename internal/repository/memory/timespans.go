@@ -139,3 +139,8 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.
 
 	return totalDuration, nil
 }
+
+// AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
+func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	return nil, model.ErrNotImplemented
+}

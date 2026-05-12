@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"time"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -178,4 +180,73 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 	}
 
 	return api.UpdateProject200JSONResponse(apiProject), nil
+}
+
+// GetProjectStats implements [api.ProjectHandler].
+func (p *ProjectHandler) GetProjectStats(ctx context.Context, request api.GetProjectStatsRequestObject) (api.GetProjectStatsResponseObject, error) {
+	input := mapGetProjectStatsRequestToServiceInput(request, time.Now().UTC())
+
+	reply, err := p.svc.GetProjectStats(ctx, input)
+
+	if err == model.ErrInvalidArgument {
+		return api.GetProjectStats400Response{}, nil
+	} else if err == model.ErrNotFound {
+		return api.GetProjectStats404Response{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return mapProjectStatsToAPIResponse(reply), nil
+}
+
+func mapGetProjectStatsRequestToServiceInput(request api.GetProjectStatsRequestObject, now time.Time) service.GetProjectStatsInput {
+	var intervalRaw *string
+	if request.Params.Interval != nil {
+		value := string(*request.Params.Interval)
+		intervalRaw = &value
+	}
+
+	var granularityRaw *string
+	if request.Params.Granularity != nil {
+		value := string(*request.Params.Granularity)
+		granularityRaw = &value
+	}
+
+	var timezoneRaw *string
+	if request.Params.Timezone != nil {
+		value := string(*request.Params.Timezone)
+		timezoneRaw = &value
+	}
+
+	return service.GetProjectStatsInput{
+		ProjectID:      request.ProjectId,
+		Metric:         model.ProjectStatsMetric(request.Params.Metric),
+		IntervalRaw:    intervalRaw,
+		GranularityRaw: granularityRaw,
+		TimezoneRaw:    timezoneRaw,
+		Now:            now,
+	}
+}
+
+func mapProjectStatsToAPIResponse(stats model.ProjectStats) api.GetProjectStatsResponseObject {
+	series := make([]api.SeriesPoint, 0, len(stats.Series))
+	for _, point := range stats.Series {
+		series = append(series, api.SeriesPoint{
+			Interval: formatInterval(point.Bucket),
+			Value:    float32(point.Value),
+		})
+	}
+
+	return api.GetProjectStats200JSONResponse(api.ProjectStats{
+		ProjectId:   stats.ProjectID,
+		Metric:      api.ProjectStatsMetric(stats.Metric),
+		Interval:    formatInterval(stats.Interval),
+		Granularity: stats.Granularity,
+		Unit:        stats.Unit,
+		Series:      series,
+	})
+}
+
+func formatInterval(interval model.BucketRange) string {
+	return fmt.Sprintf("%s/%s", interval.Start.UTC().Format(time.RFC3339), interval.End.UTC().Format(time.RFC3339))
 }

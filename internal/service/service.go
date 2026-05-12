@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -48,6 +49,16 @@ type ProjectService interface {
 	CreateProject(ctx context.Context, project model.Project) (model.Project, error)
 	UpdateProject(ctx context.Context, project model.Project) (model.Project, error)
 	DeleteProject(ctx context.Context, id uuid.UUID) error
+	GetProjectStats(ctx context.Context, input GetProjectStatsInput) (model.ProjectStats, error)
+}
+
+type GetProjectStatsInput struct {
+	ProjectID      uuid.UUID
+	Metric         model.ProjectStatsMetric
+	IntervalRaw    *string
+	GranularityRaw *string
+	TimezoneRaw    *string
+	Now            time.Time
 }
 
 type TimespanService interface {

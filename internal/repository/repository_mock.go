@@ -29,6 +29,8 @@ type RepoMock struct {
 	ListTimespanFn           func(ctx context.Context) ([]model.Timespan, error)
 	UpdateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	GetTotalDurationByTagsFn func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
+
+	AggregateTimeSpentByTagsAndBucketsFn func(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
 }
 
 // CreateProject implements repository.ProjectRepository.
@@ -109,4 +111,9 @@ func (t *RepoMock) UpdateTimespan(ctx context.Context, timespan model.Timespan) 
 // GetTotalDurationByTags implements repository.TimespanRepository.
 func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
 	return t.GetTotalDurationByTagsFn(ctx, tagIds)
+}
+
+// AggregateTimeSpentByTagsAndBuckets implements repository.ProjectStatsRepository.
+func (t *RepoMock) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	return t.AggregateTimeSpentByTagsAndBucketsFn(ctx, tagIds, buckets)
 }

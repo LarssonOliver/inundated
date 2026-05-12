@@ -221,3 +221,8 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 
 	return *duration, nil
 }
+
+// AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
+func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	return nil, model.ErrNotImplemented
+}

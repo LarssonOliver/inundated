@@ -18,6 +18,7 @@ type mockProjectService struct {
 	CreateFn func(ctx context.Context, project model.Project) (model.Project, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
 	GetFn    func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
+	GetStatsFn func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error)
 	ListFn   func(ctx context.Context) ([]model.Project, error)
 	UpdateFn func(ctx context.Context, project model.Project) (model.Project, error)
 }
@@ -42,6 +43,14 @@ func (m *mockProjectService) GetProject(ctx context.Context, id uuid.UUID, i *se
 // ListProjects implements [service.ProjectService].
 func (m *mockProjectService) ListProjects(ctx context.Context) ([]model.Project, error) {
 	return m.ListFn(ctx)
+}
+
+// GetProjectStats implements [service.ProjectService].
+func (m *mockProjectService) GetProjectStats(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+	if m.GetStatsFn == nil {
+		return model.ProjectStats{}, model.ErrNotImplemented
+	}
+	return m.GetStatsFn(ctx, input)
 }
 
 // UpdateProject implements [service.ProjectService].

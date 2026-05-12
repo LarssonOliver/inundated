@@ -5,7 +5,6 @@ package api
 
 import (
 	"context"
-	"errors"
 )
 
 var _ StrictServerInterface = (*Server)(nil)
@@ -72,7 +71,7 @@ func (s *Server) UpdateProject(ctx context.Context, request UpdateProjectRequest
 
 // GetProjectStats implements StrictServerInterface.
 func (s *Server) GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error) {
-	return nil, errors.New("get project stats is not implemented")
+	return s.handler.GetProjectStats(ctx, request)
 }
 
 // CreateTimespan implements StrictServerInterface.

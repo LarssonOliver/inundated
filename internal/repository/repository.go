@@ -12,6 +12,7 @@ type Repository interface {
 	TagRepository
 	ProjectRepository
 	TimespanRepository
+	ProjectStatsRepository
 }
 
 type TagRepository interface {
@@ -37,4 +38,8 @@ type TimespanRepository interface {
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
 	GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
+}
+
+type ProjectStatsRepository interface {
+	AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
 }
