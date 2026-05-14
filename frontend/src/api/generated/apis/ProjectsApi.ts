@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   CreateProject,
   Project,
+  ProjectStats,
   UpdateProject,
 } from '../models/index';
 import {
@@ -24,6 +25,8 @@ import {
     CreateProjectToJSON,
     ProjectFromJSON,
     ProjectToJSON,
+    ProjectStatsFromJSON,
+    ProjectStatsToJSON,
     UpdateProjectFromJSON,
     UpdateProjectToJSON,
 } from '../models/index';
@@ -39,6 +42,14 @@ export interface DeleteProjectRequest {
 export interface GetProjectRequest {
     projectId: string;
     include?: Set<GetProjectIncludeEnum>;
+}
+
+export interface GetProjectStatsRequest {
+    projectId: string;
+    metric: GetProjectStatsMetricEnum;
+    interval?: string;
+    granularity?: string;
+    timezone?: string;
 }
 
 export interface UpdateProjectRequest {
@@ -168,6 +179,68 @@ export class ProjectsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Get timeseries stats for a project
+     */
+    async getProjectStatsRaw(requestParameters: GetProjectStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProjectStats>> {
+        if (requestParameters['projectId'] == null) {
+            throw new runtime.RequiredError(
+                'projectId',
+                'Required parameter "projectId" was null or undefined when calling getProjectStats().'
+            );
+        }
+
+        if (requestParameters['metric'] == null) {
+            throw new runtime.RequiredError(
+                'metric',
+                'Required parameter "metric" was null or undefined when calling getProjectStats().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['metric'] != null) {
+            queryParameters['metric'] = requestParameters['metric'];
+        }
+
+        if (requestParameters['interval'] != null) {
+            queryParameters['interval'] = requestParameters['interval'];
+        }
+
+        if (requestParameters['granularity'] != null) {
+            queryParameters['granularity'] = requestParameters['granularity'];
+        }
+
+        if (requestParameters['timezone'] != null) {
+            queryParameters['timezone'] = requestParameters['timezone'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/projects/{projectId}/stats`;
+        urlPath = urlPath.replace(`{${"projectId"}}`, encodeURIComponent(String(requestParameters['projectId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ProjectStatsFromJSON(jsonValue));
+    }
+
+    /**
+     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Get timeseries stats for a project
+     */
+    async getProjectStats(requestParameters: GetProjectStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProjectStats> {
+        const response = await this.getProjectStatsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * List projects
      */
     async listProjectsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Project>>> {
@@ -252,3 +325,10 @@ export const GetProjectIncludeEnum = {
     TotalTimeMs: 'totalTimeMs'
 } as const;
 export type GetProjectIncludeEnum = typeof GetProjectIncludeEnum[keyof typeof GetProjectIncludeEnum];
+/**
+ * @export
+ */
+export const GetProjectStatsMetricEnum = {
+    TimeSpent: 'time_spent'
+} as const;
+export type GetProjectStatsMetricEnum = typeof GetProjectStatsMetricEnum[keyof typeof GetProjectStatsMetricEnum];

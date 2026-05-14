@@ -112,9 +112,9 @@ projects-id-stats:
               granularity: P1W
               unit: seconds
               series:
-                - interval: "2024-01-01T00:00:00Z/P1W"
+                - interval: "2024-01-01T00:00:00Z/2024-01-08T00:00:00Z"
                   value: 18000
-                - interval: "2024-01-08T00:00:00Z/P1W"
+                - interval: "2024-01-08T00:00:00Z/2024-01-15T00:00:00Z"
                   value: 25200
       "400":
         description: Invalid query parameters.

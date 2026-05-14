@@ -4,6 +4,8 @@ export * from './CreateProject';
 export * from './CreateTag';
 export * from './CreateTimespan';
 export * from './Project';
+export * from './ProjectStats';
+export * from './SeriesPoint';
 export * from './Tag';
 export * from './Timespan';
 export * from './UpdateProject';

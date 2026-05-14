@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,5 +69,11 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 	for _, point := range stats.Series {
 		require.NotEmpty(t, point.Interval)
 		require.GreaterOrEqual(t, point.Value, float32(0))
+		parts := strings.Split(point.Interval, "/")
+		require.Len(t, parts, 2)
+		_, startErr := time.Parse(time.RFC3339, parts[0])
+		require.NoError(t, startErr)
+		_, endErr := time.Parse(time.RFC3339, parts[1])
+		require.NoError(t, endErr)
 	}
 }

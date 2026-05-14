@@ -95,7 +95,7 @@ type ProjectStatsMetric string
 
 // SeriesPoint defines model for SeriesPoint.
 type SeriesPoint struct {
-	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{duration}` form (e.g. `2024-01-01T00:00:00Z/P1W`).
+	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{end}` form (e.g. `2024-01-01T00:00:00Z/2024-01-08T00:00:00Z`).
 	Interval string `json:"interval"`
 
 	// Value The aggregated metric value for this bucket.
