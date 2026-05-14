@@ -458,3 +458,107 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectHandler_GetProjectStats(t *testing.T) {
+	projectID := uuid.New()
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	intervalRaw := api.Interval("2024-01-01T00:00:00Z/2024-01-01T02:00:00Z")
+	granularityRaw := api.Granularity("PT1H")
+	timezoneRaw := api.Timezone("UTC")
+
+	tests := []struct {
+		name       string
+		getStatsFn func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error)
+		wantStatus int
+		wantErr    bool
+	}{
+		{
+			name: "success",
+			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+				require.Equal(t, projectID, input.ProjectID)
+				require.Equal(t, model.ProjectStatsMetricTimeSpent, input.Metric)
+				require.NotNil(t, input.IntervalRaw)
+				require.Equal(t, string(intervalRaw), *input.IntervalRaw)
+				return model.ProjectStats{
+					ProjectID:   projectID,
+					Metric:      model.ProjectStatsMetricTimeSpent,
+					Interval:    model.BucketRange{Start: base, End: base.Add(2 * time.Hour)},
+					Granularity: "PT1H",
+					Unit:        "seconds",
+					Series: []model.BucketValue{
+						{Bucket: model.BucketRange{Start: base, End: base.Add(1 * time.Hour)}, Value: 1800},
+						{Bucket: model.BucketRange{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)}, Value: 3600},
+					},
+				}, nil
+			},
+			wantStatus: 200,
+		},
+		{
+			name: "invalid argument",
+			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+				return model.ProjectStats{}, model.ErrInvalidArgument
+			},
+			wantStatus: 400,
+		},
+		{
+			name: "not found",
+			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+				return model.ProjectStats{}, model.ErrNotFound
+			},
+			wantStatus: 404,
+		},
+		{
+			name: "service error",
+			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+				return model.ProjectStats{}, errors.New("service error")
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockProjectService{
+				GetStatsFn: tt.getStatsFn,
+			}
+
+			h := handlers.NewProjectHandler(svc)
+			request := api.GetProjectStatsRequestObject{
+				ProjectId: projectID,
+				Params: api.GetProjectStatsParams{
+					Metric:      api.TimeSpent,
+					Interval:    &intervalRaw,
+					Granularity: &granularityRaw,
+					Timezone:    &timezoneRaw,
+				},
+			}
+
+			got, err := h.GetProjectStats(context.Background(), request)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			switch tt.wantStatus {
+			case 200:
+				res, ok := got.(api.GetProjectStats200JSONResponse)
+				require.True(t, ok)
+				require.Equal(t, projectID, res.ProjectId)
+				require.Equal(t, api.ProjectStatsMetricTimeSpent, res.Metric)
+				require.Equal(t, "2024-01-01T00:00:00Z/2024-01-01T02:00:00Z", res.Interval)
+				require.Equal(t, "PT1H", res.Granularity)
+				require.Equal(t, "seconds", res.Unit)
+				require.Len(t, res.Series, 2)
+			case 400:
+				_, ok := got.(api.GetProjectStats400Response)
+				require.True(t, ok)
+			case 404:
+				_, ok := got.(api.GetProjectStats404Response)
+				require.True(t, ok)
+			default:
+				t.Fatalf("unexpected status expectation: %d", tt.wantStatus)
+			}
+		})
+	}
+}
