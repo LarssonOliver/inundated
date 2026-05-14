@@ -142,5 +142,72 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
 func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
-	return nil, model.ErrNotImplemented
+	_ = ctx
+
+	values := make([]model.BucketValue, len(buckets))
+	for i, bucket := range buckets {
+		if !bucket.End.After(bucket.Start) {
+			return nil, model.ErrInvalidArgument
+		}
+
+		values[i] = model.BucketValue{
+			Bucket: bucket,
+			Value:  0,
+		}
+	}
+
+	if len(tagIds) == 0 {
+		return values, nil
+	}
+
+	tagSet := make(map[uuid.UUID]struct{}, len(tagIds))
+	for _, tagID := range tagIds {
+		tagSet[tagID] = struct{}{}
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	for _, timespan := range t.timespans {
+		if !timespanHasAnyTag(timespan.TagIds, tagSet) {
+			continue
+		}
+
+		for i, bucket := range buckets {
+			overlapStart := maxTime(timespan.StartTime, bucket.Start)
+			overlapEnd := minTime(timespan.EndTime, bucket.End)
+
+			if overlapEnd.After(overlapStart) {
+				values[i].Value += overlapEnd.Sub(overlapStart).Seconds()
+			}
+		}
+	}
+
+	return values, nil
+}
+
+func timespanHasAnyTag(timespanTagIDs []uuid.UUID, requestedTagSet map[uuid.UUID]struct{}) bool {
+	for _, tagID := range timespanTagIDs {
+		if _, ok := requestedTagSet[tagID]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+
+	return b
+}
+
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+
+	return b
 }
