@@ -335,3 +335,78 @@ func TestGetTotalDurationByTags_NilList(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0*time.Hour, out)
 }
+
+func TestAggregateTimeSpentByTagsAndBuckets_Success(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tagIDs := []uuid.UUID{uuid.New(), uuid.New()}
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base, End: base.Add(1 * time.Hour)},
+		{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
+	}
+
+	mock.ExpectQuery(`WITH input_buckets AS`).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start, buckets[1].Start}, []time.Time{buckets[0].End, buckets[1].End}).
+		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
+			AddRow(buckets[0].Start, buckets[0].End, float64(45*60)).
+			AddRow(buckets[1].Start, buckets[1].End, float64(75*60)))
+
+	got, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Equal(t, buckets[0], got[0].Bucket)
+	require.Equal(t, buckets[1], got[1].Bucket)
+	require.InDelta(t, 45*60, got[0].Value, 0.0001)
+	require.InDelta(t, 75*60, got[1].Value, 0.0001)
+}
+
+func TestAggregateTimeSpentByTagsAndBuckets_InvalidBucket(t *testing.T) {
+	repo, _ := newMock(t)
+
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base, End: base},
+	}
+
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), []uuid.UUID{uuid.New()}, buckets)
+	require.Error(t, err)
+	require.ErrorIs(t, err, model.ErrInvalidArgument)
+}
+
+func TestAggregateTimeSpentByTagsAndBuckets_EmptyTagsReturnsZeroPerBucket(t *testing.T) {
+	repo, _ := newMock(t)
+
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
+		{Start: base, End: base.Add(1 * time.Hour)},
+	}
+
+	got, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), nil, buckets)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Equal(t, buckets[0], got[0].Bucket)
+	require.Equal(t, buckets[1], got[1].Bucket)
+	require.InDelta(t, 0.0, got[0].Value, 0.0001)
+	require.InDelta(t, 0.0, got[1].Value, 0.0001)
+}
+
+func TestAggregateTimeSpentByTagsAndBuckets_QueryError(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tagIDs := []uuid.UUID{uuid.New()}
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base, End: base.Add(1 * time.Hour)},
+	}
+
+	mock.ExpectQuery(`WITH input_buckets AS`).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}).
+		WillReturnError(errors.New("db down"))
+
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	require.Error(t, err)
+}
