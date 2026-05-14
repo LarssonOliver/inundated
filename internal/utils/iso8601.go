@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -9,6 +10,11 @@ import (
 )
 
 var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`)
+
+var (
+	ErrInvalidISO8601Format = errors.New("invalid ISO8601 format")
+	ErrISO8601Unprocessable = errors.New("unprocessable ISO8601 value")
+)
 
 type ISO8601Duration struct {
 	Years   int
@@ -32,12 +38,12 @@ type TimeBucket struct {
 
 func ParseISO8601Duration(raw string) (ISO8601Duration, error) {
 	if raw == "" {
-		return ISO8601Duration{}, fmt.Errorf("duration is empty")
+		return ISO8601Duration{}, fmt.Errorf("duration is empty: %w", ErrInvalidISO8601Format)
 	}
 
 	m := iso8601DurationRe.FindStringSubmatch(raw)
 	if m == nil {
-		return ISO8601Duration{}, fmt.Errorf("invalid ISO8601 duration: %q", raw)
+		return ISO8601Duration{}, fmt.Errorf("invalid ISO8601 duration: %q: %w", raw, ErrInvalidISO8601Format)
 	}
 
 	hasAny := false
@@ -48,7 +54,7 @@ func ParseISO8601Duration(raw string) (ISO8601Duration, error) {
 		}
 	}
 	if !hasAny {
-		return ISO8601Duration{}, fmt.Errorf("duration has no units: %q", raw)
+		return ISO8601Duration{}, fmt.Errorf("duration has no units: %q: %w", raw, ErrInvalidISO8601Format)
 	}
 
 	parse := func(s string) (int, error) {
@@ -58,7 +64,7 @@ func ParseISO8601Duration(raw string) (ISO8601Duration, error) {
 
 		n, err := strconv.Atoi(s)
 		if err != nil || n < 0 {
-			return 0, fmt.Errorf("invalid duration part %q", s)
+			return 0, fmt.Errorf("invalid duration part %q: %w", s, ErrInvalidISO8601Format)
 		}
 
 		return n, nil
@@ -114,7 +120,7 @@ func ParseISO8601Interval(raw string, now time.Time, loc *time.Location) (Resolv
 	_ = now
 
 	if raw == "" {
-		return ResolvedInterval{}, fmt.Errorf("interval is empty")
+		return ResolvedInterval{}, fmt.Errorf("interval is empty: %w", ErrInvalidISO8601Format)
 	}
 
 	if loc == nil {
@@ -123,13 +129,13 @@ func ParseISO8601Interval(raw string, now time.Time, loc *time.Location) (Resolv
 
 	parts := strings.Split(raw, "/")
 	if len(parts) != 2 {
-		return ResolvedInterval{}, fmt.Errorf("interval must contain exactly one slash: %q", raw)
+		return ResolvedInterval{}, fmt.Errorf("interval must contain exactly one slash: %q: %w", raw, ErrInvalidISO8601Format)
 	}
 
 	left := strings.TrimSpace(parts[0])
 	right := strings.TrimSpace(parts[1])
 	if left == "" || right == "" {
-		return ResolvedInterval{}, fmt.Errorf("interval parts cannot be empty: %q", raw)
+		return ResolvedInterval{}, fmt.Errorf("interval parts cannot be empty: %q: %w", raw, ErrInvalidISO8601Format)
 	}
 
 	parseTime := func(s string) (time.Time, bool) {
@@ -178,11 +184,11 @@ func ParseISO8601Interval(raw string, now time.Time, loc *time.Location) (Resolv
 		out = ResolvedInterval{Start: start, End: rightTime}
 
 	default:
-		return ResolvedInterval{}, fmt.Errorf("invalid interval expression: %q", raw)
+		return ResolvedInterval{}, fmt.Errorf("invalid interval expression: %q: %w", raw, ErrInvalidISO8601Format)
 	}
 
 	if !out.End.After(out.Start) {
-		return ResolvedInterval{}, fmt.Errorf("interval end must be after start")
+		return ResolvedInterval{}, fmt.Errorf("interval end must be after start: %w", ErrISO8601Unprocessable)
 	}
 
 	return out, nil
@@ -207,19 +213,19 @@ func BuildTimeBuckets(interval ResolvedInterval, granularity ISO8601Duration, lo
 	}
 
 	if maxBuckets <= 0 {
-		return nil, fmt.Errorf("maxBuckets must be > 0")
+		return nil, fmt.Errorf("maxBuckets must be > 0: %w", ErrISO8601Unprocessable)
 	}
 
 	if !interval.End.After(interval.Start) {
-		return nil, fmt.Errorf("interval end must be after start")
+		return nil, fmt.Errorf("interval end must be after start: %w", ErrISO8601Unprocessable)
 	}
 
 	if hasNegativeDurationPart(granularity) {
-		return nil, fmt.Errorf("negative granularity is not allowed")
+		return nil, fmt.Errorf("negative granularity is not allowed: %w", ErrISO8601Unprocessable)
 	}
 
 	if isZeroDuration(granularity) {
-		return nil, fmt.Errorf("zero granularity is not allowed")
+		return nil, fmt.Errorf("zero granularity is not allowed: %w", ErrISO8601Unprocessable)
 	}
 
 	start := interval.Start.In(loc)
@@ -235,7 +241,7 @@ func BuildTimeBuckets(interval ResolvedInterval, granularity ISO8601Duration, lo
 		}
 
 		if !next.After(cur) {
-			return nil, fmt.Errorf("granularity does not advance time")
+			return nil, fmt.Errorf("granularity does not advance time: %w", ErrISO8601Unprocessable)
 		}
 
 		if next.After(end) {
@@ -248,7 +254,7 @@ func BuildTimeBuckets(interval ResolvedInterval, granularity ISO8601Duration, lo
 		})
 
 		if len(buckets) > maxBuckets {
-			return nil, fmt.Errorf("bucket limit exceeded")
+			return nil, fmt.Errorf("bucket limit exceeded: %w", ErrISO8601Unprocessable)
 		}
 
 		cur = next

@@ -41,6 +41,9 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 
 	interval, err := utils.ParseISO8601Interval(intervalRaw, now, location)
 	if err != nil {
+		if errors.Is(err, utils.ErrISO8601Unprocessable) {
+			return model.ProjectStats{}, model.ErrUnprocessable
+		}
 		return model.ProjectStats{}, model.ErrInvalidArgument
 	}
 
@@ -59,6 +62,9 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		End:   interval.End,
 	}, granularity, location, maxStatsBuckets)
 	if err != nil {
+		if errors.Is(err, utils.ErrISO8601Unprocessable) {
+			return model.ProjectStats{}, model.ErrUnprocessable
+		}
 		return model.ProjectStats{}, model.ErrInvalidArgument
 	}
 
@@ -73,7 +79,7 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 	series, err := s.repository.AggregateTimeSpentByTagsAndBuckets(ctx, project.TagIds, bucketRanges)
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidArgument) {
-			return model.ProjectStats{}, model.ErrInvalidArgument
+			return model.ProjectStats{}, model.ErrUnprocessable
 		}
 
 		return model.ProjectStats{}, err

@@ -379,4 +379,25 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		require.ErrorIs(t, err, model.ErrInvalidArgument)
 	})
+
+	t.Run("unprocessable interval", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{
+					Id:     projectID,
+					TagIds: []uuid.UUID{uuid.New()},
+				}, nil
+			},
+		}
+		s := service.NewService(repo)
+		unprocessableInterval := "2024-01-01T00:00:00Z/2024-01-01T00:00:00Z"
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID:   projectID,
+			Metric:      model.ProjectStatsMetricTimeSpent,
+			IntervalRaw: &unprocessableInterval,
+		})
+
+		require.ErrorIs(t, err, model.ErrUnprocessable)
+	})
 }

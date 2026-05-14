@@ -77,3 +77,40 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 		require.NoError(t, endErr)
 	}
 }
+
+func TestProject_GetStats_Contract422(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	tagResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+		Name:  "Stats Tag 422",
+		Color: "#123456",
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, tagResp.StatusCode())
+
+	tagIDs := []TagIdPath{tagResp.JSON201.Id}
+
+	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+		Name:   "Stats Project 422",
+		Color:  "#654321",
+		TagIds: &tagIDs,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, projectResp.StatusCode())
+	projectID := projectResp.JSON201.Id
+
+	point := time.Now().UTC().Truncate(time.Second).Add(-2 * time.Hour)
+	invalidInterval := point.Format(time.RFC3339) + "/" + point.Format(time.RFC3339)
+	granularity := "PT1H"
+	timezone := "UTC"
+
+	statsResp, err := client.GetProjectStatsWithResponse(ctx, projectID, &GetProjectStatsParams{
+		Metric:      TimeSpent,
+		Interval:    &invalidInterval,
+		Granularity: &granularity,
+		Timezone:    &timezone,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 422, statsResp.StatusCode())
+}

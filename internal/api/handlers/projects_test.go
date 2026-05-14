@@ -508,6 +508,13 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			wantStatus: 404,
 		},
 		{
+			name: "unprocessable",
+			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
+				return model.ProjectStats{}, model.ErrUnprocessable
+			},
+			wantStatus: 422,
+		},
+		{
 			name: "service error",
 			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
 				return model.ProjectStats{}, errors.New("service error")
@@ -555,6 +562,9 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 				require.True(t, ok)
 			case 404:
 				_, ok := got.(api.GetProjectStats404Response)
+				require.True(t, ok)
+			case 422:
+				_, ok := got.(api.GetProjectStats422Response)
 				require.True(t, ok)
 			default:
 				t.Fatalf("unexpected status expectation: %d", tt.wantStatus)

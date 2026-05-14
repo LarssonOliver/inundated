@@ -190,6 +190,8 @@ func (p *ProjectHandler) GetProjectStats(ctx context.Context, request api.GetPro
 
 	if err == model.ErrInvalidArgument {
 		return api.GetProjectStats400Response{}, nil
+	} else if err == model.ErrUnprocessable {
+		return api.GetProjectStats422Response{}, nil
 	} else if err == model.ErrNotFound {
 		return api.GetProjectStats404Response{}, nil
 	} else if err != nil {
