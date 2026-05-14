@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -17,6 +18,7 @@ type ProjectHandler struct {
 }
 
 var _ api.ProjectHandler = (*ProjectHandler)(nil)
+var errInternalServer = errors.New("internal server error")
 
 func NewProjectHandler(svc service.ProjectService) *ProjectHandler {
 	return &ProjectHandler{
@@ -188,14 +190,14 @@ func (p *ProjectHandler) GetProjectStats(ctx context.Context, request api.GetPro
 
 	reply, err := p.svc.GetProjectStats(ctx, input)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.GetProjectStats400Response{}, nil
-	} else if err == model.ErrUnprocessable {
+	} else if errors.Is(err, model.ErrUnprocessable) {
 		return api.GetProjectStats422Response{}, nil
-	} else if err == model.ErrNotFound {
+	} else if errors.Is(err, model.ErrNotFound) {
 		return api.GetProjectStats404Response{}, nil
 	} else if err != nil {
-		return nil, err
+		return nil, errInternalServer
 	}
 
 	return mapProjectStatsToAPIResponse(reply), nil

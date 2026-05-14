@@ -471,6 +471,7 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 		getStatsFn func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error)
 		wantStatus int
 		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "success",
@@ -519,7 +520,8 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
 				return model.ProjectStats{}, errors.New("service error")
 			},
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "internal server error",
 		},
 	}
 
@@ -543,6 +545,9 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			got, err := h.GetProjectStats(context.Background(), request)
 			if tt.wantErr {
 				require.Error(t, err)
+				if tt.wantErrMsg != "" {
+					require.EqualError(t, err, tt.wantErrMsg)
+				}
 				return
 			}
 			require.NoError(t, err)

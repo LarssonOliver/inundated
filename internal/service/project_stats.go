@@ -20,7 +20,7 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 
 	project, err := s.repository.GetProject(ctx, input.ProjectID)
 	if err != nil {
-		return model.ProjectStats{}, model.ErrNotFound
+		return model.ProjectStats{}, err
 	}
 
 	now := input.Now

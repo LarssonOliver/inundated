@@ -349,7 +349,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 	t.Run("project not found", func(t *testing.T) {
 		repo := &repository.RepoMock{
 			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
-				return model.Project{}, errors.New("db error")
+				return model.Project{}, model.ErrNotFound
 			},
 		}
 		s := service.NewService(repo)
@@ -360,6 +360,24 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 		})
 
 		require.ErrorIs(t, err, model.ErrNotFound)
+	})
+
+	t.Run("project lookup error is propagated", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, errors.New("db error")
+			},
+		}
+		s := service.NewService(repo)
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID: projectID,
+			Metric:    model.ProjectStatsMetricTimeSpent,
+		})
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "db error")
+		require.NotErrorIs(t, err, model.ErrNotFound)
 	})
 
 	t.Run("invalid interval", func(t *testing.T) {
