@@ -252,13 +252,18 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			SELECT b_start, b_end, ord
 			FROM unnest($2::timestamptz[], $3::timestamptz[]) WITH ORDINALITY AS b(b_start, b_end, ord)
 		),
+		bucket_window AS (
+			SELECT MIN(b_start) AS min_start, MAX(b_end) AS max_end
+			FROM input_buckets
+		),
 		matching_timespans AS (
 			SELECT t.id, t.start_time, t.end_time
 			FROM timespans t
+			CROSS JOIN bucket_window bw
 			WHERE t.deleted_at IS NULL AND EXISTS (
 				SELECT 1 FROM timespan_tags tt
 				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
-			)
+			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
 		)
 		SELECT
 			ib.b_start AS bucket_start,

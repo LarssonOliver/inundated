@@ -410,3 +410,22 @@ func TestAggregateTimeSpentByTagsAndBuckets_QueryError(t *testing.T) {
 	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
 	require.Error(t, err)
 }
+
+func TestAggregateTimeSpentByTagsAndBuckets_UsesCoarseBucketWindowPrefilter(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tagIDs := []uuid.UUID{uuid.New()}
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base, End: base.Add(1 * time.Hour)},
+	}
+
+	mock.ExpectQuery(`(?s)WITH input_buckets AS.*bucket_window AS.*t.start_time < bw.max_end.*t.end_time > bw.min_start`).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}).
+		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
+			AddRow(buckets[0].Start, buckets[0].End, float64(0)))
+
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	require.NoError(t, err)
+}
