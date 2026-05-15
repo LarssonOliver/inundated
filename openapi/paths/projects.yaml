@@ -4,15 +4,15 @@ projects:
     summary: List projects
     operationId: listProjects
     responses:
-      '200':
+      "200":
         description: List of projects
         content:
           application/json:
             schema:
               type: array
               items:
-                $ref: '../schemas/projects.yaml#/Project'
-      '400':
+                $ref: "../schemas/projects.yaml#/Project"
+      "400":
         description: Bad request
   post:
     tags: [projects]
@@ -23,34 +23,34 @@ projects:
       content:
         application/json:
           schema:
-            $ref: '../schemas/projects.yaml#/CreateProject'
+            $ref: "../schemas/projects.yaml#/CreateProject"
     responses:
-      '201':
+      "201":
         description: Project created
         content:
           application/json:
             schema:
-              $ref: '../schemas/projects.yaml#/Project'
-      '400':
+              $ref: "../schemas/projects.yaml#/Project"
+      "400":
         description: Bad request
 
 projects-id:
   parameters:
-    - $ref: '../parameters/shared.yaml#/projectIdPath'
+    - $ref: "../parameters/shared.yaml#/projectIdPath"
   get:
     tags: [projects]
     summary: Get project
     operationId: getProject
     parameters:
-      - $ref: '../parameters/shared.yaml#/includeQuery'
+      - $ref: "../parameters/shared.yaml#/includeQuery"
     responses:
-      '200':
+      "200":
         description: Project
         content:
           application/json:
             schema:
-              $ref: '../schemas/projects.yaml#/Project'
-      '404':
+              $ref: "../schemas/projects.yaml#/Project"
+      "404":
         description: Not found
   patch:
     tags: [projects]
@@ -61,24 +61,66 @@ projects-id:
       content:
         application/json:
           schema:
-            $ref: '../schemas/projects.yaml#/UpdateProject'
+            $ref: "../schemas/projects.yaml#/UpdateProject"
     responses:
-      '200':
+      "200":
         description: Updated project
         content:
           application/json:
             schema:
-              $ref: '../schemas/projects.yaml#/Project'
-      '400':
+              $ref: "../schemas/projects.yaml#/Project"
+      "400":
         description: Bad request
-      '404':
+      "404":
         description: Not found
   delete:
     tags: [projects]
     summary: Delete project
     operationId: deleteProject
     responses:
-      '204':
+      "204":
         description: Deleted
-      '404':
+      "404":
         description: Not found
+
+projects-id-stats:
+  get:
+    operationId: getProjectStats
+    summary: Get timeseries stats for a project
+    tags: [projects]
+    description: >
+      Returns aggregated timeseries data for a given metric on a project.
+      Data is bucketed by the requested interval granularity within the
+      specified time range.
+    parameters:
+      - $ref: "../parameters/shared.yaml#/projectIdPath"
+      - $ref: "../parameters/shared.yaml#/projectStatsMetrics"
+      - $ref: "../parameters/shared.yaml#/interval"
+      - $ref: "../parameters/shared.yaml#/granularity"
+      - $ref: "../parameters/shared.yaml#/timezone"
+    responses:
+      "200":
+        description: Timeseries data for the requested metric.
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/projects.yaml#/ProjectStats"
+            example:
+              project_id: "a8e6b57e-4863-4f53-abd5-edecea66382c"
+              metric: time_spent
+              interval: "2024-01-01T00:00:00Z/2024-03-31T23:59:59Z"
+              granularity: P1W
+              unit: seconds
+              series:
+                - interval: "2024-01-01T00:00:00Z/2024-01-08T00:00:00Z"
+                  value: 18000
+                - interval: "2024-01-08T00:00:00Z/2024-01-15T00:00:00Z"
+                  value: 25200
+      "400":
+        description: Invalid query parameters.
+      "404":
+        description: Project not found.
+      "422":
+        description: >
+          Unprocessable request — e.g. `from` is after `to`, or the
+          requested range exceeds the maximum allowed window.

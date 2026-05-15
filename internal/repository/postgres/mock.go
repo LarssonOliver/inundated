@@ -94,3 +94,8 @@ func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, tagIds []uu
 	args := m.Called(ctx, tagIds)
 	return args.Get(0).(time.Duration), args.Error(1)
 }
+
+func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	args := m.Called(ctx, tagIds, buckets)
+	return args.Get(0).([]model.BucketValue), args.Error(1)
+}

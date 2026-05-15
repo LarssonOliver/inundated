@@ -9,12 +9,12 @@ Project:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
     timeBudgetHours:
       type: number
       format: double
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
     totalTimeMs:
       type: integer
 
@@ -26,12 +26,12 @@ CreateProject:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
     timeBudgetHours:
       type: number
       format: double
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
 
 UpdateProject:
   type: object
@@ -41,9 +41,52 @@ UpdateProject:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
     timeBudgetHours:
       type: number
       format: double
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
+
+ProjectStats:
+  type: object
+  required:
+    - project_id
+    - metric
+    - interval
+    - granularity
+    - unit
+    - series
+  properties:
+    project_id:
+      type: string
+      format: uuid
+      description: The ID of the project this data belongs to.
+    metric:
+      type: string
+      description: The metric that was aggregated.
+      enum:
+        - time_spent
+    interval:
+      type: string
+      description: >
+        The effective time range of the response as an ISO 8601 interval,
+        always resolved to `{start}/{end}` form regardless of how the request
+        was expressed.
+      example: "2024-01-01T00:00:00Z/2024-03-31T23:59:59Z"
+    granularity:
+      type: string
+      description: The ISO 8601 duration used to bucket each series point.
+      example: P1W
+    unit:
+      type: string
+      description: >
+        The unit of the `value` field in each series point.
+        Allows clients to label axes correctly without hardcoding.
+      example: seconds
+    series:
+      type: array
+      description: Ordered list of aggregated data points.
+      items:
+        $ref: "./shared.yaml#/SeriesPoint"
+

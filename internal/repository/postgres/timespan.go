@@ -221,3 +221,92 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 
 	return *duration, nil
 }
+
+// AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
+func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	values := make([]model.BucketValue, len(buckets))
+	for i, bucket := range buckets {
+		if !bucket.End.After(bucket.Start) {
+			return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets: invalid bucket range: %w", model.ErrInvalidArgument)
+		}
+
+		values[i] = model.BucketValue{
+			Bucket: bucket,
+			Value:  0,
+		}
+	}
+
+	if len(buckets) == 0 || len(tagIds) == 0 {
+		return values, nil
+	}
+
+	bucketStarts := make([]time.Time, len(buckets))
+	bucketEnds := make([]time.Time, len(buckets))
+	for i, bucket := range buckets {
+		bucketStarts[i] = bucket.Start
+		bucketEnds[i] = bucket.End
+	}
+
+	const q = `
+		WITH input_buckets AS (
+			SELECT b_start, b_end, ord
+			FROM unnest($2::timestamptz[], $3::timestamptz[]) WITH ORDINALITY AS b(b_start, b_end, ord)
+		),
+		bucket_window AS (
+			SELECT MIN(b_start) AS min_start, MAX(b_end) AS max_end
+			FROM input_buckets
+		),
+		matching_timespans AS (
+			SELECT t.id, t.start_time, t.end_time
+			FROM timespans t
+			CROSS JOIN bucket_window bw
+			WHERE t.deleted_at IS NULL AND EXISTS (
+				SELECT 1 FROM timespan_tags tt
+				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
+			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
+		)
+		SELECT
+			ib.b_start AS bucket_start,
+			ib.b_end AS bucket_end,
+			COALESCE(
+				SUM(
+					EXTRACT(EPOCH FROM (LEAST(mt.end_time, ib.b_end) - GREATEST(mt.start_time, ib.b_start)))
+				) FILTER (WHERE mt.start_time < ib.b_end AND mt.end_time > ib.b_start),
+				0
+			) AS value_seconds
+		FROM input_buckets ib
+		LEFT JOIN matching_timespans mt
+			ON mt.start_time < ib.b_end AND mt.end_time > ib.b_start
+		GROUP BY ib.ord, ib.b_start, ib.b_end
+		ORDER BY ib.ord`
+
+	rows, err := r.db.Query(ctx, q, tagIds, bucketStarts, bucketEnds)
+	if err != nil {
+		return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets: %w", err)
+	}
+	defer rows.Close()
+
+	result := make([]model.BucketValue, 0, len(buckets))
+	for rows.Next() {
+		var start time.Time
+		var end time.Time
+		var valueSeconds float64
+
+		if err := rows.Scan(&start, &end, &valueSeconds); err != nil {
+			return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets scan: %w", err)
+		}
+
+		result = append(result, model.BucketValue{
+			Bucket: model.BucketRange{
+				Start: start,
+				End:   end,
+			},
+			Value: valueSeconds,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets rows: %w", err)
+	}
+
+	return result, nil
+}

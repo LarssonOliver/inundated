@@ -6,7 +6,9 @@ docs/CreateProject.md
 docs/CreateTag.md
 docs/CreateTimespan.md
 docs/Project.md
+docs/ProjectStats.md
 docs/ProjectsApi.md
+docs/SeriesPoint.md
 docs/Tag.md
 docs/TagsApi.md
 docs/Timespan.md
@@ -19,6 +21,8 @@ models/CreateProject.ts
 models/CreateTag.ts
 models/CreateTimespan.ts
 models/Project.ts
+models/ProjectStats.ts
+models/SeriesPoint.ts
 models/Tag.ts
 models/Timespan.ts
 models/UpdateProject.ts

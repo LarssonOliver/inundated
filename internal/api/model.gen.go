@@ -9,9 +9,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ProjectStatsMetric.
+const (
+	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
+)
+
+// Defines values for ProjectStatsMetrics.
+const (
+	ProjectStatsMetricsTimeSpent ProjectStatsMetrics = "time_spent"
+)
+
 // Defines values for GetProjectParamsInclude.
 const (
 	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
+)
+
+// Defines values for GetProjectStatsParamsMetric.
+const (
+	TimeSpent GetProjectStatsParamsMetric = "time_spent"
 )
 
 // Defines values for GetTagParamsInclude.
@@ -52,6 +67,39 @@ type Project struct {
 	TagIds          *TagIdList         `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64           `json:"timeBudgetHours,omitempty"`
 	TotalTimeMs     *int               `json:"totalTimeMs,omitempty"`
+}
+
+// ProjectStats defines model for ProjectStats.
+type ProjectStats struct {
+	// Granularity The ISO 8601 duration used to bucket each series point.
+	Granularity string `json:"granularity"`
+
+	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
+	Interval string `json:"interval"`
+
+	// Metric The metric that was aggregated.
+	Metric ProjectStatsMetric `json:"metric"`
+
+	// ProjectId The ID of the project this data belongs to.
+	ProjectId openapi_types.UUID `json:"project_id"`
+
+	// Series Ordered list of aggregated data points.
+	Series []SeriesPoint `json:"series"`
+
+	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
+	Unit string `json:"unit"`
+}
+
+// ProjectStatsMetric The metric that was aggregated.
+type ProjectStatsMetric string
+
+// SeriesPoint defines model for SeriesPoint.
+type SeriesPoint struct {
+	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{end}` form (e.g. `2024-01-01T00:00:00Z/2024-01-08T00:00:00Z`).
+	Interval string `json:"interval"`
+
+	// Value The aggregated metric value for this bucket.
+	Value float32 `json:"value"`
 }
 
 // Tag defines model for Tag.
@@ -96,17 +144,29 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// Granularity defines model for granularity.
+type Granularity = string
+
 // IncludeQuery defines model for includeQuery.
 type IncludeQuery = []string
 
+// Interval defines model for interval.
+type Interval = string
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
+
+// ProjectStatsMetrics defines model for projectStatsMetrics.
+type ProjectStatsMetrics string
 
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
+
+// Timezone defines model for timezone.
+type Timezone = string
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
@@ -116,6 +176,26 @@ type GetProjectParams struct {
 
 // GetProjectParamsInclude defines parameters for GetProject.
 type GetProjectParamsInclude string
+
+// GetProjectStatsParams defines parameters for GetProjectStats.
+type GetProjectStatsParams struct {
+	// Metric The metric to aggregate over time.
+	Metric GetProjectStatsParamsMetric `form:"metric" json:"metric"`
+
+	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
+	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
+	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
+
+	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+
+	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
+	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
+
+// GetProjectStatsParamsMetric defines parameters for GetProjectStats.
+type GetProjectStatsParamsMetric string
 
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {

@@ -18,9 +18,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ProjectStatsMetric.
+const (
+	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
+)
+
+// Defines values for ProjectStatsMetrics.
+const (
+	ProjectStatsMetricsTimeSpent ProjectStatsMetrics = "time_spent"
+)
+
 // Defines values for GetProjectParamsInclude.
 const (
 	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
+)
+
+// Defines values for GetProjectStatsParamsMetric.
+const (
+	TimeSpent GetProjectStatsParamsMetric = "time_spent"
 )
 
 // Defines values for GetTagParamsInclude.
@@ -61,6 +76,39 @@ type Project struct {
 	TagIds          *TagIdList         `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64           `json:"timeBudgetHours,omitempty"`
 	TotalTimeMs     *int               `json:"totalTimeMs,omitempty"`
+}
+
+// ProjectStats defines model for ProjectStats.
+type ProjectStats struct {
+	// Granularity The ISO 8601 duration used to bucket each series point.
+	Granularity string `json:"granularity"`
+
+	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
+	Interval string `json:"interval"`
+
+	// Metric The metric that was aggregated.
+	Metric ProjectStatsMetric `json:"metric"`
+
+	// ProjectId The ID of the project this data belongs to.
+	ProjectId openapi_types.UUID `json:"project_id"`
+
+	// Series Ordered list of aggregated data points.
+	Series []SeriesPoint `json:"series"`
+
+	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
+	Unit string `json:"unit"`
+}
+
+// ProjectStatsMetric The metric that was aggregated.
+type ProjectStatsMetric string
+
+// SeriesPoint defines model for SeriesPoint.
+type SeriesPoint struct {
+	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{end}` form (e.g. `2024-01-01T00:00:00Z/2024-01-08T00:00:00Z`).
+	Interval string `json:"interval"`
+
+	// Value The aggregated metric value for this bucket.
+	Value float32 `json:"value"`
 }
 
 // Tag defines model for Tag.
@@ -105,17 +153,29 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// Granularity defines model for granularity.
+type Granularity = string
+
 // IncludeQuery defines model for includeQuery.
 type IncludeQuery = []string
 
+// Interval defines model for interval.
+type Interval = string
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
+
+// ProjectStatsMetrics defines model for projectStatsMetrics.
+type ProjectStatsMetrics string
 
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
+
+// Timezone defines model for timezone.
+type Timezone = string
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
@@ -125,6 +185,26 @@ type GetProjectParams struct {
 
 // GetProjectParamsInclude defines parameters for GetProject.
 type GetProjectParamsInclude string
+
+// GetProjectStatsParams defines parameters for GetProjectStats.
+type GetProjectStatsParams struct {
+	// Metric The metric to aggregate over time.
+	Metric GetProjectStatsParamsMetric `form:"metric" json:"metric"`
+
+	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
+	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
+	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
+
+	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+
+	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
+	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
+
+// GetProjectStatsParamsMetric defines parameters for GetProjectStats.
+type GetProjectStatsParamsMetric string
 
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
@@ -245,6 +325,9 @@ type ClientInterface interface {
 
 	UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProjectStats request
+	GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTags request
 	ListTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -358,6 +441,18 @@ func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId ProjectIdP
 
 func (c *Client) UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProjectRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectStatsRequest(c.Server, projectId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -736,6 +831,106 @@ func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, con
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetProjectStatsRequest generates requests for GetProjectStats
+func NewGetProjectStatsRequest(server string, projectId ProjectIdPath, params *GetProjectStatsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/projects/%s/stats", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "metric", runtime.ParamLocationQuery, params.Metric); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Interval != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "interval", runtime.ParamLocationQuery, *params.Interval); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Granularity != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "granularity", runtime.ParamLocationQuery, *params.Granularity); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Timezone != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "timezone", runtime.ParamLocationQuery, *params.Timezone); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -1188,6 +1383,9 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
+	// GetProjectStatsWithResponse request
+	GetProjectStatsWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*GetProjectStatsResponse, error)
+
 	// ListTagsWithResponse request
 	ListTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
 
@@ -1330,6 +1528,28 @@ func (r UpdateProjectResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetProjectStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ProjectStats
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectStatsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1615,6 +1835,15 @@ func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, pro
 	return ParseUpdateProjectResponse(rsp)
 }
 
+// GetProjectStatsWithResponse request returning *GetProjectStatsResponse
+func (c *ClientWithResponses) GetProjectStatsWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*GetProjectStatsResponse, error) {
+	rsp, err := c.GetProjectStats(ctx, projectId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectStatsResponse(rsp)
+}
+
 // ListTagsWithResponse request returning *ListTagsResponse
 func (c *ClientWithResponses) ListTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTagsResponse, error) {
 	rsp, err := c.ListTags(ctx, reqEditors...)
@@ -1847,6 +2076,32 @@ func ParseUpdateProjectResponse(rsp *http.Response) (*UpdateProjectResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProjectStatsResponse parses an HTTP response from a GetProjectStatsWithResponse call
+func ParseGetProjectStatsResponse(rsp *http.Response) (*GetProjectStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectStats
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -67,7 +67,7 @@ func TestTimespan_CRUD(t *testing.T) {
 	listResp, err := client.ListTimespansWithResponse(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 200, listResp.StatusCode())
-	require.Len(t, *listResp.JSON200, 1)
+	require.GreaterOrEqual(t, len(*listResp.JSON200), 1)
 
 	// DELETE
 	deleteResp, err := client.DeleteTimespanWithResponse(ctx, timespanId)

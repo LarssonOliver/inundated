@@ -501,9 +501,9 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test GetTotalDurationByTags with duplicate tags",
-			tagIds: []uuid.UUID{tags[1], tags[1]},
-			want: 5 * time.Hour, // Should not double count the duration for tag[1]
+			name:    "Test GetTotalDurationByTags with duplicate tags",
+			tagIds:  []uuid.UUID{tags[1], tags[1]},
+			want:    5 * time.Hour, // Should not double count the duration for tag[1]
 			wantErr: false,
 		},
 	}
@@ -521,4 +521,95 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
+	m := memory.NewMemoryStore()
+	ctx := context.Background()
+
+	tags := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
+	for _, tagID := range tags {
+		_, err := m.CreateTag(ctx, model.Tag{Id: tagID, Name: "Tag", Color: "#FFFFFF"})
+		require.NoError(t, err)
+	}
+
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Matches both requested tags but must be counted once per bucket.
+	_, err := m.CreateTimespan(ctx, model.Timespan{
+		Name:      "T1",
+		StartTime: base.Add(15 * time.Minute),
+		EndTime:   base.Add(75 * time.Minute),
+		TagIds:    []uuid.UUID{tags[0], tags[1]},
+	})
+	require.NoError(t, err)
+
+	_, err = m.CreateTimespan(ctx, model.Timespan{
+		Name:      "T2",
+		StartTime: base.Add(60 * time.Minute),
+		EndTime:   base.Add(120 * time.Minute),
+		TagIds:    []uuid.UUID{tags[1]},
+	})
+	require.NoError(t, err)
+
+	// Never included in queries below.
+	_, err = m.CreateTimespan(ctx, model.Timespan{
+		Name:      "T3",
+		StartTime: base,
+		EndTime:   base.Add(2 * time.Hour),
+		TagIds:    []uuid.UUID{tags[2]},
+	})
+	require.NoError(t, err)
+
+	t.Run("split overlap and deduplicate by timespan", func(t *testing.T) {
+		buckets := []model.BucketRange{
+			{Start: base, End: base.Add(1 * time.Hour)},
+			{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
+		}
+
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{tags[0], tags[1], tags[1]}, buckets)
+		require.NoError(t, gotErr)
+		require.Len(t, got, 2)
+		require.Equal(t, buckets[0], got[0].Bucket)
+		require.Equal(t, buckets[1], got[1].Bucket)
+		require.InDelta(t, 45*60, got[0].Value, 0.0001)
+		require.InDelta(t, 75*60, got[1].Value, 0.0001)
+	})
+
+	t.Run("no matching tags yields zeros", func(t *testing.T) {
+		buckets := []model.BucketRange{
+			{Start: base, End: base.Add(1 * time.Hour)},
+			{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
+		}
+
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{uuid.New()}, buckets)
+		require.NoError(t, gotErr)
+		require.Len(t, got, 2)
+		require.InDelta(t, 0.0, got[0].Value, 0.0001)
+		require.InDelta(t, 0.0, got[1].Value, 0.0001)
+	})
+
+	t.Run("empty tag filter yields zeros in input order", func(t *testing.T) {
+		buckets := []model.BucketRange{
+			{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
+			{Start: base, End: base.Add(1 * time.Hour)},
+		}
+
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, nil, buckets)
+		require.NoError(t, gotErr)
+		require.Len(t, got, 2)
+		require.Equal(t, buckets[0], got[0].Bucket)
+		require.Equal(t, buckets[1], got[1].Bucket)
+		require.InDelta(t, 0.0, got[0].Value, 0.0001)
+		require.InDelta(t, 0.0, got[1].Value, 0.0001)
+	})
+
+	t.Run("invalid bucket returns invalid argument", func(t *testing.T) {
+		buckets := []model.BucketRange{
+			{Start: base.Add(2 * time.Hour), End: base.Add(2 * time.Hour)},
+		}
+
+		_, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{tags[0]}, buckets)
+		require.ErrorIs(t, gotErr, model.ErrInvalidArgument)
+	})
 }

@@ -14,6 +14,7 @@ openapi/paths/projects.yaml:
     - '#/projects-id/get'
     - '#/projects-id/delete'
     - '#/projects-id/patch'
+    - '#/projects-id-stats/get'
 openapi/paths/timespans.yaml:
   security-defined:
     - '#/timespans/get'

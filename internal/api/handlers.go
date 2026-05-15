@@ -22,6 +22,7 @@ type ProjectHandler interface {
 	CreateProject(ctx context.Context, request CreateProjectRequestObject) (CreateProjectResponseObject, error)
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
 	DeleteProject(ctx context.Context, request DeleteProjectRequestObject) (DeleteProjectResponseObject, error)
+	GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error)
 }
 
 type TimespanHandler interface {

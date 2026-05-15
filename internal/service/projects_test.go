@@ -278,3 +278,144 @@ func TestProjectService_DeleteProject(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectService_GetProjectStats(t *testing.T) {
+	projectID := uuid.New()
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	intervalRaw := "2024-01-01T00:00:00Z/2024-01-01T02:00:00Z"
+	granularityRaw := "PT1H"
+	timezoneRaw := "UTC"
+
+	t.Run("successful get project stats", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				require.Equal(t, projectID, id)
+				return model.Project{
+					Id:     projectID,
+					Name:   "Project A",
+					Color:  "#123456",
+					TagIds: []uuid.UUID{uuid.New()},
+				}, nil
+			},
+			AggregateTimeSpentByTagsAndBucketsFn: func(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+				require.NotEmpty(t, tagIds)
+				require.Len(t, buckets, 2)
+				require.True(t, buckets[0].Start.Equal(base))
+				require.True(t, buckets[0].End.Equal(base.Add(1*time.Hour)))
+				require.True(t, buckets[1].Start.Equal(base.Add(1*time.Hour)))
+				require.True(t, buckets[1].End.Equal(base.Add(2*time.Hour)))
+
+				return []model.BucketValue{
+					{Bucket: buckets[0], Value: 1800},
+					{Bucket: buckets[1], Value: 3600},
+				}, nil
+			},
+		}
+
+		s := service.NewService(repo)
+		got, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID:      projectID,
+			Metric:         model.ProjectStatsMetricTimeSpent,
+			IntervalRaw:    &intervalRaw,
+			GranularityRaw: &granularityRaw,
+			TimezoneRaw:    &timezoneRaw,
+			Now:            base.Add(10 * time.Hour),
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, projectID, got.ProjectID)
+		require.Equal(t, model.ProjectStatsMetricTimeSpent, got.Metric)
+		require.True(t, got.Interval.Start.Equal(base))
+		require.True(t, got.Interval.End.Equal(base.Add(2*time.Hour)))
+		require.Equal(t, "PT1H", got.Granularity)
+		require.Equal(t, "seconds", got.Unit)
+		require.Len(t, got.Series, 2)
+		require.InDelta(t, 1800, got.Series[0].Value, 0.0001)
+		require.InDelta(t, 3600, got.Series[1].Value, 0.0001)
+	})
+
+	t.Run("invalid metric", func(t *testing.T) {
+		repo := &repository.RepoMock{}
+		s := service.NewService(repo)
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID: projectID,
+			Metric:    model.ProjectStatsMetric("invalid_metric"),
+		})
+
+		require.ErrorIs(t, err, model.ErrInvalidArgument)
+	})
+
+	t.Run("project not found", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, model.ErrNotFound
+			},
+		}
+		s := service.NewService(repo)
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID: projectID,
+			Metric:    model.ProjectStatsMetricTimeSpent,
+		})
+
+		require.ErrorIs(t, err, model.ErrNotFound)
+	})
+
+	t.Run("project lookup error is propagated", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, errors.New("db error")
+			},
+		}
+		s := service.NewService(repo)
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID: projectID,
+			Metric:    model.ProjectStatsMetricTimeSpent,
+		})
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "db error")
+		require.NotErrorIs(t, err, model.ErrNotFound)
+	})
+
+	t.Run("invalid interval", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{Id: projectID}, nil
+			},
+		}
+		s := service.NewService(repo)
+		badInterval := "foo/bar"
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID:   projectID,
+			Metric:      model.ProjectStatsMetricTimeSpent,
+			IntervalRaw: &badInterval,
+		})
+
+		require.ErrorIs(t, err, model.ErrInvalidArgument)
+	})
+
+	t.Run("unprocessable interval", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+				return model.Project{
+					Id:     projectID,
+					TagIds: []uuid.UUID{uuid.New()},
+				}, nil
+			},
+		}
+		s := service.NewService(repo)
+		unprocessableInterval := "2024-01-01T00:00:00Z/2024-01-01T00:00:00Z"
+
+		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
+			ProjectID:   projectID,
+			Metric:      model.ProjectStatsMetricTimeSpent,
+			IntervalRaw: &unprocessableInterval,
+		})
+
+		require.ErrorIs(t, err, model.ErrUnprocessable)
+	})
+}
