@@ -78,6 +78,99 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 	}
 }
 
+func TestProject_GetStats_Semantics(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	createTag := func(name, color string) TagIdPath {
+		resp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+			Name:  name,
+			Color: color,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 201, resp.StatusCode())
+
+		return resp.JSON201.Id
+	}
+
+	tagA := createTag("Stats Semantic Tag A", "#aa1111")
+	tagB := createTag("Stats Semantic Tag B", "#11aa11")
+	tagC := createTag("Stats Semantic Tag C", "#1111aa")
+
+	projectTags := []TagIdPath{tagA, tagB}
+	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+		Name:   "Stats Semantic Project",
+		Color:  "#444444",
+		TagIds: &projectTags,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, projectResp.StatusCode())
+	projectID := projectResp.JSON201.Id
+
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	name1 := "semantic-ts1"
+	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		Name:      &name1,
+		StartTime: base.Add(15 * time.Minute),
+		EndTime:   base.Add(75 * time.Minute),
+		TagIds:    &[]TagIdPath{tagA, tagB},
+	})
+	require.NoError(t, err)
+
+	name2 := "semantic-ts2"
+	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		Name:      &name2,
+		StartTime: base.Add(60 * time.Minute),
+		EndTime:   base.Add(120 * time.Minute),
+		TagIds:    &[]TagIdPath{tagB},
+	})
+	require.NoError(t, err)
+
+	name3 := "semantic-ts3-ignored"
+	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		Name:      &name3,
+		StartTime: base,
+		EndTime:   base.Add(120 * time.Minute),
+		TagIds:    &[]TagIdPath{tagC},
+	})
+	require.NoError(t, err)
+
+	interval := base.Format(time.RFC3339) + "/" + base.Add(3*time.Hour).Format(time.RFC3339)
+	granularity := "PT1H"
+	timezone := "UTC"
+
+	statsResp, err := client.GetProjectStatsWithResponse(ctx, projectID, &GetProjectStatsParams{
+		Metric:      TimeSpent,
+		Interval:    &interval,
+		Granularity: &granularity,
+		Timezone:    &timezone,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 200, statsResp.StatusCode())
+	require.NotNil(t, statsResp.JSON200)
+
+	stats := statsResp.JSON200
+	require.Len(t, stats.Series, 3)
+
+	expectedIntervals := []string{
+		base.Format(time.RFC3339) + "/" + base.Add(1*time.Hour).Format(time.RFC3339),
+		base.Add(1*time.Hour).Format(time.RFC3339) + "/" + base.Add(2*time.Hour).Format(time.RFC3339),
+		base.Add(2*time.Hour).Format(time.RFC3339) + "/" + base.Add(3*time.Hour).Format(time.RFC3339),
+	}
+
+	expectedValues := []float64{
+		45 * 60, // split overlap from ts1
+		75 * 60, // ts1 tail + ts2, with ts1 deduped despite two matching tags
+		0,       // no overlapping timespans in third bucket
+	}
+
+	for i := range stats.Series {
+		require.Equal(t, expectedIntervals[i], stats.Series[i].Interval)
+		require.InDelta(t, expectedValues[i], float64(stats.Series[i].Value), 0.0001)
+	}
+}
+
 func TestProject_GetStats_Contract422(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
