@@ -233,11 +233,43 @@ func BuildTimeBuckets(interval ResolvedInterval, granularity ISO8601Duration, lo
 
 	buckets := make([]TimeBucket, 0, 16)
 	cur := start
+	firstBucket := true
 
 	for cur.Before(end) {
-		next, err := addISO8601Duration(cur, granularity, loc)
-		if err != nil {
-			return nil, err
+		var next time.Time
+
+		if firstBucket {
+			firstBucket = false
+
+			snapped, canSnap := snapToNextBoundary(cur, granularity, loc)
+			if canSnap {
+				// Use the snapped boundary only when it is strictly before the
+				// plain +granularity step, i.e. the start is mid-period.
+				// If the start is already on a boundary the snap equals the
+				// plain step, so we just fall through to the normal path.
+				regular, err := addISO8601Duration(cur, granularity, loc)
+				if err != nil {
+					return nil, err
+				}
+
+				if snapped.Before(regular) {
+					next = snapped
+				} else {
+					next = regular
+				}
+			} else {
+				var err error
+				next, err = addISO8601Duration(cur, granularity, loc)
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			var err error
+			next, err = addISO8601Duration(cur, granularity, loc)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if !next.After(cur) {
@@ -309,4 +341,63 @@ func hasNegativeDurationPart(d ISO8601Duration) bool {
 		d.Hours < 0 ||
 		d.Minutes < 0 ||
 		d.Seconds < 0
+}
+
+// snapToNextBoundary returns the next natural boundary for the dominant unit
+// of granularity, in the given location. If t is already exactly on a
+// boundary the *next* one is returned, keeping the same semantics as a normal
+// addISO8601Duration step.
+//
+// "Dominant unit" is the coarsest non-zero field in g (years > months > weeks
+// > days > hours > minutes > seconds).  Mixed durations like P1DT2H are not
+// boundary-aligned — they fall through to a plain addISO8601Duration call.
+func snapToNextBoundary(t time.Time, g ISO8601Duration, loc *time.Location) (time.Time, bool) {
+	t = t.In(loc)
+	y, mo, d := t.Date()
+	h, mi, _ := t.Clock()
+
+	// Only snap when exactly one "class" of unit is set.
+	dateUnits := boolInt(g.Years > 0) + boolInt(g.Months > 0) + boolInt(g.Weeks > 0) + boolInt(g.Days > 0)
+	timeUnits := boolInt(g.Hours > 0) + boolInt(g.Minutes > 0) + boolInt(g.Seconds > 0)
+	total := dateUnits + timeUnits
+	if total != 1 {
+		// Mixed or zero — no boundary snapping.
+		return time.Time{}, false
+	}
+
+	switch {
+	case g.Years > 0:
+		return time.Date(y+1, 1, 1, 0, 0, 0, 0, loc), true
+
+	case g.Months > 0:
+		return time.Date(y, mo+1, 1, 0, 0, 0, 0, loc), true
+
+	case g.Weeks > 0:
+		// Snap to the next Monday (start of ISO week).
+		daysUntil := (8 - int(t.Weekday())) % 7
+		if daysUntil == 0 {
+			daysUntil = 7
+		}
+		return time.Date(y, mo, d+daysUntil, 0, 0, 0, 0, loc), true
+
+	case g.Days > 0:
+		return time.Date(y, mo, d+1, 0, 0, 0, 0, loc), true
+
+	case g.Hours > 0:
+		return time.Date(y, mo, d, h+1, 0, 0, 0, loc), true
+
+	case g.Minutes > 0:
+		return time.Date(y, mo, d, h, mi+1, 0, 0, loc), true
+
+	default: // g.Seconds > 0
+		// Snap to next whole second (sub-second precision is not modelled).
+		return t.Truncate(time.Second).Add(time.Second), true
+	}
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

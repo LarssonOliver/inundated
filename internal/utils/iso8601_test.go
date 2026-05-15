@@ -223,14 +223,14 @@ func TestBuildTimeBuckets(t *testing.T) {
 		want := []utils.TimeBucket{
 			{
 				Start: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-				End:   time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Start: time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
-				End:   time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC),
+				Start: time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Start: time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC),
+				Start: time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
 				End:   time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC),
 			},
 		}
@@ -255,29 +255,123 @@ func TestBuildTimeBuckets(t *testing.T) {
 		want := []utils.TimeBucket{
 			{
 				Start: time.Date(2024, 1, 1, 14, 0, 0, 0, tz),
-				End:   time.Date(2024, 1, 2, 2, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 2, 0, 0, 0, 0, tz),
 			},
 			{
-				Start: time.Date(2024, 1, 2, 2, 0, 0, 0, tz),
-				End:   time.Date(2024, 1, 3, 2, 0, 0, 0, tz),
+				Start: time.Date(2024, 1, 2, 0, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 3, 0, 0, 0, 0, tz),
 			},
 			{
-				Start: time.Date(2024, 1, 3, 2, 0, 0, 0, tz),
-				End:   time.Date(2024, 1, 4, 2, 0, 0, 0, tz),
+				Start: time.Date(2024, 1, 3, 0, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 4, 0, 0, 0, 0, tz),
 			},
 			{
-				Start: time.Date(2024, 1, 4, 2, 0, 0, 0, tz),
-				End:   time.Date(2024, 1, 5, 2, 0, 0, 0, tz),
+				Start: time.Date(2024, 1, 4, 0, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 5, 0, 0, 0, 0, tz),
 			},
 			{
-				Start: time.Date(2024, 1, 5, 2, 0, 0, 0, tz),
+				Start: time.Date(2024, 1, 5, 0, 0, 0, 0, tz),
 				End:   time.Date(2024, 1, 5, 14, 0, 0, 0, tz),
 			},
 		}
 
 		for i := range want {
-			require.True(t, buckets[i].Start.Equal(want[i].Start))
-			require.True(t, buckets[i].End.Equal(want[i].End))
+			require.True(t, buckets[i].Start.Equal(want[i].Start), "Should be equal: %v vs %v", buckets[i].Start, want[i].Start)
+			require.True(t, buckets[i].End.Equal(want[i].End), "Should be equal: %v vs %v", buckets[i].End, want[i].End)
+		}
+	})
+
+	t.Run("hourly buckets snap to next whole hour", func(t *testing.T) {
+		// Start at :30 — first bucket should end at the next whole hour, then
+		// every subsequent bucket covers exactly one hour.
+		interval := utils.ResolvedInterval{
+			Start: mustRFC3339(t, "2024-01-01T00:30:00Z"),
+			End:   mustRFC3339(t, "2024-01-01T03:00:00Z"),
+		}
+
+		buckets, err := utils.BuildTimeBuckets(interval, utils.ISO8601Duration{Hours: 1}, time.UTC, 10)
+		require.NoError(t, err)
+		require.Len(t, buckets, 3)
+
+		want := []utils.TimeBucket{
+			{
+				Start: mustRFC3339(t, "2024-01-01T00:30:00Z"),
+				End:   mustRFC3339(t, "2024-01-01T01:00:00Z"), // snapped to :00
+			},
+			{
+				Start: mustRFC3339(t, "2024-01-01T01:00:00Z"),
+				End:   mustRFC3339(t, "2024-01-01T02:00:00Z"),
+			},
+			{
+				Start: mustRFC3339(t, "2024-01-01T02:00:00Z"),
+				End:   mustRFC3339(t, "2024-01-01T03:00:00Z"),
+			},
+		}
+
+		for i := range want {
+			require.True(t, buckets[i].Start.Equal(want[i].Start), "bucket %d start", i)
+			require.True(t, buckets[i].End.Equal(want[i].End), "bucket %d end", i)
+		}
+	})
+
+	t.Run("already-aligned start produces no stub first bucket", func(t *testing.T) {
+		// Start is exactly on a day boundary — buckets should be uniform with
+		// no shortened leading bucket.
+		interval := utils.ResolvedInterval{
+			Start: mustRFC3339(t, "2024-01-01T00:00:00Z"),
+			End:   mustRFC3339(t, "2024-01-03T00:00:00Z"),
+		}
+
+		buckets, err := utils.BuildTimeBuckets(interval, utils.ISO8601Duration{Days: 1}, time.UTC, 10)
+		require.NoError(t, err)
+		require.Len(t, buckets, 2)
+
+		want := []utils.TimeBucket{
+			{
+				Start: mustRFC3339(t, "2024-01-01T00:00:00Z"),
+				End:   mustRFC3339(t, "2024-01-02T00:00:00Z"),
+			},
+			{
+				Start: mustRFC3339(t, "2024-01-02T00:00:00Z"),
+				End:   mustRFC3339(t, "2024-01-03T00:00:00Z"),
+			},
+		}
+
+		for i := range want {
+			require.True(t, buckets[i].Start.Equal(want[i].Start), "bucket %d start", i)
+			require.True(t, buckets[i].End.Equal(want[i].End), "bucket %d end", i)
+		}
+	})
+
+	t.Run("monthly buckets snap to first of next month", func(t *testing.T) {
+		// Start mid-month; first bucket ends on the 1st of the following month.
+		interval := utils.ResolvedInterval{
+			Start: time.Date(2024, 3, 15, 6, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		}
+
+		buckets, err := utils.BuildTimeBuckets(interval, utils.ISO8601Duration{Months: 1}, time.UTC, 10)
+		require.NoError(t, err)
+		require.Len(t, buckets, 3)
+
+		want := []utils.TimeBucket{
+			{
+				Start: time.Date(2024, 3, 15, 6, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), // snapped to month boundary
+			},
+			{
+				Start: time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC),
+			},
+			{
+				Start: time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			},
+		}
+
+		for i := range want {
+			require.True(t, buckets[i].Start.Equal(want[i].Start), "bucket %d start", i)
+			require.True(t, buckets[i].End.Equal(want[i].End), "bucket %d end", i)
 		}
 	})
 
