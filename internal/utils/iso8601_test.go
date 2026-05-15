@@ -241,6 +241,46 @@ func TestBuildTimeBuckets(t *testing.T) {
 		}
 	})
 
+	t.Run("non-UTC timezone", func(t *testing.T) {
+		interval := utils.ResolvedInterval{
+			Start: mustRFC3339(t, "2024-01-01T12:00:00Z"),
+			End:   mustRFC3339(t, "2024-01-05T12:00:00Z"),
+		}
+
+		tz := time.FixedZone("UTC+2", 2*60*60)
+		buckets, err := utils.BuildTimeBuckets(interval, utils.ISO8601Duration{Days: 1}, tz, 10)
+		require.NoError(t, err)
+		require.Len(t, buckets, 5)
+
+		want := []utils.TimeBucket{
+			{
+				Start: time.Date(2024, 1, 1, 14, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 2, 2, 0, 0, 0, tz),
+			},
+			{
+				Start: time.Date(2024, 1, 2, 2, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 3, 2, 0, 0, 0, tz),
+			},
+			{
+				Start: time.Date(2024, 1, 3, 2, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 4, 2, 0, 0, 0, tz),
+			},
+			{
+				Start: time.Date(2024, 1, 4, 2, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 5, 2, 0, 0, 0, tz),
+			},
+			{
+				Start: time.Date(2024, 1, 5, 2, 0, 0, 0, tz),
+				End:   time.Date(2024, 1, 5, 14, 0, 0, 0, tz),
+			},
+		}
+
+		for i := range want {
+			require.True(t, buckets[i].Start.Equal(want[i].Start))
+			require.True(t, buckets[i].End.Equal(want[i].End))
+		}
+	})
+
 	t.Run("invalid bucket inputs", func(t *testing.T) {
 		tests := []struct {
 			name        string
