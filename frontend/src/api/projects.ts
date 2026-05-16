@@ -1,7 +1,12 @@
-import type { Project } from "@/model";
-import { ProjectsApi as GeneratedProjectsApi, GetProjectIncludeEnum } from "@/api/generated";
+import type { Project, ProjectStats } from "@/model";
+import {
+  ProjectsApi as GeneratedProjectsApi,
+  GetProjectIncludeEnum,
+  ProjectStatsMetricEnum,
+} from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";
+import { projectStatsMapper } from "./mappers/projectStatsMapper";
 
 export interface ProjectsApi {
   listProjects(): Promise<Project[]>;
@@ -9,6 +14,13 @@ export interface ProjectsApi {
   createProject(project: Omit<Project, "id">): Promise<Project>;
   updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project>;
   deleteProject(id: string): Promise<void>;
+  getProjectStats(
+    projectId: string,
+    metric: string,
+    interval: string,
+    granularity: string,
+    timezone: string,
+  ): Promise<ProjectStats>;
 }
 
 const defaultGeneratedApi = new GeneratedProjectsApi(ApiConfig);
@@ -44,6 +56,23 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
 
     async deleteProject(id: string): Promise<void> {
       return await api.deleteProject({ projectId: id });
+    },
+
+    async getProjectStats(
+      projectId: string,
+      metric: string,
+      interval: string,
+      granularity: string,
+      timezone: string,
+    ): Promise<ProjectStats> {
+      const response = await api.getProjectStats({
+        projectId,
+        metric: metric as ProjectStatsMetricEnum,
+        interval,
+        granularity,
+        timezone,
+      });
+      return projectStatsMapper.fromApi(response);
     },
   };
 }

@@ -12,7 +12,7 @@
           @delete="deleteProject"
         />
       </div>
-      <div class="chart-container">
+      <div v-if="!isNewProject" class="chart-container">
         <Doughnut
           :data="{
             labels: ['Time Spent', 'Remaining Time'],
@@ -26,7 +26,7 @@
                       (project?.totalTimeMs || 0) / (1000 * 60 * 60),
                   ),
                 ],
-                backgroundColor: [nord.nord14, nord.nord2],
+                backgroundColor: [nord.nord14, nord.nord3],
                 borderColor: nord.nordc0,
                 borderWidth: 2,
               },

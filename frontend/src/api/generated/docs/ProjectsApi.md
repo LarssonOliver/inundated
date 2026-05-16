@@ -240,7 +240,7 @@ async function example() {
     projectId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // 'time_spent' | The metric to aggregate over time.
     metric: time_spent,
-    // string | The time range to query as an ISO 8601 interval. Supports all three forms: - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z` Defaults to `P30D/{now}` (the last 30 days) if omitted.  (optional)
+    // string | The time range to query as an ISO 8601 interval. Supports all three forms: - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z` Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported. Defaults to `P30D/{now}` (the last 30 days) if omitted.  (optional)
     interval: 2024-01-01T00:00:00Z/2024-03-31T23:59:59Z,
     // string | The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.  (optional)
     granularity: PT1M,
@@ -267,7 +267,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **projectId** | `string` |  | [Defaults to `undefined`] |
 | **metric** | `time_spent` | The metric to aggregate over time. | [Defaults to `undefined`] [Enum: time_spent] |
-| **interval** | `string` | The time range to query as an ISO 8601 interval. Supports all three forms: - &#x60;{start}/{end}&#x60; — explicit start and end datetimes: &#x60;2024-01-01T00:00:00Z/2024-03-31T23:59:59Z&#x60; - &#x60;{start}/{duration}&#x60; — start datetime and a duration: &#x60;2024-01-01T00:00:00Z/P3M&#x60; - &#x60;{duration}/{end}&#x60; — a duration ending at a datetime: &#x60;P30D/2024-03-31T23:59:59Z&#x60; Defaults to &#x60;P30D/{now}&#x60; (the last 30 days) if omitted.  | [Optional] [Defaults to `undefined`] |
+| **interval** | `string` | The time range to query as an ISO 8601 interval. Supports all three forms: - &#x60;{start}/{end}&#x60; — explicit start and end datetimes: &#x60;2024-01-01T00:00:00Z/2024-03-31T23:59:59Z&#x60; - &#x60;{start}/{duration}&#x60; — start datetime and a duration: &#x60;2024-01-01T00:00:00Z/P3M&#x60; - &#x60;{duration}/{end}&#x60; — a duration ending at a datetime: &#x60;P30D/2024-03-31T23:59:59Z&#x60; Datetime values must be full RFC 3339 timestamps including timezone (for example &#x60;...Z&#x60; or &#x60;...+01:00&#x60;). Duration/duration intervals are not supported. Defaults to &#x60;P30D/{now}&#x60; (the last 30 days) if omitted.  | [Optional] [Defaults to `undefined`] |
 | **granularity** | `string` | The bucket size for each data point, expressed as an ISO 8601 duration. Common values: &#x60;PT1M&#x60; (minute), &#x60;PT1H&#x60; (hour), &#x60;P1D&#x60; (day), &#x60;P1W&#x60; (week), &#x60;P1M&#x60; (month). Defaults to &#x60;P1D&#x60;.  | [Optional] [Defaults to `&#39;P1D&#39;`] |
 | **timezone** | `string` | IANA timezone used for bucketing (e.g. &#x60;Europe/Stockholm&#x60;). Defaults to UTC. Affects how day/week/month boundaries are computed.  | [Optional] [Defaults to `&#39;UTC&#39;`] |
 
