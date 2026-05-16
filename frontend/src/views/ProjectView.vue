@@ -4,35 +4,28 @@
     <h2 v-else>New Project</h2>
     <div class="content">
       <div class="project-edit">
-        <ProjectEdit
-          v-model="project"
-          :is-new-project="isNewProject"
-          @create="createProject"
-          @save="saveProject"
-          @delete="deleteProject"
-        />
+        <ProjectEdit v-model="project" :is-new-project="isNewProject" @create="createProject" @save="saveProject"
+          @delete="deleteProject" />
       </div>
       <div v-if="!isNewProject" class="chart-container">
-        <Doughnut
-          :data="{
-            labels: ['Time Spent', 'Remaining Time'],
-            datasets: [
-              {
-                data: [
+        <Doughnut :data="{
+          labels: ['Time Spent', 'Remaining Time'],
+          datasets: [
+            {
+              data: [
+                (project?.totalTimeMs || 0) / (1000 * 60 * 60),
+                Math.max(
+                  0,
+                  (project?.timeBudgetHours || 0) -
                   (project?.totalTimeMs || 0) / (1000 * 60 * 60),
-                  Math.max(
-                    0,
-                    (project?.timeBudgetHours || 0) -
-                      (project?.totalTimeMs || 0) / (1000 * 60 * 60),
-                  ),
-                ],
-                backgroundColor: [nord.nord14, nord.nord3],
-                borderColor: nord.nordc0,
-                borderWidth: 2,
-              },
-            ],
-          }"
-          :options="{
+                ),
+              ],
+              backgroundColor: [nord.nord14, nord.nord3],
+              borderColor: nord.nordc0,
+              borderWidth: 2,
+            },
+          ],
+        }" :options="{
             responsive: true,
             plugins: {
               tooltip: {
@@ -45,10 +38,10 @@
                 },
               },
             },
-          }"
-        />
+          }" />
       </div>
     </div>
+    {{ projectStats }}
   </div>
   <NotFoundView v-else />
 </template>
@@ -63,6 +56,7 @@ import { newProjectWithDefaults } from "@/helpers/project";
 import { Doughnut } from "vue-chartjs";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { nord } from "@/helpers/nord";
+import type { ProjectStats } from "@/model";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -74,9 +68,10 @@ const isNewProject = computed(() => route.name === "New Project");
 
 // Reactive state
 const project = ref(newProjectWithDefaults());
+const projectStats = ref<ProjectStats | undefined>(undefined);
 const notFound = ref(false);
 
-async function updateProject(id: string) {
+async function updateProject(id: string, fetchStats = true) {
   // First try to get the project from the store if it's cached
   const storeResult = projectsStore.getProjectById(id);
   if (storeResult) {
@@ -88,6 +83,15 @@ async function updateProject(id: string) {
     const result = await projectsStore.fetchDetailedProjectById(id);
     if (result) {
       project.value = result;
+    }
+    if (fetchStats) {
+      projectStats.value = await projectsStore.fetchProjectStats(
+        id,
+        "time_spent",
+        "",
+        "",
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+      );
     }
   } catch {
     notFound.value = true;

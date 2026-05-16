@@ -14,7 +14,7 @@ export interface ProjectsApi {
   createProject(project: Omit<Project, "id">): Promise<Project>;
   updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project>;
   deleteProject(id: string): Promise<void>;
-  getProjectStats(
+  fetchProjectStats(
     projectId: string,
     metric: string,
     interval: string,
@@ -58,7 +58,7 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
       return await api.deleteProject({ projectId: id });
     },
 
-    async getProjectStats(
+    async fetchProjectStats(
       projectId: string,
       metric: string,
       interval: string,

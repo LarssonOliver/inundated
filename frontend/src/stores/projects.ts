@@ -1,5 +1,5 @@
 import { projectsApi, type ProjectsApi } from "@/api/projects";
-import type { Project } from "@/model";
+import type { Project, ProjectStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -124,6 +124,16 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       projects.value.delete(id);
     }
 
+    async function fetchProjectStats(
+      projectId: string,
+      metric: string,
+      interval: string,
+      granularity: string,
+      timezone: string,
+    ): Promise<ProjectStats> {
+      return await api.fetchProjectStats(projectId, metric, interval, granularity, timezone);
+    }
+
     return {
       projects: readOnlyProjects,
       fetchProjects,
@@ -132,6 +142,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       fetchDetailedProjectById,
       updateProject,
       deleteProject,
+      fetchProjectStats,
     };
   });
 }

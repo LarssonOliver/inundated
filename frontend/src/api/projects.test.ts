@@ -135,7 +135,7 @@ describe("projects API", () => {
     });
 
     const sut = createProjectsApi(api);
-    await sut.getProjectStats("proj1", "timeSpent", "2023-01-01/2023-01-31", "daily", "UTC");
+    await sut.fetchProjectStats("proj1", "timeSpent", "2023-01-01/2023-01-31", "daily", "UTC");
 
     expect(api.getProjectStats).toHaveBeenCalledWith({
       projectId: "proj1",

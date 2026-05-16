@@ -27,6 +27,7 @@ describe("projects store", () => {
       createProject: vi.fn(),
       updateProject: vi.fn(),
       deleteProject: vi.fn(),
+      fetchProjectStats: vi.fn(),
     };
 
     useStore = __test__.createProjectsStore(api);
@@ -166,5 +167,24 @@ describe("projects store", () => {
     api.getProject.mockRejectedValue(new Error());
     const store = useStore();
     await expect(store.fetchDetailedProjectById("missing")).rejects.toThrow();
+  });
+
+  it("fetch project stats", async () => {
+    const stats = {
+      projectId: "1",
+      metric: "time",
+      interval: "2024-01",
+      granularity: "day",
+      unit: "ms",
+      series: [
+        { interval: "2024-01-01", value: 1000 },
+        { interval: "2024-01-02", value: 2000 },
+      ],
+    };
+
+    api.fetchProjectStats.mockResolvedValue(stats);
+    const result = await useStore().fetchProjectStats("1", "time", "2024-01", "day", "UTC");
+    expect(api.fetchProjectStats).toHaveBeenCalledWith("1", "time", "2024-01", "day", "UTC");
+    expect(result).toEqual(stats);
   });
 });
