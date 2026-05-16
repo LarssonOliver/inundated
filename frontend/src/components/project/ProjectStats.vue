@@ -69,7 +69,7 @@ async function updateProjectStats() {
 watch(
   () => props.projectId,
   async (newId, oldId) => {
-    if (newId === oldId) {
+    if (!newId || newId === oldId) {
       // No need to refetch if the ID hasn't changed
       return;
     }
