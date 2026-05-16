@@ -7,41 +7,8 @@
         <ProjectEdit v-model="project" :is-new-project="isNewProject" @create="createProject" @save="saveProject"
           @delete="deleteProject" />
       </div>
-      <div v-if="!isNewProject" class="chart-container">
-        <Doughnut :data="{
-          labels: ['Time Spent', 'Remaining Time'],
-          datasets: [
-            {
-              data: [
-                (project?.totalTimeMs || 0) / (1000 * 60 * 60),
-                Math.max(
-                  0,
-                  (project?.timeBudgetHours || 0) -
-                  (project?.totalTimeMs || 0) / (1000 * 60 * 60),
-                ),
-              ],
-              backgroundColor: [nord.nord14, nord.nord3],
-              borderColor: nord.nordc0,
-              borderWidth: 2,
-            },
-          ],
-        }" :options="{
-            responsive: true,
-            plugins: {
-              tooltip: {
-                callbacks: {
-                  label: function (context) {
-                    const label = context.label || '';
-                    const value = context.parsed || 0;
-                    return `${label}: ${value}h`;
-                  },
-                },
-              },
-            },
-          }" />
-      </div>
+      <ProjectStats v-if="!isNewProject" :project-id="project.id" />
     </div>
-    {{ projectStats }}
   </div>
   <NotFoundView v-else />
 </template>
@@ -49,16 +16,11 @@
 <script setup lang="ts">
 import NotFoundView from "@/views/NotFoundView.vue";
 import ProjectEdit from "@/components/project/ProjectEdit.vue";
+import ProjectStats from "@/components/project/ProjectStats.vue";
 import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
-import { Doughnut } from "vue-chartjs";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { nord } from "@/helpers/nord";
-import type { ProjectStats } from "@/model";
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -68,10 +30,9 @@ const isNewProject = computed(() => route.name === "New Project");
 
 // Reactive state
 const project = ref(newProjectWithDefaults());
-const projectStats = ref<ProjectStats | undefined>(undefined);
 const notFound = ref(false);
 
-async function updateProject(id: string, fetchStats = true) {
+async function updateProject(id: string) {
   // First try to get the project from the store if it's cached
   const storeResult = projectsStore.getProjectById(id);
   if (storeResult) {
@@ -83,15 +44,6 @@ async function updateProject(id: string, fetchStats = true) {
     const result = await projectsStore.fetchDetailedProjectById(id);
     if (result) {
       project.value = result;
-    }
-    if (fetchStats) {
-      projectStats.value = await projectsStore.fetchProjectStats(
-        id,
-        "time_spent",
-        "",
-        "",
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-      );
     }
   } catch {
     notFound.value = true;
@@ -142,15 +94,13 @@ async function deleteProject() {
 
 .content {
   display: flex;
+  flex-direction: column;
 }
 
 .project-edit {
   flex: 1;
   max-width: 400px;
-}
-
-.chart-container {
-  margin-left: 2em;
+  margin-bottom: 2em;
 }
 
 h2 {
