@@ -29,7 +29,7 @@
           ),
           datasets: [
             {
-              label: label,
+              label: 'Time Spent',
               data: projectStats.series.map((point) => point.value * convertToHoursFactor),
               backgroundColor: nord.nord14,
             },
@@ -122,18 +122,6 @@ const presetDates = ref<PresetDate[]>([
     value: [startOfYear(subMonths(new Date(), 12)), endOfYear(subMonths(new Date(), 12))],
   },
 ]);
-
-const label = computed(() => {
-  if (!projectStats.value) {
-    return "";
-  }
-  switch (projectStats.value.metric) {
-    case "time_spent":
-      return "Time Spent";
-    default:
-      return projectStats.value.metric;
-  }
-});
 
 const convertToHoursFactor = computed(() => {
   if (!projectStats.value) {
