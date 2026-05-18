@@ -3,34 +3,55 @@
     <h2>Project Statistics</h2>
     <div class="chart-title-container">
       <p>Total time spent during period: {{ periodTotalHours.toFixed(2) }} hours</p>
-
+      <div class="date-picker">
+        <VueDatePicker
+          v-model="pickedRange"
+          dark
+          range
+          multi-calendars
+          :input-attrs="{
+            clearable: false,
+          }"
+          :time-config="{
+            enableTimePicker: false,
+          }"
+          :preset-dates="presetDates"
+        />
+      </div>
     </div>
-    <Bar v-if="projectStats" :data="{
-      labels: projectStats.series.map(point => formatRange(point.interval, projectStats?.granularity
-        || 'P1D')),
-      datasets: [
-        {
-          label: label,
-          data: projectStats.series.map((point) => point.value * convertToHoursFactor),
-          backgroundColor: nord.nord14,
-        },
-      ],
-    }" :options="{
-      responsive: true,
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.dataset.label || '';
-              const value = context.parsed.y || 0;
-              return `${label}: ${value}h`;
+    <div class="chart-container">
+      <Bar
+        v-if="projectStats"
+        class="chart"
+        :data="{
+          labels: projectStats.series.map((point) =>
+            formatRange(point.interval, projectStats?.granularity || 'P1D'),
+          ),
+          datasets: [
+            {
+              label: label,
+              data: projectStats.series.map((point) => point.value * convertToHoursFactor),
+              backgroundColor: nord.nord14,
+            },
+          ],
+        }"
+        :options="{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const label = context.dataset.label || '';
+                  const value = context.parsed.y || 0;
+                  return `${label}: ${value}h`;
+                },
+              },
             },
           },
-        },
-      },
-    }" />
-    {{ props.projectId }}
-    {{ projectStats }}
+        }"
+      />
+    </div>
   </div>
 </template>
 
@@ -38,9 +59,31 @@
 import { Bar } from "vue-chartjs";
 import type { ProjectStats } from "@/model";
 import { useProjectsStore } from "@/stores/projects";
-import { Chart as ChartJS, Tooltip, Legend, BarElement, CategoryScale, LinearScale, Title } from "chart.js";
+import {
+  Chart as ChartJS,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Title,
+} from "chart.js";
 import { computed, ref, watch } from "vue";
 import { nord } from "@/helpers/nord";
+import {
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subMonths,
+  subWeeks,
+  type Day,
+} from "date-fns";
+
+import { type PresetDate, VueDatePicker } from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css"; // Todo: create own style to match nord theme
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
@@ -50,7 +93,35 @@ const props = defineProps<{
   projectId: string;
 }>();
 
+const now = new Date();
+const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate() + 1, 0, 0); // Default to last 30 days
+const rangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
+
 const projectStats = ref<ProjectStats | undefined>();
+
+const weekCfg = { weekStartsOn: 1 as Day }; // Todo: make this configurable based on user locale
+
+const presetDates = ref<PresetDate[]>([
+  { label: "This week", value: [startOfWeek(new Date(), weekCfg), endOfWeek(new Date(), weekCfg)] },
+  {
+    label: "Last week",
+    value: [
+      startOfWeek(subWeeks(new Date(), 1), weekCfg),
+      endOfWeek(subWeeks(new Date(), 1), weekCfg),
+    ],
+  },
+  { label: "This month", value: [startOfMonth(new Date()), endOfMonth(new Date())] },
+  {
+    label: "Last month",
+    value: [startOfMonth(subMonths(new Date(), 1)), endOfMonth(subMonths(new Date(), 1))],
+  },
+  { label: "This year", value: [startOfYear(new Date()), endOfYear(new Date())] },
+  {
+    label: "Last year",
+    value: [startOfYear(subMonths(new Date(), 12)), endOfYear(subMonths(new Date(), 12))],
+  },
+]);
 
 const label = computed(() => {
   if (!projectStats.value) {
@@ -62,7 +133,7 @@ const label = computed(() => {
     default:
       return projectStats.value.metric;
   }
-})
+});
 
 const convertToHoursFactor = computed(() => {
   if (!projectStats.value) {
@@ -80,35 +151,69 @@ const convertToHoursFactor = computed(() => {
     default:
       return 1;
   }
-})
+});
 
 const periodTotalHours = computed(() => {
   if (!projectStats.value) {
     return 0;
   }
-  return projectStats.value.series.reduce((total, point) => total + point.value, 0) * convertToHoursFactor.value;
-})
+  return (
+    projectStats.value.series.reduce((total, point) => total + point.value, 0) *
+    convertToHoursFactor.value
+  );
+});
 
-async function updateProjectStats() {
+const iso8601Range = computed(() => {
+  if (pickedRange.value.length !== 2) {
+    return "";
+  }
+  const [start, end] = pickedRange.value;
+  return `${start.toISOString()}/${end.toISOString()}`;
+});
+
+const granularityFromPickedRange = computed(() => {
+  if (pickedRange.value.length !== 2) {
+    return "P1D";
+  }
+  const [start, end] = pickedRange.value;
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays <= 31) {
+    return "P1D"; // Daily for up to a week
+  } else if (diffDays <= 365) {
+    return "P1M"; // Monthly for up to a year
+  } else {
+    return "P1Y"; // Yearly for longer periods
+  }
+});
+
+async function updateProjectStats(range: string) {
   try {
-    const result = await projectsStore.fetchProjectStats(props.projectId, "time_spent", "", "P1D",
-      Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const result = await projectsStore.fetchProjectStats(
+      props.projectId,
+      "time_spent",
+      range,
+      granularityFromPickedRange.value,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
     if (result) {
       projectStats.value = result;
     }
-  } catch {
-  }
+  } catch {}
 }
 
 watch(
-  () => props.projectId,
-  async (newId, oldId) => {
-    if (!newId || newId === oldId) {
+  () => [props.projectId, iso8601Range.value],
+  async ([newId, newRange], old) => {
+    const [oldId, oldRange] = old ?? [];
+    if (!newId || !newRange || (newId === oldId && newRange === oldRange)) {
       // No need to refetch if the ID hasn't changed
       return;
     }
 
-    updateProjectStats();
+    console.log("Updating project stats for project", newId, "with range", newRange);
+
+    updateProjectStats(newRange || "");
   },
   { immediate: true },
 );
@@ -158,4 +263,18 @@ function formatRange(interval: string, granularity: string): string {
 .chart-title-container {
   display: flex;
 }
-</style
+
+.date-picker {
+  margin-left: auto;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+.chart {
+  height: 40vh;
+  max-height: 400px;
+}
+</style>

@@ -4,8 +4,13 @@
     <h2 v-else>New Project</h2>
     <div class="content">
       <div class="project-edit">
-        <ProjectEdit v-model="project" :is-new-project="isNewProject" @create="createProject" @save="saveProject"
-          @delete="deleteProject" />
+        <ProjectEdit
+          v-model="project"
+          :is-new-project="isNewProject"
+          @create="createProject"
+          @save="saveProject"
+          @delete="deleteProject"
+        />
       </div>
       <ProjectStats v-if="!isNewProject" :project-id="project.id" />
     </div>
