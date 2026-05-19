@@ -199,8 +199,6 @@ watch(
       return;
     }
 
-    console.log("Updating project stats for project", newId, "with range", newRange);
-
     updateProjectStats(newRange || "");
   },
   { immediate: true },
