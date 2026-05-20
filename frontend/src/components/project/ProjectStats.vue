@@ -121,6 +121,10 @@ const presetDates = ref<PresetDate[]>([
     label: "Last year",
     value: [startOfYear(subMonths(new Date(), 12)), endOfYear(subMonths(new Date(), 12))],
   },
+  {
+    label: "All time",
+    value: [new Date(0), endOfYear(new Date())],
+  },
 ]);
 
 const convertToHoursFactor = computed(() => {
@@ -262,5 +266,68 @@ function formatRange(interval: string, granularity: string): string {
 .chart {
   height: 40vh;
   max-height: 400px;
+}
+</style>
+
+<style>
+.dp__theme_dark {
+  --dp-background-color: var(--nord0);
+  --dp-text-color: var(--nord4);
+  --dp-hover-color: var(--nord2);
+  --dp-hover-text-color: var(--nord5);
+  --dp-hover-icon-color: var(--nord3);
+  --dp-primary-color: var(--nord10);
+  --dp-primary-disabled-color: var(--nord9);
+  --dp-primary-text-color: var(--nord6);
+  --dp-secondary-color: var(--nord3);
+  --dp-border-color: var(--nord0);
+  --dp-menu-border-color: var(--nord1);
+  --dp-border-color-hover: var(--nord0);
+  --dp-border-color-focus: var(--nord9);
+  --dp-disabled-color: var(--nord2);
+  --dp-disabled-color-text: var(--nord3);
+  --dp-scroll-bar-background: var(--nord1);
+  --dp-scroll-bar-color: var(--nord2);
+  --dp-success-color: var(--nord14);
+  --dp-success-color-disabled: var(--nord7);
+  --dp-icon-color: var(--nord4);
+  --dp-danger-color: var(--nord11);
+  --dp-marker-color: var(--nord11);
+  --dp-tooltip-color: var(--nord2);
+  --dp-highlight-color: rgba(94, 129, 172, 0.2);
+  --dp-range-between-dates-background-color: var(--nord1);
+  --dp-range-between-dates-text-color: var(--nord5);
+  --dp-range-between-border-color: var(--nord1);
+
+  --dp-font-family: inherit;
+  --dp-border-radius: 0;
+  --dp-cell-border-radius: 0;
+  --dp-common-transition: all 0.1s ease-in;
+
+  --dp-button-height: 35px;
+  --dp-month-year-row-height: 35px;
+  --dp-month-year-row-button-size: 35px;
+  --dp-button-icon-height: 20px;
+  --dp-cell-size: 35px;
+  --dp-cell-padding: 5px;
+  --dp-common-padding: 10px;
+  --dp-input-icon-padding: 35px;
+  --dp-input-padding: 6px 30px 6px 12px;
+  --dp-menu-min-width: 260px;
+  --dp-action-buttons-padding: 2px 5px;
+  --dp-row-margin: 5px 0;
+  --dp-calendar-header-cell-padding: 0.5rem;
+  --dp-two-calendars-spacing: 10px;
+  --dp-overlay-col-padding: 3px;
+  --dp-time-inc-dec-button-size: 32px;
+  --dp-menu-padding: 6px 8px;
+
+  --dp-font-size: 1rem;
+  --dp-preview-font-size: 0.8rem;
+  --dp-time-font-size: 0.8rem;
+
+  --dp-animation-duration: 0.1s;
+  --dp-menu-appear-transition-timing: cubic-bezier(0.4, 0, 1, 1);
+  --dp-transition-timing: ease-out;
 }
 </style>
