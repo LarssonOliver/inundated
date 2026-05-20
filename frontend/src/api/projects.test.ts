@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./projects";
-import type { ProjectsApi } from "./generated";
+import type { ProjectsApi, ProjectStatsMetricEnum } from "./generated";
 
 const { createProjectsApi } = __test__;
 
@@ -11,6 +11,7 @@ function mockGeneratedApi(): Mocked<ProjectsApi> {
     createProject: vi.fn(),
     updateProject: vi.fn(),
     deleteProject: vi.fn(),
+    getProjectStats: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -120,6 +121,28 @@ describe("projects API", () => {
 
     expect(api.deleteProject).toHaveBeenCalledWith({
       projectId: "dead-id",
+    });
+  });
+
+  it("getProjectStats calls API with correct parameters", async () => {
+    api.getProjectStats.mockResolvedValue({
+      projectId: "proj1",
+      metric: "time_spent",
+      interval: "2023-01-01/2023-01-31",
+      granularity: "daily",
+      unit: "milliseconds",
+      series: [],
+    });
+
+    const sut = createProjectsApi(api);
+    await sut.fetchProjectStats("proj1", "timeSpent", "2023-01-01/2023-01-31", "daily", "UTC");
+
+    expect(api.getProjectStats).toHaveBeenCalledWith({
+      projectId: "proj1",
+      metric: "timeSpent" as ProjectStatsMetricEnum,
+      interval: "2023-01-01/2023-01-31",
+      granularity: "daily",
+      timezone: "UTC",
     });
   });
 });

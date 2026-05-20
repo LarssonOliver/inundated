@@ -2,13 +2,18 @@
   <div v-if="!notFound" class="project-page">
     <h2 v-if="!isNewProject">Project Details</h2>
     <h2 v-else>New Project</h2>
-    <ProjectEdit
-      v-model="project"
-      :is-new-project="isNewProject"
-      @create="createProject"
-      @save="saveProject"
-      @delete="deleteProject"
-    />
+    <div class="content">
+      <div class="project-edit">
+        <ProjectEdit
+          v-model="project"
+          :is-new-project="isNewProject"
+          @create="createProject"
+          @save="saveProject"
+          @delete="deleteProject"
+        />
+      </div>
+      <ProjectStats v-if="!isNewProject" :project-id="project.id" />
+    </div>
   </div>
   <NotFoundView v-else />
 </template>
@@ -16,6 +21,7 @@
 <script setup lang="ts">
 import NotFoundView from "@/views/NotFoundView.vue";
 import ProjectEdit from "@/components/project/ProjectEdit.vue";
+import ProjectStats from "@/components/project/ProjectStats.vue";
 import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
@@ -89,6 +95,17 @@ async function deleteProject() {
   margin: 0 1em;
   display: flex;
   flex-direction: column;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-edit {
+  flex: 1;
+  max-width: 400px;
+  margin-bottom: 2em;
 }
 
 h2 {
