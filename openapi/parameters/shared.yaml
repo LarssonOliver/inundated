@@ -121,3 +121,27 @@ timespanIdPath:
   schema:
     type: string
     format: uuid
+
+limit:
+  name: limit
+  in: query
+  required: false
+  description: >
+    Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+  schema:
+    type: integer
+    default: 50
+    minimum: 1
+    maximum: 100
+  example: 50
+
+offset:
+  name: offset
+  in: query
+  required: false
+  description: Number of items to skip from the beginning (zero-indexed).
+  schema:
+    type: integer
+    default: 0
+    minimum: 0
+  example: 0
