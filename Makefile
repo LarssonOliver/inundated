@@ -1,5 +1,4 @@
-# This should probably be pinned in the future
-OPENAPI_GENERATOR_TAG ?= latest-release
+OPENAPI_GENERATOR_TAG ?= v7.22.0
 REDOCLY_VERSION ?= 2.25.1
 
 VERSION ?= $(shell git describe --tags --always --dirty)
