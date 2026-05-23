@@ -298,7 +298,7 @@ No authorization required
 
 ## listProjects
 
-> Array&lt;Project&gt; listProjects()
+> PaginatedProjects listProjects(limit, offset)
 
 List projects
 
@@ -315,8 +315,15 @@ async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new ProjectsApi();
 
+  const body = {
+    // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
+    limit: 50,
+    // number | Number of items to skip from the beginning (zero-indexed). (optional)
+    offset: 0,
+  } satisfies ListProjectsRequest;
+
   try {
-    const data = await api.listProjects();
+    const data = await api.listProjects(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -329,11 +336,15 @@ example().catch(console.error);
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **limit** | `number` | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  | [Optional] [Defaults to `25`] |
+| **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
 
 ### Return type
 
-[**Array&lt;Project&gt;**](Project.md)
+[**PaginatedProjects**](PaginatedProjects.md)
 
 ### Authorization
 
@@ -348,7 +359,7 @@ No authorization required
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-| **200** | List of projects |  -  |
+| **200** | Paginated list of projects |  -  |
 | **400** | Bad request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

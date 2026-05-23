@@ -12,21 +12,27 @@
  * Do not edit the class manually.
  */
 
-
 import * as runtime from '../runtime';
-import type {
-  CreateTag,
-  Tag,
-  UpdateTag,
-} from '../models/index';
 import {
+    type CreateTag,
     CreateTagFromJSON,
     CreateTagToJSON,
+} from '../models/CreateTag';
+import {
+    type PaginatedTags,
+    PaginatedTagsFromJSON,
+    PaginatedTagsToJSON,
+} from '../models/PaginatedTags';
+import {
+    type Tag,
     TagFromJSON,
     TagToJSON,
+} from '../models/Tag';
+import {
+    type UpdateTag,
     UpdateTagFromJSON,
     UpdateTagToJSON,
-} from '../models/index';
+} from '../models/UpdateTag';
 
 export interface CreateTagRequest {
     createTag: CreateTag;
@@ -41,6 +47,11 @@ export interface GetTagRequest {
     include?: Set<GetTagIncludeEnum>;
 }
 
+export interface ListTagsRequest {
+    limit?: number;
+    offset?: number;
+}
+
 export interface UpdateTagRequest {
     tagId: string;
     updateTag: UpdateTag;
@@ -52,9 +63,9 @@ export interface UpdateTagRequest {
 export class TagsApi extends runtime.BaseAPI {
 
     /**
-     * Create tag
+     * Creates request options for createTag without sending the request
      */
-    async createTagRaw(requestParameters: CreateTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+    async createTagRequestOpts(requestParameters: CreateTagRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['createTag'] == null) {
             throw new runtime.RequiredError(
                 'createTag',
@@ -71,13 +82,21 @@ export class TagsApi extends runtime.BaseAPI {
 
         let urlPath = `/tags`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateTagToJSON(requestParameters['createTag']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Create tag
+     */
+    async createTagRaw(requestParameters: CreateTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+        const requestOptions = await this.createTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TagFromJSON(jsonValue));
     }
@@ -91,9 +110,9 @@ export class TagsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete tag
+     * Creates request options for deleteTag without sending the request
      */
-    async deleteTagRaw(requestParameters: DeleteTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deleteTagRequestOpts(requestParameters: DeleteTagRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['tagId'] == null) {
             throw new runtime.RequiredError(
                 'tagId',
@@ -107,14 +126,22 @@ export class TagsApi extends runtime.BaseAPI {
 
 
         let urlPath = `/tags/{tagId}`;
-        urlPath = urlPath.replace(`{${"tagId"}}`, encodeURIComponent(String(requestParameters['tagId'])));
+        urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Delete tag
+     */
+    async deleteTagRaw(requestParameters: DeleteTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -127,9 +154,9 @@ export class TagsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get tag
+     * Creates request options for getTag without sending the request
      */
-    async getTagRaw(requestParameters: GetTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+    async getTagRequestOpts(requestParameters: GetTagRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['tagId'] == null) {
             throw new runtime.RequiredError(
                 'tagId',
@@ -147,14 +174,22 @@ export class TagsApi extends runtime.BaseAPI {
 
 
         let urlPath = `/tags/{tagId}`;
-        urlPath = urlPath.replace(`{${"tagId"}}`, encodeURIComponent(String(requestParameters['tagId'])));
+        urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Get tag
+     */
+    async getTagRaw(requestParameters: GetTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+        const requestOptions = await this.getTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TagFromJSON(jsonValue));
     }
@@ -168,38 +203,54 @@ export class TagsApi extends runtime.BaseAPI {
     }
 
     /**
-     * List tags
+     * Creates request options for listTags without sending the request
      */
-    async listTagsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Tag>>> {
+    async listTagsRequestOpts(requestParameters: ListTagsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
         let urlPath = `/tags`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(TagFromJSON));
+        };
     }
 
     /**
      * List tags
      */
-    async listTags(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Tag>> {
-        const response = await this.listTagsRaw(initOverrides);
+    async listTagsRaw(requestParameters: ListTagsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedTags>> {
+        const requestOptions = await this.listTagsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedTagsFromJSON(jsonValue));
+    }
+
+    /**
+     * List tags
+     */
+    async listTags(requestParameters: ListTagsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedTags> {
+        const response = await this.listTagsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Update tag
+     * Creates request options for updateTag without sending the request
      */
-    async updateTagRaw(requestParameters: UpdateTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+    async updateTagRequestOpts(requestParameters: UpdateTagRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['tagId'] == null) {
             throw new runtime.RequiredError(
                 'tagId',
@@ -222,15 +273,23 @@ export class TagsApi extends runtime.BaseAPI {
 
 
         let urlPath = `/tags/{tagId}`;
-        urlPath = urlPath.replace(`{${"tagId"}}`, encodeURIComponent(String(requestParameters['tagId'])));
+        urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
             body: UpdateTagToJSON(requestParameters['updateTag']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Update tag
+     */
+    async updateTagRaw(requestParameters: UpdateTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Tag>> {
+        const requestOptions = await this.updateTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TagFromJSON(jsonValue));
     }

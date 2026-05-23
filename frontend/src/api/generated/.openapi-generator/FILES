@@ -5,6 +5,10 @@ apis/index.ts
 docs/CreateProject.md
 docs/CreateTag.md
 docs/CreateTimespan.md
+docs/PaginatedProjects.md
+docs/PaginatedTags.md
+docs/PaginatedTimespans.md
+docs/PaginationDetails.md
 docs/Project.md
 docs/ProjectStats.md
 docs/ProjectsApi.md
@@ -20,6 +24,10 @@ index.ts
 models/CreateProject.ts
 models/CreateTag.ts
 models/CreateTimespan.ts
+models/PaginatedProjects.ts
+models/PaginatedTags.ts
+models/PaginatedTimespans.ts
+models/PaginationDetails.ts
 models/Project.ts
 models/ProjectStats.ts
 models/SeriesPoint.ts

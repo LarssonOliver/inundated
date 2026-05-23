@@ -1,8 +1,12 @@
 /* tslint:disable */
- 
+/* eslint-disable */
 export * from './CreateProject';
 export * from './CreateTag';
 export * from './CreateTimespan';
+export * from './PaginatedProjects';
+export * from './PaginatedTags';
+export * from './PaginatedTimespans';
+export * from './PaginationDetails';
 export * from './Project';
 export * from './ProjectStats';
 export * from './SeriesPoint';
