@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -39,7 +40,7 @@ func (t *MemoryStore) CreateProject(ctx context.Context, project model.Project) 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.projects[newId] = newProject
+	t.projects = append(t.projects, newProject)
 	return newProject, nil
 }
 
@@ -48,12 +49,13 @@ func (t *MemoryStore) GetProject(ctx context.Context, id uuid.UUID) (model.Proje
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	project, exists := t.projects[id]
-	if !exists {
+	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == id })
+	// project, exists := t.projects[id]
+	if idx == -1 {
 		return model.Project{}, model.ErrNotFound
 	}
 
-	return project, nil
+	return t.projects[idx], nil
 }
 
 // ListProjects implements [repository.ProjectRepository].
@@ -97,31 +99,25 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, project model.Project) 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.projects[project.Id]
-	if !exists {
+	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == project.Id })
+	if idx == -1 {
 		return model.Project{}, model.ErrNotFound
 	}
 
-	t.projects[project.Id] = project
+	t.projects[idx] = project
 	return project, nil
 }
 
 // DeleteProject implements [repository.ProjectRepository].
 func (t *MemoryStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	// Skip locking for write if the project does not exist
-	t.mu.RLock()
-	_, exists := t.projects[id]
-	t.mu.RUnlock()
-
-	if !exists {
-		return model.ErrNotFound
-	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// delete is a noop if the key does not exist
-	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.projects, id)
+	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == id })
+	if idx == -1 {
+		return model.ErrNotFound
+	}
+
+	t.projects = slices.Delete(t.projects, idx, idx+1)
 	return nil
 }

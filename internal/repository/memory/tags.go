@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -36,7 +37,7 @@ func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.tags[newTag.Id] = newTag
+	t.tags = append(t.tags, newTag)
 	return newTag, nil
 }
 
@@ -45,12 +46,12 @@ func (t *MemoryStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, erro
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	tag, exists := t.tags[id]
-	if !exists {
+	idx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == id })
+	if idx == -1 {
 		return model.Tag{}, model.ErrNotFound
 	}
 
-	return tag, nil
+	return t.tags[idx], nil
 }
 
 // ListTags implements [repository.TagRepository].
@@ -90,31 +91,25 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.tags[tag.Id]
-	if !exists {
+	idx := slices.IndexFunc(t.tags, func(t model.Tag) bool { return t.Id == tag.Id })
+	if idx == -1 {
 		return model.Tag{}, model.ErrNotFound
 	}
 
-	t.tags[tag.Id] = tag
+	t.tags[idx] = tag
 	return tag, nil
 }
 
 // DeleteTag implements [repository.TagRepository].
 func (t *MemoryStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	// Skip locking for write if the tag does not exist
-	t.mu.RLock()
-	_, exists := t.tags[id]
-	t.mu.RUnlock()
-
-	if !exists {
-		return model.ErrNotFound
-	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// delete is a noop if the key does not exist
-	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.tags, id)
+	idx := slices.IndexFunc(t.tags, func(t model.Tag) bool { return t.Id == id })
+	if idx == -1 {
+		return model.ErrNotFound
+	}
+
+	t.tags = slices.Delete(t.tags, idx, idx+1)
 	return nil
 }
