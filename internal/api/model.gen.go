@@ -65,16 +65,7 @@ type PaginatedProjects struct {
 	Data []Project `json:"data"`
 
 	// Pagination Pagination metadata
-	Pagination struct {
-		// Limit Items per page
-		Limit int `json:"limit"`
-
-		// Offset Number of items skipped
-		Offset int `json:"offset"`
-
-		// Total Total number of items available
-		Total int `json:"total"`
-	} `json:"pagination"`
+	Pagination PaginationDetails `json:"pagination"`
 }
 
 // PaginatedTags defines model for PaginatedTags.
@@ -83,16 +74,7 @@ type PaginatedTags struct {
 	Data []Tag `json:"data"`
 
 	// Pagination Pagination metadata
-	Pagination struct {
-		// Limit Items per page
-		Limit int `json:"limit"`
-
-		// Offset Number of items skipped
-		Offset int `json:"offset"`
-
-		// Total Total number of items available
-		Total int `json:"total"`
-	} `json:"pagination"`
+	Pagination PaginationDetails `json:"pagination"`
 }
 
 // PaginatedTimespans defines model for PaginatedTimespans.
@@ -101,16 +83,19 @@ type PaginatedTimespans struct {
 	Data []Timespan `json:"data"`
 
 	// Pagination Pagination metadata
-	Pagination struct {
-		// Limit Items per page
-		Limit int `json:"limit"`
+	Pagination PaginationDetails `json:"pagination"`
+}
 
-		// Offset Number of items skipped
-		Offset int `json:"offset"`
+// PaginationDetails Pagination metadata
+type PaginationDetails struct {
+	// Limit Items per page
+	Limit int `json:"limit"`
 
-		// Total Total number of items available
-		Total int `json:"total"`
-	} `json:"pagination"`
+	// Offset Number of items skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of items available
+	Total int `json:"total"`
 }
 
 // Project defines model for Project.

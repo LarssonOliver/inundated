@@ -99,14 +99,30 @@ func (p *TimespanHandler) GetTimespan(ctx context.Context, request api.GetTimesp
 
 // ListTimespans implements [api.TimespanHandler].
 func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTimespansRequestObject) (api.ListTimespansResponseObject, error) {
-	reply, err := p.svc.ListTimespans(ctx)
+	paginationParams := model.DefaultPaginationParams()
+
+	if request.Params.Limit != nil {
+		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
+			return api.ListTimespans400Response{}, nil
+		}
+		paginationParams.Limit = *request.Params.Limit
+	}
+
+	if request.Params.Offset != nil {
+		if *request.Params.Offset < 0 {
+			return api.ListTimespans400Response{}, nil
+		}
+		paginationParams.Offset = *request.Params.Offset
+	}
+
+	page, err := p.svc.ListTimespans(ctx, paginationParams)
 
 	if err != nil {
 		return nil, err
 	}
 
-	apiTimespans := make([]api.Timespan, 0, len(reply))
-	for _, ts := range reply {
+	apiTimespans := make([]api.Timespan, 0, len(page.Data))
+	for _, ts := range page.Data {
 		apiTimespan := api.Timespan{
 			Id:        ts.Id,
 			Name:      &ts.Name,
@@ -121,6 +137,11 @@ func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTim
 
 	response := api.PaginatedTimespans{
 		Data: apiTimespans,
+		Pagination: api.PaginationDetails{
+			Limit:  page.Limit,
+			Offset: page.Offset,
+			Total:  page.TotalCount,
+		},
 	}
 
 	return api.ListTimespans200JSONResponse(response), nil

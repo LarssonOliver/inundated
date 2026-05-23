@@ -42,17 +42,5 @@ PaginatedTags:
         $ref: "#/Tag"
       description: Array of items in this page
     pagination:
-      type: object
-      properties:
-        limit:
-          type: integer
-          description: Items per page
-        offset:
-          type: integer
-          description: Number of items skipped
-        total:
-          type: integer
-          description: Total number of items available
-      required: [limit, offset, total]
-      description: Pagination metadata
+      $ref: "./shared.yaml#/PaginationDetails"
   required: [data, pagination]

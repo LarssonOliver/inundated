@@ -42,3 +42,21 @@ ErrorResponse:
       type: string
       description: A human-readable explanation of the error.
       example: "`from` must be before `to`"
+
+PaginationDetails:
+  type: object
+  properties:
+    limit:
+      type: integer
+      description: Items per page
+    offset:
+      type: integer
+      description: Number of items skipped
+    total:
+      type: integer
+      description: Total number of items available
+  required:
+    - limit
+    - offset
+    - total
+  description: Pagination metadata

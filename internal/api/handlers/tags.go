@@ -90,14 +90,30 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 
 // ListTags implements [api.TagHandler].
 func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestObject) (api.ListTagsResponseObject, error) {
-	reply, err := t.svc.ListTags(ctx)
+	paginationParams := model.DefaultPaginationParams()
+
+	if request.Params.Limit != nil {
+		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
+			return api.ListTags400Response{}, nil
+		}
+		paginationParams.Limit = *request.Params.Limit
+	}
+
+	if request.Params.Offset != nil {
+		if *request.Params.Offset < 0 {
+			return api.ListTags400Response{}, nil
+		}
+		paginationParams.Offset = *request.Params.Offset
+	}
+
+	page, err := t.svc.ListTags(ctx, paginationParams)
 
 	if err != nil {
 		return nil, err
 	}
 
-	apiTags := make([]api.Tag, 0, len(reply))
-	for _, tag := range reply {
+	apiTags := make([]api.Tag, 0, len(page.Data))
+	for _, tag := range page.Data {
 		apiTag := api.Tag{
 			Id:    tag.Id,
 			Name:  tag.Name,
@@ -108,6 +124,11 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 
 	response := api.PaginatedTags{
 		Data: apiTags,
+		Pagination: api.PaginationDetails{
+			Total:  page.TotalCount,
+			Limit:  page.Limit,
+			Offset: page.Offset,
+		},
 	}
 
 	return api.ListTags200JSONResponse(response), nil
