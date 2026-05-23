@@ -60,19 +60,11 @@ func (t *MemoryStore) ListTags(ctx context.Context, params model.PaginationParam
 	defer t.mu.RUnlock()
 
 	all := make([]model.Tag, 0, len(t.tags))
-	for _, tag := range t.tags {
-		all = append(all, tag)
-	}
+	all = append(all, t.tags...)
 
 	total := len(all)
-	start := params.Offset
-	if start > total {
-		start = total
-	}
-	end := start + params.Limit
-	if end > total {
-		end = total
-	}
+	start := min(params.Offset, total)
+	end := min(start + params.Limit, total)
 
 	return model.Page[model.Tag]{
 		Data:       all[start:end],

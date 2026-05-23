@@ -63,9 +63,7 @@ func (t *MemoryStore) ListTimespans(ctx context.Context, params model.Pagination
 	defer t.mu.RUnlock()
 
 	all := make([]model.Timespan, 0, len(t.timespans))
-	for _, timespan := range t.timespans {
-		all = append(all, timespan)
-	}
+	all = append(all, t.timespans...)
 
 	total := len(all)
 	start := min(params.Offset, total)

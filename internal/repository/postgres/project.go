@@ -37,28 +37,39 @@ func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Pro
 }
 
 func (r *PostgresStore) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
-	const q = `
-		SELECT id, name, color, time_budget, COUNT(*) OVER() AS total_count
+	const countQ = `
+		SELECT COUNT(*)
+		FROM projects
+		WHERE deleted_at IS NULL`
+
+	var totalCount int
+	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+		return model.Page[model.Project]{}, fmt.Errorf("ListProjects count: %w", err)
+	}
+
+	const dataQ = `
+		SELECT id, name, color, time_budget
 		FROM projects 
 		WHERE deleted_at IS NULL
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, dataQ, params.Limit, params.Offset)
 	if err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects: %w", err)
 	}
 	defer rows.Close()
 
 	var projects []model.Project
-	totalCount := 0
+
 	for rows.Next() {
 		var p model.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &totalCount); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget); err != nil {
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		projects = append(projects, p)
 	}
+
 	if err := rows.Err(); err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects rows: %w", err)
 	}
@@ -70,9 +81,11 @@ func (r *PostgresStore) ListProjects(ctx context.Context, params model.Paginatio
 			return model.Page[model.Project]{}, tagErr
 		}
 	}
+
 	if projects == nil {
 		projects = []model.Project{}
 	}
+
 	return model.Page[model.Project]{
 		Data:       projects,
 		TotalCount: totalCount,

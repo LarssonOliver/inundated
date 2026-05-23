@@ -33,8 +33,18 @@ func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, er
 }
 
 func (r *PostgresStore) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+	const countQ = `
+		SELECT COUNT(*)
+		FROM tags
+		WHERE deleted_at IS NULL`
+
+	var totalCount int
+	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+		return model.Page[model.Tag]{}, fmt.Errorf("count tags: %w", err)
+	}
+
 	const q = `
-		SELECT id, name, color, COUNT(*) OVER() AS total_count
+		SELECT id, name, color
 		FROM tags 
 		WHERE deleted_at IS NULL
 		ORDER BY name
@@ -47,10 +57,9 @@ func (r *PostgresStore) ListTags(ctx context.Context, params model.PaginationPar
 	defer rows.Close()
 
 	var tags []model.Tag
-	totalCount := 0
 	for rows.Next() {
 		var t model.Tag
-		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &totalCount); err != nil {
+		if err := rows.Scan(&t.Id, &t.Name, &t.Color); err != nil {
 			return model.Page[model.Tag]{}, fmt.Errorf("ListTags scan: %w", err)
 		}
 		tags = append(tags, t)

@@ -38,28 +38,39 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 }
 
 func (r *PostgresStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	const q = `
-		SELECT id, name, start_time, end_time, COUNT(*) OVER() AS total_count
+	const countQ = `
+		SELECT COUNT(*)
+		FROM timespans
+		WHERE deleted_at IS NULL`
+
+	var totalCount int
+	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
+	}
+
+	const dataQ = `
+		SELECT id, name, start_time, end_time
 		FROM timespans 
 		WHERE deleted_at IS NULL
 		ORDER BY start_time DESC
 		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, dataQ, params.Limit, params.Offset)
 	if err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans: %w", err)
 	}
 	defer rows.Close()
 
 	var spans []model.Timespan
-	totalCount := 0
+
 	for rows.Next() {
 		var ts model.Timespan
-		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &totalCount); err != nil {
+		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime); err != nil {
 			return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans scan: %w", err)
 		}
 		spans = append(spans, ts)
 	}
+
 	if err := rows.Err(); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans rows: %w", err)
 	}
@@ -71,9 +82,11 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, params model.Paginati
 			return model.Page[model.Timespan]{}, tagErr
 		}
 	}
+
 	if spans == nil {
 		spans = []model.Timespan{}
 	}
+
 	return model.Page[model.Timespan]{
 		Data:       spans,
 		TotalCount: totalCount,

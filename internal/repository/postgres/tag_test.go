@@ -59,14 +59,23 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT id, name, color, COUNT\(\*\) OVER\(\) AS total_count FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(2),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color", "total_count"}).
-			AddRow(t1.Id, t1.Name, t1.Color, 2).
-			AddRow(t2.Id, t2.Name, t2.Color, 2))
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "name", "color"}).
+				AddRow(t1.Id, t1.Name, t1.Color).
+				AddRow(t2.Id, t2.Name, t2.Color),
+		)
 
 	page, err := repo.ListTags(ctx, model.DefaultPaginationParams())
 	require.NoError(t, err)
+
 	assert.Len(t, page.Data, 2)
 	assert.Equal(t, 2, page.TotalCount)
 	assert.Equal(t, t1.Name, page.Data[0].Name)
@@ -76,15 +85,29 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 func TestListTags_WithPaginationParams(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
+
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT id, name, color, COUNT\(\*\) OVER\(\) AS total_count FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color", "total_count"}).
-			AddRow(tag.Id, tag.Name, tag.Color, 3))
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(3),
+		)
 
-	page, err := repo.ListTags(ctx, model.PaginationParams{Limit: 1, Offset: 1})
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(1, 1).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "name", "color"}).
+				AddRow(tag.Id, tag.Name, tag.Color),
+		)
+
+	page, err := repo.ListTags(ctx, model.PaginationParams{
+		Limit:  1,
+		Offset: 1,
+	})
+
 	require.NoError(t, err)
+
 	assert.Len(t, page.Data, 1)
 	assert.Equal(t, 3, page.TotalCount)
 	assert.Equal(t, 1, page.Limit)
@@ -95,12 +118,22 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, color, COUNT\(\*\) OVER\(\) AS total_count FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(0),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color", "total_count"}))
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "name", "color"}),
+		)
 
 	page, err := repo.ListTags(ctx, model.DefaultPaginationParams())
+
 	require.NoError(t, err)
+
 	assert.Empty(t, page.Data)
 	assert.Equal(t, 0, page.TotalCount)
 }

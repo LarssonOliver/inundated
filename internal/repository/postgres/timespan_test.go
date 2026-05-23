@@ -87,18 +87,30 @@ func TestGetTimespan_NilId(t *testing.T) {
 func TestListTimespans_ReturnsAll(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
+
 	ts1, ts2 := aTimespan(), aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, COUNT\(\*\) OVER\(\) AS total_count FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(2),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
-		WillReturnRows(pgxmock.NewRows(append(timespanCols, "total_count")).
-			AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime, 2).
-			AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime, 2))
+		WillReturnRows(
+			pgxmock.NewRows(timespanCols).
+				AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime).
+				AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime),
+		)
+
 	expectTimespanTagsQuery(mock, ts1.Id, ts1.TagIds)
 	expectTimespanTagsQuery(mock, ts2.Id, ts2.TagIds)
 
 	page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+
 	require.NoError(t, err)
+
 	assert.Len(t, page.Data, 2)
 	assert.Equal(t, 2, page.TotalCount)
 }
@@ -106,16 +118,31 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 func TestListTimespans_WithPaginationParams(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
+
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, COUNT\(\*\) OVER\(\) AS total_count FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(3),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1).
-		WillReturnRows(pgxmock.NewRows(append(timespanCols, "total_count")).
-			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, 3))
+		WillReturnRows(
+			pgxmock.NewRows(timespanCols).
+				AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime),
+		)
+
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 1, Offset: 1})
+	page, err := repo.ListTimespans(ctx, model.PaginationParams{
+		Limit:  1,
+		Offset: 1,
+	})
+
 	require.NoError(t, err)
+
 	assert.Len(t, page.Data, 1)
 	assert.Equal(t, 3, page.TotalCount)
 	assert.Equal(t, 1, page.Limit)
@@ -126,12 +153,22 @@ func TestListTimespans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, COUNT\(\*\) OVER\(\) AS total_count FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(0),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
-		WillReturnRows(pgxmock.NewRows(append(timespanCols, "total_count")))
+		WillReturnRows(
+			pgxmock.NewRows(timespanCols),
+		)
 
 	page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+
 	require.NoError(t, err)
+
 	assert.Empty(t, page.Data)
 	assert.Equal(t, 0, page.TotalCount)
 }
