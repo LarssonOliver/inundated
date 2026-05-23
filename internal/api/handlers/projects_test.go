@@ -15,12 +15,12 @@ import (
 )
 
 type mockProjectService struct {
-	CreateFn func(ctx context.Context, project model.Project) (model.Project, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
+	CreateFn   func(ctx context.Context, project model.Project) (model.Project, error)
+	DeleteFn   func(ctx context.Context, id uuid.UUID) error
+	GetFn      func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
 	GetStatsFn func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error)
-	ListFn   func(ctx context.Context) ([]model.Project, error)
-	UpdateFn func(ctx context.Context, project model.Project) (model.Project, error)
+	ListFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
+	UpdateFn   func(ctx context.Context, project model.Project) (model.Project, error)
 }
 
 var _ service.ProjectService = (*mockProjectService)(nil)
@@ -41,8 +41,8 @@ func (m *mockProjectService) GetProject(ctx context.Context, id uuid.UUID, i *se
 }
 
 // ListProjects implements [service.ProjectService].
-func (m *mockProjectService) ListProjects(ctx context.Context) ([]model.Project, error) {
-	return m.ListFn(ctx)
+func (m *mockProjectService) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+	return m.ListFn(ctx, params)
 }
 
 // GetProjectStats implements [service.ProjectService].
@@ -256,90 +256,109 @@ func TestProjectHandler_GetProject(t *testing.T) {
 }
 
 func TestProjectHandler_ListProjects(t *testing.T) {
-	project1 := model.Project{
-		Id:    uuid.New(),
-		Name:  "backend",
-		Color: "#ff0000",
-	}
-	project2 := model.Project{
-		Id:    uuid.New(),
-		Name:  "frontend",
-		Color: "#00ff00",
-	}
+	project1 := model.Project{Id: uuid.New(), Name: "backend", Color: "#ff0000"}
+	project2 := model.Project{Id: uuid.New(), Name: "frontend", Color: "#00ff00"}
 
 	tests := []struct {
-		name      string
-		listFn    func(ctx context.Context) ([]model.Project, error)
+		name       string
+		listFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
 		initParams func() *api.ListProjectsParams
-		wantData  []api.Project
-		wantLimit int
-		wantTotal int
-		wantErr   bool
+		wantData   []api.Project
+		wantLimit  int
+		wantTotal  int
+		wantErr    bool
 	}{
 		{
 			name: "success with multiple projects and no params",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return []model.Project{project1, project2}, nil
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{Data: []model.Project{project1, project2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListProjectsParams { return nil },
 			wantData: []api.Project{
-				{
-					Id:    project1.Id,
-					Name:  project1.Name,
-					Color: project1.Color,
-				},
-				{
-					Id:    project2.Id,
-					Name:  project2.Name,
-					Color: project2.Color,
-				},
+				{Id: project1.Id, Name: project1.Name, Color: project1.Color},
+				{Id: project2.Id, Name: project2.Name, Color: project2.Color},
 			},
-			wantLimit: 25, // default limit
+			wantLimit: 25,
 			wantTotal: 2,
-			wantErr:   false,
 		},
 		{
 			name: "success with pagination params",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return []model.Project{project1, project2}, nil
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				require.Equal(t, 10, params.Limit)
+				require.Equal(t, 0, params.Offset)
+				return model.Page[model.Project]{Data: []model.Project{project1, project2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListProjectsParams {
-				return &api.ListProjectsParams{
-					Limit:  ptrLimit(10),
-					Offset: ptrOffset(0),
-				}
+				return &api.ListProjectsParams{Limit: ptrLimit(10), Offset: ptrOffset(0)}
 			},
 			wantData: []api.Project{
-				{
-					Id:    project1.Id,
-					Name:  project1.Name,
-					Color: project1.Color,
-				},
-				{
-					Id:    project2.Id,
-					Name:  project2.Name,
-					Color: project2.Color,
-				},
+				{Id: project1.Id, Name: project1.Name, Color: project1.Color},
+				{Id: project2.Id, Name: project2.Name, Color: project2.Color},
 			},
 			wantLimit: 10,
 			wantTotal: 2,
-			wantErr:   false,
+		},
+		{
+			name: "success with offset",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				require.Equal(t, 25, params.Limit)
+				require.Equal(t, 1, params.Offset)
+				return model.Page[model.Project]{Data: []model.Project{project2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				return &api.ListProjectsParams{Offset: ptrOffset(1)}
+			},
+			wantData:  []api.Project{{Id: project2.Id, Name: project2.Name, Color: project2.Color}},
+			wantLimit: 25,
+			wantTotal: 2,
 		},
 		{
 			name: "success with empty list",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return []model.Project{}, nil
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{Data: []model.Project{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListProjectsParams { return nil },
-			wantData:  []api.Project{},
-			wantLimit: 25,
-			wantTotal: 0,
-			wantErr:   false,
+			wantData:   []api.Project{},
+			wantLimit:  25,
+			wantTotal:  0,
+		},
+		{
+			name: "limit too low returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Project]{}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				return &api.ListProjectsParams{Limit: ptrLimit(0)}
+			},
+			wantErr: false, // handler returns 400, not an error
+		},
+		{
+			name: "limit too high returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Project]{}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				return &api.ListProjectsParams{Limit: ptrLimit(101)}
+			},
+			wantErr: false,
+		},
+		{
+			name: "negative offset returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Project]{}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				return &api.ListProjectsParams{Offset: ptrOffset(-1)}
+			},
+			wantErr: false,
 		},
 		{
 			name: "service returns error",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return nil, errors.New("database unavailable")
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{}, errors.New("database unavailable")
 			},
 			initParams: func() *api.ListProjectsParams { return nil },
 			wantErr:    true,
@@ -347,40 +366,34 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
-				ListFn: tt.listFn,
-			}
+			svc := &mockProjectService{ListFn: tt.listFn}
 			ta := handlers.NewProjectHandler(svc)
 			params := tt.initParams()
 			request := api.ListProjectsRequestObject{}
 			if params != nil {
 				request.Params = *params
 			}
+
 			got, gotErr := ta.ListProjects(context.Background(), request)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("ListProjects() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("ListProjects() succeeded unexpectedly")
-			}
-			res := got.(api.ListProjects200JSONResponse)
-			if len(res.Data) != len(tt.wantData) {
-				t.Errorf("ListProjects() data length = %d, want %d", len(res.Data), len(tt.wantData))
+				require.Error(t, gotErr)
 				return
 			}
-			if res.Pagination.Limit != tt.wantLimit {
-				t.Errorf("ListProjects() limit = %d, want %d", res.Pagination.Limit, tt.wantLimit)
+			require.NoError(t, gotErr)
+
+			// 400 cases
+			if _, ok := got.(api.ListProjects400Response); ok {
+				return
 			}
-			if res.Pagination.Total != tt.wantTotal {
-				t.Errorf("ListProjects() total = %d, want %d", res.Pagination.Total, tt.wantTotal)
-			}
+
+			res := got.(api.ListProjects200JSONResponse)
+			require.Len(t, res.Data, len(tt.wantData))
+			require.Equal(t, tt.wantLimit, res.Pagination.Limit)
+			require.Equal(t, tt.wantTotal, res.Pagination.Total)
 			for i, project := range res.Data {
-				if project.Id == uuid.Nil || project.Name != tt.wantData[i].Name || project.Color != tt.wantData[i].Color {
-					t.Errorf("ListProjects() data item %d = %v, want %v", i, project, tt.wantData[i])
-				}
+				require.NotEqual(t, uuid.Nil, project.Id)
+				require.Equal(t, tt.wantData[i].Name, project.Name)
+				require.Equal(t, tt.wantData[i].Color, project.Color)
 			}
 		})
 	}
