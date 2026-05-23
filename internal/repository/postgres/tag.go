@@ -32,31 +32,41 @@ func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, er
 	return t, nil
 }
 
-func (r *PostgresStore) ListTags(ctx context.Context) ([]model.Tag, error) {
+func (r *PostgresStore) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
 	const q = `
-		SELECT id, name, color 
+		SELECT id, name, color, COUNT(*) OVER() AS total_count
 		FROM tags 
 		WHERE deleted_at IS NULL
-		ORDER BY name`
+		ORDER BY name
+		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q)
+	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("ListTags: %w", err)
+		return model.Page[model.Tag]{}, fmt.Errorf("ListTags: %w", err)
 	}
 	defer rows.Close()
 
 	var tags []model.Tag
+	totalCount := 0
 	for rows.Next() {
 		var t model.Tag
-		if err := rows.Scan(&t.Id, &t.Name, &t.Color); err != nil {
-			return nil, fmt.Errorf("ListTags scan: %w", err)
+		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &totalCount); err != nil {
+			return model.Page[model.Tag]{}, fmt.Errorf("ListTags scan: %w", err)
 		}
 		tags = append(tags, t)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ListTags rows: %w", err)
+		return model.Page[model.Tag]{}, fmt.Errorf("ListTags rows: %w", err)
 	}
-	return tags, nil
+	if tags == nil {
+		tags = []model.Tag{}
+	}
+	return model.Page[model.Tag]{
+		Data:       tags,
+		TotalCount: totalCount,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 func (r *PostgresStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {

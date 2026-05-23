@@ -36,38 +36,49 @@ func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Pro
 	return p, nil
 }
 
-func (r *PostgresStore) ListProjects(ctx context.Context) ([]model.Project, error) {
+func (r *PostgresStore) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
 	const q = `
-		SELECT id, name, color, time_budget 
+		SELECT id, name, color, time_budget, COUNT(*) OVER() AS total_count
 		FROM projects 
 		WHERE deleted_at IS NULL
-		ORDER BY name`
+		ORDER BY name
+		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q)
+	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("ListProjects: %w", err)
+		return model.Page[model.Project]{}, fmt.Errorf("ListProjects: %w", err)
 	}
 	defer rows.Close()
 
 	var projects []model.Project
+	totalCount := 0
 	for rows.Next() {
 		var p model.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget); err != nil {
-			return nil, fmt.Errorf("ListProjects scan: %w", err)
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &totalCount); err != nil {
+			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		projects = append(projects, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ListProjects rows: %w", err)
+		return model.Page[model.Project]{}, fmt.Errorf("ListProjects rows: %w", err)
 	}
 
+	var tagErr error
 	for i := range projects {
-		projects[i].TagIds, err = r.projectTagIds(ctx, projects[i].Id)
-		if err != nil {
-			return nil, err
+		projects[i].TagIds, tagErr = r.projectTagIds(ctx, projects[i].Id)
+		if tagErr != nil {
+			return model.Page[model.Project]{}, tagErr
 		}
 	}
-	return projects, nil
+	if projects == nil {
+		projects = []model.Project{}
+	}
+	return model.Page[model.Project]{
+		Data:       projects,
+		TotalCount: totalCount,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 func (r *PostgresStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
@@ -173,7 +184,6 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) 
 }
 
 // setProjectTags replaces all tag associations for a project.
-// Caller is responsible for wrapping in a transaction if needed.
 func (r *PostgresStore) setProjectTags(ctx context.Context, projectId uuid.UUID, tagIds []uuid.UUID) error {
 	if _, err := r.db.Exec(ctx, `DELETE FROM project_tags WHERE project_id = $1`, projectId); err != nil {
 		return fmt.Errorf("setProjectTags delete: %w", err)

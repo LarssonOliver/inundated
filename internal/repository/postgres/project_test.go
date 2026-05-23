@@ -108,28 +108,51 @@ func TestListProjects_ReturnsAll(t *testing.T) {
 	repo, mock := newMock(t)
 	p1, p2 := aProject(), aProject()
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name`).
-		WillReturnRows(pgxmock.NewRows(projectCols).
-			AddRow(p1.Id, p1.Name, p1.Color, p1.TimeBudget).
-			AddRow(p2.Id, p2.Name, p2.Color, p2.TimeBudget))
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, COUNT\(\*\) OVER\(\) AS total_count FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0).
+		WillReturnRows(pgxmock.NewRows(append(projectCols, "total_count")).
+			AddRow(p1.Id, p1.Name, p1.Color, p1.TimeBudget, 2).
+			AddRow(p2.Id, p2.Name, p2.Color, p2.TimeBudget, 2))
 	expectProjectTagsQuery(mock, p1.Id, p1.TagIds)
 	expectProjectTagsQuery(mock, p2.Id, p2.TagIds)
 
-	got, err := repo.ListProjects(ctx)
+	page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, page.Data, 2)
+	assert.Equal(t, 2, page.TotalCount)
+}
+
+func TestListProjects_WithPaginationParams(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	p := aProject()
+
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, COUNT\(\*\) OVER\(\) AS total_count FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(1, 1).
+		WillReturnRows(pgxmock.NewRows(append(projectCols, "total_count")).
+			AddRow(p.Id, p.Name, p.Color, p.TimeBudget, 3))
+	expectProjectTagsQuery(mock, p.Id, p.TagIds)
+
+	page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 1, Offset: 1})
+	require.NoError(t, err)
+	assert.Len(t, page.Data, 1)
+	assert.Equal(t, 3, page.TotalCount)
+	assert.Equal(t, 1, page.Limit)
+	assert.Equal(t, 1, page.Offset)
 }
 
 func TestListProjects_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name`).
-		WillReturnRows(pgxmock.NewRows(projectCols))
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, COUNT\(\*\) OVER\(\) AS total_count FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0).
+		WillReturnRows(pgxmock.NewRows(append(projectCols, "total_count")))
 
-	got, err := repo.ListProjects(ctx)
+	page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
 	require.NoError(t, err)
-	assert.Empty(t, got)
+	assert.Empty(t, page.Data)
+	assert.Equal(t, 0, page.TotalCount)
 }
 
 // ── CreateProject ────────────────────────────────────────────────────────────

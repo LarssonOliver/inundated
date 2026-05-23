@@ -37,38 +37,49 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 	return ts, nil
 }
 
-func (r *PostgresStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
+func (r *PostgresStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
 	const q = `
-		SELECT id, name, start_time, end_time 
+		SELECT id, name, start_time, end_time, COUNT(*) OVER() AS total_count
 		FROM timespans 
 		WHERE deleted_at IS NULL
-		ORDER BY start_time DESC`
+		ORDER BY start_time DESC
+		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q)
+	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("ListTimespans: %w", err)
+		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans: %w", err)
 	}
 	defer rows.Close()
 
 	var spans []model.Timespan
+	totalCount := 0
 	for rows.Next() {
 		var ts model.Timespan
-		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime); err != nil {
-			return nil, fmt.Errorf("ListTimespans scan: %w", err)
+		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &totalCount); err != nil {
+			return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans scan: %w", err)
 		}
 		spans = append(spans, ts)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ListTimespans rows: %w", err)
+		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans rows: %w", err)
 	}
 
+	var tagErr error
 	for i := range spans {
-		spans[i].TagIds, err = r.timespanTagIds(ctx, spans[i].Id)
-		if err != nil {
-			return nil, err
+		spans[i].TagIds, tagErr = r.timespanTagIds(ctx, spans[i].Id)
+		if tagErr != nil {
+			return model.Page[model.Timespan]{}, tagErr
 		}
 	}
-	return spans, nil
+	if spans == nil {
+		spans = []model.Timespan{}
+	}
+	return model.Page[model.Timespan]{
+		Data:       spans,
+		TotalCount: totalCount,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 func (r *PostgresStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
@@ -209,7 +220,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 			SELECT 1 FROM timespan_tags tt
 			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 		)`
-	
+
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {

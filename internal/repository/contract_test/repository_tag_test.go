@@ -17,8 +17,8 @@ import (
 func TestTagRepositoryContract(t *testing.T) {
 	ctx := context.Background()
 
-	run := func(t *testing.T, newRepo func(t *testing.T) repository.Repository) {
-		t.Run("CreateAndGet", func(t *testing.T) {
+	run := func(t *testing.T, repoName string, newRepo func(t *testing.T) repository.Repository) {
+		t.Run(repoName+"CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
 			tag := model.Tag{
@@ -35,14 +35,14 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.Equal(t, "work", got.Name)
 		})
 
-		t.Run("GetMissing", func(t *testing.T) {
+		t.Run(repoName+"GetMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
 			_, err := repo.GetTag(ctx, uuid.New())
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
-		t.Run("List", func(t *testing.T) {
+		t.Run(repoName+"List", func(t *testing.T) {
 			repo := newRepo(t)
 
 			_, _ = repo.CreateTag(ctx, model.Tag{Name: "a", Color: "#ffffff"})
@@ -54,7 +54,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.Equal(t, 2, page.TotalCount)
 		})
 
-		t.Run("Update", func(t *testing.T) {
+		t.Run(repoName+"Update", func(t *testing.T) {
 			repo := newRepo(t)
 
 			tag := model.Tag{Name: "old", Color: "#00ff00"}
@@ -71,7 +71,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.Equal(t, "new", got.Name)
 		})
 
-		t.Run("UpdateMissing", func(t *testing.T) {
+		t.Run(repoName+"UpdateMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
 			_, err := repo.UpdateTag(ctx, model.Tag{
@@ -83,7 +83,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
-		t.Run("Delete", func(t *testing.T) {
+		t.Run(repoName+"Delete", func(t *testing.T) {
 			repo := newRepo(t)
 
 			tag := model.Tag{Name: "tmp", Color: "#000"}
@@ -96,7 +96,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
-		t.Run("ListPagination_OffsetAndLimit", func(t *testing.T) {
+		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
@@ -125,7 +125,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			}
 		})
 
-		t.Run("ListPagination_OffsetBeyondEnd", func(t *testing.T) {
+		t.Run(repoName+"ListPagination_OffsetBeyondEnd", func(t *testing.T) {
 			repo := newRepo(t)
 
 			_, _ = repo.CreateTag(ctx, model.Tag{Name: "only", Color: "#000000"})
@@ -135,7 +135,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			assertPage(t, page, 0, 1) // empty items, but TotalCount still reflects reality
 		})
 
-		t.Run("ListPagination_LastPagePartial", func(t *testing.T) {
+		t.Run(repoName+"ListPagination_LastPagePartial", func(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
@@ -150,7 +150,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			assertPage(t, page, 2, 5) // only 2 items remain
 		})
 
-		t.Run("ListPagination_EmptyStore", func(t *testing.T) {
+		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
 			repo := newRepo(t)
 
 			page, err := repo.ListTags(ctx, model.PaginationParams{Limit: 10, Offset: 0})
@@ -158,7 +158,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			assertPage(t, page, 0, 0)
 		})
 
-		t.Run("ListPagination_TotalCountUnaffectedByLimit", func(t *testing.T) {
+		t.Run(repoName+"ListPagination_TotalCountUnaffectedByLimit", func(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
@@ -177,12 +177,12 @@ func TestTagRepositoryContract(t *testing.T) {
 
 	// Memory
 
-	run(t, func(t *testing.T) repository.Repository {
+	run(t, "memory", func(t *testing.T) repository.Repository {
 		return memory.NewMemoryStore()
 	})
 
 	// Postgres
-	run(t, func(t *testing.T) repository.Repository {
+	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
 		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 		return postgres.NewPostgresStoreFromPool(pool)
