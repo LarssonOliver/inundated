@@ -11,8 +11,8 @@ func (s *ServiceImpl) GetTimespan(ctx context.Context, id uuid.UUID) (model.Time
 	return s.repository.GetTimespan(ctx, id)
 }
 
-func (s *ServiceImpl) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
-	return s.repository.ListTimespans(ctx)
+func (s *ServiceImpl) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+	return s.repository.ListTimespans(ctx, params)
 }
 
 func (s *ServiceImpl) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {

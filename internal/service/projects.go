@@ -27,8 +27,8 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 	return project, nil
 }
 
-func (s *ServiceImpl) ListProjects(ctx context.Context) ([]model.Project, error) {
-	return s.repository.ListProjects(ctx)
+func (s *ServiceImpl) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+	return s.repository.ListProjects(ctx, params)
 }
 
 func (s *ServiceImpl) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
