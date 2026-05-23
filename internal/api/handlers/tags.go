@@ -106,7 +106,11 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 		apiTags = append(apiTags, apiTag)
 	}
 
-	return api.ListTags200JSONResponse(apiTags), nil
+	response := api.PaginatedTags{
+		Data: apiTags,
+	}
+
+	return api.ListTags200JSONResponse(response), nil
 }
 
 // UpdateTag implements [api.TagHandler].

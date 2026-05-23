@@ -119,7 +119,11 @@ func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTim
 		apiTimespans = append(apiTimespans, apiTimespan)
 	}
 
-	return api.ListTimespans200JSONResponse(apiTimespans), nil
+	response := api.PaginatedTimespans{
+		Data: apiTimespans,
+	}
+
+	return api.ListTimespans200JSONResponse(response), nil
 }
 
 // UpdateTimespan implements [api.TimespanHandler].

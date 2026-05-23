@@ -133,7 +133,11 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 		apiProjects = append(apiProjects, apiProject)
 	}
 
-	return api.ListProjects200JSONResponse(apiProjects), nil
+	response := api.PaginatedProjects{
+		Data: apiProjects,
+	}
+
+	return api.ListProjects200JSONResponse(response), nil
 }
 
 // UpdateProject implements [api.ProjectHandler].

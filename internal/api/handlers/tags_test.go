@@ -235,17 +235,21 @@ func TestTagHandler_ListTags(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		listFn  func(ctx context.Context) ([]model.Tag, error)
-		want    []api.Tag
-		wantErr bool
+		name      string
+		listFn    func(ctx context.Context) ([]model.Tag, error)
+		initParams func() *api.ListTagsParams
+		wantData  []api.Tag
+		wantLimit int
+		wantTotal int
+		wantErr   bool
 	}{
 		{
-			name: "success with multiple tags",
+			name: "success with multiple tags and no params",
 			listFn: func(ctx context.Context) ([]model.Tag, error) {
 				return []model.Tag{tag1, tag2}, nil
 			},
-			want: []api.Tag{
+			initParams: func() *api.ListTagsParams { return nil },
+			wantData: []api.Tag{
 				{
 					Id:    tag1.Id,
 					Name:  tag1.Name,
@@ -257,33 +261,56 @@ func TestTagHandler_ListTags(t *testing.T) {
 					Color: tag2.Color,
 				},
 			},
-			wantErr: false,
+			wantLimit: 25, // default limit
+			wantTotal: 2,
+			wantErr:   false,
+		},
+		{
+			name: "success with pagination params",
+			listFn: func(ctx context.Context) ([]model.Tag, error) {
+				return []model.Tag{tag1, tag2}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{
+					Limit:  ptrLimit(10),
+					Offset: ptrOffset(0),
+				}
+			},
+			wantData: []api.Tag{
+				{
+					Id:    tag1.Id,
+					Name:  tag1.Name,
+					Color: tag1.Color,
+				},
+				{
+					Id:    tag2.Id,
+					Name:  tag2.Name,
+					Color: tag2.Color,
+				},
+			},
+			wantLimit: 10,
+			wantTotal: 2,
+			wantErr:   false,
 		},
 		{
 			name: "success with empty list",
 			listFn: func(ctx context.Context) ([]model.Tag, error) {
 				return []model.Tag{}, nil
 			},
-			want:    []api.Tag{},
-			wantErr: false,
+			initParams: func() *api.ListTagsParams { return nil },
+			wantData:  []api.Tag{},
+			wantLimit: 25,
+			wantTotal: 0,
+			wantErr:   false,
 		},
 		{
 			name: "service returns error",
 			listFn: func(ctx context.Context) ([]model.Tag, error) {
 				return nil, errors.New("database unavailable")
 			},
-			want:    nil,
-			wantErr: true,
+			initParams: func() *api.ListTagsParams { return nil },
+			wantErr:    true,
 		},
-		// {
-		// 	name: "context cancelled",
-		// 	listFn: func(ctx context.Context) ([]model.Tag, error) {
-		// 		<-ctx.Done()
-		// 		return nil, ctx.Err()
-		// 	},
-		// 	want:    nil,
-		// 	wantErr: true,
-		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -291,15 +318,32 @@ func TestTagHandler_ListTags(t *testing.T) {
 				ListFn: tt.listFn,
 			}
 			ta := handlers.NewTagHandler(svc)
+			params := tt.initParams()
 			request := api.ListTagsRequestObject{}
+			if params != nil {
+				request.Params = *params
+			}
 			got, gotErr := ta.ListTags(context.Background(), request)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("ListTags() failed: %v", gotErr)
+				}
+				return
+			}
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
-			require.NoError(t, gotErr)
 			res := got.(api.ListTags200JSONResponse)
-			require.ElementsMatch(t, tt.want, res)
+			require.Equal(t, len(tt.wantData), len(res.Data))
+			require.Equal(t, tt.wantLimit, res.Pagination.Limit)
+			require.Equal(t, tt.wantTotal, res.Pagination.Total)
+			
+			for i, tag := range res.Data {
+				require.Equal(t, tt.wantData[i].Id, tag.Id)
+				require.Equal(t, tt.wantData[i].Name, tag.Name)
+				require.Equal(t, tt.wantData[i].Color, tag.Color)
+			}
 		})
 	}
 }

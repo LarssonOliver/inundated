@@ -268,17 +268,21 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		listFn  func(ctx context.Context) ([]model.Project, error)
-		want    []api.Project
-		wantErr bool
+		name      string
+		listFn    func(ctx context.Context) ([]model.Project, error)
+		initParams func() *api.ListProjectsParams
+		wantData  []api.Project
+		wantLimit int
+		wantTotal int
+		wantErr   bool
 	}{
 		{
-			name: "success with multiple projects",
+			name: "success with multiple projects and no params",
 			listFn: func(ctx context.Context) ([]model.Project, error) {
 				return []model.Project{project1, project2}, nil
 			},
-			want: []api.Project{
+			initParams: func() *api.ListProjectsParams { return nil },
+			wantData: []api.Project{
 				{
 					Id:    project1.Id,
 					Name:  project1.Name,
@@ -290,33 +294,56 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 					Color: project2.Color,
 				},
 			},
-			wantErr: false,
+			wantLimit: 25, // default limit
+			wantTotal: 2,
+			wantErr:   false,
+		},
+		{
+			name: "success with pagination params",
+			listFn: func(ctx context.Context) ([]model.Project, error) {
+				return []model.Project{project1, project2}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				return &api.ListProjectsParams{
+					Limit:  ptrLimit(10),
+					Offset: ptrOffset(0),
+				}
+			},
+			wantData: []api.Project{
+				{
+					Id:    project1.Id,
+					Name:  project1.Name,
+					Color: project1.Color,
+				},
+				{
+					Id:    project2.Id,
+					Name:  project2.Name,
+					Color: project2.Color,
+				},
+			},
+			wantLimit: 10,
+			wantTotal: 2,
+			wantErr:   false,
 		},
 		{
 			name: "success with empty list",
 			listFn: func(ctx context.Context) ([]model.Project, error) {
 				return []model.Project{}, nil
 			},
-			want:    []api.Project{},
-			wantErr: false,
+			initParams: func() *api.ListProjectsParams { return nil },
+			wantData:  []api.Project{},
+			wantLimit: 25,
+			wantTotal: 0,
+			wantErr:   false,
 		},
 		{
 			name: "service returns error",
 			listFn: func(ctx context.Context) ([]model.Project, error) {
 				return nil, errors.New("database unavailable")
 			},
-			want:    nil,
-			wantErr: true,
+			initParams: func() *api.ListProjectsParams { return nil },
+			wantErr:    true,
 		},
-		// {
-		// 	name: "context cancelled",
-		// 	listFn: func(ctx context.Context) ([]model.Project, error) {
-		// 		<-ctx.Done()
-		// 		return nil, ctx.Err()
-		// 	},
-		// 	want:    nil,
-		// 	wantErr: true,
-		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -324,7 +351,11 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 				ListFn: tt.listFn,
 			}
 			ta := handlers.NewProjectHandler(svc)
+			params := tt.initParams()
 			request := api.ListProjectsRequestObject{}
+			if params != nil {
+				request.Params = *params
+			}
 			got, gotErr := ta.ListProjects(context.Background(), request)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -336,13 +367,19 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 				t.Fatal("ListProjects() succeeded unexpectedly")
 			}
 			res := got.(api.ListProjects200JSONResponse)
-			if len(res) != len(tt.want) {
-				t.Errorf("ListProjects() = %v, want %v", got, tt.want)
+			if len(res.Data) != len(tt.wantData) {
+				t.Errorf("ListProjects() data length = %d, want %d", len(res.Data), len(tt.wantData))
 				return
 			}
-			for i, project := range res {
-				if project.Id == uuid.Nil || project.Name != tt.want[i].Name || project.Color != tt.want[i].Color {
-					t.Errorf("ListProjects() = %v, want %v", got, tt.want)
+			if res.Pagination.Limit != tt.wantLimit {
+				t.Errorf("ListProjects() limit = %d, want %d", res.Pagination.Limit, tt.wantLimit)
+			}
+			if res.Pagination.Total != tt.wantTotal {
+				t.Errorf("ListProjects() total = %d, want %d", res.Pagination.Total, tt.wantTotal)
+			}
+			for i, project := range res.Data {
+				if project.Id == uuid.Nil || project.Name != tt.wantData[i].Name || project.Color != tt.wantData[i].Color {
+					t.Errorf("ListProjects() data item %d = %v, want %v", i, project, tt.wantData[i])
 				}
 			}
 		})

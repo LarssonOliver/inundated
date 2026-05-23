@@ -240,17 +240,21 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		listFn  func(ctx context.Context) ([]model.Timespan, error)
-		want    []api.Timespan
-		wantErr bool
+		name      string
+		listFn    func(ctx context.Context) ([]model.Timespan, error)
+		initParams func() *api.ListTimespansParams
+		wantData  []api.Timespan
+		wantLimit int
+		wantTotal int
+		wantErr   bool
 	}{
 		{
-			name: "success with multiple timespans",
+			name: "success with multiple timespans and no params",
 			listFn: func(ctx context.Context) ([]model.Timespan, error) {
 				return []model.Timespan{timespan1, timespan2}, nil
 			},
-			want: []api.Timespan{
+			initParams: func() *api.ListTimespansParams { return nil },
+			wantData: []api.Timespan{
 				{
 					Id:   timespan1.Id,
 					Name: &timespan1.Name,
@@ -260,33 +264,54 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 					Name: &timespan2.Name,
 				},
 			},
-			wantErr: false,
+			wantLimit: 25, // default limit
+			wantTotal: 2,
+			wantErr:   false,
+		},
+		{
+			name: "success with pagination params",
+			listFn: func(ctx context.Context) ([]model.Timespan, error) {
+				return []model.Timespan{timespan1, timespan2}, nil
+			},
+			initParams: func() *api.ListTimespansParams {
+				return &api.ListTimespansParams{
+					Limit:  ptrLimit(10),
+					Offset: ptrOffset(0),
+				}
+			},
+			wantData: []api.Timespan{
+				{
+					Id:   timespan1.Id,
+					Name: &timespan1.Name,
+				},
+				{
+					Id:   timespan2.Id,
+					Name: &timespan2.Name,
+				},
+			},
+			wantLimit: 10,
+			wantTotal: 2,
+			wantErr:   false,
 		},
 		{
 			name: "success with empty list",
 			listFn: func(ctx context.Context) ([]model.Timespan, error) {
 				return []model.Timespan{}, nil
 			},
-			want:    []api.Timespan{},
-			wantErr: false,
+			initParams: func() *api.ListTimespansParams { return nil },
+			wantData:  []api.Timespan{},
+			wantLimit: 25,
+			wantTotal: 0,
+			wantErr:   false,
 		},
 		{
 			name: "service returns error",
 			listFn: func(ctx context.Context) ([]model.Timespan, error) {
 				return nil, errors.New("database unavailable")
 			},
-			want:    nil,
-			wantErr: true,
+			initParams: func() *api.ListTimespansParams { return nil },
+			wantErr:    true,
 		},
-		// {
-		// 	name: "context cancelled",
-		// 	listFn: func(ctx context.Context) ([]model.Timespan, error) {
-		// 		<-ctx.Done()
-		// 		return nil, ctx.Err()
-		// 	},
-		// 	want:    nil,
-		// 	wantErr: true,
-		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -294,7 +319,11 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 				ListFn: tt.listFn,
 			}
 			ta := handlers.NewTimespanHandler(svc)
+			params := tt.initParams()
 			request := api.ListTimespansRequestObject{}
+			if params != nil {
+				request.Params = *params
+			}
 			got, gotErr := ta.ListTimespans(context.Background(), request)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -306,13 +335,19 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 				t.Fatal("ListTimespans() succeeded unexpectedly")
 			}
 			res := got.(api.ListTimespans200JSONResponse)
-			if len(res) != len(tt.want) {
-				t.Errorf("ListTimespans() = %v, want %v", got, tt.want)
+			if len(res.Data) != len(tt.wantData) {
+				t.Errorf("ListTimespans() data length = %d, want %d", len(res.Data), len(tt.wantData))
 				return
 			}
-			for i, timespan := range res {
-				if timespan.Id == uuid.Nil || *timespan.Name != *tt.want[i].Name {
-					t.Errorf("ListTimespans() = %v, want %v", got, tt.want)
+			if res.Pagination.Limit != tt.wantLimit {
+				t.Errorf("ListTimespans() limit = %d, want %d", res.Pagination.Limit, tt.wantLimit)
+			}
+			if res.Pagination.Total != tt.wantTotal {
+				t.Errorf("ListTimespans() total = %d, want %d", res.Pagination.Total, tt.wantTotal)
+			}
+			for i, timespan := range res.Data {
+				if timespan.Id == uuid.Nil || *timespan.Name != *tt.wantData[i].Name {
+					t.Errorf("ListTimespans() data item %d = %v, want %v", i, timespan, tt.wantData[i])
 				}
 			}
 		})

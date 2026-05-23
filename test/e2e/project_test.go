@@ -55,10 +55,10 @@ func TestProject_CRUD(t *testing.T) {
 	require.Equal(t, 200, updateResp.StatusCode())
 
 	// LIST
-	listResp, err := client.ListProjectsWithResponse(ctx)
+	listResp, err := client.ListProjectsWithResponse(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, listResp.StatusCode())
-	require.GreaterOrEqual(t, len(*listResp.JSON200), 1)
+	require.GreaterOrEqual(t, len(listResp.JSON200.Data), 1)
 
 	// DELETE
 	deleteResp, err := client.DeleteProjectWithResponse(ctx, projectId)
@@ -80,4 +80,42 @@ func TestProject_Create_InvalidInput(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode())
+}
+
+func TestProject_List_Pagination(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	// Test pagination with default parameters (no params passed)
+	defaultResp, err := client.ListProjectsWithResponse(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 200, defaultResp.StatusCode())
+	require.NotNil(t, defaultResp.JSON200)
+
+	// Verify response structure
+	resp := defaultResp.JSON200
+	require.NotNil(t, resp.Data)
+	require.NotNil(t, resp.Pagination)
+
+	// Verify pagination metadata exists
+	require.GreaterOrEqual(t, resp.Pagination.Limit, 1)
+	require.GreaterOrEqual(t, resp.Pagination.Offset, 0)
+	require.GreaterOrEqual(t, resp.Pagination.Total, 0)
+
+	// Test pagination with explicit limit and offset parameters
+	limit := Limit(10)
+	offset := Offset(0)
+	paramsResp, err := client.ListProjectsWithResponse(ctx, &ListProjectsParams{
+		Limit:  &limit,
+		Offset: &offset,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 200, paramsResp.StatusCode())
+	require.NotNil(t, paramsResp.JSON200)
+
+	// Verify pagination parameters are respected
+	paramsData := paramsResp.JSON200
+	require.Equal(t, int(limit), paramsData.Pagination.Limit)
+	require.Equal(t, int(offset), paramsData.Pagination.Offset)
+	require.LessOrEqual(t, len(paramsData.Data), int(limit))
 }
