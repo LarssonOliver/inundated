@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -61,6 +62,18 @@ func TestProjectRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
+		t.Run("List", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, _ = repo.CreateProject(ctx, model.Project{Name: "a", Color: "#ffffff"})
+			_, _ = repo.CreateProject(ctx, model.Project{Name: "b", Color: "#000000"})
+
+			page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 2, page.TotalCount)
+		})
+
 		t.Run("Update", func(t *testing.T) {
 			repo := newRepo(t)
 
@@ -117,6 +130,87 @@ func TestProjectRepositoryContract(t *testing.T) {
 			_, err = repo.GetProject(ctx, project.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
+
+		t.Run("ListPagination_OffsetAndLimit", func(t *testing.T) {
+			repo := newRepo(t)
+
+			for i := range 5 {
+				_, _ = repo.CreateProject(ctx, model.Project{
+					Name:  fmt.Sprintf("project-%d", i),
+					Color: "#000000",
+				})
+			}
+
+			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 2, Offset: 0})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 5, page.TotalCount)
+
+			page2, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 2, Offset: 2})
+			require.NoError(t, err)
+			require.Len(t, page2.Data, 2)
+			require.Equal(t, 5, page2.TotalCount)
+
+			ids1 := make(map[uuid.UUID]bool)
+			for _, p := range page.Data {
+				ids1[p.Id] = true
+			}
+			for _, p := range page2.Data {
+				require.False(t, ids1[p.Id], "duplicate item across pages")
+			}
+		})
+
+		t.Run("ListPagination_OffsetBeyondEnd", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, _ = repo.CreateProject(ctx, model.Project{Name: "only", Color: "#000000"})
+
+			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 10, Offset: 100})
+			require.NoError(t, err)
+			require.Empty(t, page.Data)
+			require.Equal(t, 1, page.TotalCount)
+		})
+
+		t.Run("ListPagination_LastPagePartial", func(t *testing.T) {
+			repo := newRepo(t)
+
+			for i := range 5 {
+				_, _ = repo.CreateProject(ctx, model.Project{
+					Name:  fmt.Sprintf("project-%d", i),
+					Color: "#000000",
+				})
+			}
+
+			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 3, Offset: 3})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 5, page.TotalCount)
+		})
+
+		t.Run("ListPagination_EmptyStore", func(t *testing.T) {
+			repo := newRepo(t)
+
+			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 10, Offset: 0})
+			require.NoError(t, err)
+			require.Empty(t, page.Data)
+			require.Equal(t, 0, page.TotalCount)
+		})
+
+		t.Run("ListPagination_TotalCountUnaffectedByLimit", func(t *testing.T) {
+			repo := newRepo(t)
+
+			for i := range 5 {
+				_, _ = repo.CreateProject(ctx, model.Project{
+					Name:  fmt.Sprintf("project-%d", i),
+					Color: "#000000",
+				})
+			}
+
+			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 1, Offset: 0})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 1)
+			require.Equal(t, 5, page.TotalCount)
+		})
 	}
 
 	// Memory
@@ -132,4 +226,3 @@ func TestProjectRepositoryContract(t *testing.T) {
 		return postgres.NewPostgresStoreFromPool(pool)
 	})
 }
-
