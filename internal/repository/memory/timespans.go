@@ -58,17 +58,31 @@ func (t *MemoryStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Time
 }
 
 // ListTimespans implements [repository.TimespanRepository].
-func (t *MemoryStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
+func (t *MemoryStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespans := make([]model.Timespan, 0, len(t.timespans))
-
+	all := make([]model.Timespan, 0, len(t.timespans))
 	for _, timespan := range t.timespans {
-		timespans = append(timespans, timespan)
+		all = append(all, timespan)
 	}
 
-	return timespans, nil
+	total := len(all)
+	start := params.Offset
+	if start > total {
+		start = total
+	}
+	end := start + params.Limit
+	if end > total {
+		end = total
+	}
+
+	return model.Page[model.Timespan]{
+		Data:       all[start:end],
+		TotalCount: total,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 // UpdateTimespan implements [repository.TimespanRepository].

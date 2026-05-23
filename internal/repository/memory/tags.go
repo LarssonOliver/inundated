@@ -54,17 +54,31 @@ func (t *MemoryStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, erro
 }
 
 // ListTags implements [repository.TagRepository].
-func (t *MemoryStore) ListTags(ctx context.Context) ([]model.Tag, error) {
+func (t *MemoryStore) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	tags := make([]model.Tag, 0, len(t.tags))
-
+	all := make([]model.Tag, 0, len(t.tags))
 	for _, tag := range t.tags {
-		tags = append(tags, tag)
+		all = append(all, tag)
 	}
 
-	return tags, nil
+	total := len(all)
+	start := params.Offset
+	if start > total {
+		start = total
+	}
+	end := start + params.Limit
+	if end > total {
+		end = total
+	}
+
+	return model.Page[model.Tag]{
+		Data:       all[start:end],
+		TotalCount: total,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 // UpdateTag implements [repository.TagRepository].

@@ -149,66 +149,113 @@ func TestTagStore_GetTag(t *testing.T) {
 
 func TestTagStore_ListTags(t *testing.T) {
 	tests := []struct {
-		name       string // description of this test case
+		name       string
 		insertTags []model.Tag
+		params     model.PaginationParams
+		wantLen    int
+		wantTotal  int
 		wantErr    bool
 	}{
 		{
-			name: "Test ListTags with multiple tags",
+			name: "Test ListTags with multiple tags default pagination",
 			insertTags: []model.Tag{
 				{Name: "Tag1", Color: "#FF0000"},
 				{Name: "Tag2", Color: "#00FF00"},
 				{Name: "Tag3", Color: "#0000FF"},
 			},
-			wantErr: false,
+			params:    model.DefaultPaginationParams(),
+			wantLen:   3,
+			wantTotal: 3,
 		},
 		{
 			name:       "Test ListTags with no tags",
 			insertTags: []model.Tag{},
-			wantErr:    false,
+			params:     model.DefaultPaginationParams(),
+			wantLen:    0,
+			wantTotal:  0,
 		},
 		{
-			name: "Test ListTags with one tag",
-			insertTags: []model.Tag{
-				{Name: "OnlyTag", Color: "#123456"},
-			},
-			wantErr: false,
+			name:       "Test ListTags with one tag",
+			insertTags: []model.Tag{{Name: "OnlyTag", Color: "#123456"}},
+			params:     model.DefaultPaginationParams(),
+			wantLen:    1,
+			wantTotal:  1,
 		},
 		{
 			name:       "Test ListTags with duplicate tags",
 			insertTags: []model.Tag{{Name: "DupTag", Color: "#654321"}, {Name: "DupTag", Color: "#654321"}},
-			wantErr:    false,
+			params:     model.DefaultPaginationParams(),
+			wantLen:    2,
+			wantTotal:  2,
+		},
+		{
+			name: "Test ListTags with limit",
+			insertTags: []model.Tag{
+				{Name: "Tag1", Color: "#FF0000"},
+				{Name: "Tag2", Color: "#00FF00"},
+				{Name: "Tag3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 2, Offset: 0},
+			wantLen:   2,
+			wantTotal: 3,
+		},
+		{
+			name: "Test ListTags with offset",
+			insertTags: []model.Tag{
+				{Name: "Tag1", Color: "#FF0000"},
+				{Name: "Tag2", Color: "#00FF00"},
+				{Name: "Tag3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 10, Offset: 2},
+			wantLen:   1,
+			wantTotal: 3,
+		},
+		{
+			name: "Test ListTags with offset beyond end",
+			insertTags: []model.Tag{
+				{Name: "Tag1", Color: "#FF0000"},
+			},
+			params:    model.PaginationParams{Limit: 10, Offset: 100},
+			wantLen:   0,
+			wantTotal: 1,
+		},
+		{
+			name: "Test ListTags total count unaffected by limit",
+			insertTags: []model.Tag{
+				{Name: "Tag1", Color: "#FF0000"},
+				{Name: "Tag2", Color: "#00FF00"},
+				{Name: "Tag3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 1, Offset: 0},
+			wantLen:   1,
+			wantTotal: 3,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
+			insertedIds := make(map[uuid.UUID]bool)
 			for i, tag := range tt.insertTags {
 				createdTag, _ := ta.CreateTag(context.Background(), tag)
 				tt.insertTags[i].Id = createdTag.Id
+				insertedIds[createdTag.Id] = true
 			}
 
-			got, gotErr := ta.ListTags(context.Background())
+			page, gotErr := ta.ListTags(context.Background(), tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
 
 			require.NoError(t, gotErr)
-			require.Len(t, got, len(tt.insertTags))
+			require.Len(t, page.Data, tt.wantLen)
+			require.Equal(t, tt.wantTotal, page.TotalCount)
+			require.Equal(t, tt.params.Limit, page.Limit)
+			require.Equal(t, tt.params.Offset, page.Offset)
 
-			for _, tag := range tt.insertTags {
-				found := false
-				for _, gotTag := range got {
-					if gotTag.Id == tag.Id && gotTag.Name == tag.Name && gotTag.Color == tag.Color {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("ListTags() missing expected tag: %v", tag)
-				}
+			for _, tag := range page.Data {
+				require.True(t, insertedIds[tag.Id], "returned tag not in inserted set")
 			}
 		})
 	}

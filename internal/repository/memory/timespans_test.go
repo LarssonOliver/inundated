@@ -173,29 +173,82 @@ func TestTimespanStore_GetTimespan(t *testing.T) {
 
 func TestTimespanStore_ListTimespans(t *testing.T) {
 	baseTime := time.Now()
-
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
 	tests := []struct {
-		name            string // description of this test case
+		name            string
 		insertTimespans []model.Timespan
+		params          model.PaginationParams
+		wantLen         int
+		wantTotal       int
 		wantErr         bool
 		errType         error
 	}{
 		{
-			name:            "Test ListTimespans with multiple entries",
-			insertTimespans: []model.Timespan{{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tagIds[0]}}, {Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)}},
-			wantErr:         false,
+			name: "Test ListTimespans with multiple entries default pagination",
+			insertTimespans: []model.Timespan{
+				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tagIds[0]}},
+				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+			},
+			params:    model.DefaultPaginationParams(),
+			wantLen:   2,
+			wantTotal: 2,
 		},
 		{
 			name:            "Test ListTimespans with no entries",
 			insertTimespans: []model.Timespan{},
-			wantErr:         false,
+			params:          model.DefaultPaginationParams(),
+			wantLen:         0,
+			wantTotal:       0,
 		},
 		{
 			name:            "Test ListTimespans with one entry",
 			insertTimespans: []model.Timespan{{Name: "OnlyTimespan", StartTime: baseTime, EndTime: baseTime.Add(30 * time.Minute)}},
-			wantErr:         false,
+			params:          model.DefaultPaginationParams(),
+			wantLen:         1,
+			wantTotal:       1,
+		},
+		{
+			name: "Test ListTimespans with limit",
+			insertTimespans: []model.Timespan{
+				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
+			},
+			params:    model.PaginationParams{Limit: 2, Offset: 0},
+			wantLen:   2,
+			wantTotal: 3,
+		},
+		{
+			name: "Test ListTimespans with offset",
+			insertTimespans: []model.Timespan{
+				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
+			},
+			params:    model.PaginationParams{Limit: 10, Offset: 2},
+			wantLen:   1,
+			wantTotal: 3,
+		},
+		{
+			name: "Test ListTimespans with offset beyond end",
+			insertTimespans: []model.Timespan{
+				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+			},
+			params:    model.PaginationParams{Limit: 10, Offset: 100},
+			wantLen:   0,
+			wantTotal: 1,
+		},
+		{
+			name: "Test ListTimespans total count unaffected by limit",
+			insertTimespans: []model.Timespan{
+				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
+				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
+			},
+			params:    model.PaginationParams{Limit: 1, Offset: 0},
+			wantLen:   1,
+			wantTotal: 3,
 		},
 	}
 	for _, tt := range tests {
@@ -207,12 +260,14 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			insertedIds := make(map[uuid.UUID]bool)
 			for i, timespan := range tt.insertTimespans {
 				createdTimespan, _ := ta.CreateTimespan(context.Background(), timespan)
 				tt.insertTimespans[i].Id = createdTimespan.Id
+				insertedIds[createdTimespan.Id] = true
 			}
 
-			got, gotErr := ta.ListTimespans(context.Background())
+			page, gotErr := ta.ListTimespans(context.Background(), tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -222,20 +277,13 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr)
-			require.NotNil(t, got)
-			require.Len(t, got, len(tt.insertTimespans))
+			require.Len(t, page.Data, tt.wantLen)
+			require.Equal(t, tt.wantTotal, page.TotalCount)
+			require.Equal(t, tt.params.Limit, page.Limit)
+			require.Equal(t, tt.params.Offset, page.Offset)
 
-			for _, timespan := range tt.insertTimespans {
-				found := false
-				for _, gotTimespan := range got {
-					if gotTimespan.Id == timespan.Id && gotTimespan.Name == timespan.Name && timespan.StartTime.Equal(gotTimespan.StartTime) && timespan.EndTime.Equal(gotTimespan.EndTime) && len(gotTimespan.TagIds) == len(timespan.TagIds) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("ListTimespans() missing expected timespan: %v", timespan)
-				}
+			for _, ts := range page.Data {
+				require.True(t, insertedIds[ts.Id], "returned timespan not in inserted set")
 			}
 		})
 	}

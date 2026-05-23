@@ -57,17 +57,31 @@ func (t *MemoryStore) GetProject(ctx context.Context, id uuid.UUID) (model.Proje
 }
 
 // ListProjects implements [repository.ProjectRepository].
-func (t *MemoryStore) ListProjects(ctx context.Context) ([]model.Project, error) {
+func (t *MemoryStore) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	projects := make([]model.Project, 0, len(t.projects))
-
+	all := make([]model.Project, 0, len(t.projects))
 	for _, project := range t.projects {
-		projects = append(projects, project)
+		all = append(all, project)
 	}
 
-	return projects, nil
+	total := len(all)
+	start := params.Offset
+	if start > total {
+		start = total
+	}
+	end := start + params.Limit
+	if end > total {
+		end = total
+	}
+
+	return model.Page[model.Project]{
+		Data:       all[start:end],
+		TotalCount: total,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 // UpdateProject implements [repository.ProjectRepository].

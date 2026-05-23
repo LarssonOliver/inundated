@@ -182,36 +182,85 @@ func TestProjectStore_ListProjects(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
 	tests := []struct {
-		name           string // description of this test case
+		name           string
 		insertProjects []model.Project
+		params         model.PaginationParams
+		wantLen        int
+		wantTotal      int
 		wantErr        bool
 		errType        error
 	}{
 		{
-			name: "Test ListProjects with multiple projects",
+			name: "Test ListProjects with multiple projects default pagination",
 			insertProjects: []model.Project{
 				{Name: "Project1", Color: "#FF0000", TimeBudget: ptrd(3 * time.Hour), TagIds: tagIds},
 				{Name: "Project2", Color: "#00FF00"},
 				{Name: "Project3", Color: "#0000FF"},
 			},
-			wantErr: false,
+			params:    model.DefaultPaginationParams(),
+			wantLen:   3,
+			wantTotal: 3,
 		},
 		{
 			name:           "Test ListProjects with no projects",
 			insertProjects: []model.Project{},
-			wantErr:        false,
+			params:         model.DefaultPaginationParams(),
+			wantLen:        0,
+			wantTotal:      0,
 		},
 		{
-			name: "Test ListProjects with one project",
-			insertProjects: []model.Project{
-				{Name: "OnlyProject", Color: "#123456"},
-			},
-			wantErr: false,
+			name:           "Test ListProjects with one project",
+			insertProjects: []model.Project{{Name: "OnlyProject", Color: "#123456"}},
+			params:         model.DefaultPaginationParams(),
+			wantLen:        1,
+			wantTotal:      1,
 		},
 		{
 			name:           "Test ListProjects with duplicate projects",
 			insertProjects: []model.Project{{Name: "DupProject", Color: "#654321"}, {Name: "DupProject", Color: "#654321"}},
-			wantErr:        false,
+			params:         model.DefaultPaginationParams(),
+			wantLen:        2,
+			wantTotal:      2,
+		},
+		{
+			name: "Test ListProjects with limit",
+			insertProjects: []model.Project{
+				{Name: "Project1", Color: "#FF0000"},
+				{Name: "Project2", Color: "#00FF00"},
+				{Name: "Project3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 2, Offset: 0},
+			wantLen:   2,
+			wantTotal: 3,
+		},
+		{
+			name: "Test ListProjects with offset",
+			insertProjects: []model.Project{
+				{Name: "Project1", Color: "#FF0000"},
+				{Name: "Project2", Color: "#00FF00"},
+				{Name: "Project3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 10, Offset: 2},
+			wantLen:   1,
+			wantTotal: 3,
+		},
+		{
+			name:           "Test ListProjects with offset beyond end",
+			insertProjects: []model.Project{{Name: "Project1", Color: "#FF0000"}},
+			params:         model.PaginationParams{Limit: 10, Offset: 100},
+			wantLen:        0,
+			wantTotal:      1,
+		},
+		{
+			name: "Test ListProjects total count unaffected by limit",
+			insertProjects: []model.Project{
+				{Name: "Project1", Color: "#FF0000"},
+				{Name: "Project2", Color: "#00FF00"},
+				{Name: "Project3", Color: "#0000FF"},
+			},
+			params:    model.PaginationParams{Limit: 1, Offset: 0},
+			wantLen:   1,
+			wantTotal: 3,
 		},
 	}
 	for _, tt := range tests {
@@ -222,12 +271,14 @@ func TestProjectStore_ListProjects(t *testing.T) {
 				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
+			insertedIds := make(map[uuid.UUID]bool)
 			for i, project := range tt.insertProjects {
 				createdProject, _ := ta.CreateProject(context.Background(), project)
 				tt.insertProjects[i].Id = createdProject.Id
+				insertedIds[createdProject.Id] = true
 			}
 
-			got, gotErr := ta.ListProjects(context.Background())
+			page, gotErr := ta.ListProjects(context.Background(), tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -237,25 +288,13 @@ func TestProjectStore_ListProjects(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr)
-			require.Len(t, got, len(tt.insertProjects))
+			require.Len(t, page.Data, tt.wantLen)
+			require.Equal(t, tt.wantTotal, page.TotalCount)
+			require.Equal(t, tt.params.Limit, page.Limit)
+			require.Equal(t, tt.params.Offset, page.Offset)
 
-			for _, project := range tt.insertProjects {
-				found := false
-			outer:
-				for _, gotProject := range got {
-					if gotProject.Id == project.Id && gotProject.Name == project.Name && gotProject.Color == project.Color && len(gotProject.TagIds) == len(project.TagIds) {
-						for i, tagId := range project.TagIds {
-							if gotProject.TagIds[i] != tagId {
-								continue outer
-							}
-						}
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("ListProjects() missing expected project: %v", project)
-				}
+			for _, project := range page.Data {
+				require.True(t, insertedIds[project.Id], "returned project not in inserted set")
 			}
 		})
 	}
