@@ -64,10 +64,13 @@ func (t *MemoryStore) ListTimespans(ctx context.Context, params model.Pagination
 
 	all := make([]model.Timespan, 0, len(t.timespans))
 	all = append(all, t.timespans...)
+	slices.SortFunc(all, func(a, b model.Timespan) int {
+		return -a.StartTime.Compare(b.StartTime) // Negate to sort in descending order
+	})
 
 	total := len(all)
 	start := min(params.Offset, total)
-	end := min(start + params.Limit, total)
+	end := min(start+params.Limit, total)
 
 	return model.Page[model.Timespan]{
 		Data:       all[start:end],
