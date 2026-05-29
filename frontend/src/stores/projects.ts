@@ -1,4 +1,4 @@
-import { projectsApi, type ProjectsApi, type PaginatedProjectsResponse } from "@/api/projects";
+import { projectsApi, type ProjectsApi } from "@/api/projects";
 import type { Project, ProjectStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";

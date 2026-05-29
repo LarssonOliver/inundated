@@ -3,7 +3,6 @@ import {
   ProjectsApi as GeneratedProjectsApi,
   GetProjectIncludeEnum,
   ProjectStatsMetricEnum,
-  type PaginatedProjects,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";

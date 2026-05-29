@@ -1,5 +1,5 @@
 import type { Timespan } from "@/model";
-import { TimespansApi as GeneratedTimespansApi, type PaginatedTimespans } from "@/api/generated";
+import { TimespansApi as GeneratedTimespansApi } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import {
   mapFromApiArray,

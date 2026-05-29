@@ -1,9 +1,5 @@
 import type { Tag } from "@/model";
-import {
-  TagsApi as GeneratedTagsApi,
-  GetTagIncludeEnum,
-  type PaginatedTags,
-} from "@/api/generated";
+import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 
