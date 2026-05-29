@@ -45,23 +45,18 @@ describe("tags API", () => {
 
   it("listTagsPaginated returns mapped tags with pagination info", async () => {
     api.listTags.mockResolvedValue({
-      data: [
-        { id: "1", name: "A", color: "#111" },
-      ],
+      data: [{ id: "1", name: "A", color: "#111" }],
       pagination: { limit: 50, offset: 50, total: 100 },
     });
 
     const sut = createTagsApi(api);
     const result = await sut.listTagsPaginated(50, 50);
 
-    expect(result.data).toEqual([
-      { id: "1", name: "A", color: "#111" },
-    ]);
+    expect(result.data).toEqual([{ id: "1", name: "A", color: "#111" }]);
     expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
 
     expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 50 });
   });
-
 
   it("getTag returns mapped tag when found", async () => {
     api.getTag.mockResolvedValue({

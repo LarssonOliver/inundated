@@ -47,9 +47,7 @@ describe("timespans API", () => {
 
   it("listTimespansPaginated returns mapped timespans with pagination info", async () => {
     api.listTimespans.mockResolvedValue({
-      data: [
-        { id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) },
-      ],
+      data: [{ id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) }],
       pagination: { limit: 50, offset: 50, total: 100 },
     });
 
@@ -63,7 +61,6 @@ describe("timespans API", () => {
 
     expect(api.listTimespans).toHaveBeenCalledWith({ limit: 50, offset: 50 });
   });
-
 
   it("getTimespan returns mapped timespan when found", async () => {
     api.getTimespan.mockResolvedValue({

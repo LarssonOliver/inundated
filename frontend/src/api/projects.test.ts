@@ -47,9 +47,7 @@ describe("projects API", () => {
 
   it("listProjectsPaginated returns mapped projects with pagination info", async () => {
     api.listProjects.mockResolvedValue({
-      data: [
-        { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
-      ],
+      data: [{ id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) }],
       pagination: { limit: 50, offset: 50, total: 100 },
     });
 

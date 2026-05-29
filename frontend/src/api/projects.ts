@@ -45,7 +45,10 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
       return mapFromApiArray(projectMapper, response.data);
     },
 
-    async listProjectsPaginated(limit: number = 50, offset: number = 0): Promise<PaginatedProjectsResponse> {
+    async listProjectsPaginated(
+      limit: number = 50,
+      offset: number = 0,
+    ): Promise<PaginatedProjectsResponse> {
       const response = await api.listProjects({ limit, offset });
       return {
         data: mapFromApiArray(projectMapper, response.data),

@@ -37,7 +37,10 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
       return mapFromApiArray(timespanMapper, response.data);
     },
 
-    async listTimespansPaginated(limit: number = 50, offset: number = 0): Promise<PaginatedTimespansResponse> {
+    async listTimespansPaginated(
+      limit: number = 50,
+      offset: number = 0,
+    ): Promise<PaginatedTimespansResponse> {
       const response = await api.listTimespans({ limit, offset });
       return {
         data: mapFromApiArray(timespanMapper, response.data),

@@ -1,5 +1,9 @@
 import type { Tag } from "@/model";
-import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum, type PaginatedTags } from "@/api/generated";
+import {
+  TagsApi as GeneratedTagsApi,
+  GetTagIncludeEnum,
+  type PaginatedTags,
+} from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 
@@ -32,7 +36,10 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
       return mapFromApiArray(tagMapper, response.data);
     },
 
-    async listTagsPaginated(limit: number = 50, offset: number = 0): Promise<PaginatedTagsResponse> {
+    async listTagsPaginated(
+      limit: number = 50,
+      offset: number = 0,
+    ): Promise<PaginatedTagsResponse> {
       const response = await api.listTags({ limit, offset });
       return {
         data: mapFromApiArray(tagMapper, response.data),
