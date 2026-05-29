@@ -23,6 +23,7 @@ describe("projects store", () => {
 
     api = {
       listProjects: vi.fn(),
+      listProjectsPaginated: vi.fn(),
       getProject: vi.fn(),
       createProject: vi.fn(),
       updateProject: vi.fn(),
@@ -33,21 +34,27 @@ describe("projects store", () => {
     useStore = __test__.createProjectsStore(api);
   });
 
-  it("fetches and stores all projects", async () => {
+  it("fetches and stores first page of projects", async () => {
     const projects = [project({ id: "a" }), project({ id: "b" })];
-    api.listProjects.mockResolvedValue(projects);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: projects,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const store = useStore();
     await store.fetchProjects();
 
-    expect(api.listProjects).toHaveBeenCalledOnce();
+    expect(api.listProjectsPaginated).toHaveBeenCalledOnce();
     expect(store.projects).toHaveLength(2);
     expect(store.projects.map((p) => p.id)).toEqual(["a", "b"]);
   });
 
   it("returns defensive copies from projects getter", async () => {
     const original = project();
-    api.listProjects.mockResolvedValue([original]);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [original],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
 
     const store = useStore();
     await store.fetchProjects();
@@ -80,7 +87,10 @@ describe("projects store", () => {
     const initial = project({ id: "u1", name: "Old" });
     const updated = project({ id: "u1", name: "Updated" });
 
-    api.listProjects.mockResolvedValue([initial]);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [initial],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.updateProject.mockResolvedValue(updated);
 
     const store = useStore();
@@ -106,7 +116,10 @@ describe("projects store", () => {
 
   it("deletes a project", async () => {
     const p = project({ id: "d1" });
-    api.listProjects.mockResolvedValue([p]);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [p],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.deleteProject.mockResolvedValue(undefined);
 
     const store = useStore();
@@ -119,16 +132,22 @@ describe("projects store", () => {
 
   it("only issue one fetch when fetching projects multiple times", async () => {
     const projects = [project({ id: "a" }), project({ id: "b" })];
-    api.listProjects.mockResolvedValue(projects);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: projects,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
     const store = useStore();
     await Promise.all([store.fetchProjects(), store.fetchProjects(), store.fetchProjects()]);
-    expect(api.listProjects).toHaveBeenCalledTimes(1);
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(1);
   });
 
   it("fetches only after TTL expires", async () => {
     const t1 = project({ name: "a" });
     const t2 = project({ name: "b" });
-    api.listProjects.mockResolvedValue([t1, t2]);
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [t1, t2],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     let fakeTime = 1000;
     const fakeNow = () => fakeTime;
@@ -136,17 +155,17 @@ describe("projects store", () => {
     const store = __test__.createProjectsStore(api, fakeNow)();
 
     await store.fetchProjects();
-    expect(api.listProjects).toHaveBeenCalledTimes(1);
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(1);
 
     // Within TTL
     fakeTime += 59_000;
     await store.fetchProjects();
-    expect(api.listProjects).toHaveBeenCalledTimes(1);
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(1);
 
     // After TTL
     fakeTime += 60_000;
     await store.fetchProjects();
-    expect(api.listProjects).toHaveBeenCalledTimes(2);
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(2);
   });
 
   it("fetch detailed project by ID", async () => {
@@ -186,5 +205,57 @@ describe("projects store", () => {
     const result = await useStore().fetchProjectStats("1", "time", "2024-01", "day", "UTC");
     expect(api.fetchProjectStats).toHaveBeenCalledWith("1", "time", "2024-01", "day", "UTC");
     expect(result).toEqual(stats);
+  });
+
+  it("fetches pages of projects for infinite scroll", async () => {
+    const page1 = [project({ id: "a" }), project({ id: "b" })];
+    const page2 = [project({ id: "c" }), project({ id: "d" })];
+
+    api.listProjectsPaginated
+      .mockResolvedValueOnce({
+        data: page1,
+        pagination: { limit: 50, offset: 0, total: 100 },
+      })
+      .mockResolvedValueOnce({
+        data: page2,
+        pagination: { limit: 50, offset: 50, total: 100 },
+      });
+
+    const store = useStore();
+
+    // Fetch first page
+    await store.fetchProjectsPage(50, 0);
+    expect(store.projects).toHaveLength(2);
+    expect(store.hasMoreItems()).toBe(true);
+
+    // Fetch second page - should accumulate
+    await store.fetchProjectsPage(50, 50);
+    expect(store.projects).toHaveLength(4);
+    expect(store.projects.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("getPaginationState returns current pagination info", async () => {
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [project()],
+      pagination: { limit: 50, offset: 0, total: 200 },
+    });
+
+    const store = useStore();
+    await store.fetchProjectsPage(50, 0);
+
+    const state = store.getPaginationState();
+    expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
+  });
+
+  it("hasMoreItems returns false when at end", async () => {
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [project()],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const store = useStore();
+    await store.fetchProjectsPage(50, 50);
+
+    expect(store.hasMoreItems()).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ const { createTagsApi } = __test__;
 function mockGeneratedApi(): Mocked<TagsApi> {
   return {
     listTags: vi.fn(),
+    listTagsPaginated: vi.fn(),
     getTag: vi.fn(),
     createTag: vi.fn(),
     updateTag: vi.fn(),
@@ -22,11 +23,14 @@ describe("tags API", () => {
     api = mockGeneratedApi();
   });
 
-  it("listTags maps API tags to domain tags", async () => {
-    api.listTags.mockResolvedValue([
-      { id: "1", name: "A", color: "#111" },
-      { id: "2", name: "B", color: "#222" },
-    ]);
+  it("listTags maps paginated API response to domain tags", async () => {
+    api.listTags.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", color: "#111" },
+        { id: "2", name: "B", color: "#222" },
+      ],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const sut = createTagsApi(api);
     const result = await sut.listTags();
@@ -38,6 +42,26 @@ describe("tags API", () => {
 
     expect(api.listTags).toHaveBeenCalledOnce();
   });
+
+  it("listTagsPaginated returns mapped tags with pagination info", async () => {
+    api.listTags.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", color: "#111" },
+      ],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const sut = createTagsApi(api);
+    const result = await sut.listTagsPaginated(50, 50);
+
+    expect(result.data).toEqual([
+      { id: "1", name: "A", color: "#111" },
+    ]);
+    expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
+
+    expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 50 });
+  });
+
 
   it("getTag returns mapped tag when found", async () => {
     api.getTag.mockResolvedValue({

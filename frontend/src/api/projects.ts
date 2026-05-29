@@ -3,13 +3,26 @@ import {
   ProjectsApi as GeneratedProjectsApi,
   GetProjectIncludeEnum,
   ProjectStatsMetricEnum,
+  type PaginatedProjects,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";
 import { projectStatsMapper } from "./mappers/projectStatsMapper";
 
+export interface PaginationMetadata {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
+export interface PaginatedProjectsResponse {
+  data: Project[];
+  pagination: PaginationMetadata;
+}
+
 export interface ProjectsApi {
   listProjects(): Promise<Project[]>;
+  listProjectsPaginated(limit?: number, offset?: number): Promise<PaginatedProjectsResponse>;
   getProject(id: string, detailed: boolean): Promise<Project>;
   createProject(project: Omit<Project, "id">): Promise<Project>;
   updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project>;
@@ -28,8 +41,20 @@ const defaultGeneratedApi = new GeneratedProjectsApi(ApiConfig);
 function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): ProjectsApi {
   return {
     async listProjects(): Promise<Project[]> {
-      const response = await api.listProjects();
-      return mapFromApiArray(projectMapper, response);
+      const response = await api.listProjects({ limit: 50, offset: 0 });
+      return mapFromApiArray(projectMapper, response.data);
+    },
+
+    async listProjectsPaginated(limit: number = 50, offset: number = 0): Promise<PaginatedProjectsResponse> {
+      const response = await api.listProjects({ limit, offset });
+      return {
+        data: mapFromApiArray(projectMapper, response.data),
+        pagination: {
+          limit: response.pagination.limit,
+          offset: response.pagination.offset,
+          total: response.pagination.total,
+        },
+      };
     },
 
     async getProject(id: string, detailed: boolean): Promise<Project> {

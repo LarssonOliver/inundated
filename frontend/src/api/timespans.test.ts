@@ -7,6 +7,7 @@ const { createTimespansApi } = __test__;
 function mockGeneratedApi(): Mocked<TimespansApi> {
   return {
     listTimespans: vi.fn(),
+    listTimespansPaginated: vi.fn(),
     getTimespan: vi.fn(),
     createTimespan: vi.fn(),
     updateTimespan: vi.fn(),
@@ -24,11 +25,14 @@ describe("timespans API", () => {
     api = mockGeneratedApi();
   });
 
-  it("listTimespans maps API timespans to domain projects", async () => {
-    api.listTimespans.mockResolvedValue([
-      { id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) },
-      { id: "2", name: "B", startTime: d1, endTime: d2, tagIds: new Set() },
-    ]);
+  it("listTimespans maps paginated API response to domain timespans", async () => {
+    api.listTimespans.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) },
+        { id: "2", name: "B", startTime: d1, endTime: d2, tagIds: new Set() },
+      ],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const sut = createTimespansApi(api);
     const result = await sut.listTimespans();
@@ -40,6 +44,26 @@ describe("timespans API", () => {
 
     expect(api.listTimespans).toHaveBeenCalledOnce();
   });
+
+  it("listTimespansPaginated returns mapped timespans with pagination info", async () => {
+    api.listTimespans.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) },
+      ],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const sut = createTimespansApi(api);
+    const result = await sut.listTimespansPaginated(50, 50);
+
+    expect(result.data).toEqual([
+      { id: "1", name: "A", startTime: d1, endTime: d2, tagIds: new Set(["2"]) },
+    ]);
+    expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
+
+    expect(api.listTimespans).toHaveBeenCalledWith({ limit: 50, offset: 50 });
+  });
+
 
   it("getTimespan returns mapped timespan when found", async () => {
     api.getTimespan.mockResolvedValue({

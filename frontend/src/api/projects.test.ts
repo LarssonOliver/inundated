@@ -7,11 +7,13 @@ const { createProjectsApi } = __test__;
 function mockGeneratedApi(): Mocked<ProjectsApi> {
   return {
     listProjects: vi.fn(),
+    listProjectsPaginated: vi.fn(),
     getProject: vi.fn(),
     createProject: vi.fn(),
     updateProject: vi.fn(),
     deleteProject: vi.fn(),
     getProjectStats: vi.fn(),
+    fetchProjectStats: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -23,11 +25,14 @@ describe("projects API", () => {
     api = mockGeneratedApi();
   });
 
-  it("listProjects maps API projects to domain projects", async () => {
-    api.listProjects.mockResolvedValue([
-      { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
-      { id: "2", name: "B", color: "#222", tagIds: new Set() },
-    ]);
+  it("listProjects maps paginated API response to domain projects", async () => {
+    api.listProjects.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
+        { id: "2", name: "B", color: "#222", tagIds: new Set() },
+      ],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const sut = createProjectsApi(api);
     const result = await sut.listProjects();
@@ -38,6 +43,25 @@ describe("projects API", () => {
     ]);
 
     expect(api.listProjects).toHaveBeenCalledOnce();
+  });
+
+  it("listProjectsPaginated returns mapped projects with pagination info", async () => {
+    api.listProjects.mockResolvedValue({
+      data: [
+        { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
+      ],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const sut = createProjectsApi(api);
+    const result = await sut.listProjectsPaginated(50, 50);
+
+    expect(result.data).toEqual([
+      { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
+    ]);
+    expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
+
+    expect(api.listProjects).toHaveBeenCalledWith({ limit: 50, offset: 50 });
   });
 
   it("getProject returns mapped project when found", async () => {

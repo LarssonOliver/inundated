@@ -1,10 +1,22 @@
 import type { Tag } from "@/model";
-import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum } from "@/api/generated";
+import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum, type PaginatedTags } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 
+export interface PaginationMetadata {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
+export interface PaginatedTagsResponse {
+  data: Tag[];
+  pagination: PaginationMetadata;
+}
+
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
+  listTagsPaginated(limit?: number, offset?: number): Promise<PaginatedTagsResponse>;
   getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
@@ -16,8 +28,20 @@ const defaultGeneratedApi = new GeneratedTagsApi(ApiConfig);
 function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
   return {
     async listTags(): Promise<Tag[]> {
-      const response = await api.listTags();
-      return mapFromApiArray(tagMapper, response);
+      const response = await api.listTags({ limit: 50, offset: 0 });
+      return mapFromApiArray(tagMapper, response.data);
+    },
+
+    async listTagsPaginated(limit: number = 50, offset: number = 0): Promise<PaginatedTagsResponse> {
+      const response = await api.listTags({ limit, offset });
+      return {
+        data: mapFromApiArray(tagMapper, response.data),
+        pagination: {
+          limit: response.pagination.limit,
+          offset: response.pagination.offset,
+          total: response.pagination.total,
+        },
+      };
     },
 
     async getTag(id: string, detailed: boolean): Promise<Tag> {
