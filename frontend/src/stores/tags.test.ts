@@ -246,12 +246,12 @@ describe("tags store", () => {
     const store = useStore();
 
     // Fetch first page
-    await store.fetchTagsPage(50, 0);
+    await store.fetchPage(50, 0);
     expect(store.tags).toHaveLength(2);
     expect(store.hasMoreItems()).toBe(true);
 
     // Fetch second page - should accumulate
-    await store.fetchTagsPage(50, 50);
+    await store.fetchPage(50, 50);
     expect(store.tags).toHaveLength(4);
     expect(store.tags.map((t) => t.name)).toEqual(["a", "b", "c", "d"]);
   });
@@ -263,7 +263,7 @@ describe("tags store", () => {
     });
 
     const store = useStore();
-    await store.fetchTagsPage(50, 0);
+    await store.fetchPage(50, 0);
 
     const state = store.getPaginationState();
     expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
@@ -276,7 +276,7 @@ describe("tags store", () => {
     });
 
     const store = useStore();
-    await store.fetchTagsPage(50, 50);
+    await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
   });

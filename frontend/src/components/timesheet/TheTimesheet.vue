@@ -27,6 +27,7 @@
       />
       <hr class="item-divider" v-if="index < timespans.length - 1" />
     </div>
+    <div ref="sentinelElement" style="height: 1px; visibility: hidden"></div>
     <div v-if="timespansStore.isLoading">
       <hr class="item-divider" />
       <div v-for="index in 50" :key="index">
@@ -64,14 +65,21 @@ import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
 import { useTimespansStore } from "@/stores/timespans";
 import { computed, ref, onMounted } from "vue";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
+import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 
 const timespansStore = useTimespansStore();
 const timespan = ref(newTimespanWithDefaults());
 const tagIds = ref<Set<string>>(new Set<string>());
+const sentinelElement = ref<HTMLElement>();
+
+const pageSize = 50;
+
+useInfiniteScroll(timespansStore, sentinelElement, pageSize);
 
 onMounted(async () => {
-  await timespansStore.fetchTimespans();
+  await timespansStore.fetchPage(pageSize, 0);
 });
 
 const timespans = computed(() => {

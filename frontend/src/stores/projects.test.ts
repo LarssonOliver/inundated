@@ -224,12 +224,12 @@ describe("projects store", () => {
     const store = useStore();
 
     // Fetch first page
-    await store.fetchProjectsPage(50, 0);
+    await store.fetchPage(50, 0);
     expect(store.projects).toHaveLength(2);
     expect(store.hasMoreItems()).toBe(true);
 
     // Fetch second page - should accumulate
-    await store.fetchProjectsPage(50, 50);
+    await store.fetchPage(50, 50);
     expect(store.projects).toHaveLength(4);
     expect(store.projects.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
   });
@@ -241,7 +241,7 @@ describe("projects store", () => {
     });
 
     const store = useStore();
-    await store.fetchProjectsPage(50, 0);
+    await store.fetchPage(50, 0);
 
     const state = store.getPaginationState();
     expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
@@ -254,7 +254,7 @@ describe("projects store", () => {
     });
 
     const store = useStore();
-    await store.fetchProjectsPage(50, 50);
+    await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
   });

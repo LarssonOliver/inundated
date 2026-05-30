@@ -75,7 +75,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
      * @param offset - The offset to start from
      * @returns A promise that resolves when the page has been fetched
      */
-    async function fetchProjectsPage(limit: number = 50, offset: number = 0): Promise<void> {
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
@@ -195,7 +195,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       projects: readOnlyProjects,
       isLoading,
       fetchProjects,
-      fetchProjectsPage,
+      fetchPage,
       getPaginationState,
       hasMoreItems,
       createProject,

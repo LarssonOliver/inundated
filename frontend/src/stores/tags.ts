@@ -74,7 +74,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @param offset - The offset to start from
      * @returns A promise that resolves when the page has been fetched
      */
-    async function fetchTagsPage(limit: number = 50, offset: number = 0): Promise<void> {
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
@@ -238,7 +238,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       tags: readOnlyTags,
       isLoading,
       fetchTags,
-      fetchTagsPage,
+      fetchPage,
       getPaginationState,
       hasMoreItems,
       createTag,

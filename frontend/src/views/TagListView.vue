@@ -16,6 +16,7 @@
         </div>
       </div>
     </div>
+    <div ref="sentinelElement" style="height: 1px; visibility: hidden"></div>
     <div v-if="tagsStore.isLoading">
       <div v-for="index in 50" :key="index">
         <div class="tag-card">
@@ -34,15 +35,23 @@
 <script setup lang="ts">
 import { useTagsStore } from "@/stores/tags";
 import { useRouter } from "vue-router";
-import { onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+
+import TagItem from "@/components/tags/TagItem.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
+const sentinelElement = ref<HTMLElement>();
+
+const pageSize = 50;
+
+useInfiniteScroll(tagsStore, sentinelElement, pageSize);
 
 onMounted(async () => {
-  await tagsStore.fetchTags();
+  await tagsStore.fetchPage(pageSize, 0);
 });
 </script>
 

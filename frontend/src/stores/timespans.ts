@@ -77,7 +77,7 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
      * @param offset - The offset to start from
      * @returns A promise that resolves when the page has been fetched
      */
-    async function fetchTimespansPage(limit: number = 50, offset: number = 0): Promise<void> {
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
@@ -175,7 +175,7 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
       timespans: readOnlyTimespans,
       isLoading,
       fetchTimespans,
-      fetchTimespansPage,
+      fetchPage,
       getPaginationState,
       hasMoreItems,
       createTimespan,

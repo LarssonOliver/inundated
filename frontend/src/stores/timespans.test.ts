@@ -189,12 +189,12 @@ describe("timespans store", () => {
     const store = useStore();
 
     // Fetch first page
-    await store.fetchTimespansPage(50, 0);
+    await store.fetchPage(50, 0);
     expect(store.timespans).toHaveLength(2);
     expect(store.hasMoreItems()).toBe(true);
 
     // Fetch second page - should accumulate
-    await store.fetchTimespansPage(50, 50);
+    await store.fetchPage(50, 50);
     expect(store.timespans).toHaveLength(4);
     expect(store.timespans.map((t) => t.id)).toEqual(["a", "b", "c", "d"]);
   });
@@ -206,7 +206,7 @@ describe("timespans store", () => {
     });
 
     const store = useStore();
-    await store.fetchTimespansPage(50, 0);
+    await store.fetchPage(50, 0);
 
     const state = store.getPaginationState();
     expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
@@ -219,7 +219,7 @@ describe("timespans store", () => {
     });
 
     const store = useStore();
-    await store.fetchTimespansPage(50, 50);
+    await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
   });
