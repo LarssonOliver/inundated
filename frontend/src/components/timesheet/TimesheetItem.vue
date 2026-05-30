@@ -60,6 +60,7 @@ function deleteThisTimespan() {
   display: flex;
   align-items: center;
   margin-left: auto;
+  margin-right: 0.5em;
 }
 
 .centered-text {

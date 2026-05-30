@@ -29,6 +29,8 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       Array.from(tags.value.values()).map(copyTag),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
      * Fetches the first page of tags from the API and stores them locally.
      *
@@ -234,6 +236,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
     return {
       tags: readOnlyTags,
+      isLoading,
       fetchTags,
       fetchTagsPage,
       getPaginationState,

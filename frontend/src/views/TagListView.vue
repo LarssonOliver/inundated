@@ -16,6 +16,18 @@
         </div>
       </div>
     </div>
+    <div v-if="tagsStore.isLoading">
+      <div v-for="index in 50" :key="index">
+        <div class="tag-card">
+          <div class="color-bar" :style="{ backgroundColor: nord3 }">
+            <div class="tag-item">
+              <SkeletonLoader height="31px" width="100px" style="margin-right: 1em" />
+              <SkeletonLoader height="31px" width="200px" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -23,6 +35,8 @@
 import { useTagsStore } from "@/stores/tags";
 import { useRouter } from "vue-router";
 import { onMounted } from "vue";
+import { nord3 } from "@/helpers/nord";
+import SkeletonLoader from "@/components/SkeletonLoader.vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();

@@ -27,6 +27,35 @@
       />
       <hr class="item-divider" v-if="index < timespans.length - 1" />
     </div>
+    <div v-if="timespansStore.isLoading">
+      <hr class="item-divider" />
+      <div v-for="index in 50" :key="index">
+        <div style="padding-left: 0.5em; display: flex">
+          <SkeletonLoader variant="rectangular" height="2.5em" width="156px" />
+          <div style="margin-left: auto; display: flex; margin-right: 0.5em">
+            <SkeletonLoader variant="rectangular" height="2.5em" width="267px" />
+            <SkeletonLoader
+              variant="rectangular"
+              height="2.5em"
+              width="64px"
+              style="margin-left: 1em"
+            />
+            <span style="width: 1em; display: flex; justify-content: center; align-items: center">
+              -
+            </span>
+            <SkeletonLoader variant="rectangular" height="2.5em" width="64px" />
+            <SkeletonLoader
+              variant="rectangular"
+              height="2.5em"
+              width="153px"
+              style="margin-left: 1em"
+            />
+            <SkeletonLoader variant="rectangular" height="2.5em" width="52px" />
+          </div>
+        </div>
+        <hr class="item-divider" v-if="index < 50" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -35,6 +64,7 @@ import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
 import { useTimespansStore } from "@/stores/timespans";
 import { computed, ref, onMounted } from "vue";
+import SkeletonLoader from "@/components/SkeletonLoader.vue";
 
 const timespansStore = useTimespansStore();
 const timespan = ref(newTimespanWithDefaults());

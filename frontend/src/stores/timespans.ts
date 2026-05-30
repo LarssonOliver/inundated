@@ -32,6 +32,8 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
       Array.from(timespans.value.values()).map(copyTimespan),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
      * Fetches the first page of timespans from the API and stores them locally.
      *
@@ -171,6 +173,7 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
 
     return {
       timespans: readOnlyTimespans,
+      isLoading,
       fetchTimespans,
       fetchTimespansPage,
       getPaginationState,

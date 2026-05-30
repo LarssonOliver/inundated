@@ -30,6 +30,8 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       Array.from(projects.value.values()).map(copyProject),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
      * Fetches the first page of projects from the API and stores them locally.
      *
@@ -191,6 +193,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
     return {
       projects: readOnlyProjects,
+      isLoading,
       fetchProjects,
       fetchProjectsPage,
       getPaginationState,

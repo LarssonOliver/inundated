@@ -16,6 +16,18 @@
         </div>
       </div>
     </div>
+    <div v-if="projectsStore.isLoading">
+      <div v-for="index in 50" :key="index">
+        <div class="project-card">
+          <div class="color-bar" :style="{ backgroundColor: nord3 }">
+            <div class="project-item">
+              <SkeletonLoader height="31px" width="100px" style="margin-right: 1em" />
+              <SkeletonLoader height="31px" width="200px" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -25,6 +37,7 @@ import { useRouter } from "vue-router";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import { onMounted } from "vue";
+import { nord3 } from "@/helpers/nord";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
