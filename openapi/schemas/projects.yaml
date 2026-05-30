@@ -90,3 +90,15 @@ ProjectStats:
       items:
         $ref: "./shared.yaml#/SeriesPoint"
 
+PaginatedProjects:
+  type: object
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Project"
+      description: Array of items in this page
+    pagination:
+      $ref: "./shared.yaml#/PaginationDetails"
+  required: [data, pagination]
+

@@ -11,20 +11,29 @@ function copyProject(project: Project): Project {
   };
 }
 
+export interface PaginationState {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.now()) {
   return defineStore("projects", () => {
     const projects = ref<Map<string, Project>>(new Map<string, Project>());
     const _pending = ref<Promise<void> | null>(null);
 
     const lastFetched = ref<number | null>(null);
+    const paginationState = ref<PaginationState | null>(null);
     const TTL = 60_000; // 1 minute
 
     const readOnlyProjects = computed<readonly Project[]>(() =>
       Array.from(projects.value.values()).map(copyProject),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
-     * Fetches all projects from the API and stores them locally.
+     * Fetches the first page of projects from the API and stores them locally.
      *
      * @returns A promise that resolves when the projects have been fetched.
      */
@@ -32,8 +41,9 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const fetched = await api.listProjects();
-        projects.value = new Map(fetched.map((project) => [project.id, project]));
+        const result = await api.listProjectsPaginated(50, 0);
+        projects.value = new Map(result.data.map((project) => [project.id, project]));
+        paginationState.value = result.pagination;
       })();
 
       try {
@@ -44,7 +54,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     }
 
     /**
-     * Fetches all projects from the API if the cached projects are stale (older than TTL).
+     * Fetches the first page of projects from the API if the cached projects are stale (older than TTL).
      *
      * @returns A promise that resolves when the projects have been fetched or if the cached projects are still valid.
      */
@@ -55,6 +65,53 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
       await fetchProjectsAlways();
       lastFetched.value = now();
+    }
+
+    /**
+     * Fetches a specific page of projects and accumulates them in the cache.
+     * Used for infinite scrolling.
+     *
+     * @param limit - The number of items per page
+     * @param offset - The offset to start from
+     * @returns A promise that resolves when the page has been fetched
+     */
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
+      if (_pending.value) return _pending.value;
+
+      _pending.value = (async () => {
+        const result = await api.listProjectsPaginated(limit, offset);
+        // Accumulate items in the map instead of replacing
+        for (const project of result.data) {
+          projects.value.set(project.id, project);
+        }
+        paginationState.value = result.pagination;
+      })();
+
+      try {
+        await _pending.value;
+      } finally {
+        _pending.value = null;
+      }
+    }
+
+    /**
+     * Gets pagination information for the currently loaded page.
+     *
+     * @returns Pagination state or null if no page has been fetched
+     */
+    function getPaginationState(): PaginationState | null {
+      return paginationState.value;
+    }
+
+    /**
+     * Checks if there are more items to fetch.
+     *
+     * @returns true if there are more items available to fetch
+     */
+    function hasMoreItems(): boolean {
+      if (!paginationState.value) return false;
+      const { limit, offset, total } = paginationState.value;
+      return offset + limit < total;
     }
 
     /**
@@ -136,7 +193,11 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
     return {
       projects: readOnlyProjects,
+      isLoading,
       fetchProjects,
+      fetchPage,
+      getPaginationState,
+      hasMoreItems,
       createProject,
       getProjectById,
       fetchDetailedProjectById,

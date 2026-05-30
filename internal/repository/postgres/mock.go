@@ -23,9 +23,9 @@ func (m *MockRepository) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, e
 	return args.Get(0).(model.Tag), args.Error(1)
 }
 
-func (m *MockRepository) ListTags(ctx context.Context) ([]model.Tag, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]model.Tag), args.Error(1)
+func (m *MockRepository) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+	args := m.Called(ctx, params)
+	return args.Get(0).(model.Page[model.Tag]), args.Error(1)
 }
 
 func (m *MockRepository) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
@@ -47,9 +47,9 @@ func (m *MockRepository) GetProject(ctx context.Context, id uuid.UUID) (model.Pr
 	return args.Get(0).(model.Project), args.Error(1)
 }
 
-func (m *MockRepository) ListProjects(ctx context.Context) ([]model.Project, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]model.Project), args.Error(1)
+func (m *MockRepository) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+	args := m.Called(ctx, params)
+	return args.Get(0).(model.Page[model.Project]), args.Error(1)
 }
 
 func (m *MockRepository) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
@@ -71,9 +71,9 @@ func (m *MockRepository) GetTimespan(ctx context.Context, id uuid.UUID) (model.T
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]model.Timespan), args.Error(1)
+func (m *MockRepository) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+	args := m.Called(ctx, params)
+	return args.Get(0).(model.Page[model.Timespan]), args.Error(1)
 }
 
 func (m *MockRepository) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {

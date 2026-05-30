@@ -212,7 +212,7 @@ No authorization required
 
 ## listTimespans
 
-> Array&lt;Timespan&gt; listTimespans()
+> PaginatedTimespans listTimespans(limit, offset)
 
 List time spans
 
@@ -229,8 +229,15 @@ async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new TimespansApi();
 
+  const body = {
+    // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
+    limit: 50,
+    // number | Number of items to skip from the beginning (zero-indexed). (optional)
+    offset: 0,
+  } satisfies ListTimespansRequest;
+
   try {
-    const data = await api.listTimespans();
+    const data = await api.listTimespans(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -243,11 +250,15 @@ example().catch(console.error);
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **limit** | `number` | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  | [Optional] [Defaults to `25`] |
+| **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
 
 ### Return type
 
-[**Array&lt;Timespan&gt;**](Timespan.md)
+[**PaginatedTimespans**](PaginatedTimespans.md)
 
 ### Authorization
 
@@ -262,7 +273,7 @@ No authorization required
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-| **200** | List of time spans |  -  |
+| **200** | Paginated list of time spans |  -  |
 | **400** | Bad request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

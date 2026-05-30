@@ -3,15 +3,16 @@ tags:
     tags: [tags]
     summary: List tags
     operationId: listTags
+    parameters:
+      - $ref: "../parameters/shared.yaml#/limit"
+      - $ref: "../parameters/shared.yaml#/offset"
     responses:
       '200':
-        description: List of tags
+        description: Paginated list of tags
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '../schemas/tags.yaml#/Tag'
+              $ref: "../schemas/tags.yaml#/PaginatedTags"
       '400':
         description: Bad request
   post:
@@ -23,33 +24,33 @@ tags:
       content:
         application/json:
           schema:
-            $ref: '../schemas/tags.yaml#/CreateTag'
+            $ref: "../schemas/tags.yaml#/CreateTag"
     responses:
       '201':
         description: Tag created
         content:
           application/json:
             schema:
-              $ref: '../schemas/tags.yaml#/Tag'
+              $ref: "../schemas/tags.yaml#/Tag"
       '400':
         description: Bad request
 
 tags-id:
   parameters:
-    - $ref: '../parameters/shared.yaml#/tagIdPath'
+    - $ref: "../parameters/shared.yaml#/tagIdPath"
   get:
     tags: [tags]
     summary: Get tag
     operationId: getTag
     parameters:
-      - $ref: '../parameters/shared.yaml#/includeQuery'
+      - $ref: "../parameters/shared.yaml#/includeQuery"
     responses:
       '200':
         description: Tag
         content:
           application/json:
             schema:
-              $ref: '../schemas/tags.yaml#/Tag'
+              $ref: "../schemas/tags.yaml#/Tag"
       '404':
         description: Not found
   patch:
@@ -61,14 +62,14 @@ tags-id:
       content:
         application/json:
           schema:
-            $ref: '../schemas/tags.yaml#/UpdateTag'
+            $ref: "../schemas/tags.yaml#/UpdateTag"
     responses:
       '200':
         description: Updated tag
         content:
           application/json:
             schema:
-              $ref: '../schemas/tags.yaml#/Tag'
+              $ref: "../schemas/tags.yaml#/Tag"
       '400':
         description: Bad request
       '404':

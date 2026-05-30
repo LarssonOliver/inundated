@@ -27,8 +27,8 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	return tag, nil
 }
 
-func (s *ServiceImpl) ListTags(ctx context.Context) ([]model.Tag, error) {
-	return s.repository.ListTags(ctx)
+func (s *ServiceImpl) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+	return s.repository.ListTags(ctx, params)
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {

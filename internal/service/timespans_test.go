@@ -74,25 +74,47 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		listFn  func(ctx context.Context) ([]model.Timespan, error)
-		want    []model.Timespan
+		params  model.PaginationParams
+		listFn  func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
+		want    model.Page[model.Timespan]
 		wantErr bool
 	}{
 		{
-			name: "successful list",
-			listFn: func(ctx context.Context) ([]model.Timespan, error) {
-				return timespans, nil
+			name:   "successful list",
+			params: model.DefaultPaginationParams(),
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+				return model.Page[model.Timespan]{Data: timespans, TotalCount: 2}, nil
 			},
-			want:    timespans,
+			want:    model.Page[model.Timespan]{Data: timespans, TotalCount: 2},
 			wantErr: false,
 		},
 		{
-			name: "repository error",
-			listFn: func(ctx context.Context) ([]model.Timespan, error) {
-				return nil, errors.New("database error")
+			name:   "repository error",
+			params: model.DefaultPaginationParams(),
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+				return model.Page[model.Timespan]{}, errors.New("database error")
 			},
-			want:    nil,
 			wantErr: true,
+		},
+		{
+			name:   "pagination params are forwarded",
+			params: model.PaginationParams{Limit: 1, Offset: 1},
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+				require.Equal(t, 1, params.Limit)
+				require.Equal(t, 1, params.Offset)
+				return model.Page[model.Timespan]{Data: timespans[1:], TotalCount: 2}, nil
+			},
+			want:    model.Page[model.Timespan]{Data: timespans[1:], TotalCount: 2},
+			wantErr: false,
+		},
+		{
+			name:   "empty page",
+			params: model.PaginationParams{Limit: 10, Offset: 100},
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+				return model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2}, nil
+			},
+			want:    model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -102,13 +124,14 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.ListTimespans(context.Background())
+			got, gotErr := s.ListTimespans(context.Background(), tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
 			require.NoError(t, gotErr)
-			require.ElementsMatch(t, tt.want, got)
+			require.Equal(t, tt.want.TotalCount, got.TotalCount)
+			require.ElementsMatch(t, tt.want.Data, got.Data)
 		})
 	}
 }

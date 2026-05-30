@@ -18,7 +18,7 @@ type mockTagService struct {
 	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
 	GetFn    func(ctx context.Context, id uuid.UUID, includes *service.TagServiceGetIncludes) (model.Tag, error)
-	ListFn   func(ctx context.Context) ([]model.Tag, error)
+	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 }
 
@@ -40,8 +40,8 @@ func (m *mockTagService) GetTag(ctx context.Context, id uuid.UUID, includes *ser
 }
 
 // ListTags implements [service.TagService].
-func (m *mockTagService) ListTags(ctx context.Context) ([]model.Tag, error) {
-	return m.ListFn(ctx)
+func (m *mockTagService) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+	return m.ListFn(ctx, params)
 }
 
 // UpdateTag implements [service.TagService].
@@ -223,83 +223,141 @@ func TestTagHandler_GetTag(t *testing.T) {
 }
 
 func TestTagHandler_ListTags(t *testing.T) {
-	tag1 := model.Tag{
-		Id:    uuid.New(),
-		Name:  "backend",
-		Color: "#ff0000",
-	}
-	tag2 := model.Tag{
-		Id:    uuid.New(),
-		Name:  "frontend",
-		Color: "#00ff00",
-	}
+	tag1 := model.Tag{Id: uuid.New(), Name: "backend", Color: "#ff0000"}
+	tag2 := model.Tag{Id: uuid.New(), Name: "frontend", Color: "#00ff00"}
 
 	tests := []struct {
-		name    string
-		listFn  func(ctx context.Context) ([]model.Tag, error)
-		want    []api.Tag
-		wantErr bool
+		name       string
+		listFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
+		initParams func() *api.ListTagsParams
+		wantData   []api.Tag
+		wantLimit  int
+		wantTotal  int
+		wantErr    bool
 	}{
 		{
-			name: "success with multiple tags",
-			listFn: func(ctx context.Context) ([]model.Tag, error) {
-				return []model.Tag{tag1, tag2}, nil
+			name: "success with multiple tags and no params",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				return model.Page[model.Tag]{Data: []model.Tag{tag1, tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
 			},
-			want: []api.Tag{
-				{
-					Id:    tag1.Id,
-					Name:  tag1.Name,
-					Color: tag1.Color,
-				},
-				{
-					Id:    tag2.Id,
-					Name:  tag2.Name,
-					Color: tag2.Color,
-				},
+			initParams: func() *api.ListTagsParams { return nil },
+			wantData: []api.Tag{
+				{Id: tag1.Id, Name: tag1.Name, Color: tag1.Color},
+				{Id: tag2.Id, Name: tag2.Name, Color: tag2.Color},
 			},
-			wantErr: false,
+			wantLimit: 25,
+			wantTotal: 2,
+		},
+		{
+			name: "success with pagination params",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				require.Equal(t, 10, params.Limit)
+				require.Equal(t, 0, params.Offset)
+				return model.Page[model.Tag]{Data: []model.Tag{tag1, tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{Limit: ptrLimit(10), Offset: ptrOffset(0)}
+			},
+			wantData: []api.Tag{
+				{Id: tag1.Id, Name: tag1.Name, Color: tag1.Color},
+				{Id: tag2.Id, Name: tag2.Name, Color: tag2.Color},
+			},
+			wantLimit: 10,
+			wantTotal: 2,
+		},
+		{
+			name: "success with offset",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				require.Equal(t, 25, params.Limit)
+				require.Equal(t, 1, params.Offset)
+				return model.Page[model.Tag]{Data: []model.Tag{tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{Offset: ptrOffset(1)}
+			},
+			wantData:  []api.Tag{{Id: tag2.Id, Name: tag2.Name, Color: tag2.Color}},
+			wantLimit: 25,
+			wantTotal: 2,
 		},
 		{
 			name: "success with empty list",
-			listFn: func(ctx context.Context) ([]model.Tag, error) {
-				return []model.Tag{}, nil
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
 			},
-			want:    []api.Tag{},
-			wantErr: false,
+			initParams: func() *api.ListTagsParams { return nil },
+			wantData:   []api.Tag{},
+			wantLimit:  25,
+			wantTotal:  0,
+		},
+		{
+			name: "limit too low returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Tag]{}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{Limit: ptrLimit(0)}
+			},
+		},
+		{
+			name: "limit too high returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Tag]{}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{Limit: ptrLimit(101)}
+			},
+		},
+		{
+			name: "negative offset returns 400",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				t.Fatal("service should not be called")
+				return model.Page[model.Tag]{}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				return &api.ListTagsParams{Offset: ptrOffset(-1)}
+			},
 		},
 		{
 			name: "service returns error",
-			listFn: func(ctx context.Context) ([]model.Tag, error) {
-				return nil, errors.New("database unavailable")
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				return model.Page[model.Tag]{}, errors.New("database unavailable")
 			},
-			want:    nil,
-			wantErr: true,
+			initParams: func() *api.ListTagsParams { return nil },
+			wantErr:    true,
 		},
-		// {
-		// 	name: "context cancelled",
-		// 	listFn: func(ctx context.Context) ([]model.Tag, error) {
-		// 		<-ctx.Done()
-		// 		return nil, ctx.Err()
-		// 	},
-		// 	want:    nil,
-		// 	wantErr: true,
-		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{
-				ListFn: tt.listFn,
-			}
+			svc := &mockTagService{ListFn: tt.listFn}
 			ta := handlers.NewTagHandler(svc)
+			params := tt.initParams()
 			request := api.ListTagsRequestObject{}
+			if params != nil {
+				request.Params = *params
+			}
+
 			got, gotErr := ta.ListTags(context.Background(), request)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
 			require.NoError(t, gotErr)
+
+			if _, ok := got.(api.ListTags400Response); ok {
+				return
+			}
+
 			res := got.(api.ListTags200JSONResponse)
-			require.ElementsMatch(t, tt.want, res)
+			require.Len(t, res.Data, len(tt.wantData))
+			require.Equal(t, tt.wantLimit, res.Pagination.Limit)
+			require.Equal(t, tt.wantTotal, res.Pagination.Total)
+			for i, tag := range res.Data {
+				require.Equal(t, tt.wantData[i].Id, tag.Id)
+				require.Equal(t, tt.wantData[i].Name, tag.Name)
+				require.Equal(t, tt.wantData[i].Color, tag.Color)
+			}
 		})
 	}
 }

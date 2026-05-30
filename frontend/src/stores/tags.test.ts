@@ -22,6 +22,7 @@ describe("tags store", () => {
 
     api = {
       listTags: vi.fn(),
+      listTagsPaginated: vi.fn(),
       getTag: vi.fn(),
       createTag: vi.fn(),
       updateTag: vi.fn(),
@@ -35,7 +36,10 @@ describe("tags store", () => {
     const t1 = makeTag({ name: "a" });
     const t2 = makeTag({ name: "b" });
 
-    api.listTags.mockResolvedValue([t1, t2]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [t1, t2],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const store = useStore();
     await store.fetchTags();
@@ -61,7 +65,10 @@ describe("tags store", () => {
 
   it("returns existing tag if name already exists (case-sensitive)", async () => {
     const tag = makeTag({ name: "work" });
-    api.listTags.mockResolvedValue([tag]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [tag],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
 
     const store = useStore();
     await store.fetchTags();
@@ -85,7 +92,10 @@ describe("tags store", () => {
 
   it("returns a defensive copy", async () => {
     const tag = makeTag({ id: "1" });
-    api.listTags.mockResolvedValue([tag]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [tag],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
 
     const store = useStore();
     await store.fetchTags();
@@ -99,7 +109,10 @@ describe("tags store", () => {
   it("searches tags by Levenshtein distance", async () => {
     const tags = [makeTag({ name: "work" }), makeTag({ name: "home" }), makeTag({ name: "hobby" })];
 
-    api.listTags.mockResolvedValue(tags);
+    api.listTagsPaginated.mockResolvedValue({
+      data: tags,
+      pagination: { limit: 50, offset: 0, total: 3 },
+    });
 
     const store = useStore();
     await store.fetchTags();
@@ -113,7 +126,10 @@ describe("tags store", () => {
     const original = makeTag({ id: "1", name: "old" });
     const updated = { ...original, name: "new" };
 
-    api.listTags.mockResolvedValue([original]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [original],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.updateTag.mockResolvedValue(updated);
 
     const store = useStore();
@@ -138,7 +154,10 @@ describe("tags store", () => {
 
   it("deletes a tag from the store", async () => {
     const tag = makeTag({ id: "1" });
-    api.listTags.mockResolvedValue([tag]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [tag],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.deleteTag.mockResolvedValue();
 
     const store = useStore();
@@ -154,16 +173,22 @@ describe("tags store", () => {
   it("only issue one API call when fetching tags multiple times", async () => {
     const t1 = makeTag({ name: "a" });
     const t2 = makeTag({ name: "b" });
-    api.listTags.mockResolvedValue([t1, t2]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [t1, t2],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
     const store = useStore();
     await Promise.all([store.fetchTags(), store.fetchTags(), store.fetchTags()]);
-    expect(api.listTags).toHaveBeenCalledTimes(1);
+    expect(api.listTagsPaginated).toHaveBeenCalledTimes(1);
   });
 
   it("fetches only after TTL expires", async () => {
     const t1 = makeTag({ name: "a" });
     const t2 = makeTag({ name: "b" });
-    api.listTags.mockResolvedValue([t1, t2]);
+    api.listTagsPaginated.mockResolvedValue({
+      data: [t1, t2],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     let fakeTime = 1000;
     const fakeNow = () => fakeTime;
@@ -171,17 +196,17 @@ describe("tags store", () => {
     const store = __test__.createTagsStore(api, fakeNow)();
 
     await store.fetchTags();
-    expect(api.listTags).toHaveBeenCalledTimes(1);
+    expect(api.listTagsPaginated).toHaveBeenCalledTimes(1);
 
     // Within TTL
     fakeTime += 59_000;
     await store.fetchTags();
-    expect(api.listTags).toHaveBeenCalledTimes(1);
+    expect(api.listTagsPaginated).toHaveBeenCalledTimes(1);
 
     // After TTL
     fakeTime += 60_000;
     await store.fetchTags();
-    expect(api.listTags).toHaveBeenCalledTimes(2);
+    expect(api.listTagsPaginated).toHaveBeenCalledTimes(2);
   });
 
   it("fetch detailed tag by ID", async () => {
@@ -202,5 +227,57 @@ describe("tags store", () => {
     api.getTag.mockRejectedValue(new Error());
     const store = useStore();
     await expect(store.fetchDetailedTagById("missing")).rejects.toThrow();
+  });
+
+  it("fetches pages of tags for infinite scroll", async () => {
+    const page1 = [makeTag({ name: "a" }), makeTag({ name: "b" })];
+    const page2 = [makeTag({ name: "c" }), makeTag({ name: "d" })];
+
+    api.listTagsPaginated
+      .mockResolvedValueOnce({
+        data: page1,
+        pagination: { limit: 50, offset: 0, total: 100 },
+      })
+      .mockResolvedValueOnce({
+        data: page2,
+        pagination: { limit: 50, offset: 50, total: 100 },
+      });
+
+    const store = useStore();
+
+    // Fetch first page
+    await store.fetchPage(50, 0);
+    expect(store.tags).toHaveLength(2);
+    expect(store.hasMoreItems()).toBe(true);
+
+    // Fetch second page - should accumulate
+    await store.fetchPage(50, 50);
+    expect(store.tags).toHaveLength(4);
+    expect(store.tags.map((t) => t.name)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("getPaginationState returns current pagination info", async () => {
+    api.listTagsPaginated.mockResolvedValue({
+      data: [makeTag()],
+      pagination: { limit: 50, offset: 0, total: 200 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+
+    const state = store.getPaginationState();
+    expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
+  });
+
+  it("hasMoreItems returns false when at end", async () => {
+    api.listTagsPaginated.mockResolvedValue({
+      data: [makeTag()],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 50);
+
+    expect(store.hasMoreItems()).toBe(false);
   });
 });

@@ -59,6 +59,45 @@ type CreateTimespan struct {
 // HexColor defines model for HexColor.
 type HexColor = string
 
+// PaginatedProjects defines model for PaginatedProjects.
+type PaginatedProjects struct {
+	// Data Array of items in this page
+	Data []Project `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTags defines model for PaginatedTags.
+type PaginatedTags struct {
+	// Data Array of items in this page
+	Data []Tag `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTimespans defines model for PaginatedTimespans.
+type PaginatedTimespans struct {
+	// Data Array of items in this page
+	Data []Timespan `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginationDetails Pagination metadata
+type PaginationDetails struct {
+	// Limit Items per page
+	Limit int `json:"limit"`
+
+	// Offset Number of items skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of items available
+	Total int `json:"total"`
+}
+
 // Project defines model for Project.
 type Project struct {
 	Color           HexColor           `json:"color"`
@@ -153,6 +192,12 @@ type IncludeQuery = []string
 // Interval defines model for interval.
 type Interval = string
 
+// Limit defines model for limit.
+type Limit = int
+
+// Offset defines model for offset.
+type Offset = int
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -167,6 +212,15 @@ type TimespanIdPath = openapi_types.UUID
 
 // Timezone defines model for timezone.
 type Timezone = string
+
+// ListProjectsParams defines parameters for ListProjects.
+type ListProjectsParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
@@ -184,6 +238,7 @@ type GetProjectStatsParams struct {
 
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
 	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 
@@ -197,6 +252,15 @@ type GetProjectStatsParams struct {
 // GetProjectStatsParamsMetric defines parameters for GetProjectStats.
 type GetProjectStatsParamsMetric string
 
+// ListTagsParams defines parameters for ListTags.
+type ListTagsParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
@@ -205,6 +269,15 @@ type GetTagParams struct {
 
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
+
+// ListTimespansParams defines parameters for ListTimespans.
+type ListTimespansParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject

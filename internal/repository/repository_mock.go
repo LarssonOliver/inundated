@@ -14,19 +14,19 @@ type RepoMock struct {
 	CreateProjectFn func(ctx context.Context, project model.Project) (model.Project, error)
 	DeleteProjectFn func(ctx context.Context, id uuid.UUID) error
 	GetProjectFn    func(ctx context.Context, id uuid.UUID) (model.Project, error)
-	ListProjectFn   func(ctx context.Context) ([]model.Project, error)
+	ListProjectFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
 	UpdateProjectFn func(ctx context.Context, project model.Project) (model.Project, error)
 
 	CreateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTagFn func(ctx context.Context, id uuid.UUID) error
 	GetTagFn    func(ctx context.Context, id uuid.UUID) (model.Tag, error)
-	ListTagFn   func(ctx context.Context) ([]model.Tag, error)
+	ListTagFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
 	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespanFn         func(ctx context.Context, id uuid.UUID) error
 	GetTimespanFn            func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListTimespanFn           func(ctx context.Context) ([]model.Timespan, error)
+	ListTimespanFn           func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
 	UpdateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	GetTotalDurationByTagsFn func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
 
@@ -49,8 +49,8 @@ func (t *RepoMock) GetProject(ctx context.Context, id uuid.UUID) (model.Project,
 }
 
 // ListProjects implements repository.ProjectRepository.
-func (t *RepoMock) ListProjects(ctx context.Context) ([]model.Project, error) {
-	return t.ListProjectFn(ctx)
+func (t *RepoMock) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+	return t.ListProjectFn(ctx, params)
 }
 
 // UpdateProject implements repository.ProjectRepository.
@@ -74,8 +74,8 @@ func (t *RepoMock) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) 
 }
 
 // ListTags implements repository.TagRepository.
-func (t *RepoMock) ListTags(ctx context.Context) ([]model.Tag, error) {
-	return t.ListTagFn(ctx)
+func (t *RepoMock) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+	return t.ListTagFn(ctx, params)
 }
 
 // UpdateTag implements repository.TagRepository.
@@ -99,8 +99,8 @@ func (t *RepoMock) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespa
 }
 
 // ListTimespans implements repository.TimespanRepository.
-func (t *RepoMock) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
-	return t.ListTimespanFn(ctx)
+func (t *RepoMock) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+	return t.ListTimespanFn(ctx, params)
 }
 
 // UpdateTimespan implements repository.TimespanRepository.

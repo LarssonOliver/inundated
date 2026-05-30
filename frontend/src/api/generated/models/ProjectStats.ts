@@ -35,7 +35,7 @@ export interface ProjectStats {
     projectId: string;
     /**
      * The metric that was aggregated.
-     * @type {string}
+     * @type {ProjectStatsMetricEnum}
      * @memberof ProjectStats
      */
     metric: ProjectStatsMetricEnum;

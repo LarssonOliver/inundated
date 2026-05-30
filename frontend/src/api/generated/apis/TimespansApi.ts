@@ -12,21 +12,27 @@
  * Do not edit the class manually.
  */
 
-
 import * as runtime from '../runtime';
-import type {
-  CreateTimespan,
-  Timespan,
-  UpdateTimespan,
-} from '../models/index';
 import {
+    type CreateTimespan,
     CreateTimespanFromJSON,
     CreateTimespanToJSON,
+} from '../models/CreateTimespan';
+import {
+    type PaginatedTimespans,
+    PaginatedTimespansFromJSON,
+    PaginatedTimespansToJSON,
+} from '../models/PaginatedTimespans';
+import {
+    type Timespan,
     TimespanFromJSON,
     TimespanToJSON,
+} from '../models/Timespan';
+import {
+    type UpdateTimespan,
     UpdateTimespanFromJSON,
     UpdateTimespanToJSON,
-} from '../models/index';
+} from '../models/UpdateTimespan';
 
 export interface CreateTimespanRequest {
     createTimespan: CreateTimespan;
@@ -40,6 +46,11 @@ export interface GetTimespanRequest {
     timespanId: string;
 }
 
+export interface ListTimespansRequest {
+    limit?: number;
+    offset?: number;
+}
+
 export interface UpdateTimespanRequest {
     timespanId: string;
     updateTimespan: UpdateTimespan;
@@ -51,9 +62,9 @@ export interface UpdateTimespanRequest {
 export class TimespansApi extends runtime.BaseAPI {
 
     /**
-     * Create time span
+     * Creates request options for createTimespan without sending the request
      */
-    async createTimespanRaw(requestParameters: CreateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+    async createTimespanRequestOpts(requestParameters: CreateTimespanRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['createTimespan'] == null) {
             throw new runtime.RequiredError(
                 'createTimespan',
@@ -70,13 +81,21 @@ export class TimespansApi extends runtime.BaseAPI {
 
         let urlPath = `/timespans`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateTimespanToJSON(requestParameters['createTimespan']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Create time span
+     */
+    async createTimespanRaw(requestParameters: CreateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        const requestOptions = await this.createTimespanRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }
@@ -90,9 +109,9 @@ export class TimespansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete time span
+     * Creates request options for deleteTimespan without sending the request
      */
-    async deleteTimespanRaw(requestParameters: DeleteTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deleteTimespanRequestOpts(requestParameters: DeleteTimespanRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
                 'timespanId',
@@ -106,14 +125,22 @@ export class TimespansApi extends runtime.BaseAPI {
 
 
         let urlPath = `/timespans/{timespanId}`;
-        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
+        urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Delete time span
+     */
+    async deleteTimespanRaw(requestParameters: DeleteTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteTimespanRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -126,9 +153,9 @@ export class TimespansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get time span
+     * Creates request options for getTimespan without sending the request
      */
-    async getTimespanRaw(requestParameters: GetTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+    async getTimespanRequestOpts(requestParameters: GetTimespanRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
                 'timespanId',
@@ -142,14 +169,22 @@ export class TimespansApi extends runtime.BaseAPI {
 
 
         let urlPath = `/timespans/{timespanId}`;
-        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
+        urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Get time span
+     */
+    async getTimespanRaw(requestParameters: GetTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        const requestOptions = await this.getTimespanRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }
@@ -163,38 +198,54 @@ export class TimespansApi extends runtime.BaseAPI {
     }
 
     /**
-     * List time spans
+     * Creates request options for listTimespans without sending the request
      */
-    async listTimespansRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Timespan>>> {
+    async listTimespansRequestOpts(requestParameters: ListTimespansRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
         let urlPath = `/timespans`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(TimespanFromJSON));
+        };
     }
 
     /**
      * List time spans
      */
-    async listTimespans(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Timespan>> {
-        const response = await this.listTimespansRaw(initOverrides);
+    async listTimespansRaw(requestParameters: ListTimespansRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedTimespans>> {
+        const requestOptions = await this.listTimespansRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedTimespansFromJSON(jsonValue));
+    }
+
+    /**
+     * List time spans
+     */
+    async listTimespans(requestParameters: ListTimespansRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedTimespans> {
+        const response = await this.listTimespansRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Update time span
+     * Creates request options for updateTimespan without sending the request
      */
-    async updateTimespanRaw(requestParameters: UpdateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+    async updateTimespanRequestOpts(requestParameters: UpdateTimespanRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
                 'timespanId',
@@ -217,15 +268,23 @@ export class TimespansApi extends runtime.BaseAPI {
 
 
         let urlPath = `/timespans/{timespanId}`;
-        urlPath = urlPath.replace(`{${"timespanId"}}`, encodeURIComponent(String(requestParameters['timespanId'])));
+        urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
             body: UpdateTimespanToJSON(requestParameters['updateTimespan']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Update time span
+     */
+    async updateTimespanRaw(requestParameters: UpdateTimespanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Timespan>> {
+        const requestOptions = await this.updateTimespanRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TimespanFromJSON(jsonValue));
     }

@@ -3,15 +3,16 @@ timespans:
     tags: [timespans]
     summary: List time spans
     operationId: listTimespans
+    parameters:
+      - $ref: "../parameters/shared.yaml#/limit"
+      - $ref: "../parameters/shared.yaml#/offset"
     responses:
       '200':
-        description: List of time spans
+        description: Paginated list of time spans
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '../schemas/timespans.yaml#/Timespan'
+              $ref: "../schemas/timespans.yaml#/PaginatedTimespans"
       '400':
         description: Bad request
   post:
@@ -23,20 +24,20 @@ timespans:
       content:
         application/json:
           schema:
-            $ref: '../schemas/timespans.yaml#/CreateTimespan'
+            $ref: "../schemas/timespans.yaml#/CreateTimespan"
     responses:
       '201':
         description: Time span created
         content:
           application/json:
             schema:
-              $ref: '../schemas/timespans.yaml#/Timespan'
+              $ref: "../schemas/timespans.yaml#/Timespan"
       '400':
         description: Bad request
 
 timespans-id:
   parameters:
-    - $ref: '../parameters/shared.yaml#/timespanIdPath'
+    - $ref: "../parameters/shared.yaml#/timespanIdPath"
   get:
     tags: [timespans]
     summary: Get time span
@@ -47,7 +48,7 @@ timespans-id:
         content:
           application/json:
             schema:
-              $ref: '../schemas/timespans.yaml#/Timespan'
+              $ref: "../schemas/timespans.yaml#/Timespan"
       '404':
         description: Not found
   patch:
@@ -59,14 +60,14 @@ timespans-id:
       content:
         application/json:
           schema:
-            $ref: '../schemas/timespans.yaml#/UpdateTimespan'
+            $ref: "../schemas/timespans.yaml#/UpdateTimespan"
     responses:
       '200':
         description: Updated time span
         content:
           application/json:
             schema:
-              $ref: '../schemas/timespans.yaml#/Timespan'
+              $ref: "../schemas/timespans.yaml#/Timespan"
       '400':
         description: Bad request
       '404':

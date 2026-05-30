@@ -16,20 +16,41 @@
         </div>
       </div>
     </div>
+    <div ref="sentinelElement" style="height: 1px; visibility: hidden"></div>
+    <div v-if="projectsStore.isLoading">
+      <div v-for="index in 50" :key="index">
+        <div class="project-card">
+          <div class="color-bar" :style="{ backgroundColor: nord3 }">
+            <div class="project-item">
+              <SkeletonLoader height="31px" width="100px" style="margin-right: 1em" />
+              <SkeletonLoader height="31px" width="200px" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useProjectsStore } from "@/stores/projects";
 import { useRouter } from "vue-router";
+import { ref, onMounted } from "vue";
+import { nord3 } from "@/helpers/nord";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
-import { onMounted } from "vue";
+import SkeletonLoader from "@/components/SkeletonLoader.vue";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
+const sentinelElement = ref<HTMLElement>();
 
-onMounted(async () => await projectsStore.fetchProjects());
+const pageSize = 50;
+
+useInfiniteScroll(projectsStore, sentinelElement, pageSize);
+
+onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
 </script>
 
 <style scoped>

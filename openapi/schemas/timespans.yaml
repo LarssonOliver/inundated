@@ -14,7 +14,7 @@ Timespan:
       type: string
       format: date-time
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
 
 CreateTimespan:
   type: object
@@ -29,7 +29,7 @@ CreateTimespan:
       type: string
       format: date-time
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
 
 UpdateTimespan:
   type: object
@@ -44,4 +44,16 @@ UpdateTimespan:
       type: string
       format: date-time
     tagIds:
-      $ref: './shared.yaml#/TagIdList'
+      $ref: "./shared.yaml#/TagIdList"
+
+PaginatedTimespans:
+  type: object
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Timespan"
+      description: Array of items in this page
+    pagination:
+      $ref: "./shared.yaml#/PaginationDetails"
+  required: [data, pagination]

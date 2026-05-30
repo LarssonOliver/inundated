@@ -25,6 +25,7 @@ describe("timespans store", () => {
 
     api = {
       listTimespans: vi.fn(),
+      listTimespansPaginated: vi.fn(),
       getTimespan: vi.fn(),
       createTimespan: vi.fn(),
       updateTimespan: vi.fn(),
@@ -36,19 +37,25 @@ describe("timespans store", () => {
 
   it("fetches all timespans and stores them", async () => {
     const spans = [makeTimespan({ id: "a" }), makeTimespan({ id: "b" })];
-    api.listTimespans.mockResolvedValue(spans);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: spans,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     const store = useStore();
     await store.fetchTimespans();
 
-    expect(api.listTimespans).toHaveBeenCalledOnce();
+    expect(api.listTimespansPaginated).toHaveBeenCalledOnce();
     expect(store.timespans).toHaveLength(2);
     expect(store.timespans.map((s) => s.id)).toEqual(["a", "b"]);
   });
 
   it("returns defensive copies from the getter", async () => {
     const original = makeTimespan();
-    api.listTimespans.mockResolvedValue([original]);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [original],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
 
     const store = useStore();
     await store.fetchTimespans();
@@ -84,7 +91,10 @@ describe("timespans store", () => {
     const initial = makeTimespan({ id: "u1", name: "Old" });
     const updated = makeTimespan({ id: "u1", name: "Updated" });
 
-    api.listTimespans.mockResolvedValue([initial]);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [initial],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.updateTimespan.mockResolvedValue(updated);
 
     const store = useStore();
@@ -110,7 +120,10 @@ describe("timespans store", () => {
 
   it("deletes a timespan", async () => {
     const ts = makeTimespan({ id: "d1" });
-    api.listTimespans.mockResolvedValue([ts]);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [ts],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
     api.deleteTimespan.mockResolvedValue(undefined);
 
     const store = useStore();
@@ -123,16 +136,22 @@ describe("timespans store", () => {
 
   it("only call fetch once if called multiple times concurrently", async () => {
     const spans = [makeTimespan({ id: "a" }), makeTimespan({ id: "b" })];
-    api.listTimespans.mockResolvedValue(spans);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: spans,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
     const store = useStore();
     await Promise.all([store.fetchTimespans(), store.fetchTimespans(), store.fetchTimespans()]);
-    expect(api.listTimespans).toHaveBeenCalledTimes(1);
+    expect(api.listTimespansPaginated).toHaveBeenCalledTimes(1);
   });
 
   it("fetches only after TTL expires", async () => {
     const t1 = makeTimespan({ name: "a" });
     const t2 = makeTimespan({ name: "b" });
-    api.listTimespans.mockResolvedValue([t1, t2]);
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [t1, t2],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
 
     let fakeTime = 1000;
     const fakeNow = () => fakeTime;
@@ -140,16 +159,68 @@ describe("timespans store", () => {
     const store = __test__.createTimespansStore(api, fakeNow)();
 
     await store.fetchTimespans();
-    expect(api.listTimespans).toHaveBeenCalledTimes(1);
+    expect(api.listTimespansPaginated).toHaveBeenCalledTimes(1);
 
     // Within TTL
     fakeTime += 59_000;
     await store.fetchTimespans();
-    expect(api.listTimespans).toHaveBeenCalledTimes(1);
+    expect(api.listTimespansPaginated).toHaveBeenCalledTimes(1);
 
     // After TTL
     fakeTime += 60_000;
     await store.fetchTimespans();
-    expect(api.listTimespans).toHaveBeenCalledTimes(2);
+    expect(api.listTimespansPaginated).toHaveBeenCalledTimes(2);
+  });
+
+  it("fetches pages of timespans for infinite scroll", async () => {
+    const page1 = [makeTimespan({ id: "a" }), makeTimespan({ id: "b" })];
+    const page2 = [makeTimespan({ id: "c" }), makeTimespan({ id: "d" })];
+
+    api.listTimespansPaginated
+      .mockResolvedValueOnce({
+        data: page1,
+        pagination: { limit: 50, offset: 0, total: 100 },
+      })
+      .mockResolvedValueOnce({
+        data: page2,
+        pagination: { limit: 50, offset: 50, total: 100 },
+      });
+
+    const store = useStore();
+
+    // Fetch first page
+    await store.fetchPage(50, 0);
+    expect(store.timespans).toHaveLength(2);
+    expect(store.hasMoreItems()).toBe(true);
+
+    // Fetch second page - should accumulate
+    await store.fetchPage(50, 50);
+    expect(store.timespans).toHaveLength(4);
+    expect(store.timespans.map((t) => t.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("getPaginationState returns current pagination info", async () => {
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [makeTimespan()],
+      pagination: { limit: 50, offset: 0, total: 200 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+
+    const state = store.getPaginationState();
+    expect(state).toEqual({ limit: 50, offset: 0, total: 200 });
+  });
+
+  it("hasMoreItems returns false when at end", async () => {
+    api.listTimespansPaginated.mockResolvedValue({
+      data: [makeTimespan()],
+      pagination: { limit: 50, offset: 50, total: 100 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 50);
+
+    expect(store.hasMoreItems()).toBe(false);
   });
 });

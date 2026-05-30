@@ -18,7 +18,7 @@ import (
 type ServerInterface interface {
 	// List projects
 	// (GET /projects)
-	ListProjects(w http.ResponseWriter, r *http.Request)
+	ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams)
 	// Create project
 	// (POST /projects)
 	CreateProject(w http.ResponseWriter, r *http.Request)
@@ -36,7 +36,7 @@ type ServerInterface interface {
 	GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams)
 	// List tags
 	// (GET /tags)
-	ListTags(w http.ResponseWriter, r *http.Request)
+	ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams)
 	// Create tag
 	// (POST /tags)
 	CreateTag(w http.ResponseWriter, r *http.Request)
@@ -51,7 +51,7 @@ type ServerInterface interface {
 	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
 	// List time spans
 	// (GET /timespans)
-	ListTimespans(w http.ResponseWriter, r *http.Request)
+	ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams)
 	// Create time span
 	// (POST /timespans)
 	CreateTimespan(w http.ResponseWriter, r *http.Request)
@@ -72,7 +72,7 @@ type Unimplemented struct{}
 
 // List projects
 // (GET /projects)
-func (_ Unimplemented) ListProjects(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -108,7 +108,7 @@ func (_ Unimplemented) GetProjectStats(w http.ResponseWriter, r *http.Request, p
 
 // List tags
 // (GET /tags)
-func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -138,7 +138,7 @@ func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId T
 
 // List time spans
 // (GET /timespans)
-func (_ Unimplemented) ListTimespans(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -178,8 +178,29 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // ListProjects operation middleware
 func (siw *ServerInterfaceWrapper) ListProjects(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListProjectsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListProjects(w, r)
+		siw.Handler.ListProjects(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -359,8 +380,29 @@ func (siw *ServerInterfaceWrapper) GetProjectStats(w http.ResponseWriter, r *htt
 // ListTags operation middleware
 func (siw *ServerInterfaceWrapper) ListTags(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTagsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListTags(w, r)
+		siw.Handler.ListTags(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -473,8 +515,29 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 // ListTimespans operation middleware
 func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTimespansParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListTimespans(w, r)
+		siw.Handler.ListTimespans(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -739,13 +802,14 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 }
 
 type ListProjectsRequestObject struct {
+	Params ListProjectsParams
 }
 
 type ListProjectsResponseObject interface {
 	VisitListProjectsResponse(w http.ResponseWriter) error
 }
 
-type ListProjects200JSONResponse []Project
+type ListProjects200JSONResponse PaginatedProjects
 
 func (response ListProjects200JSONResponse) VisitListProjectsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -914,13 +978,14 @@ func (response GetProjectStats422Response) VisitGetProjectStatsResponse(w http.R
 }
 
 type ListTagsRequestObject struct {
+	Params ListTagsParams
 }
 
 type ListTagsResponseObject interface {
 	VisitListTagsResponse(w http.ResponseWriter) error
 }
 
-type ListTags200JSONResponse []Tag
+type ListTags200JSONResponse PaginatedTags
 
 func (response ListTags200JSONResponse) VisitListTagsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1047,13 +1112,14 @@ func (response UpdateTag404Response) VisitUpdateTagResponse(w http.ResponseWrite
 }
 
 type ListTimespansRequestObject struct {
+	Params ListTimespansParams
 }
 
 type ListTimespansResponseObject interface {
 	VisitListTimespansResponse(w http.ResponseWriter) error
 }
 
-type ListTimespans200JSONResponse []Timespan
+type ListTimespans200JSONResponse PaginatedTimespans
 
 func (response ListTimespans200JSONResponse) VisitListTimespansResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1260,8 +1326,10 @@ type strictHandler struct {
 }
 
 // ListProjects operation middleware
-func (sh *strictHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams) {
 	var request ListProjectsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListProjects(ctx, request.(ListProjectsRequestObject))
@@ -1428,8 +1496,10 @@ func (sh *strictHandler) GetProjectStats(w http.ResponseWriter, r *http.Request,
 }
 
 // ListTags operation middleware
-func (sh *strictHandler) ListTags(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams) {
 	var request ListTagsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListTags(ctx, request.(ListTagsRequestObject))
@@ -1569,8 +1639,10 @@ func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId
 }
 
 // ListTimespans operation middleware
-func (sh *strictHandler) ListTimespans(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams) {
 	var request ListTimespansRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListTimespans(ctx, request.(ListTimespansRequestObject))

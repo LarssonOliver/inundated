@@ -31,3 +31,9 @@ func seedTags(
 	}
 	return ids
 }
+
+func assertPage[T any](t *testing.T, page model.Page[T], wantLen, wantTotal int) {
+    t.Helper()
+    require.Len(t, page.Data, wantLen)
+    require.Equal(t, wantTotal, page.TotalCount)
+}

@@ -13,20 +13,29 @@ function copyTimespan(timespan: Timespan): Timespan {
   };
 }
 
+export interface PaginationState {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 function createTimespansStore(api: TimespansApi, now: () => number = () => Date.now()) {
   return defineStore("timespans", () => {
     const timespans = ref<Map<string, Timespan>>(new Map<string, Timespan>());
     const _pending = ref<Promise<void> | null>(null);
 
     const lastFetched = ref<number | null>(null);
+    const paginationState = ref<PaginationState | null>(null);
     const TTL = 60_000; // 1 minute
 
     const readOnlyTimespans = computed<readonly Timespan[]>(() =>
       Array.from(timespans.value.values()).map(copyTimespan),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
-     * Fetches all timespans from the API and stores them locally.
+     * Fetches the first page of timespans from the API and stores them locally.
      *
      * @returns A promise that resolves when the timespans have been fetched.
      */
@@ -34,8 +43,9 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const fetched = await api.listTimespans();
-        timespans.value = new Map(fetched.map((timespan) => [timespan.id, timespan]));
+        const result = await api.listTimespansPaginated(50, 0);
+        timespans.value = new Map(result.data.map((timespan) => [timespan.id, timespan]));
+        paginationState.value = result.pagination;
       })();
 
       try {
@@ -46,7 +56,7 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
     }
 
     /**
-     * Fetches all timespans from the API if the cached timespans are stale (older than TTL).
+     * Fetches the first page of timespans from the API if the cached timespans are stale (older than TTL).
      *
      * @returns A promise that resolves when the timespans have been fetched or if the cached timespans are still valid.
      */
@@ -57,6 +67,53 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
 
       await fetchTimespansAlways();
       lastFetched.value = now();
+    }
+
+    /**
+     * Fetches a specific page of timespans and accumulates them in the cache.
+     * Used for infinite scrolling.
+     *
+     * @param limit - The number of items per page
+     * @param offset - The offset to start from
+     * @returns A promise that resolves when the page has been fetched
+     */
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
+      if (_pending.value) return _pending.value;
+
+      _pending.value = (async () => {
+        const result = await api.listTimespansPaginated(limit, offset);
+        // Accumulate items in the map instead of replacing
+        for (const timespan of result.data) {
+          timespans.value.set(timespan.id, timespan);
+        }
+        paginationState.value = result.pagination;
+      })();
+
+      try {
+        await _pending.value;
+      } finally {
+        _pending.value = null;
+      }
+    }
+
+    /**
+     * Gets pagination information for the currently loaded page.
+     *
+     * @returns Pagination state or null if no page has been fetched
+     */
+    function getPaginationState(): PaginationState | null {
+      return paginationState.value;
+    }
+
+    /**
+     * Checks if there are more items to fetch.
+     *
+     * @returns true if there are more items available to fetch
+     */
+    function hasMoreItems(): boolean {
+      if (!paginationState.value) return false;
+      const { limit, offset, total } = paginationState.value;
+      return offset + limit < total;
     }
 
     /**
@@ -116,7 +173,11 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
 
     return {
       timespans: readOnlyTimespans,
+      isLoading,
       fetchTimespans,
+      fetchPage,
+      getPaginationState,
+      hasMoreItems,
       createTimespan,
       getTimespanById,
       updateTimespan,

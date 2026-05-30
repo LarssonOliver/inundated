@@ -96,25 +96,47 @@ func TestProjectService_ListProjects(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		listFn  func(ctx context.Context) ([]model.Project, error)
-		want    []model.Project
+		params  model.PaginationParams
+		listFn  func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
+		want    model.Page[model.Project]
 		wantErr bool
 	}{
 		{
-			name: "successful list",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return projects, nil
+			name:   "successful list",
+			params: model.DefaultPaginationParams(),
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{Data: projects, TotalCount: 2}, nil
 			},
-			want:    projects,
+			want:    model.Page[model.Project]{Data: projects, TotalCount: 2},
 			wantErr: false,
 		},
 		{
-			name: "repository error",
-			listFn: func(ctx context.Context) ([]model.Project, error) {
-				return nil, errors.New("database error")
+			name:   "repository error",
+			params: model.DefaultPaginationParams(),
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{}, errors.New("database error")
 			},
-			want:    nil,
 			wantErr: true,
+		},
+		{
+			name:   "pagination params are forwarded",
+			params: model.PaginationParams{Limit: 1, Offset: 1},
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				require.Equal(t, 1, params.Limit)
+				require.Equal(t, 1, params.Offset)
+				return model.Page[model.Project]{Data: projects[1:], TotalCount: 2}, nil
+			},
+			want:    model.Page[model.Project]{Data: projects[1:], TotalCount: 2},
+			wantErr: false,
+		},
+		{
+			name:   "empty page",
+			params: model.PaginationParams{Limit: 10, Offset: 100},
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				return model.Page[model.Project]{Data: []model.Project{}, TotalCount: 2}, nil
+			},
+			want:    model.Page[model.Project]{Data: []model.Project{}, TotalCount: 2},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -124,13 +146,14 @@ func TestProjectService_ListProjects(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.ListProjects(context.Background())
+			got, gotErr := s.ListProjects(context.Background(), tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
 			require.NoError(t, gotErr)
-			require.ElementsMatch(t, tt.want, got)
+			require.Equal(t, tt.want.TotalCount, got.TotalCount)
+			require.ElementsMatch(t, tt.want.Data, got.Data)
 		})
 	}
 }

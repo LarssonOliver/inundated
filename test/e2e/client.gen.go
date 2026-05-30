@@ -68,6 +68,45 @@ type CreateTimespan struct {
 // HexColor defines model for HexColor.
 type HexColor = string
 
+// PaginatedProjects defines model for PaginatedProjects.
+type PaginatedProjects struct {
+	// Data Array of items in this page
+	Data []Project `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTags defines model for PaginatedTags.
+type PaginatedTags struct {
+	// Data Array of items in this page
+	Data []Tag `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTimespans defines model for PaginatedTimespans.
+type PaginatedTimespans struct {
+	// Data Array of items in this page
+	Data []Timespan `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginationDetails Pagination metadata
+type PaginationDetails struct {
+	// Limit Items per page
+	Limit int `json:"limit"`
+
+	// Offset Number of items skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of items available
+	Total int `json:"total"`
+}
+
 // Project defines model for Project.
 type Project struct {
 	Color           HexColor           `json:"color"`
@@ -162,6 +201,12 @@ type IncludeQuery = []string
 // Interval defines model for interval.
 type Interval = string
 
+// Limit defines model for limit.
+type Limit = int
+
+// Offset defines model for offset.
+type Offset = int
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -176,6 +221,15 @@ type TimespanIdPath = openapi_types.UUID
 
 // Timezone defines model for timezone.
 type Timezone = string
+
+// ListProjectsParams defines parameters for ListProjects.
+type ListProjectsParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
@@ -193,6 +247,7 @@ type GetProjectStatsParams struct {
 
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
 	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 
@@ -206,6 +261,15 @@ type GetProjectStatsParams struct {
 // GetProjectStatsParamsMetric defines parameters for GetProjectStats.
 type GetProjectStatsParamsMetric string
 
+// ListTagsParams defines parameters for ListTags.
+type ListTagsParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
@@ -214,6 +278,15 @@ type GetTagParams struct {
 
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
+
+// ListTimespansParams defines parameters for ListTimespans.
+type ListTimespansParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject
@@ -307,7 +380,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 	// ListProjects request
-	ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectWithBody request with any body
 	CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -329,7 +402,7 @@ type ClientInterface interface {
 	GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTags request
-	ListTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTags(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTagWithBody request with any body
 	CreateTagWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -348,7 +421,7 @@ type ClientInterface interface {
 	UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTimespans request
-	ListTimespans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTimespans(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTimespanWithBody request with any body
 	CreateTimespanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -367,8 +440,8 @@ type ClientInterface interface {
 	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectsRequest(c.Server)
+func (c *Client) ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -463,8 +536,8 @@ func (c *Client) GetProjectStats(ctx context.Context, projectId ProjectIdPath, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTagsRequest(c.Server)
+func (c *Client) ListTags(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTagsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -547,8 +620,8 @@ func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJ
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTimespans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTimespansRequest(c.Server)
+func (c *Client) ListTimespans(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTimespansRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -632,7 +705,7 @@ func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, 
 }
 
 // NewListProjectsRequest generates requests for ListProjects
-func NewListProjectsRequest(server string) (*http.Request, error) {
+func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -648,6 +721,44 @@ func NewListProjectsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -936,7 +1047,7 @@ func NewGetProjectStatsRequest(server string, projectId ProjectIdPath, params *G
 }
 
 // NewListTagsRequest generates requests for ListTags
-func NewListTagsRequest(server string) (*http.Request, error) {
+func NewListTagsRequest(server string, params *ListTagsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -952,6 +1063,44 @@ func NewListTagsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1140,7 +1289,7 @@ func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, contentType str
 }
 
 // NewListTimespansRequest generates requests for ListTimespans
-func NewListTimespansRequest(server string) (*http.Request, error) {
+func NewListTimespansRequest(server string, params *ListTimespansParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1156,6 +1305,44 @@ func NewListTimespansRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1365,7 +1552,7 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// ListProjectsWithResponse request
-	ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
+	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
 
 	// CreateProjectWithBodyWithResponse request with any body
 	CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
@@ -1387,7 +1574,7 @@ type ClientWithResponsesInterface interface {
 	GetProjectStatsWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*GetProjectStatsResponse, error)
 
 	// ListTagsWithResponse request
-	ListTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
+	ListTagsWithResponse(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
 
 	// CreateTagWithBodyWithResponse request with any body
 	CreateTagWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
@@ -1406,7 +1593,7 @@ type ClientWithResponsesInterface interface {
 	UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
 	// ListTimespansWithResponse request
-	ListTimespansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
+	ListTimespansWithResponse(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
 
 	// CreateTimespanWithBodyWithResponse request with any body
 	CreateTimespanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
@@ -1428,7 +1615,7 @@ type ClientWithResponsesInterface interface {
 type ListProjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Project
+	JSON200      *PaginatedProjects
 }
 
 // Status returns HTTPResponse.Status
@@ -1559,7 +1746,7 @@ func (r GetProjectStatsResponse) StatusCode() int {
 type ListTagsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Tag
+	JSON200      *PaginatedTags
 }
 
 // Status returns HTTPResponse.Status
@@ -1668,7 +1855,7 @@ func (r UpdateTagResponse) StatusCode() int {
 type ListTimespansResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Timespan
+	JSON200      *PaginatedTimespans
 }
 
 // Status returns HTTPResponse.Status
@@ -1775,8 +1962,8 @@ func (r UpdateTimespanResponse) StatusCode() int {
 }
 
 // ListProjectsWithResponse request returning *ListProjectsResponse
-func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
-	rsp, err := c.ListProjects(ctx, reqEditors...)
+func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
+	rsp, err := c.ListProjects(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1845,8 +2032,8 @@ func (c *ClientWithResponses) GetProjectStatsWithResponse(ctx context.Context, p
 }
 
 // ListTagsWithResponse request returning *ListTagsResponse
-func (c *ClientWithResponses) ListTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTagsResponse, error) {
-	rsp, err := c.ListTags(ctx, reqEditors...)
+func (c *ClientWithResponses) ListTagsWithResponse(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*ListTagsResponse, error) {
+	rsp, err := c.ListTags(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1906,8 +2093,8 @@ func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId T
 }
 
 // ListTimespansWithResponse request returning *ListTimespansResponse
-func (c *ClientWithResponses) ListTimespansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error) {
-	rsp, err := c.ListTimespans(ctx, reqEditors...)
+func (c *ClientWithResponses) ListTimespansWithResponse(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error) {
+	rsp, err := c.ListTimespans(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1981,7 +2168,7 @@ func ParseListProjectsResponse(rsp *http.Response) (*ListProjectsResponse, error
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Project
+		var dest PaginatedProjects
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2127,7 +2314,7 @@ func ParseListTagsResponse(rsp *http.Response) (*ListTagsResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Tag
+		var dest PaginatedTags
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2247,7 +2434,7 @@ func ParseListTimespansResponse(rsp *http.Response) (*ListTimespansResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Timespan
+		var dest PaginatedTimespans
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

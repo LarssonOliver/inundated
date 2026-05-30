@@ -113,14 +113,30 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 // ListProjects implements [api.ProjectHandler].
 func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProjectsRequestObject) (api.ListProjectsResponseObject, error) {
-	reply, err := p.svc.ListProjects(ctx)
+	paginationParams := model.DefaultPaginationParams()
+
+	if request.Params.Limit != nil {
+		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
+			return api.ListProjects400Response{}, nil
+		}
+		paginationParams.Limit = *request.Params.Limit
+	}
+
+	if request.Params.Offset != nil {
+		if *request.Params.Offset < 0 {
+			return api.ListProjects400Response{}, nil
+		}
+		paginationParams.Offset = *request.Params.Offset
+	}
+
+	page, err := p.svc.ListProjects(ctx, paginationParams)
 
 	if err != nil {
 		return nil, err
 	}
 
-	apiProjects := make([]api.Project, 0, len(reply))
-	for _, project := range reply {
+	apiProjects := make([]api.Project, 0, len(page.Data))
+	for _, project := range page.Data {
 		apiProject := api.Project{
 			Id:              project.Id,
 			Name:            project.Name,
@@ -133,7 +149,16 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 		apiProjects = append(apiProjects, apiProject)
 	}
 
-	return api.ListProjects200JSONResponse(apiProjects), nil
+	response := api.PaginatedProjects{
+		Data: apiProjects,
+		Pagination: api.PaginationDetails{
+			Limit:  page.Limit,
+			Offset: page.Offset,
+			Total:  page.TotalCount,
+		},
+	}
+
+	return api.ListProjects200JSONResponse(response), nil
 }
 
 // UpdateProject implements [api.ProjectHandler].

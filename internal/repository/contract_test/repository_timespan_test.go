@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -47,6 +48,18 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.WithinDuration(t, start, got.StartTime, time.Millisecond)
 			require.WithinDuration(t, end, got.EndTime, time.Millisecond)
 			require.ElementsMatch(t, tagIds, got.TagIds)
+		})
+
+		t.Run("List", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, _ = repo.CreateTimespan(ctx, model.Timespan{Name: "a", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
+			_, _ = repo.CreateTimespan(ctx, model.Timespan{Name: "b", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
+
+			page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 2, page.TotalCount)
 		})
 
 		t.Run(repoName+"CreateWithEmptyName", func(t *testing.T) {
@@ -166,6 +179,98 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 0*time.Hour, d5)
 		})
+
+		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now()
+			for i := range 5 {
+				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+					Name:      fmt.Sprintf("timespan-%d", i),
+					StartTime: base.Add(time.Duration(i) * time.Hour),
+					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
+				})
+			}
+
+			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 2, Offset: 0})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 5, page.TotalCount)
+
+			page2, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 2, Offset: 2})
+			require.NoError(t, err)
+			require.Len(t, page2.Data, 2)
+			require.Equal(t, 5, page2.TotalCount)
+
+			ids1 := make(map[uuid.UUID]bool)
+			for _, ts := range page.Data {
+				ids1[ts.Id] = true
+			}
+			for _, ts := range page2.Data {
+				require.False(t, ids1[ts.Id], "duplicate item across pages")
+			}
+		})
+
+		t.Run(repoName+"ListPagination_OffsetBeyondEnd", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now()
+			_, _ = repo.CreateTimespan(ctx, model.Timespan{
+				Name:      "only",
+				StartTime: base,
+				EndTime:   base.Add(time.Hour),
+			})
+
+			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 10, Offset: 100})
+			require.NoError(t, err)
+			require.Empty(t, page.Data)
+			require.Equal(t, 1, page.TotalCount)
+		})
+
+		t.Run(repoName+"ListPagination_LastPagePartial", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now()
+			for i := range 5 {
+				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+					Name:      fmt.Sprintf("timespan-%d", i),
+					StartTime: base.Add(time.Duration(i) * time.Hour),
+					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
+				})
+			}
+
+			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 3, Offset: 3})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 2)
+			require.Equal(t, 5, page.TotalCount)
+		})
+
+		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
+			repo := newRepo(t)
+
+			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 10, Offset: 0})
+			require.NoError(t, err)
+			require.Empty(t, page.Data)
+			require.Equal(t, 0, page.TotalCount)
+		})
+
+		t.Run(repoName+"ListPagination_TotalCountUnaffectedByLimit", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now()
+			for i := range 5 {
+				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+					Name:      fmt.Sprintf("timespan-%d", i),
+					StartTime: base.Add(time.Duration(i) * time.Hour),
+					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
+				})
+			}
+
+			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 1, Offset: 0})
+			require.NoError(t, err)
+			require.Len(t, page.Data, 1)
+			require.Equal(t, 5, page.TotalCount)
+		})
 	}
 
 	// Memory
@@ -181,4 +286,3 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		return postgres.NewPostgresStoreFromPool(pool)
 	})
 }
-

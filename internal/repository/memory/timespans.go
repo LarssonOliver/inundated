@@ -40,7 +40,7 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, timespan model.Timespa
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.timespans[newId] = newTimespan
+	t.timespans = append(t.timespans, newTimespan)
 	return newTimespan, nil
 }
 
@@ -49,26 +49,35 @@ func (t *MemoryStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Time
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespan, exists := t.timespans[id]
-	if !exists {
+	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == id })
+	if idx == -1 {
 		return model.Timespan{}, model.ErrNotFound
 	}
 
-	return timespan, nil
+	return t.timespans[idx], nil
 }
 
 // ListTimespans implements [repository.TimespanRepository].
-func (t *MemoryStore) ListTimespans(ctx context.Context) ([]model.Timespan, error) {
+func (t *MemoryStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespans := make([]model.Timespan, 0, len(t.timespans))
+	all := make([]model.Timespan, 0, len(t.timespans))
+	all = append(all, t.timespans...)
+	slices.SortFunc(all, func(a, b model.Timespan) int {
+		return -a.StartTime.Compare(b.StartTime) // Negate to sort in descending order
+	})
 
-	for _, timespan := range t.timespans {
-		timespans = append(timespans, timespan)
-	}
+	total := len(all)
+	start := min(params.Offset, total)
+	end := min(start+params.Limit, total)
 
-	return timespans, nil
+	return model.Page[model.Timespan]{
+		Data:       all[start:end],
+		TotalCount: total,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	}, nil
 }
 
 // UpdateTimespan implements [repository.TimespanRepository].
@@ -84,32 +93,26 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, timespan model.Timespa
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	_, exists := t.timespans[timespan.Id]
-	if !exists {
+	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == timespan.Id })
+	if idx == -1 {
 		return model.Timespan{}, model.ErrNotFound
 	}
 
-	t.timespans[timespan.Id] = timespan
+	t.timespans[idx] = timespan
 	return timespan, nil
 }
 
 // DeleteTimespan implements [repository.TimespanRepository].
 func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	// Skip locking for write if the timespan does not exist
-	t.mu.RLock()
-	_, exists := t.timespans[id]
-	t.mu.RUnlock()
-
-	if !exists {
-		return model.ErrNotFound
-	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// delete is a noop if the key does not exist
-	// thus, it does not matter if it has been deleted by another thread before this line
-	delete(t.timespans, id)
+	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == id })
+	if idx == -1 {
+		return model.ErrNotFound
+	}
+
+	t.timespans = slices.Delete(t.timespans, idx, idx+1)
 	return nil
 }
 
@@ -133,7 +136,8 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.
 
 	totalDuration := time.Duration(0)
 	for _, timespanId := range timespanIds {
-		ts := t.timespans[timespanId]
+		idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == timespanId })
+		ts := t.timespans[idx]
 		totalDuration += ts.EndTime.Sub(ts.StartTime)
 	}
 

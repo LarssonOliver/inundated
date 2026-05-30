@@ -9,7 +9,7 @@ Tag:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
     totalTimeMs:
       type: integer
 
@@ -21,7 +21,7 @@ CreateTag:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
 
 UpdateTag:
   type: object
@@ -31,4 +31,16 @@ UpdateTag:
       type: string
       minLength: 1
     color:
-      $ref: './shared.yaml#/HexColor'
+      $ref: "./shared.yaml#/HexColor"
+
+PaginatedTags:
+  type: object
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Tag"
+      description: Array of items in this page
+    pagination:
+      $ref: "./shared.yaml#/PaginationDetails"
+  required: [data, pagination]

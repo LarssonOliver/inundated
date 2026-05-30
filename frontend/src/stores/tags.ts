@@ -10,20 +10,29 @@ function copyTag(tag: Tag): Tag {
   return { ...tag };
 }
 
+export interface PaginationState {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
   return defineStore("tags", () => {
     const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
     const _pending = ref<Promise<void> | null>(null);
 
     const lastFetched = ref<number | null>(null);
+    const paginationState = ref<PaginationState | null>(null);
     const TTL = 60_000; // 1 minute
 
     const readOnlyTags = computed<readonly Tag[]>(() =>
       Array.from(tags.value.values()).map(copyTag),
     );
 
+    const isLoading = computed(() => !!_pending.value);
+
     /**
-     * Fetches all tags from the API and stores them locally.
+     * Fetches the first page of tags from the API and stores them locally.
      *
      * @returns A promise that resolves when the tags have been fetched.
      */
@@ -31,8 +40,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const fetched = await api.listTags();
-        tags.value = new Map(fetched.map((tag) => [tag.id, tag]));
+        const result = await api.listTagsPaginated(50, 0);
+        tags.value = new Map(result.data.map((tag) => [tag.id, tag]));
+        paginationState.value = result.pagination;
       })();
 
       try {
@@ -43,7 +53,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Fetches all tags from the API if the cached tags are stale (older than TTL).
+     * Fetches the first page of tags from the API if the cached tags are stale (older than TTL).
      *
      * @returns A promise that resolves when the tags have been fetched or if the cached tags are still valid.
      */
@@ -54,6 +64,53 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
       await fetchTagsAlways();
       lastFetched.value = now();
+    }
+
+    /**
+     * Fetches a specific page of tags and accumulates them in the cache.
+     * Used for infinite scrolling.
+     *
+     * @param limit - The number of items per page
+     * @param offset - The offset to start from
+     * @returns A promise that resolves when the page has been fetched
+     */
+    async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
+      if (_pending.value) return _pending.value;
+
+      _pending.value = (async () => {
+        const result = await api.listTagsPaginated(limit, offset);
+        // Accumulate items in the map instead of replacing
+        for (const tag of result.data) {
+          tags.value.set(tag.id, tag);
+        }
+        paginationState.value = result.pagination;
+      })();
+
+      try {
+        await _pending.value;
+      } finally {
+        _pending.value = null;
+      }
+    }
+
+    /**
+     * Gets pagination information for the currently loaded page.
+     *
+     * @returns Pagination state or null if no page has been fetched
+     */
+    function getPaginationState(): PaginationState | null {
+      return paginationState.value;
+    }
+
+    /**
+     * Checks if there are more items to fetch.
+     *
+     * @returns true if there are more items available to fetch
+     */
+    function hasMoreItems(): boolean {
+      if (!paginationState.value) return false;
+      const { limit, offset, total } = paginationState.value;
+      return offset + limit < total;
     }
 
     /**
@@ -179,7 +236,11 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
     return {
       tags: readOnlyTags,
+      isLoading,
       fetchTags,
+      fetchPage,
+      getPaginationState,
+      hasMoreItems,
       createTag,
       createTagFromName,
       getTagById,
