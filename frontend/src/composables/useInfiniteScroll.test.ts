@@ -44,7 +44,7 @@ describe("useInfiniteScroll", () => {
 
   beforeEach(() => {
     mockObservers = [];
-    (global as Record<string, unknown>).IntersectionObserver = class extends (
+    (globalThis as Record<string, unknown>).IntersectionObserver = class extends (
       MockIntersectionObserver
     ) {
       constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
