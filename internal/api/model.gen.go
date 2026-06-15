@@ -9,6 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	OidcScopes = "oidc.Scopes"
+)
+
 // Defines values for ProjectStatsMetric.
 const (
 	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
@@ -183,6 +187,30 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// UpdateUser defines model for UpdateUser.
+type UpdateUser struct {
+	// Email Email address
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// Name Display name
+	Name *string `json:"name,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	// Email Email from OIDC token
+	Email openapi_types.Email `json:"email"`
+
+	// Id Internal unique identifier for this user
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Display name from OIDC token
+	Name *string `json:"name,omitempty"`
+
+	// Sub OIDC subject claim (unique per provider, immutable identifier)
+	Sub string `json:"sub"`
+}
+
 // Granularity defines model for granularity.
 type Granularity = string
 
@@ -278,6 +306,9 @@ type ListTimespansParams struct {
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 }
+
+// UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.
+type UpdateCurrentUserJSONRequestBody = UpdateUser
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject
