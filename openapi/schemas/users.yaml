@@ -1,0 +1,34 @@
+User:
+  type: object
+  required: [id, sub, email, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Internal unique identifier for this user
+    sub:
+      type: string
+      description: "OIDC subject claim (unique per provider, immutable identifier)"
+    email:
+      type: string
+      format: email
+      description: Email from OIDC token
+    name:
+      type: [string, "null"]
+      description: Display name from OIDC token
+    createdAt:
+      type: string
+      format: date-time
+      description: User creation timestamp (auto-set on first login)
+
+UpdateUser:
+  type: object
+  minProperties: 1
+  properties:
+    email:
+      type: string
+      format: email
+      description: Email address
+    name:
+      type: [string, "null"]
+      description: Display name

@@ -8,7 +8,11 @@ info:
     url: https://opensource.org/licenses/MIT
 servers:
   - url: /api
+security:
+  - oidc: []
 tags:
+  - name: users
+    description: User-related operations
   - name: tags
     description: Tag-related operations
   - name: projects
@@ -16,6 +20,8 @@ tags:
   - name: timespans
     description: Timespan-related operations
 paths:
+  /me:
+    $ref: "./paths/users.yaml#/me"
   /tags:
     $ref: "./paths/tags.yaml#/tags"
   /tags/{tagId}:
@@ -31,11 +37,16 @@ paths:
   /timespans/{timespanId}:
     $ref: "./paths/timespans.yaml#/timespans-id"
 components:
-  #   securitySchemes:
-  #     oidc:
-  #       type: openIdConnect
-  #       openIdConnectUrl: https://example.com/.well-known/openid-configuration
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: "https://example.com/.well-known/openid-configuration"
+      description: "OIDC bearer token validation. Configure openIdConnectUrl for your provider."
   schemas:
+    User:
+      $ref: "./schemas/users.yaml#/User"
+    UpdateUser:
+      $ref: "./schemas/users.yaml#/UpdateUser"
     Tag:
       $ref: "./schemas/tags.yaml#/Tag"
     CreateTag:
