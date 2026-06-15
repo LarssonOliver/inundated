@@ -9,6 +9,7 @@ import (
 )
 
 type Repository interface {
+	UserRepository
 	TagRepository
 	ProjectRepository
 	TimespanRepository
@@ -21,6 +22,13 @@ type TagRepository interface {
 	CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
+}
+
+type UserRepository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+	GetBySub(ctx context.Context, sub string) (*model.User, error)
+	Create(ctx context.Context, user *model.User) error
+	Update(ctx context.Context, id uuid.UUID, update *model.UpdateUser) (*model.User, error)
 }
 
 type ProjectRepository interface {
