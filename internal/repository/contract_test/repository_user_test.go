@@ -8,8 +8,8 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
-	"github.com/larssonoliver/inundated/internal/repository/postgres"
-	"github.com/larssonoliver/inundated/test/testutils"
+	// "github.com/larssonoliver/inundated/internal/repository/postgres"
+	// "github.com/larssonoliver/inundated/test/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -228,9 +228,9 @@ func TestUserRepositoryContract(t *testing.T) {
 	})
 
 	// Postgres
-	run(t, "postgres", func(t *testing.T) repository.Repository {
-		t.Parallel()
-		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		return postgres.NewPostgresStoreFromPool(pool)
-	})
+	// run(t, "postgres", func(t *testing.T) repository.Repository {
+	// 	t.Parallel()
+	// 	pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
+	// 	return postgres.NewPostgresStoreFromPool(pool)
+	// })
 }

@@ -9,4 +9,5 @@ var (
 	ErrUnauthorized     = errors.New("unauthorized")
 	ErrInvalidReference = errors.New("invalid reference")
 	ErrNotImplemented   = errors.New("not implemented")
+	ErrAlreadyExists    = errors.New("already exists")
 )
