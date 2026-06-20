@@ -19,6 +19,16 @@ func NewServer(handler HttpHandler) *Server {
 	}
 }
 
+// GetCurrentUser implements [StrictServerInterface].
+func (s *Server) GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error) {
+	panic("unimplemented")
+}
+
+// UpdateCurrentUser implements [StrictServerInterface].
+func (s *Server) UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error) {
+	panic("unimplemented")
+}
+
 // CreateTag implements StrictServerInterface.
 func (s *Server) CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error) {
 	return s.handler.CreateTag(ctx, request)

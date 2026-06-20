@@ -23,10 +23,10 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	GetUserByIDFn   func(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetUserBySubFn  func(ctx context.Context, sub string) (*model.User, error)
-	CreateUserFn    func(ctx context.Context, user *model.User) error
-	UpdateUserFn    func(ctx context.Context, id uuid.UUID, update *model.UpdateUser) (*model.User, error)
+	GetUserByIDFn  func(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserBySubFn func(ctx context.Context, sub string) (model.User, error)
+	CreateUserFn   func(ctx context.Context, user model.User) error
+	UpdateUserFn   func(ctx context.Context, user model.User) (model.User, error)
 
 	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespanFn         func(ctx context.Context, id uuid.UUID) error
@@ -88,24 +88,24 @@ func (t *RepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, err
 	return t.UpdateTagFn(ctx, tag)
 }
 
-// GetByID implements repository.UserRepository.
-func (t *RepoMock) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+// GetUser implements repository.UserRepository.
+func (t *RepoMock) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
 	return t.GetUserByIDFn(ctx, id)
 }
 
-// GetBySub implements repository.UserRepository.
-func (t *RepoMock) GetBySub(ctx context.Context, sub string) (*model.User, error) {
+// GetUserBySub implements repository.UserRepository.
+func (t *RepoMock) GetUserBySub(ctx context.Context, sub string) (model.User, error) {
 	return t.GetUserBySubFn(ctx, sub)
 }
 
-// Create implements repository.UserRepository.
-func (t *RepoMock) Create(ctx context.Context, user *model.User) error {
+// CreateUser implements repository.UserRepository.
+func (t *RepoMock) CreateUser(ctx context.Context, user model.User) error {
 	return t.CreateUserFn(ctx, user)
 }
 
-// Update implements repository.UserRepository.
-func (t *RepoMock) Update(ctx context.Context, id uuid.UUID, update *model.UpdateUser) (*model.User, error) {
-	return t.UpdateUserFn(ctx, id, update)
+// UpdateUser implements repository.UserRepository.
+func (t *RepoMock) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
+	return t.UpdateUserFn(ctx, user)
 }
 
 // CreateTimespan implements repository.TimespanRepository.

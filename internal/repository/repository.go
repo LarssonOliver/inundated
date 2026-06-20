@@ -25,10 +25,10 @@ type TagRepository interface {
 }
 
 type UserRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetBySub(ctx context.Context, sub string) (*model.User, error)
-	Create(ctx context.Context, user *model.User) error
-	Update(ctx context.Context, id uuid.UUID, update *model.UpdateUser) (*model.User, error)
+	GetUser(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserBySub(ctx context.Context, sub string) (model.User, error)
+	CreateUser(ctx context.Context, user model.User) error
+	UpdateUser(ctx context.Context, user model.User) (model.User, error)
 }
 
 type ProjectRepository interface {
