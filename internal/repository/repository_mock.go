@@ -25,7 +25,7 @@ type RepoMock struct {
 
 	GetUserByIDFn  func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn func(ctx context.Context, sub string) (model.User, error)
-	CreateUserFn   func(ctx context.Context, user model.User) error
+	CreateUserFn   func(ctx context.Context, user model.User) (model.User, error)
 	UpdateUserFn   func(ctx context.Context, user model.User) (model.User, error)
 
 	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
@@ -99,7 +99,7 @@ func (t *RepoMock) GetUserBySub(ctx context.Context, sub string) (model.User, er
 }
 
 // CreateUser implements repository.UserRepository.
-func (t *RepoMock) CreateUser(ctx context.Context, user model.User) error {
+func (t *RepoMock) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	return t.CreateUserFn(ctx, user)
 }
 

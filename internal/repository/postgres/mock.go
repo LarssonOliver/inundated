@@ -18,20 +18,24 @@ type MockRepository struct {
 
 var _ repository.Repository = (*MockRepository)(nil)
 
-func (m *MockRepository) CreateUser(ctx context.Context, user model.User) error {
-	panic("unimplemented")
+func (m *MockRepository) CreateUser(ctx context.Context, user model.User) (model.User, error) {
+	args := m.Called(ctx, user)
+	return args.Get(0).(model.User), args.Error(1)
 }
 
 func (m *MockRepository) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
-	panic("unimplemented")
+	args := m.Called(ctx, id)
+	return args.Get(0).(model.User), args.Error(1)
 }
 
 func (m *MockRepository) GetUserBySub(ctx context.Context, sub string) (model.User, error) {
-	panic("unimplemented")
+	args := m.Called(ctx, sub)
+	return args.Get(0).(model.User), args.Error(1)
 }
 
 func (m *MockRepository) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
-	panic("unimplemented")
+	args := m.Called(ctx, user)
+	return args.Get(0).(model.User), args.Error(1)
 }
 
 func (m *MockRepository) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {

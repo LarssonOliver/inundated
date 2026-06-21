@@ -60,3 +60,12 @@ func aTimespan() model.Timespan {
 		TagIds:    []uuid.UUID{uuid.New()},
 	}
 }
+
+func aUser() model.User {
+	return model.User{
+		Id:    uuid.New(),
+		Sub:   "auth0|user123",
+		Name:  "Test User",
+		Email: "test@example.com",
+	}
+}

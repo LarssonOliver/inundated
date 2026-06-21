@@ -27,10 +27,13 @@ func TestUserRepositoryContract(t *testing.T) {
 				Name:  "Test User",
 			}
 
-			err := repo.CreateUser(ctx, user)
+			got, err := repo.CreateUser(ctx, user)
 			require.NoError(t, err)
+			require.Equal(t, user.Sub, got.Sub)
+			require.Equal(t, user.Email, got.Email)
+			require.Equal(t, user.Name, got.Name)
 
-			got, err := repo.GetUser(ctx, user.Id)
+			got, err = repo.GetUser(ctx, user.Id)
 			require.NoError(t, err)
 			require.Equal(t, user.Sub, got.Sub)
 			require.Equal(t, user.Email, got.Email)
@@ -47,7 +50,7 @@ func TestUserRepositoryContract(t *testing.T) {
 				Name:  "Google User",
 			}
 
-			err := repo.CreateUser(ctx, user)
+			_, err := repo.CreateUser(ctx, user)
 			require.NoError(t, err)
 
 			got, err := repo.GetUserBySub(ctx, user.Sub)
@@ -71,23 +74,6 @@ func TestUserRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
-		t.Run(repoName+"CreateSetsTimestamps", func(t *testing.T) {
-			repo := newRepo(t)
-
-			user := model.User{
-				Id:    uuid.New(),
-				Sub:   "auth0|user789",
-				Email: "user@example.com",
-				Name:  "User",
-			}
-
-			err := repo.CreateUser(ctx, user)
-			require.NoError(t, err)
-
-			_, err = repo.GetUser(ctx, user.Id)
-			require.NoError(t, err)
-		})
-
 		t.Run(repoName+"Update", func(t *testing.T) {
 			repo := newRepo(t)
 
@@ -98,7 +84,7 @@ func TestUserRepositoryContract(t *testing.T) {
 				Name:  "Old Name",
 			}
 
-			err := repo.CreateUser(ctx, user)
+			_, err := repo.CreateUser(ctx, user)
 			require.NoError(t, err)
 
 			newEmail := "new@example.com"
@@ -137,7 +123,7 @@ func TestUserRepositoryContract(t *testing.T) {
 				Email: "user1@example.com",
 				Name:  "User 1",
 			}
-			err := repo.CreateUser(ctx, user1)
+			_, err := repo.CreateUser(ctx, user1)
 			require.NoError(t, err)
 
 			user2 := model.User{
@@ -146,8 +132,8 @@ func TestUserRepositoryContract(t *testing.T) {
 				Email: "user2@example.com",
 				Name:  "User 2",
 			}
-			err = repo.CreateUser(ctx, user2)
-			require.Error(t, err) // should fail due to unique constraint
+			_, err = repo.CreateUser(ctx, user2)
+			require.ErrorIs(t, err, model.ErrAlreadyExists)
 		})
 
 		t.Run(repoName+"EmptyNameAllowed", func(t *testing.T) {
@@ -160,7 +146,7 @@ func TestUserRepositoryContract(t *testing.T) {
 				Name:  "", // empty name
 			}
 
-			err := repo.CreateUser(ctx, user)
+			_, err := repo.CreateUser(ctx, user)
 			require.NoError(t, err)
 
 			got, _ := repo.GetUser(ctx, user.Id)

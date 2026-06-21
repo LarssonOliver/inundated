@@ -83,17 +83,17 @@ func TestUserStore_Create(t *testing.T) {
 					Email: "first@example.com",
 					Name:  "First",
 				}
-				err := store.CreateUser(context.Background(), firstUser)
+				_, err := store.CreateUser(context.Background(), firstUser)
 				require.NoError(t, err)
 
 				// Now try to create the duplicate
-				gotErr := store.CreateUser(context.Background(), tt.user)
+				_, gotErr := store.CreateUser(context.Background(), tt.user)
 				require.Error(t, gotErr)
 				require.ErrorIs(t, gotErr, model.ErrAlreadyExists)
 				return
 			}
 
-			gotErr := store.CreateUser(context.Background(), tt.user)
+			_, gotErr := store.CreateUser(context.Background(), tt.user)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -118,7 +118,7 @@ func TestUserStore_GetByID(t *testing.T) {
 		Name:  "Get By ID",
 	}
 
-	err := store.CreateUser(ctx, user)
+	_, err := store.CreateUser(ctx, user)
 	require.NoError(t, err)
 
 	got, err := store.GetUser(ctx, user.Id)
@@ -148,7 +148,7 @@ func TestUserStore_GetBySub(t *testing.T) {
 		Name:  "Get By Sub",
 	}
 
-	err := store.CreateUser(ctx, user)
+	_, err := store.CreateUser(ctx, user)
 	require.NoError(t, err)
 
 	got, err := store.GetUserBySub(ctx, user.Sub)
@@ -178,7 +178,7 @@ func TestUserStore_Update(t *testing.T) {
 		Name:  "Old Name",
 	}
 
-	err := store.CreateUser(ctx, user)
+	_, err := store.CreateUser(ctx, user)
 	require.NoError(t, err)
 
 	newEmail := "new@example.com"
@@ -229,10 +229,10 @@ func TestUserStore_CreateMultiple(t *testing.T) {
 		Name:  "User 2",
 	}
 
-	err := store.CreateUser(ctx, user1)
+	_, err := store.CreateUser(ctx, user1)
 	require.NoError(t, err)
 
-	err = store.CreateUser(ctx, user2)
+	_, err = store.CreateUser(ctx, user2)
 	require.NoError(t, err)
 
 	got1, _ := store.GetUser(ctx, user1.Id)

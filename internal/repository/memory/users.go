@@ -40,9 +40,9 @@ func (m *MemoryStore) GetUserBySub(ctx context.Context, sub string) (model.User,
 }
 
 // CreateUser implements [repository.UserRepository].
-func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) error {
+func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	if user.Sub == "" || user.Email == "" {
-		return model.ErrInvalidArgument
+		return model.User{}, model.ErrInvalidArgument
 	}
 
 	m.mu.Lock()
@@ -50,13 +50,13 @@ func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) error {
 
 	// Check for duplicate sub
 	if _, exists := m.subToID[user.Sub]; exists {
-		return model.ErrAlreadyExists
+		return model.User{}, model.ErrAlreadyExists
 	}
 
 	m.users = append(m.users, user)
 	m.subToID[user.Sub] = user.Id
 
-	return nil
+	return user, nil
 }
 
 // UpdateUser implements [repository.UserRepository].
