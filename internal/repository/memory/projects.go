@@ -68,7 +68,7 @@ func (t *MemoryStore) ListProjects(ctx context.Context, params model.PaginationP
 
 	total := len(all)
 	start := min(params.Offset, total)
-	end := min(start + params.Limit, total)
+	end := min(start+params.Limit, total)
 
 	return model.Page[model.Project]{
 		Data:       all[start:end],

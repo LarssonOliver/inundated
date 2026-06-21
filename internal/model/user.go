@@ -5,8 +5,8 @@ import (
 )
 
 type User struct {
-	Id        uuid.UUID
-	Sub       string    // OIDC subject claim - unique per provider
-	Email     string
-	Name      string    // Non-nullable - empty string if not provided
+	Id    uuid.UUID
+	Sub   string // OIDC subject claim - unique per provider
+	Email string
+	Name  string // Non-nullable - empty string if not provided
 }

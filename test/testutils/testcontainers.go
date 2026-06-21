@@ -48,7 +48,7 @@ func StartPostgresContainer(ctx context.Context, t *testing.T) (*pgxpool.Pool, s
 }
 
 // StartPostgresContainerWithMigrationsApplied starts a PostgreSQL container, applies migrations, and returns a connected pgxpool.Pool and a cleanup function.
-func StartPostgresContainerWithMigrationsApplied(ctx context.Context, t *testing.T) (*pgxpool.Pool) {
+func StartPostgresContainerWithMigrationsApplied(ctx context.Context, t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool, dsn := StartPostgresContainer(ctx, t)
 	err := dbpostgres.ApplyMigrations(ctx, dsn)

@@ -149,7 +149,7 @@ func TestUserRepositoryContract(t *testing.T) {
 			err = repo.CreateUser(ctx, user2)
 			require.Error(t, err) // should fail due to unique constraint
 		})
-		
+
 		t.Run(repoName+"EmptyNameAllowed", func(t *testing.T) {
 			repo := newRepo(t)
 

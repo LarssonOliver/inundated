@@ -26,4 +26,3 @@ func (r *PostgresStore) GetUserBySub(ctx context.Context, sub string) (model.Use
 func (r *PostgresStore) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
 	panic("unimplemented")
 }
-

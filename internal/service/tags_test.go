@@ -57,7 +57,7 @@ func TestTagService_GetTag(t *testing.T) {
 			totalTimeFn: func(ctx context.Context, ids []uuid.UUID) (time.Duration, error) {
 				return 2 * time.Hour, nil
 			},
-			want: model.Tag{Id: testId, Name: "Test Tag", Color: "#abcdef", TotalTime: durPtr(2 * time.Hour)},
+			want:    model.Tag{Id: testId, Name: "Test Tag", Color: "#abcdef", TotalTime: durPtr(2 * time.Hour)},
 			wantErr: false,
 		},
 	}
