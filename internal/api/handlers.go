@@ -3,9 +3,15 @@ package api
 import "context"
 
 type HttpHandler interface {
+	UserHandler
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+}
+
+type UserHandler interface {
+	GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error)
+	UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error)
 }
 
 type TagHandler interface {

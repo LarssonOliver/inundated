@@ -22,9 +22,16 @@ func NewService(repository repository.Repository) *ServiceImpl {
 }
 
 type Service interface {
+	UserService
 	TagService
 	ProjectService
 	TimespanService
+}
+
+type UserService interface {
+	GetCurrentUser(ctx context.Context) (model.User, error)
+	UpdateCurrentUser(ctx context.Context, user model.User) (model.User, error)
+	GetOrCreateUserBySub(ctx context.Context, subject string) (model.User, error)
 }
 
 type TagServiceGetIncludes struct {
