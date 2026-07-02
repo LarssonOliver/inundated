@@ -23,7 +23,7 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	GetUserByIDFn  func(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserFn  func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn func(ctx context.Context, sub string) (model.User, error)
 	CreateUserFn   func(ctx context.Context, user model.User) (model.User, error)
 	UpdateUserFn   func(ctx context.Context, user model.User) (model.User, error)
@@ -90,7 +90,7 @@ func (t *RepoMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, err
 
 // GetUser implements repository.UserRepository.
 func (t *RepoMock) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
-	return t.GetUserByIDFn(ctx, id)
+	return t.GetUserFn(ctx, id)
 }
 
 // GetUserBySub implements repository.UserRepository.

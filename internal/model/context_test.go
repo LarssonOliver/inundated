@@ -1,4 +1,4 @@
-package middleware_test
+package model_test
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/stretchr/testify/require"
 )
@@ -15,26 +14,25 @@ func TestGetCurrentUserFromContext(t *testing.T) {
 	id := uuid.New()
 	tests := []struct {
 		name  string
-		r     *http.Request
+		r     context.Context
 		want  model.User
 		want2 bool
 	}{
 		{
 			name: "user in context",
-			r: func() *http.Request {
+			r: func() context.Context {
 				req, _ := http.NewRequest("GET", "/", nil)
 				user := model.User{Id: id, Name: "Test User"}
-				ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
-				return req.WithContext(ctx)
+				return context.WithValue(req.Context(), model.UserContextKey, user)
 			}(),
 			want:  model.User{Id: id, Name: "Test User"},
 			want2: true,
 		},
 		{
 			name: "no user in context",
-			r: func() *http.Request {
+			r: func() context.Context {
 				req, _ := http.NewRequest("GET", "/", nil)
-				return req
+				return req.Context()
 			}(),
 			want:  model.User{},
 			want2: false,
@@ -42,9 +40,10 @@ func TestGetCurrentUserFromContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got2 := middleware.GetCurrentUserFromContext(tt.r)
+			got, got2 := model.GetCurrentUserFromContext(tt.r)
 			require.Equal(t, tt.want2, got2)
 			require.Equal(t, tt.want, got)
 		})
 	}
 }
+

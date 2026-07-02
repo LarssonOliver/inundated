@@ -3,13 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
 )
-
-type ContextKey string
-
-var UserContextKey ContextKey = "user"
 
 func OIDCAuth(userService service.UserService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -20,7 +15,3 @@ func OIDCAuth(userService service.UserService) func(http.Handler) http.Handler {
 	}
 }
 
-func GetCurrentUserFromContext(r *http.Request) (model.User, bool) {
-	user, ok := r.Context().Value(UserContextKey).(model.User)
-	return user, ok
-}
