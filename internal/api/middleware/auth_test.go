@@ -24,7 +24,7 @@ func TestGetCurrentUserFromContext(t *testing.T) {
 			r: func() *http.Request {
 				req, _ := http.NewRequest("GET", "/", nil)
 				user := model.User{Id: id, Name: "Test User"}
-				ctx := context.WithValue(req.Context(), "user", user)
+				ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 				return req.WithContext(ctx)
 			}(),
 			want:  model.User{Id: id, Name: "Test User"},
