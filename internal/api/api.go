@@ -13,10 +13,26 @@ type Server struct {
 	handler HttpHandler
 }
 
+
 func NewServer(handler HttpHandler) *Server {
 	return &Server{
 		handler: handler,
 	}
+}
+
+// AuthCallback implements [StrictServerInterface].
+func (s *Server) AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error) {
+	panic("unimplemented")
+}
+
+// AuthLogin implements [StrictServerInterface].
+func (s *Server) AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error) {
+	panic("unimplemented")
+}
+
+// AuthLogout implements [StrictServerInterface].
+func (s *Server) AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error) {
+	panic("unimplemented")
 }
 
 // GetCurrentUser implements [StrictServerInterface].

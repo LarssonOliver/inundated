@@ -17,59 +17,68 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Get current user
-	// (GET /me)
+	// (GET /api/me)
 	GetCurrentUser(w http.ResponseWriter, r *http.Request)
 	// Update current user
-	// (PUT /me)
+	// (PUT /api/me)
 	UpdateCurrentUser(w http.ResponseWriter, r *http.Request)
 	// List projects
-	// (GET /projects)
+	// (GET /api/projects)
 	ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams)
 	// Create project
-	// (POST /projects)
+	// (POST /api/projects)
 	CreateProject(w http.ResponseWriter, r *http.Request)
 	// Delete project
-	// (DELETE /projects/{projectId})
+	// (DELETE /api/projects/{projectId})
 	DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
 	// Get project
-	// (GET /projects/{projectId})
+	// (GET /api/projects/{projectId})
 	GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams)
 	// Update project
-	// (PATCH /projects/{projectId})
+	// (PATCH /api/projects/{projectId})
 	UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
 	// Get timeseries stats for a project
-	// (GET /projects/{projectId}/stats)
+	// (GET /api/projects/{projectId}/stats)
 	GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams)
 	// List tags
-	// (GET /tags)
+	// (GET /api/tags)
 	ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams)
 	// Create tag
-	// (POST /tags)
+	// (POST /api/tags)
 	CreateTag(w http.ResponseWriter, r *http.Request)
 	// Delete tag
-	// (DELETE /tags/{tagId})
+	// (DELETE /api/tags/{tagId})
 	DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
 	// Get tag
-	// (GET /tags/{tagId})
+	// (GET /api/tags/{tagId})
 	GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams)
 	// Update tag
-	// (PATCH /tags/{tagId})
+	// (PATCH /api/tags/{tagId})
 	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
 	// List time spans
-	// (GET /timespans)
+	// (GET /api/timespans)
 	ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams)
 	// Create time span
-	// (POST /timespans)
+	// (POST /api/timespans)
 	CreateTimespan(w http.ResponseWriter, r *http.Request)
 	// Delete time span
-	// (DELETE /timespans/{timespanId})
+	// (DELETE /api/timespans/{timespanId})
 	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 	// Get time span
-	// (GET /timespans/{timespanId})
+	// (GET /api/timespans/{timespanId})
 	GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 	// Update time span
-	// (PATCH /timespans/{timespanId})
+	// (PATCH /api/timespans/{timespanId})
 	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
+	// OIDC callback
+	// (GET /auth/callback)
+	AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams)
+	// Initiate OIDC login
+	// (GET /auth/login)
+	AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams)
+	// Log out
+	// (POST /auth/logout)
+	AuthLogout(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -77,110 +86,128 @@ type ServerInterface interface {
 type Unimplemented struct{}
 
 // Get current user
-// (GET /me)
+// (GET /api/me)
 func (_ Unimplemented) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update current user
-// (PUT /me)
+// (PUT /api/me)
 func (_ Unimplemented) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // List projects
-// (GET /projects)
+// (GET /api/projects)
 func (_ Unimplemented) ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create project
-// (POST /projects)
+// (POST /api/projects)
 func (_ Unimplemented) CreateProject(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete project
-// (DELETE /projects/{projectId})
+// (DELETE /api/projects/{projectId})
 func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get project
-// (GET /projects/{projectId})
+// (GET /api/projects/{projectId})
 func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update project
-// (PATCH /projects/{projectId})
+// (PATCH /api/projects/{projectId})
 func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get timeseries stats for a project
-// (GET /projects/{projectId}/stats)
+// (GET /api/projects/{projectId}/stats)
 func (_ Unimplemented) GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // List tags
-// (GET /tags)
+// (GET /api/tags)
 func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create tag
-// (POST /tags)
+// (POST /api/tags)
 func (_ Unimplemented) CreateTag(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete tag
-// (DELETE /tags/{tagId})
+// (DELETE /api/tags/{tagId})
 func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get tag
-// (GET /tags/{tagId})
+// (GET /api/tags/{tagId})
 func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update tag
-// (PATCH /tags/{tagId})
+// (PATCH /api/tags/{tagId})
 func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // List time spans
-// (GET /timespans)
+// (GET /api/timespans)
 func (_ Unimplemented) ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create time span
-// (POST /timespans)
+// (POST /api/timespans)
 func (_ Unimplemented) CreateTimespan(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete time span
-// (DELETE /timespans/{timespanId})
+// (DELETE /api/timespans/{timespanId})
 func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get time span
-// (GET /timespans/{timespanId})
+// (GET /api/timespans/{timespanId})
 func (_ Unimplemented) GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Update time span
-// (PATCH /timespans/{timespanId})
+// (PATCH /api/timespans/{timespanId})
 func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OIDC callback
+// (GET /auth/callback)
+func (_ Unimplemented) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Initiate OIDC login
+// (GET /auth/login)
+func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Log out
+// (POST /auth/logout)
+func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -198,7 +225,7 @@ func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -218,7 +245,7 @@ func (siw *ServerInterfaceWrapper) UpdateCurrentUser(w http.ResponseWriter, r *h
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -240,7 +267,7 @@ func (siw *ServerInterfaceWrapper) ListProjects(w http.ResponseWriter, r *http.R
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -279,7 +306,7 @@ func (siw *ServerInterfaceWrapper) CreateProject(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -310,7 +337,7 @@ func (siw *ServerInterfaceWrapper) DeleteProject(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -341,7 +368,7 @@ func (siw *ServerInterfaceWrapper) GetProject(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -383,7 +410,7 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -414,7 +441,7 @@ func (siw *ServerInterfaceWrapper) GetProjectStats(w http.ResponseWriter, r *htt
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -478,7 +505,7 @@ func (siw *ServerInterfaceWrapper) ListTags(w http.ResponseWriter, r *http.Reque
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -517,7 +544,7 @@ func (siw *ServerInterfaceWrapper) CreateTag(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -548,7 +575,7 @@ func (siw *ServerInterfaceWrapper) DeleteTag(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -579,7 +606,7 @@ func (siw *ServerInterfaceWrapper) GetTag(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -621,7 +648,7 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -643,7 +670,7 @@ func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -682,7 +709,7 @@ func (siw *ServerInterfaceWrapper) CreateTimespan(w http.ResponseWriter, r *http
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -713,7 +740,7 @@ func (siw *ServerInterfaceWrapper) DeleteTimespan(w http.ResponseWriter, r *http
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -744,7 +771,7 @@ func (siw *ServerInterfaceWrapper) GetTimespan(w http.ResponseWriter, r *http.Re
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -775,12 +802,108 @@ func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, OidcScopes, []string{})
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateTimespan(w, r, timespanId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthCallback operation middleware
+func (siw *ServerInterfaceWrapper) AuthCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthCallbackParams
+
+	// ------------- Required query parameter "code" -------------
+
+	if paramValue := r.URL.Query().Get("code"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "code", r.URL.Query(), &params.Code)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "state" -------------
+
+	if paramValue := r.URL.Query().Get("state"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "state", r.URL.Query(), &params.State)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthCallback(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthLoginParams
+
+	// ------------- Optional query parameter "redirect" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "redirect", r.URL.Query(), &params.Redirect)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "redirect", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogin(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogout(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -904,58 +1027,67 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/me", wrapper.GetCurrentUser)
+		r.Get(options.BaseURL+"/api/me", wrapper.GetCurrentUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Put(options.BaseURL+"/me", wrapper.UpdateCurrentUser)
+		r.Put(options.BaseURL+"/api/me", wrapper.UpdateCurrentUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/projects", wrapper.ListProjects)
+		r.Get(options.BaseURL+"/api/projects", wrapper.ListProjects)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/projects", wrapper.CreateProject)
+		r.Post(options.BaseURL+"/api/projects", wrapper.CreateProject)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/projects/{projectId}", wrapper.DeleteProject)
+		r.Delete(options.BaseURL+"/api/projects/{projectId}", wrapper.DeleteProject)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/projects/{projectId}", wrapper.GetProject)
+		r.Get(options.BaseURL+"/api/projects/{projectId}", wrapper.GetProject)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/projects/{projectId}", wrapper.UpdateProject)
+		r.Patch(options.BaseURL+"/api/projects/{projectId}", wrapper.UpdateProject)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/projects/{projectId}/stats", wrapper.GetProjectStats)
+		r.Get(options.BaseURL+"/api/projects/{projectId}/stats", wrapper.GetProjectStats)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/tags", wrapper.ListTags)
+		r.Get(options.BaseURL+"/api/tags", wrapper.ListTags)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/tags", wrapper.CreateTag)
+		r.Post(options.BaseURL+"/api/tags", wrapper.CreateTag)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/tags/{tagId}", wrapper.DeleteTag)
+		r.Delete(options.BaseURL+"/api/tags/{tagId}", wrapper.DeleteTag)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/tags/{tagId}", wrapper.GetTag)
+		r.Get(options.BaseURL+"/api/tags/{tagId}", wrapper.GetTag)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/tags/{tagId}", wrapper.UpdateTag)
+		r.Patch(options.BaseURL+"/api/tags/{tagId}", wrapper.UpdateTag)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/timespans", wrapper.ListTimespans)
+		r.Get(options.BaseURL+"/api/timespans", wrapper.ListTimespans)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/timespans", wrapper.CreateTimespan)
+		r.Post(options.BaseURL+"/api/timespans", wrapper.CreateTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/timespans/{timespanId}", wrapper.DeleteTimespan)
+		r.Delete(options.BaseURL+"/api/timespans/{timespanId}", wrapper.DeleteTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/timespans/{timespanId}", wrapper.GetTimespan)
+		r.Get(options.BaseURL+"/api/timespans/{timespanId}", wrapper.GetTimespan)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/timespans/{timespanId}", wrapper.UpdateTimespan)
+		r.Patch(options.BaseURL+"/api/timespans/{timespanId}", wrapper.UpdateTimespan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/auth/callback", wrapper.AuthCallback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/auth/login", wrapper.AuthLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/logout", wrapper.AuthLogout)
 	})
 
 	return r
@@ -1461,62 +1593,188 @@ func (response UpdateTimespan404Response) VisitUpdateTimespanResponse(w http.Res
 	return nil
 }
 
+type AuthCallbackRequestObject struct {
+	Params AuthCallbackParams
+}
+
+type AuthCallbackResponseObject interface {
+	VisitAuthCallbackResponse(w http.ResponseWriter) error
+}
+
+type AuthCallback200Response struct {
+}
+
+func (response AuthCallback200Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type AuthCallback302ResponseHeaders struct {
+	Location  Location
+	SetCookie string
+}
+
+type AuthCallback302Response struct {
+	Headers AuthCallback302ResponseHeaders
+}
+
+func (response AuthCallback302Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthCallback400Response struct {
+}
+
+func (response AuthCallback400Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type AuthCallback401Response struct {
+}
+
+func (response AuthCallback401Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type AuthLoginRequestObject struct {
+	Params AuthLoginParams
+}
+
+type AuthLoginResponseObject interface {
+	VisitAuthLoginResponse(w http.ResponseWriter) error
+}
+
+type AuthLogin200Response struct {
+}
+
+func (response AuthLogin200Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type AuthLogin302ResponseHeaders struct {
+	Location Location
+}
+
+type AuthLogin302Response struct {
+	Headers AuthLogin302ResponseHeaders
+}
+
+func (response AuthLogin302Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthLogin400Response struct {
+}
+
+func (response AuthLogin400Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type AuthLogoutRequestObject struct {
+}
+
+type AuthLogoutResponseObject interface {
+	VisitAuthLogoutResponse(w http.ResponseWriter) error
+}
+
+type AuthLogout204Response struct {
+}
+
+func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AuthLogout302Response struct {
+}
+
+func (response AuthLogout302Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthLogout401Response struct {
+}
+
+func (response AuthLogout401Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Get current user
-	// (GET /me)
+	// (GET /api/me)
 	GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error)
 	// Update current user
-	// (PUT /me)
+	// (PUT /api/me)
 	UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error)
 	// List projects
-	// (GET /projects)
+	// (GET /api/projects)
 	ListProjects(ctx context.Context, request ListProjectsRequestObject) (ListProjectsResponseObject, error)
 	// Create project
-	// (POST /projects)
+	// (POST /api/projects)
 	CreateProject(ctx context.Context, request CreateProjectRequestObject) (CreateProjectResponseObject, error)
 	// Delete project
-	// (DELETE /projects/{projectId})
+	// (DELETE /api/projects/{projectId})
 	DeleteProject(ctx context.Context, request DeleteProjectRequestObject) (DeleteProjectResponseObject, error)
 	// Get project
-	// (GET /projects/{projectId})
+	// (GET /api/projects/{projectId})
 	GetProject(ctx context.Context, request GetProjectRequestObject) (GetProjectResponseObject, error)
 	// Update project
-	// (PATCH /projects/{projectId})
+	// (PATCH /api/projects/{projectId})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
 	// Get timeseries stats for a project
-	// (GET /projects/{projectId}/stats)
+	// (GET /api/projects/{projectId}/stats)
 	GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error)
 	// List tags
-	// (GET /tags)
+	// (GET /api/tags)
 	ListTags(ctx context.Context, request ListTagsRequestObject) (ListTagsResponseObject, error)
 	// Create tag
-	// (POST /tags)
+	// (POST /api/tags)
 	CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error)
 	// Delete tag
-	// (DELETE /tags/{tagId})
+	// (DELETE /api/tags/{tagId})
 	DeleteTag(ctx context.Context, request DeleteTagRequestObject) (DeleteTagResponseObject, error)
 	// Get tag
-	// (GET /tags/{tagId})
+	// (GET /api/tags/{tagId})
 	GetTag(ctx context.Context, request GetTagRequestObject) (GetTagResponseObject, error)
 	// Update tag
-	// (PATCH /tags/{tagId})
+	// (PATCH /api/tags/{tagId})
 	UpdateTag(ctx context.Context, request UpdateTagRequestObject) (UpdateTagResponseObject, error)
 	// List time spans
-	// (GET /timespans)
+	// (GET /api/timespans)
 	ListTimespans(ctx context.Context, request ListTimespansRequestObject) (ListTimespansResponseObject, error)
 	// Create time span
-	// (POST /timespans)
+	// (POST /api/timespans)
 	CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error)
 	// Delete time span
-	// (DELETE /timespans/{timespanId})
+	// (DELETE /api/timespans/{timespanId})
 	DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error)
 	// Get time span
-	// (GET /timespans/{timespanId})
+	// (GET /api/timespans/{timespanId})
 	GetTimespan(ctx context.Context, request GetTimespanRequestObject) (GetTimespanResponseObject, error)
 	// Update time span
-	// (PATCH /timespans/{timespanId})
+	// (PATCH /api/timespans/{timespanId})
 	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
+	// OIDC callback
+	// (GET /auth/callback)
+	AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error)
+	// Initiate OIDC login
+	// (GET /auth/login)
+	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
+	// Log out
+	// (POST /auth/logout)
+	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -2051,6 +2309,82 @@ func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateTimespanResponseObject); ok {
 		if err := validResponse.VisitUpdateTimespanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthCallback operation middleware
+func (sh *strictHandler) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
+	var request AuthCallbackRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthCallback(ctx, request.(AuthCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthCallback")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthCallbackResponseObject); ok {
+		if err := validResponse.VisitAuthCallbackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthLogin operation middleware
+func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
+	var request AuthLoginRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogin(ctx, request.(AuthLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
+		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthLogout operation middleware
+func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
+	var request AuthLogoutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
+		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
