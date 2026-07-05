@@ -47,3 +47,24 @@ func TestGetCurrentUserFromContext(t *testing.T) {
 	}
 }
 
+func TestSetCurrentUserInContext(t *testing.T) {
+	id := uuid.New()
+	tests := []struct {
+		name string // description of this test case
+		user model.User
+	}{
+		{
+			name: "set user in context",
+			user: model.User{Id: id, Name: "Test User"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := model.SetCurrentUserInContext(context.Background(), tt.user)
+			require.NotNil(t, got)
+			retrievedUser, ok := model.GetCurrentUserFromContext(got)
+			require.True(t, ok)
+			require.Equal(t, tt.user, retrievedUser)
+		})
+	}
+}
