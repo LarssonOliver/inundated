@@ -1,0 +1,12 @@
+code:
+  name: code
+  in: query
+  required: true
+  schema:
+    type: string
+state:
+  name: state
+  in: query
+  required: true
+  schema:
+    type: string

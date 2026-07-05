@@ -1,0 +1,70 @@
+login:
+  get:
+    tags: [auth]
+    summary: Initiate OIDC login
+    operationId: authLogin
+    security: [] # public
+    description: >
+      Starts the OpenID Connect authorization flow by redirecting the user
+      to the configured identity provider.
+    parameters:
+      - $ref: "../parameters/shared.yaml#/redirect"
+    responses:
+      "200":
+        description: >
+          This endpoint initiates the login flow and typically redirects the user
+          to the identity provider. A 200 response is not expected in normal browser usage.
+      "302":
+        description: Redirect to the identity provider.
+        headers:
+          Location:
+            description: Authorization endpoint.
+            schema:
+              $ref: "../schemas/shared.yaml#/Location"
+      "400":
+        description: Bad request
+callback:
+  get:
+    tags: [auth]
+    summary: OIDC callback
+    operationId: authCallback
+    security: [] # public
+    description: >
+      Callback endpoint invoked by the identity provider after the user
+      has authenticated. Exchanges the authorization code for tokens,
+      establishes a session, and redirects the user back to the application.
+    parameters:
+      - $ref: "../parameters/auth.yaml#/code"
+      - $ref: "../parameters/auth.yaml#/state"
+    responses:
+      "200":
+        description: >
+          This endpoint is part of the login flow and typically redirects the user
+          to the identity provider. A 200 response is not expected in normal browser usage.
+      "302":
+        description: Session established and user redirected.
+        headers:
+          Set-Cookie:
+            description: Session cookie.
+            schema:
+              type: string
+          Location:
+            description: Redirect target.
+            schema:
+              $ref: "../schemas/shared.yaml#/Location"
+      "400":
+        description: Bad request
+      "401":
+        description: Unaurhotrized
+logout:
+  post:
+    tags: [auth]
+    summary: Log out
+    operationId: authLogout
+    responses:
+      "204":
+        description: Session terminated
+      "302":
+        description: Session terminated and browser redirected
+      "401":
+        description: Unaurhotrized

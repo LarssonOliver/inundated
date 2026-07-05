@@ -7,9 +7,9 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
-  - url: /api
+  - url: /
 security:
-  - oidc: []
+  - sessionCookie: []
 tags:
   - name: users
     description: User-related operations
@@ -20,28 +20,35 @@ tags:
   - name: timespans
     description: Timespan-related operations
 paths:
-  /me:
+  /auth/login:
+    $ref: "./paths/auth.yaml#/login"
+  /auth/callback:
+    $ref: "./paths/auth.yaml#/callback"
+  /auth/logout:
+    $ref: "./paths/auth.yaml#/logout"
+
+  /api/me:
     $ref: "./paths/users.yaml#/me"
-  /tags:
+  /api/tags:
     $ref: "./paths/tags.yaml#/tags"
-  /tags/{tagId}:
+  /api/tags/{tagId}:
     $ref: "./paths/tags.yaml#/tags-id"
-  /projects:
+  /api/projects:
     $ref: "./paths/projects.yaml#/projects"
-  /projects/{projectId}:
+  /api/projects/{projectId}:
     $ref: "./paths/projects.yaml#/projects-id"
-  /projects/{projectId}/stats:
+  /api/projects/{projectId}/stats:
     $ref: "./paths/projects.yaml#/projects-id-stats"
-  /timespans:
+  /api/timespans:
     $ref: "./paths/timespans.yaml#/timespans"
-  /timespans/{timespanId}:
+  /api/timespans/{timespanId}:
     $ref: "./paths/timespans.yaml#/timespans-id"
 components:
   securitySchemes:
-    oidc:
-      type: openIdConnect
-      openIdConnectUrl: "https://example.com/.well-known/openid-configuration"
-      description: "OIDC bearer token validation. Configure openIdConnectUrl for your provider."
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
   schemas:
     User:
       $ref: "./schemas/users.yaml#/User"
