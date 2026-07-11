@@ -27,6 +27,18 @@ func newMock(t *testing.T) (repository.Repository, pgxmock.PgxPoolIface) {
 	return postgres.NewPostgresStoreWithQuerier(mock), mock
 }
 
+func newSessionMock(t *testing.T) (repository.SessionRepository, pgxmock.PgxPoolIface) {
+	t.Helper()
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("unfulfilled pgxmock expectations: %v", err)
+		}
+	})
+	return postgres.NewPostgresStoreWithQuerier(mock), mock
+}
+
 // dur is a convenience helper for building *time.Duration literals.
 func dur(d time.Duration) *time.Duration { return &d }
 
@@ -67,5 +79,14 @@ func aUser() model.User {
 		Sub:   "auth0|user123",
 		Name:  "Test User",
 		Email: "test@example.com",
+	}
+}
+
+func aSession() model.Session {
+	return model.Session{
+		Id:        uuid.New(),
+		UserId:    uuid.New(),
+		Sub:       "auth0|user123",
+		ExpiresAt: time.Now().Add(time.Hour).UTC(),
 	}
 }

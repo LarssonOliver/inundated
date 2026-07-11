@@ -51,3 +51,13 @@ type TimespanRepository interface {
 type ProjectStatsRepository interface {
 	AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
 }
+
+// This interface is deliberately not included in the Repository interface.
+// This allows for the session repository to be implemented in a different way
+// than the other repositories, e.g. using valkey or similar.
+type SessionRepository interface {
+	GetSession(ctx context.Context, id uuid.UUID) (model.Session, error)
+	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
+	UpdateSession(ctx context.Context, session model.Session) (model.Session, error)
+	DeleteSession(ctx context.Context, id uuid.UUID) error
+}

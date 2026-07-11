@@ -14,4 +14,3 @@ func OIDCAuth(userService service.UserService) func(http.Handler) http.Handler {
 		})
 	}
 }
-

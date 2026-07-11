@@ -23,7 +23,7 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	GetUserFn  func(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserFn      func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn func(ctx context.Context, sub string) (model.User, error)
 	CreateUserFn   func(ctx context.Context, user model.User) (model.User, error)
 	UpdateUserFn   func(ctx context.Context, user model.User) (model.User, error)
@@ -36,6 +36,15 @@ type RepoMock struct {
 	GetTotalDurationByTagsFn func(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error)
 
 	AggregateTimeSpentByTagsAndBucketsFn func(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
+}
+
+var _ SessionRepository = (*SessionRepoMock)(nil)
+
+type SessionRepoMock struct {
+	GetSessionFn    func(ctx context.Context, id uuid.UUID) (model.Session, error)
+	CreateSessionFn func(ctx context.Context, session model.Session) (model.Session, error)
+	UpdateSessionFn func(ctx context.Context, session model.Session) (model.Session, error)
+	DeleteSessionFn func(ctx context.Context, id uuid.UUID) error
 }
 
 // CreateProject implements repository.ProjectRepository.
@@ -141,4 +150,24 @@ func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUI
 // AggregateTimeSpentByTagsAndBuckets implements repository.ProjectStatsRepository.
 func (t *RepoMock) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	return t.AggregateTimeSpentByTagsAndBucketsFn(ctx, tagIds, buckets)
+}
+
+// CreateSession implements [SessionRepository].
+func (s *SessionRepoMock) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
+	return s.CreateSessionFn(ctx, session)
+}
+
+// DeleteSession implements [SessionRepository].
+func (s *SessionRepoMock) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	return s.DeleteSessionFn(ctx, id)
+}
+
+// GetSession implements [SessionRepository].
+func (s *SessionRepoMock) GetSession(ctx context.Context, id uuid.UUID) (model.Session, error) {
+	return s.GetSessionFn(ctx, id)
+}
+
+// UpdateSession implements [SessionRepository].
+func (s *SessionRepoMock) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
+	return s.UpdateSessionFn(ctx, session)
 }

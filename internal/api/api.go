@@ -13,7 +13,6 @@ type Server struct {
 	handler HttpHandler
 }
 
-
 func NewServer(handler HttpHandler) *Server {
 	return &Server{
 		handler: handler,

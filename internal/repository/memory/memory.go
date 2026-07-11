@@ -15,9 +15,11 @@ type MemoryStore struct {
 	projects  []model.Project
 	tags      []model.Tag
 	timespans []model.Timespan
+	sessions  []model.Session
 }
 
 var _ repository.Repository = (*MemoryStore)(nil)
+var _ repository.SessionRepository = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
@@ -27,5 +29,6 @@ func NewMemoryStore() *MemoryStore {
 		projects:  []model.Project{},
 		tags:      []model.Tag{},
 		timespans: []model.Timespan{},
+		sessions:  []model.Session{},
 	}
 }

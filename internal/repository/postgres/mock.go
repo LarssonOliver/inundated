@@ -17,6 +17,7 @@ type MockRepository struct {
 }
 
 var _ repository.Repository = (*MockRepository)(nil)
+var _ repository.SessionRepository = (*MockRepository)(nil)
 
 func (m *MockRepository) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	args := m.Called(ctx, user)
@@ -118,4 +119,28 @@ func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, tagIds []uu
 func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	args := m.Called(ctx, tagIds, buckets)
 	return args.Get(0).([]model.BucketValue), args.Error(1)
+}
+
+// CreateSession implements [repository.SessionRepository].
+func (m *MockRepository) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
+	args := m.Called(ctx, session)
+	return args.Get(0).(model.Session), args.Error(1)
+}
+
+// DeleteSession implements [repository.SessionRepository].
+func (m *MockRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+// GetSession implements [repository.SessionRepository].
+func (m *MockRepository) GetSession(ctx context.Context, id uuid.UUID) (model.Session, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(model.Session), args.Error(1)
+}
+
+// UpdateSession implements [repository.SessionRepository].
+func (m *MockRepository) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
+	args := m.Called(ctx, session)
+	return args.Get(0).(model.Session), args.Error(1)
 }

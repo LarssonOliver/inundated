@@ -88,27 +88,27 @@ func assertIndexExists(
 	require.True(t, exists, "expected index %q to exist", indexName)
 }
 
-// func assertForeignKeyExists(
-// 	t *testing.T,
-// 	ctx context.Context,
-// 	pool *pgxpool.Pool,
-// 	table, constraint string,
-// ) {
-// 	t.Helper()
+func assertForeignKeyExists(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	table, constraint string,
+) {
+	t.Helper()
 
-// 	var exists bool
-// 	err := pool.QueryRow(ctx, `
-// 		SELECT EXISTS (
-// 			SELECT 1
-// 			FROM information_schema.table_constraints
-// 			WHERE table_schema = 'public'
-// 			  AND table_name = $1
-// 			  AND constraint_name = $2
-// 			  AND constraint_type = 'FOREIGN KEY'
-// 		)
-// 	`, table, constraint).Scan(&exists)
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.table_constraints
+			WHERE table_schema = 'public'
+			  AND table_name = $1
+			  AND constraint_name = $2
+			  AND constraint_type = 'FOREIGN KEY'
+		)
+	`, table, constraint).Scan(&exists)
 
-// 	require.NoError(t, err)
-// 	require.True(t, exists,
-// 		"expected foreign key %q on table %q to exist", constraint, table)
-// }
+	require.NoError(t, err)
+	require.True(t, exists,
+		"expected foreign key %q on table %q to exist", constraint, table)
+}

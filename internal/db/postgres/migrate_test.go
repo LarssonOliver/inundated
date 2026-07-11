@@ -55,10 +55,14 @@ func TestIndividualMigrations(t *testing.T) {
 				assertTableExists(t, ctx, pool, "projects")
 				assertColumnExists(t, ctx, pool, "projects", "id", sptr("uuid"))
 				assertTableExists(t, ctx, pool, "project_tags")
+				assertForeignKeyExists(t, ctx, pool, "project_tags", "project_tags_project_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "project_tags", "project_tags_tag_id_fkey")
 
 				assertTableExists(t, ctx, pool, "timespans")
 				assertColumnExists(t, ctx, pool, "timespans", "id", sptr("uuid"))
 				assertTableExists(t, ctx, pool, "timespan_tags")
+				assertForeignKeyExists(t, ctx, pool, "timespan_tags", "timespan_tags_timespan_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "timespan_tags", "timespan_tags_tag_id_fkey")
 			},
 		},
 		{
@@ -72,6 +76,38 @@ func TestIndividualMigrations(t *testing.T) {
 				assertIndexExists(t, ctx, pool, "idx_projects_active")
 				assertColumnExists(t, ctx, pool, "timespans", "deleted_at", sptr("timestamp with time zone"))
 				assertIndexExists(t, ctx, pool, "idx_timespans_active")
+			},
+		},
+		{
+			name:        "0003_create_users_table",
+			fromVersion: 2,
+			toVersion:   3,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "users")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "users")
+				assertColumnExists(t, ctx, pool, "users", "id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "users", "sub", sptr("text"))
+				assertColumnExists(t, ctx, pool, "users", "email", sptr("text"))
+				assertColumnExists(t, ctx, pool, "users", "name", sptr("text"))
+			},
+		},
+		{
+			name:        "0004_add_sessions_table",
+			fromVersion: 3,
+			toVersion:   4,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "sessions")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "sessions")
+				assertColumnExists(t, ctx, pool, "sessions", "id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "sessions", "user_id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "sessions", "sub", sptr("text"))
+				assertColumnExists(t, ctx, pool, "sessions", "expires_at", sptr("timestamp with time zone"))
+				assertIndexExists(t, ctx, pool, "idx_sessions_user_id")
+				assertIndexExists(t, ctx, pool, "idx_sessions_expires_at")
 			},
 		},
 	}
