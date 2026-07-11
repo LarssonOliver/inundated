@@ -79,7 +79,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 
-		t.Run(repoName+"Update", func(t *testing.T) {
+		t.Run(repoName+"Touch", func(t *testing.T) {
 			repo := newRepo(t)
 			session := model.Session{
 				Id:        uuid.New(),
@@ -92,12 +92,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 
 			newExpiresAt := time.Now().Add(2 * time.Hour).UTC()
-			updated, err := repo.UpdateSession(ctx, model.Session{
-				Id:        session.Id,
-				UserId:    session.UserId,
-				Sub:       session.Sub,
-				ExpiresAt: newExpiresAt,
-			})
+			updated, err := repo.TouchSession(ctx, session.Id, newExpiresAt)
 			require.NoError(t, err)
 			require.WithinDuration(t, newExpiresAt, updated.ExpiresAt, time.Second)
 
@@ -106,15 +101,10 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.WithinDuration(t, newExpiresAt, got.ExpiresAt, time.Second)
 		})
 
-		t.Run(repoName+"UpdateMissing", func(t *testing.T) {
+		t.Run(repoName+"TouchMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
-			_, err := repo.UpdateSession(ctx, model.Session{
-				Id:        uuid.New(),
-				UserId:    uuid.New(),
-				Sub:       "auth0|ghost",
-				ExpiresAt: time.Now().Add(time.Hour).UTC(),
-			})
+			_, err := repo.TouchSession(ctx, uuid.New(), time.Now().Add(time.Hour).UTC())
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 

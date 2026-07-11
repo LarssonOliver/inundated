@@ -43,7 +43,7 @@ var _ SessionRepository = (*SessionRepoMock)(nil)
 type SessionRepoMock struct {
 	GetSessionFn    func(ctx context.Context, id uuid.UUID) (model.Session, error)
 	CreateSessionFn func(ctx context.Context, session model.Session) (model.Session, error)
-	UpdateSessionFn func(ctx context.Context, session model.Session) (model.Session, error)
+	TouchSessionFn  func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSessionFn func(ctx context.Context, id uuid.UUID) error
 }
 
@@ -167,7 +167,7 @@ func (s *SessionRepoMock) GetSession(ctx context.Context, id uuid.UUID) (model.S
 	return s.GetSessionFn(ctx, id)
 }
 
-// UpdateSession implements [SessionRepository].
-func (s *SessionRepoMock) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
-	return s.UpdateSessionFn(ctx, session)
+// TouchSession implements [SessionRepository].
+func (s *SessionRepoMock) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+	return s.TouchSessionFn(ctx, id, expiresAt)
 }

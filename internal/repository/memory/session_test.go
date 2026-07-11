@@ -86,7 +86,7 @@ func TestMemoryStore_GetSession(t *testing.T) {
 	})
 }
 
-func TestMemoryStore_UpdateSession(t *testing.T) {
+func TestMemoryStore_TouchSession(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -100,20 +100,21 @@ func TestMemoryStore_UpdateSession(t *testing.T) {
 		_, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 
-		updatedSession := model.Session{
-			Id:        session.Id,
-			UserId:    session.UserId,
-			Sub:       session.Sub,
-			ExpiresAt: time.Now().Add(2 * time.Hour).UTC(),
-		}
+		newExpiresAt := time.Now().Add(2 * time.Hour).UTC()
 
-		got, err := store.UpdateSession(ctx, updatedSession)
+		got, err := store.TouchSession(ctx, session.Id, newExpiresAt)
 		require.NoError(t, err)
-		require.Equal(t, updatedSession, got)
+		require.Equal(t, newExpiresAt, got.ExpiresAt)
+		require.Equal(t, session.Id, got.Id)
+		require.Equal(t, session.UserId, got.UserId)
+		require.Equal(t, session.Sub, got.Sub)
 
 		got, err = store.GetSession(ctx, session.Id)
 		require.NoError(t, err)
-		require.Equal(t, updatedSession, got)
+		require.Equal(t, newExpiresAt, got.ExpiresAt)
+		require.Equal(t, session.Id, got.Id)
+		require.Equal(t, session.UserId, got.UserId)
+		require.Equal(t, session.Sub, got.Sub)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
@@ -125,7 +126,7 @@ func TestMemoryStore_UpdateSession(t *testing.T) {
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 
-		_, err := store.UpdateSession(ctx, session)
+		_, err := store.TouchSession(ctx, session.Id, time.Now().Add(2*time.Hour).UTC())
 		require.ErrorIs(t, err, model.ErrNotFound)
 	})
 
@@ -149,8 +150,8 @@ func TestMemoryStore_UpdateSession(t *testing.T) {
 		require.NoError(t, err)
 
 		updatedA := sessionA
-		updatedA.Sub = "auth0|a-updated"
-		_, err = store.UpdateSession(ctx, updatedA)
+		updatedA.ExpiresAt = time.Now().Add(2 * time.Hour).UTC()
+		_, err = store.TouchSession(ctx, updatedA.Id, updatedA.ExpiresAt)
 		require.NoError(t, err)
 
 		got, err := store.GetSession(ctx, sessionB.Id)

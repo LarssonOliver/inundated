@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -55,15 +56,15 @@ func (t *MemoryStore) GetSession(ctx context.Context, id uuid.UUID) (model.Sessi
 	return model.Session{}, model.ErrNotFound
 }
 
-// UpdateSession implements [repository.SessionRepository].
-func (t *MemoryStore) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
+// TouchSession implements [repository.SessionRepository].
+func (t *MemoryStore) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	for i, s := range t.sessions {
-		if s.Id == session.Id {
-			t.sessions[i] = session
-			return session, nil
+		if s.Id == id {
+			t.sessions[i].ExpiresAt = expiresAt
+			return t.sessions[i], nil
 		}
 	}
 

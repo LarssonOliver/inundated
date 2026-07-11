@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -79,32 +80,26 @@ func (r *PostgresStore) GetSession(ctx context.Context, id uuid.UUID) (model.Ses
 	return s, nil
 }
 
-// UpdateSession implements [repository.SessionRepository].
-func (r *PostgresStore) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
-	if session.Id == uuid.Nil {
-		return model.Session{}, fmt.Errorf("UpdateSession: id: %w", model.ErrInvalidArgument)
-	}
-	if session.UserId == uuid.Nil {
-		return model.Session{}, fmt.Errorf("UpdateSession: user_id: %w", model.ErrInvalidArgument)
-	}
-	if session.Sub == "" {
-		return model.Session{}, fmt.Errorf("UpdateSession: sub must not be empty: %w", model.ErrInvalidArgument)
+// TouchSession implements [repository.SessionRepository].
+func (r *PostgresStore) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+	if id == uuid.Nil {
+		return model.Session{}, fmt.Errorf("TouchSession: id: %w", model.ErrInvalidArgument)
 	}
 
 	const q = `
 		UPDATE sessions
-		SET user_id = $2, sub = $3, expires_at = $4
+		SET expires_at = $2
 		WHERE id = $1
 		RETURNING id, user_id, sub, expires_at`
 
 	var updated model.Session
-	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, session.ExpiresAt).
+	err := r.db.QueryRow(ctx, q, id, expiresAt).
 		Scan(&updated.Id, &updated.UserId, &updated.Sub, &updated.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Session{}, fmt.Errorf("UpdateSession %s: %w", session.Id, model.ErrNotFound)
+		return model.Session{}, fmt.Errorf("TouchSession %s: %w", id, model.ErrNotFound)
 	}
 	if err != nil {
-		return model.Session{}, fmt.Errorf("UpdateSession: %w", err)
+		return model.Session{}, fmt.Errorf("TouchSession: %w", err)
 	}
 	return updated, nil
 }

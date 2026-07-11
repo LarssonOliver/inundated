@@ -139,8 +139,8 @@ func (m *MockRepository) GetSession(ctx context.Context, id uuid.UUID) (model.Se
 	return args.Get(0).(model.Session), args.Error(1)
 }
 
-// UpdateSession implements [repository.SessionRepository].
-func (m *MockRepository) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
-	args := m.Called(ctx, session)
+// TouchSession implements [repository.SessionRepository].
+func (m *MockRepository) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+	args := m.Called(ctx, id, expiresAt)
 	return args.Get(0).(model.Session), args.Error(1)
 }

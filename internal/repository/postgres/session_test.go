@@ -120,64 +120,45 @@ func TestGetSession_NilId(t *testing.T) {
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
 
-// ── UpdateSession ────────────────────────────────────────────────────────────
+// ── TouchSession ────────────────────────────────────────────────────────────
 
-func TestUpdateSession_Success(t *testing.T) {
+func TestTouchSession_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newSessionMock(t)
+
 	session := aSession()
 	session.ExpiresAt = time.Now().Add(2 * time.Hour).UTC()
 
 	mock.ExpectQuery(`UPDATE sessions .+ WHERE id = \$1`).
-		WithArgs(session.Id, session.UserId, session.Sub, session.ExpiresAt).
+		WithArgs(session.Id, session.ExpiresAt).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}).
 			AddRow(session.Id, session.UserId, session.Sub, session.ExpiresAt))
 
-	got, err := repo.UpdateSession(ctx, session)
+	got, err := repo.TouchSession(ctx, session.Id, session.ExpiresAt)
 	require.NoError(t, err)
 	assert.Equal(t, session, got)
 }
 
-func TestUpdateSession_NotFound(t *testing.T) {
+func TestTouchSession_NotFound(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newSessionMock(t)
 	session := aSession()
 
 	mock.ExpectQuery(`UPDATE sessions .+ WHERE id = \$1`).
-		WithArgs(session.Id, session.UserId, session.Sub, session.ExpiresAt).
+		WithArgs(session.Id, session.ExpiresAt).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}))
 
-	_, err := repo.UpdateSession(ctx, session)
+	_, err := repo.TouchSession(ctx, session.Id, session.ExpiresAt)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestUpdateSession_NilId(t *testing.T) {
+func TestTouchSession_NilId(t *testing.T) {
 	repo, _ := newSessionMock(t)
 	session := aSession()
 	session.Id = uuid.Nil
 
-	_, err := repo.UpdateSession(context.Background(), session)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
-}
-
-func TestUpdateSession_NilUserId(t *testing.T) {
-	repo, _ := newSessionMock(t)
-	session := aSession()
-	session.UserId = uuid.Nil
-
-	_, err := repo.UpdateSession(context.Background(), session)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
-}
-
-func TestUpdateSession_EmptySub(t *testing.T) {
-	repo, _ := newSessionMock(t)
-	session := aSession()
-	session.Sub = ""
-
-	_, err := repo.UpdateSession(context.Background(), session)
+	_, err := repo.TouchSession(context.Background(), session.Id, session.ExpiresAt)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }

@@ -58,6 +58,6 @@ type ProjectStatsRepository interface {
 type SessionRepository interface {
 	GetSession(ctx context.Context, id uuid.UUID) (model.Session, error)
 	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
-	UpdateSession(ctx context.Context, session model.Session) (model.Session, error)
+	TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSession(ctx context.Context, id uuid.UUID) error
 }
