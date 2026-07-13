@@ -47,6 +47,14 @@ type SessionRepoMock struct {
 	DeleteSessionFn func(ctx context.Context, id uuid.UUID) error
 }
 
+var _ LoginStateRepository = (*LoginStateRepoMock)(nil)
+
+type LoginStateRepoMock struct {
+	GetLoginStateFn    func(ctx context.Context, id uuid.UUID) (model.LoginState, error)
+	CreateLoginStateFn func(ctx context.Context, state model.LoginState) (model.LoginState, error)
+	DeleteLoginStateFn func(ctx context.Context, id uuid.UUID) error
+}
+
 // CreateProject implements repository.ProjectRepository.
 func (t *RepoMock) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
 	return t.CreateProjectFn(ctx, project)
@@ -170,4 +178,19 @@ func (s *SessionRepoMock) GetSession(ctx context.Context, id uuid.UUID) (model.S
 // TouchSession implements [SessionRepository].
 func (s *SessionRepoMock) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
 	return s.TouchSessionFn(ctx, id, expiresAt)
+}
+
+// CreateLoginState implements [LoginStateRepository].
+func (l *LoginStateRepoMock) CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error) {
+	return l.CreateLoginStateFn(ctx, loginState)
+}
+
+// DeleteLoginState implements [LoginStateRepository].
+func (l *LoginStateRepoMock) DeleteLoginState(ctx context.Context, id uuid.UUID) error {
+	return l.DeleteLoginStateFn(ctx, id)
+}
+
+// GetLoginState implements [LoginStateRepository].
+func (l *LoginStateRepoMock) GetLoginState(ctx context.Context, id uuid.UUID) (model.LoginState, error) {
+	return l.GetLoginStateFn(ctx, id)
 }

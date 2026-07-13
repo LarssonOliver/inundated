@@ -18,6 +18,7 @@ type MockRepository struct {
 
 var _ repository.Repository = (*MockRepository)(nil)
 var _ repository.SessionRepository = (*MockRepository)(nil)
+var _ repository.LoginStateRepository = (*MockRepository)(nil)
 
 func (m *MockRepository) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	args := m.Called(ctx, user)
@@ -143,4 +144,22 @@ func (m *MockRepository) GetSession(ctx context.Context, id uuid.UUID) (model.Se
 func (m *MockRepository) TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
 	args := m.Called(ctx, id, expiresAt)
 	return args.Get(0).(model.Session), args.Error(1)
+}
+
+// CreateLoginState implements [repository.LoginStateRepository].
+func (m *MockRepository) CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error) {
+	args := m.Called(ctx, loginState)
+	return args.Get(0).(model.LoginState), args.Error(1)
+}
+
+// DeleteLoginState implements [repository.LoginStateRepository].
+func (m *MockRepository) DeleteLoginState(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+// GetLoginState implements [repository.LoginStateRepository].
+func (m *MockRepository) GetLoginState(ctx context.Context, id uuid.UUID) (model.LoginState, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(model.LoginState), args.Error(1)
 }

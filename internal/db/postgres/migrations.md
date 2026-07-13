@@ -96,8 +96,8 @@ NNN_description.down.sql (optional)
 Example:
 
 ```
-005_add_projects_table.up.sql
-005_add_projects_table.down.sql
+0005_add_projects_table.up.sql
+0005_add_projects_table.down.sql
 ```
 
 Guidelines:

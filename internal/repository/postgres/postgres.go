@@ -17,6 +17,7 @@ type PostgresStore struct {
 
 var _ repository.Repository = (*PostgresStore)(nil)
 var _ repository.SessionRepository = (*PostgresStore)(nil)
+var _ repository.LoginStateRepository = (*PostgresStore)(nil)
 
 // New creates a Repository by opening a new pgxpool.
 func NewPostgresStore(ctx context.Context, connString string) (*PostgresStore, error) {

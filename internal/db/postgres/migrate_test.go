@@ -94,7 +94,7 @@ func TestIndividualMigrations(t *testing.T) {
 			},
 		},
 		{
-			name:        "0004_add_sessions_table",
+			name:        "0004_create_sessions_table",
 			fromVersion: 3,
 			toVersion:   4,
 			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
@@ -108,6 +108,22 @@ func TestIndividualMigrations(t *testing.T) {
 				assertColumnExists(t, ctx, pool, "sessions", "expires_at", sptr("timestamp with time zone"))
 				assertIndexExists(t, ctx, pool, "idx_sessions_user_id")
 				assertIndexExists(t, ctx, pool, "idx_sessions_expires_at")
+			},
+		},
+		{
+			name:        "0005_create_login_states_table",
+			fromVersion: 4,
+			toVersion:   5,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "login_states")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "login_states")
+				assertColumnExists(t, ctx, pool, "login_states", "id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "login_states", "redirect_uri", sptr("text"))
+				assertColumnExists(t, ctx, pool, "login_states", "code_verifier", sptr("text"))
+				assertColumnExists(t, ctx, pool, "login_states", "expires_at", sptr("timestamp with time zone"))
+				assertIndexExists(t, ctx, pool, "idx_login_states_expires_at")
 			},
 		},
 	}
