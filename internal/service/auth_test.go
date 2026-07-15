@@ -1,0 +1,165 @@
+package service_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/larssonoliver/inundated/internal/auth"
+	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/repository"
+	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/require"
+)
+
+func TestAuthServiceImpl_BeginLogin(t *testing.T) {
+
+	userService := &service.UserServiceMock{}
+	sessionRepository := &repository.SessionRepoMock{}
+
+	t.Run("CreatesLoginState", func(t *testing.T) {
+
+		createLoginStateCalled := false
+		redirectUri := "http://localhost/callback"
+		authorizationUrl := "http://auth.example.com/authorize?state=some-state"
+		stateId := uuid.New()
+
+		loginStateRepository := &repository.LoginStateRepoMock{
+			CreateLoginStateFn: func(ctx context.Context, state model.LoginState) (model.LoginState, error) {
+				require.False(t, createLoginStateCalled, "CreateLoginState should only be called once")
+
+				require.NotEmpty(t, state.Id, "LoginState State should not be empty")
+				require.NotEqual(t, uuid.Nil, state.Id, "LoginState ID should not be nil")
+				require.Equal(t, redirectUri, state.RedirectUri, "LoginState RedirectURI should match the provided redirectURI")
+				require.WithinDuration(t, state.ExpiresAt, time.Now(), 30*time.Minute, "LoginState ExpiresAt should be within 5 minutes from now")
+
+				state.Id = stateId // Set the ID to a known value for testing
+
+				createLoginStateCalled = true
+				return state, nil
+			},
+		}
+		oidcClient := &auth.OIDCClientMock{
+			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+				return auth.OIDCAuthorizationRequest{
+					Uri:          authorizationUrl,
+					CodeVerifier: "some-code-verifier",
+				}, nil
+			},
+		}
+
+		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
+
+		authUrl, err := authService.BeginLogin(t.Context(), redirectUri)
+
+		require.NoError(t, err)
+		require.True(t, createLoginStateCalled, "CreateLoginState should have been called")
+		require.Equal(t, authorizationUrl, authUrl, "Authorization URL should match the expected value")
+	})
+
+	t.Run("ReturnsErrorWhenOIDCClientFails", func(t *testing.T) {
+		loginStateRepository := &repository.LoginStateRepoMock{}
+		oidcClient := &auth.OIDCClientMock{
+			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+				return auth.OIDCAuthorizationRequest{}, errors.New("OIDC client error")
+			},
+		}
+		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
+		authUrl, err := authService.BeginLogin(t.Context(), "http://localhost/callback")
+		require.Error(t, err)
+		require.Empty(t, authUrl, "Authorization URL should be empty when there is an error")
+	})
+
+	t.Run("ReturnsErrorWhenLoginStateCreationFails", func(t *testing.T) {
+		loginStateRepository := &repository.LoginStateRepoMock{
+			CreateLoginStateFn: func(ctx context.Context, state model.LoginState) (model.LoginState, error) {
+				return model.LoginState{}, errors.New("failed to create login state")
+			},
+		}
+		oidcClient := &auth.OIDCClientMock{
+			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+				return auth.OIDCAuthorizationRequest{
+					Uri:          "http://auth.example.com/authorize?state=some-state",
+					CodeVerifier: "some-code-verifier",
+				}, nil
+			},
+		}
+		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
+		authUrl, err := authService.BeginLogin(t.Context(), "http://localhost/callback")
+		require.Error(t, err)
+		require.Empty(t, authUrl, "Authorization URL should be empty when there is an error")
+	})
+}
+
+func TestAuthServiceImpl_HandleCallback(t *testing.T) {
+
+	t.Run("SuccessfullyHandlesCallback", func(t *testing.T) {
+		codeVal := "some-code"
+		verifier := "some-code-verifier"
+
+		loginStateID := uuid.New()
+		sessionID := uuid.New()
+		userSub := "user-sub-123"
+		userId := uuid.New()
+		userName := "John Doe"
+		userEmail := "john@example.com"
+		redirectUri := "http://localhost/callback"
+
+		loginStateRepository := &repository.LoginStateRepoMock{
+			GetLoginStateFn: func(ctx context.Context, stateID uuid.UUID) (model.LoginState, error) {
+				require.Equal(t, loginStateID, stateID, "LoginState ID should match the one provided in the callback")
+				return model.LoginState{
+					Id:           loginStateID,
+					RedirectUri:  redirectUri,
+					CodeVerifier: "some-code-verifier",
+					ExpiresAt:    time.Now().Add(5 * time.Minute),
+				}, nil
+			},
+			DeleteLoginStateFn: func(ctx context.Context, stateID uuid.UUID) error {
+				require.Equal(t, loginStateID, stateID, "LoginState ID should match the one provided in the callback")
+				return nil
+			},
+		}
+		userService := &service.UserServiceMock{
+			GetOrCreateUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				require.Equal(t, userSub, sub, "User sub should match the one returned by the OIDC client")
+				return model.User{
+					Id:  userId,
+					Sub: sub,
+				}, nil
+			},
+			UpdateCurrentUserFn: func(ctx context.Context, user model.User) (model.User, error) {
+				require.Equal(t, userSub, user.Sub, "User sub should match the one returned by the OIDC client")
+				return user, nil
+			},
+		}
+		sessionRepository := &repository.SessionRepoMock{
+			CreateSessionFn: func(ctx context.Context, session model.Session) (model.Session, error) {
+				session.Id = sessionID
+				return session, nil
+			},
+		}
+		oidcClient := &auth.OIDCClientMock{
+			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string) (auth.OIDCIdentity, error) {
+				require.Equal(t, verifier, codeVerifier, "Code verifier should match the one stored in login state")
+				require.Equal(t, codeVal, code, "Code should match the one provided in the callback")
+				return auth.OIDCIdentity{
+					Sub:   userSub,
+					Name:  userName,
+					Email: userEmail,
+				}, nil
+			},
+		}
+
+		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
+		session, redUri, err := authService.HandleCallback(t.Context(), loginStateID, codeVal)
+		require.NoError(t, err)
+		require.Equal(t, redirectUri, redUri, "Redirect URI should match the one stored in login state")
+		require.Equal(t, sessionID, session.Id, "Session ID should match the one returned by the session repository")
+		require.Equal(t, userSub, session.Sub, "Session user sub should match the one returned by the OIDC client")
+		require.Equal(t, userId, session.UserId, "Session user ID should match the one returned by the user service")
+		require.WithinDuration(t, time.Now(), session.ExpiresAt, 24*time.Hour, "Session expiration should be within 30 minutes from now")
+	})
+}

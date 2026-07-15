@@ -14,41 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockTimespanService struct {
-	CreateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
-	UpdateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-}
-
-var _ service.TimespanService = (*mockTimespanService)(nil)
-
-// CreateTimespan implements [service.TimespanService].
-func (m *mockTimespanService) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return m.CreateFn(ctx, timespan)
-}
-
-// DeleteTimespan implements [service.TimespanService].
-func (m *mockTimespanService) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	return m.DeleteFn(ctx, id)
-}
-
-// GetTimespan implements [service.TimespanService].
-func (m *mockTimespanService) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
-	return m.GetFn(ctx, id)
-}
-
-// ListTimespans implements [service.TimespanService].
-func (m *mockTimespanService) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	return m.ListFn(ctx, params)
-}
-
-// UpdateTimespan implements [service.TimespanService].
-func (m *mockTimespanService) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return m.UpdateFn(ctx, timespan)
-}
-
 func TestTimespanHandler_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
 
@@ -83,7 +48,7 @@ func TestTimespanHandler_CreateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				CreateFn: tt.createFn,
 			}
 
@@ -140,7 +105,7 @@ func TestTimespanHandler_DeleteTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				DeleteFn: tt.deleteFn,
 			}
 
@@ -197,7 +162,7 @@ func TestTimespanHandler_GetTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				GetFn: tt.getFn,
 			}
 
@@ -336,7 +301,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{ListFn: tt.listFn}
+			svc := &service.TimespanServiceMock{ListFn: tt.listFn}
 			ta := handlers.NewTimespanHandler(svc)
 			params := tt.initParams()
 			request := api.ListTimespansRequestObject{}
@@ -439,7 +404,7 @@ func TestTimespanHandler_UpdateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				UpdateFn: tt.updateFn,
 				GetFn:    tt.getFn,
 			}
