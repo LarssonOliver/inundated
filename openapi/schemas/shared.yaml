@@ -55,8 +55,12 @@ PaginationDetails:
     total:
       type: integer
       description: Total number of items available
-  required:
-    - limit
-    - offset
-    - total
+  required: 
+  - limit
+  - offset
+  - total
   description: Pagination metadata
+
+Location:
+  type: string
+  format: uri

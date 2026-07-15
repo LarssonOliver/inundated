@@ -9,6 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	SessionCookieScopes = "sessionCookie.Scopes"
+)
+
 // Defines values for ProjectStatsMetric.
 const (
 	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
@@ -58,6 +62,9 @@ type CreateTimespan struct {
 
 // HexColor defines model for HexColor.
 type HexColor = string
+
+// Location defines model for Location.
+type Location = string
 
 // PaginatedProjects defines model for PaginatedProjects.
 type PaginatedProjects struct {
@@ -183,6 +190,33 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// UpdateUser defines model for UpdateUser.
+type UpdateUser struct {
+	// Email Email address
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// Name Display name
+	Name *string `json:"name,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	// Email Email from OIDC token
+	Email openapi_types.Email `json:"email"`
+
+	// Id Internal unique identifier for this user
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Display name from OIDC token
+	Name *string `json:"name,omitempty"`
+
+	// Sub OIDC subject claim (unique per provider, immutable identifier)
+	Sub string `json:"sub"`
+}
+
+// Code defines model for code.
+type Code = string
+
 // Granularity defines model for granularity.
 type Granularity = string
 
@@ -203,6 +237,12 @@ type ProjectIdPath = openapi_types.UUID
 
 // ProjectStatsMetrics defines model for projectStatsMetrics.
 type ProjectStatsMetrics string
+
+// Redirect defines model for redirect.
+type Redirect = string
+
+// State defines model for state.
+type State = string
 
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
@@ -278,6 +318,21 @@ type ListTimespansParams struct {
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 }
+
+// AuthCallbackParams defines parameters for AuthCallback.
+type AuthCallbackParams struct {
+	Code  Code  `form:"code" json:"code"`
+	State State `form:"state" json:"state"`
+}
+
+// AuthLoginParams defines parameters for AuthLogin.
+type AuthLoginParams struct {
+	// Redirect Optional application-relative path to return to after successful authentication.
+	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
+}
+
+// UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.
+type UpdateCurrentUserJSONRequestBody = UpdateUser
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject

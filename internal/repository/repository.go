@@ -9,6 +9,7 @@ import (
 )
 
 type Repository interface {
+	UserRepository
 	TagRepository
 	ProjectRepository
 	TimespanRepository
@@ -21,6 +22,13 @@ type TagRepository interface {
 	CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
+}
+
+type UserRepository interface {
+	GetUser(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserBySub(ctx context.Context, sub string) (model.User, error)
+	CreateUser(ctx context.Context, user model.User) (model.User, error)
+	UpdateUser(ctx context.Context, user model.User) (model.User, error)
 }
 
 type ProjectRepository interface {
@@ -42,4 +50,23 @@ type TimespanRepository interface {
 
 type ProjectStatsRepository interface {
 	AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
+}
+
+// This interface is deliberately not included in the Repository interface.
+// This allows for the session repository to be implemented in a different way
+// than the other repositories, e.g. using valkey or similar.
+type SessionRepository interface {
+	GetSession(ctx context.Context, id uuid.UUID) (model.Session, error)
+	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
+	TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
+	DeleteSession(ctx context.Context, id uuid.UUID) error
+}
+
+// This interface is deliberately not included in the Repository interface.
+// This allows for the session repository to be implemented in a different way
+// than the other repositories, e.g. using valkey or similar.
+type LoginStateRepository interface {
+	GetLoginState(ctx context.Context, id uuid.UUID) (model.LoginState, error)
+	CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error)
+	DeleteLoginState(ctx context.Context, id uuid.UUID) error
 }

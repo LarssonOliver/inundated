@@ -1,0 +1,12 @@
+package model
+
+import (
+	"github.com/google/uuid"
+)
+
+type User struct {
+	Id    uuid.UUID
+	Sub   string // OIDC subject claim - unique per provider
+	Email string
+	Name  string // Non-nullable - empty string if not provided
+}

@@ -64,7 +64,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, params model.PaginationParam
 
 	total := len(all)
 	start := min(params.Offset, total)
-	end := min(start + params.Limit, total)
+	end := min(start+params.Limit, total)
 
 	return model.Page[model.Tag]{
 		Data:       all[start:end],

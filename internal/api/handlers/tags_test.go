@@ -14,40 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockTagService struct {
-	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID, includes *service.TagServiceGetIncludes) (model.Tag, error)
-	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
-	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-}
-
-var _ service.TagService = (*mockTagService)(nil)
-
-// CreateTag implements [service.TagService].
-func (m *mockTagService) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return m.CreateFn(ctx, tag)
-}
-
-// DeleteTag implements [service.TagService].
-func (m *mockTagService) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return m.DeleteFn(ctx, id)
-}
-
-// GetTag implements [service.TagService].
-func (m *mockTagService) GetTag(ctx context.Context, id uuid.UUID, includes *service.TagServiceGetIncludes) (model.Tag, error) {
-	return m.GetFn(ctx, id, includes)
-}
-
-// ListTags implements [service.TagService].
-func (m *mockTagService) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
-	return m.ListFn(ctx, params)
-}
-
-// UpdateTag implements [service.TagService].
-func (m *mockTagService) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return m.UpdateFn(ctx, tag)
-}
 
 func TestTagHandler_CreateTag(t *testing.T) {
 	tests := []struct {
@@ -79,7 +45,7 @@ func TestTagHandler_CreateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{
+			svc := &service.TagServiceMock{
 				CreateFn: tt.createFn,
 			}
 
@@ -129,7 +95,7 @@ func TestTagHandler_DeleteTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{
+			svc := &service.TagServiceMock{
 				DeleteFn: tt.deleteFn,
 			}
 
@@ -190,7 +156,7 @@ func TestTagHandler_GetTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{
+			svc := &service.TagServiceMock{
 				GetFn: tt.getFn,
 			}
 
@@ -330,7 +296,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{ListFn: tt.listFn}
+			svc := &service.TagServiceMock{ListFn: tt.listFn}
 			ta := handlers.NewTagHandler(svc)
 			params := tt.initParams()
 			request := api.ListTagsRequestObject{}
@@ -433,7 +399,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTagService{
+			svc := &service.TagServiceMock{
 				UpdateFn: tt.updateFn,
 				GetFn:    tt.getFn,
 			}
