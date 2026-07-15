@@ -52,10 +52,10 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 		t.Run(repoName+"CreateDuplicateID", func(t *testing.T) {
 			repo := newRepo(t)
 			loginState := model.LoginState{
-				Id:          uuid.New(),
-				RedirectUri: "https://example.com/dup",
+				Id:           uuid.New(),
+				RedirectUri:  "https://example.com/dup",
 				CodeVerifier: "some-code",
-				ExpiresAt:   time.Now().Add(time.Hour).UTC(),
+				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 			}
 
 			_, err := repo.CreateLoginState(ctx, loginState)
@@ -68,10 +68,10 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 		t.Run(repoName+"CreateNilID", func(t *testing.T) {
 			repo := newRepo(t)
 			loginState := model.LoginState{
-				Id:          uuid.Nil,
-				RedirectUri: "https://example.com/nilid",
+				Id:           uuid.Nil,
+				RedirectUri:  "https://example.com/nilid",
 				CodeVerifier: "some-code",
-				ExpiresAt:   time.Now().Add(time.Hour).UTC(),
+				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 			}
 
 			got, err := repo.CreateLoginState(ctx, loginState)
@@ -82,10 +82,10 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 		t.Run(repoName+"Delete", func(t *testing.T) {
 			repo := newRepo(t)
 			loginState := model.LoginState{
-				Id:          uuid.New(),
-				RedirectUri: "https://example.com/deletetest",
+				Id:           uuid.New(),
+				RedirectUri:  "https://example.com/deletetest",
 				CodeVerifier: "some-code",
-				ExpiresAt:   time.Now().Add(time.Hour).UTC(),
+				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 			}
 
 			_, err := repo.CreateLoginState(ctx, loginState)
