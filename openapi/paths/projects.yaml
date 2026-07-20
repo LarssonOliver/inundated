@@ -19,6 +19,8 @@ projects:
     tags: [projects]
     summary: Create project
     operationId: createProject
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     requestBody:
       required: true
       content:
@@ -57,6 +59,8 @@ projects-id:
     tags: [projects]
     summary: Update project
     operationId: updateProject
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     requestBody:
       required: true
       content:
@@ -78,6 +82,8 @@ projects-id:
     tags: [projects]
     summary: Delete project
     operationId: deleteProject
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     responses:
       "204":
         description: Deleted

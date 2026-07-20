@@ -16,6 +16,8 @@ me:
     tags: [users]
     summary: Update current user
     operationId: updateCurrentUser
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     requestBody:
       required: true
       content:

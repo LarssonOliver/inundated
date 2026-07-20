@@ -10,3 +10,10 @@ state:
   required: true
   schema:
     type: string
+XSRFTokenHeader:
+  name: X-XSRF-TOKEN
+  in: header
+  required: true
+  description: Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+  schema:
+    type: string

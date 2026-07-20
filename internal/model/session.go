@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var SessionCookieName = "session_id"
+var SessionCookieName = "inundated_session"
 
 type Session struct {
 	Id        uuid.UUID

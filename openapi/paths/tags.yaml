@@ -19,6 +19,8 @@ tags:
     tags: [tags]
     summary: Create tag
     operationId: createTag
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     requestBody:
       required: true
       content:
@@ -57,6 +59,8 @@ tags-id:
     tags: [tags]
     summary: Update tag
     operationId: updateTag
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     requestBody:
       required: true
       content:
@@ -78,6 +82,8 @@ tags-id:
     tags: [tags]
     summary: Delete tag
     operationId: deleteTag
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
     responses:
       '204':
         description: Deleted

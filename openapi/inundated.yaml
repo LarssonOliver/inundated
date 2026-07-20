@@ -48,7 +48,7 @@ components:
     sessionCookie:
       type: apiKey
       in: cookie
-      name: session
+      name: inundated_session
   schemas:
     User:
       $ref: "./schemas/users.yaml#/User"
