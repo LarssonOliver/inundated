@@ -3,11 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
-	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
@@ -62,20 +61,10 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 		return api.AuthCallback401Response{}, nil
 	}
 
-	cookie := http.Cookie{
-		Name:     model.SessionCookieName,
-		Value:    session.Id.String(),
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  session.ExpiresAt,
-	}
-
 	return api.AuthCallback302Response{
 		Headers: api.AuthCallback302ResponseHeaders{
 			Location:  redirectUrl,
-			SetCookie: cookie.String(),
+			SetCookie: auth.NewSessionCookie(session).String(),
 		},
 	}, nil
 }

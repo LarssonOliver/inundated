@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
@@ -52,10 +53,23 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			if session.ExpiresAt.Before(time.Now().Add(6 * time.Hour)) {
 				newExpiry := time.Now().Add(24 * time.Hour)
 				session, _ = sessionRepository.TouchSession(r.Context(), sessionId, newExpiry)
+				http.SetCookie(w, auth.NewSessionCookie(session))
 			}
 
 			user, err := userService.GetOrCreateUserBySub(r.Context(), session.Sub)
 			if err != nil {
+				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
+
+				http.SetCookie(w, &http.Cookie{
+					Name:     model.SessionCookieName,
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					Secure:   true,
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+				})
+
 				next.ServeHTTP(w, r)
 				return
 			}
