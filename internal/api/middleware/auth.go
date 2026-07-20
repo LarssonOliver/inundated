@@ -36,10 +36,13 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
 				http.SetCookie(w, &http.Cookie{
-					Name:   model.SessionCookieName,
-					Value:  "",
-					Path:   "/",
-					MaxAge: -1,
+					Name:     model.SessionCookieName,
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					Secure:   true,
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
 				})
 
 				next.ServeHTTP(w, r)
