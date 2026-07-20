@@ -20,7 +20,7 @@ timespans:
     summary: Create time span
     operationId: createTimespan
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     requestBody:
       required: true
       content:
@@ -58,7 +58,7 @@ timespans-id:
     summary: Update time span
     operationId: updateTimespan
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     requestBody:
       required: true
       content:
@@ -81,7 +81,7 @@ timespans-id:
     summary: Delete time span
     operationId: deleteTimespan
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     responses:
       '204':
         description: Deleted

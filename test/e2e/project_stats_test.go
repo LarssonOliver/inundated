@@ -13,7 +13,7 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	tagResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+	tagResp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
 		Name:  "Stats Tag",
 		Color: "#123456",
 	})
@@ -22,7 +22,7 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 
 	tagIDs := []TagIdPath{tagResp.JSON201.Id}
 
-	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+	projectResp, err := client.CreateProjectWithResponse(ctx, &CreateProjectParams{XXSRFTOKEN: "token"}, CreateProjectJSONRequestBody{
 		Name:   "Stats Project",
 		Color:  "#654321",
 		TagIds: &tagIDs,
@@ -35,7 +35,7 @@ func TestProject_GetStats_Contract200(t *testing.T) {
 	end := start.Add(90 * time.Minute)
 	timespanName := "Stats Timespan"
 
-	timespanResp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+	timespanResp, err := client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{
 		Name:      &timespanName,
 		StartTime: start,
 		EndTime:   end,
@@ -83,7 +83,7 @@ func TestProject_GetStats_Semantics(t *testing.T) {
 	client := newClient()
 
 	createTag := func(name, color string) TagIdPath {
-		resp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+		resp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
 			Name:  name,
 			Color: color,
 		})
@@ -98,7 +98,7 @@ func TestProject_GetStats_Semantics(t *testing.T) {
 	tagC := createTag("Stats Semantic Tag C", "#1111aa")
 
 	projectTags := []TagIdPath{tagA, tagB}
-	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+	projectResp, err := client.CreateProjectWithResponse(ctx, &CreateProjectParams{XXSRFTOKEN: "token"}, CreateProjectJSONRequestBody{
 		Name:   "Stats Semantic Project",
 		Color:  "#444444",
 		TagIds: &projectTags,
@@ -110,7 +110,7 @@ func TestProject_GetStats_Semantics(t *testing.T) {
 	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	name1 := "semantic-ts1"
-	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+	_, err = client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{
 		Name:      &name1,
 		StartTime: base.Add(15 * time.Minute),
 		EndTime:   base.Add(75 * time.Minute),
@@ -119,7 +119,7 @@ func TestProject_GetStats_Semantics(t *testing.T) {
 	require.NoError(t, err)
 
 	name2 := "semantic-ts2"
-	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+	_, err = client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{
 		Name:      &name2,
 		StartTime: base.Add(60 * time.Minute),
 		EndTime:   base.Add(120 * time.Minute),
@@ -128,7 +128,7 @@ func TestProject_GetStats_Semantics(t *testing.T) {
 	require.NoError(t, err)
 
 	name3 := "semantic-ts3-ignored"
-	_, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+	_, err = client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{
 		Name:      &name3,
 		StartTime: base,
 		EndTime:   base.Add(120 * time.Minute),
@@ -175,7 +175,7 @@ func TestProject_GetStats_Contract422(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	tagResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+	tagResp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
 		Name:  "Stats Tag 422",
 		Color: "#123456",
 	})
@@ -184,7 +184,7 @@ func TestProject_GetStats_Contract422(t *testing.T) {
 
 	tagIDs := []TagIdPath{tagResp.JSON201.Id}
 
-	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+	projectResp, err := client.CreateProjectWithResponse(ctx, &CreateProjectParams{XXSRFTOKEN: "token"}, CreateProjectJSONRequestBody{
 		Name:   "Stats Project 422",
 		Color:  "#654321",
 		TagIds: &tagIDs,

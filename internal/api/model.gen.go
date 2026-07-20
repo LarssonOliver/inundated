@@ -214,6 +214,9 @@ type User struct {
 	Sub string `json:"sub"`
 }
 
+// XSRFTokenHeader defines model for XSRFTokenHeader.
+type XSRFTokenHeader = string
+
 // Code defines model for code.
 type Code = string
 
@@ -253,6 +256,12 @@ type TimespanIdPath = openapi_types.UUID
 // Timezone defines model for timezone.
 type Timezone = string
 
+// UpdateCurrentUserParams defines parameters for UpdateCurrentUser.
+type UpdateCurrentUserParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
@@ -260,6 +269,18 @@ type ListProjectsParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// CreateProjectParams defines parameters for CreateProject.
+type CreateProjectParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
+// DeleteProjectParams defines parameters for DeleteProject.
+type DeleteProjectParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
 // GetProjectParams defines parameters for GetProject.
@@ -270,6 +291,12 @@ type GetProjectParams struct {
 
 // GetProjectParamsInclude defines parameters for GetProject.
 type GetProjectParamsInclude string
+
+// UpdateProjectParams defines parameters for UpdateProject.
+type UpdateProjectParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
 
 // GetProjectStatsParams defines parameters for GetProjectStats.
 type GetProjectStatsParams struct {
@@ -301,6 +328,18 @@ type ListTagsParams struct {
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// CreateTagParams defines parameters for CreateTag.
+type CreateTagParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
+// DeleteTagParams defines parameters for DeleteTag.
+type DeleteTagParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
@@ -310,6 +349,12 @@ type GetTagParams struct {
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
 
+// UpdateTagParams defines parameters for UpdateTag.
+type UpdateTagParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {
 	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
@@ -317,6 +362,24 @@ type ListTimespansParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// CreateTimespanParams defines parameters for CreateTimespan.
+type CreateTimespanParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
+// DeleteTimespanParams defines parameters for DeleteTimespan.
+type DeleteTimespanParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
+// UpdateTimespanParams defines parameters for UpdateTimespan.
+type UpdateTimespanParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
 // AuthCallbackParams defines parameters for AuthCallback.
@@ -329,6 +392,12 @@ type AuthCallbackParams struct {
 type AuthLoginParams struct {
 	// Redirect Optional application-relative path to return to after successful authentication.
 	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
+}
+
+// AuthLogoutParams defines parameters for AuthLogout.
+type AuthLogoutParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
 // UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.

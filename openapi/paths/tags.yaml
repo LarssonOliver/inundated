@@ -20,7 +20,7 @@ tags:
     summary: Create tag
     operationId: createTag
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     requestBody:
       required: true
       content:
@@ -60,7 +60,7 @@ tags-id:
     summary: Update tag
     operationId: updateTag
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     requestBody:
       required: true
       content:
@@ -83,7 +83,7 @@ tags-id:
     summary: Delete tag
     operationId: deleteTag
     parameters:
-      - $ref: "../parameters/auth.yaml#/XRSFTokenHeader"
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     responses:
       '204':
         description: Deleted

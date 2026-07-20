@@ -21,22 +21,22 @@ type ServerInterface interface {
 	GetCurrentUser(w http.ResponseWriter, r *http.Request)
 	// Update current user
 	// (PUT /api/me)
-	UpdateCurrentUser(w http.ResponseWriter, r *http.Request)
+	UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams)
 	// List projects
 	// (GET /api/projects)
 	ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams)
 	// Create project
 	// (POST /api/projects)
-	CreateProject(w http.ResponseWriter, r *http.Request)
+	CreateProject(w http.ResponseWriter, r *http.Request, params CreateProjectParams)
 	// Delete project
 	// (DELETE /api/projects/{projectId})
-	DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
+	DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params DeleteProjectParams)
 	// Get project
 	// (GET /api/projects/{projectId})
 	GetProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectParams)
 	// Update project
 	// (PATCH /api/projects/{projectId})
-	UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath)
+	UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params UpdateProjectParams)
 	// Get timeseries stats for a project
 	// (GET /api/projects/{projectId}/stats)
 	GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams)
@@ -45,31 +45,31 @@ type ServerInterface interface {
 	ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams)
 	// Create tag
 	// (POST /api/tags)
-	CreateTag(w http.ResponseWriter, r *http.Request)
+	CreateTag(w http.ResponseWriter, r *http.Request, params CreateTagParams)
 	// Delete tag
 	// (DELETE /api/tags/{tagId})
-	DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
+	DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params DeleteTagParams)
 	// Get tag
 	// (GET /api/tags/{tagId})
 	GetTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagParams)
 	// Update tag
 	// (PATCH /api/tags/{tagId})
-	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
+	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params UpdateTagParams)
 	// List time spans
 	// (GET /api/timespans)
 	ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams)
 	// Create time span
 	// (POST /api/timespans)
-	CreateTimespan(w http.ResponseWriter, r *http.Request)
+	CreateTimespan(w http.ResponseWriter, r *http.Request, params CreateTimespanParams)
 	// Delete time span
 	// (DELETE /api/timespans/{timespanId})
-	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
+	DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params DeleteTimespanParams)
 	// Get time span
 	// (GET /api/timespans/{timespanId})
 	GetTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
 	// Update time span
 	// (PATCH /api/timespans/{timespanId})
-	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath)
+	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params UpdateTimespanParams)
 	// OIDC callback
 	// (GET /auth/callback)
 	AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams)
@@ -78,7 +78,7 @@ type ServerInterface interface {
 	AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams)
 	// Log out
 	// (POST /auth/logout)
-	AuthLogout(w http.ResponseWriter, r *http.Request)
+	AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -93,7 +93,7 @@ func (_ Unimplemented) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 
 // Update current user
 // (PUT /api/me)
-func (_ Unimplemented) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -105,13 +105,13 @@ func (_ Unimplemented) ListProjects(w http.ResponseWriter, r *http.Request, para
 
 // Create project
 // (POST /api/projects)
-func (_ Unimplemented) CreateProject(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) CreateProject(w http.ResponseWriter, r *http.Request, params CreateProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete project
 // (DELETE /api/projects/{projectId})
-func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
+func (_ Unimplemented) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params DeleteProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -123,7 +123,7 @@ func (_ Unimplemented) GetProject(w http.ResponseWriter, r *http.Request, projec
 
 // Update project
 // (PATCH /api/projects/{projectId})
-func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
+func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params UpdateProjectParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -141,13 +141,13 @@ func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request, params L
 
 // Create tag
 // (POST /api/tags)
-func (_ Unimplemented) CreateTag(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) CreateTag(w http.ResponseWriter, r *http.Request, params CreateTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete tag
 // (DELETE /api/tags/{tagId})
-func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
+func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params DeleteTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -159,7 +159,7 @@ func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId TagI
 
 // Update tag
 // (PATCH /api/tags/{tagId})
-func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
+func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params UpdateTagParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -171,13 +171,13 @@ func (_ Unimplemented) ListTimespans(w http.ResponseWriter, r *http.Request, par
 
 // Create time span
 // (POST /api/timespans)
-func (_ Unimplemented) CreateTimespan(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) CreateTimespan(w http.ResponseWriter, r *http.Request, params CreateTimespanParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete time span
 // (DELETE /api/timespans/{timespanId})
-func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
+func (_ Unimplemented) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params DeleteTimespanParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -189,7 +189,7 @@ func (_ Unimplemented) GetTimespan(w http.ResponseWriter, r *http.Request, times
 
 // Update time span
 // (PATCH /api/timespans/{timespanId})
-func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
+func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params UpdateTimespanParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -207,7 +207,7 @@ func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request, params 
 
 // Log out
 // (POST /auth/logout)
-func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -243,14 +243,44 @@ func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http
 // UpdateCurrentUser operation middleware
 func (siw *ServerInterfaceWrapper) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCurrentUserParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateCurrentUser(w, r)
+		siw.Handler.UpdateCurrentUser(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -304,14 +334,44 @@ func (siw *ServerInterfaceWrapper) ListProjects(w http.ResponseWriter, r *http.R
 // CreateProject operation middleware
 func (siw *ServerInterfaceWrapper) CreateProject(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateProjectParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateProject(w, r)
+		siw.Handler.CreateProject(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -341,8 +401,36 @@ func (siw *ServerInterfaceWrapper) DeleteProject(w http.ResponseWriter, r *http.
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteProjectParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteProject(w, r, projectId)
+		siw.Handler.DeleteProject(w, r, projectId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -414,8 +502,36 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateProjectParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateProject(w, r, projectId)
+		siw.Handler.UpdateProject(w, r, projectId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -542,14 +658,44 @@ func (siw *ServerInterfaceWrapper) ListTags(w http.ResponseWriter, r *http.Reque
 // CreateTag operation middleware
 func (siw *ServerInterfaceWrapper) CreateTag(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateTagParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateTag(w, r)
+		siw.Handler.CreateTag(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -579,8 +725,36 @@ func (siw *ServerInterfaceWrapper) DeleteTag(w http.ResponseWriter, r *http.Requ
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteTagParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteTag(w, r, tagId)
+		siw.Handler.DeleteTag(w, r, tagId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -652,8 +826,36 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateTagParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateTag(w, r, tagId)
+		siw.Handler.UpdateTag(w, r, tagId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -707,14 +909,44 @@ func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.
 // CreateTimespan operation middleware
 func (siw *ServerInterfaceWrapper) CreateTimespan(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateTimespanParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateTimespan(w, r)
+		siw.Handler.CreateTimespan(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -744,8 +976,36 @@ func (siw *ServerInterfaceWrapper) DeleteTimespan(w http.ResponseWriter, r *http
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteTimespanParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteTimespan(w, r, timespanId)
+		siw.Handler.DeleteTimespan(w, r, timespanId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -806,8 +1066,36 @@ func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateTimespanParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateTimespan(w, r, timespanId)
+		siw.Handler.UpdateTimespan(w, r, timespanId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -896,14 +1184,44 @@ func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Requ
 // AuthLogout operation middleware
 func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthLogoutParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthLogout(w, r)
+		siw.Handler.AuthLogout(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1118,7 +1436,8 @@ func (response GetCurrentUser401Response) VisitGetCurrentUserResponse(w http.Res
 }
 
 type UpdateCurrentUserRequestObject struct {
-	Body *UpdateCurrentUserJSONRequestBody
+	Params UpdateCurrentUserParams
+	Body   *UpdateCurrentUserJSONRequestBody
 }
 
 type UpdateCurrentUserResponseObject interface {
@@ -1176,7 +1495,8 @@ func (response ListProjects400Response) VisitListProjectsResponse(w http.Respons
 }
 
 type CreateProjectRequestObject struct {
-	Body *CreateProjectJSONRequestBody
+	Params CreateProjectParams
+	Body   *CreateProjectJSONRequestBody
 }
 
 type CreateProjectResponseObject interface {
@@ -1202,6 +1522,7 @@ func (response CreateProject400Response) VisitCreateProjectResponse(w http.Respo
 
 type DeleteProjectRequestObject struct {
 	ProjectId ProjectIdPath `json:"projectId"`
+	Params    DeleteProjectParams
 }
 
 type DeleteProjectResponseObject interface {
@@ -1252,6 +1573,7 @@ func (response GetProject404Response) VisitGetProjectResponse(w http.ResponseWri
 
 type UpdateProjectRequestObject struct {
 	ProjectId ProjectIdPath `json:"projectId"`
+	Params    UpdateProjectParams
 	Body      *UpdateProjectJSONRequestBody
 }
 
@@ -1352,7 +1674,8 @@ func (response ListTags400Response) VisitListTagsResponse(w http.ResponseWriter)
 }
 
 type CreateTagRequestObject struct {
-	Body *CreateTagJSONRequestBody
+	Params CreateTagParams
+	Body   *CreateTagJSONRequestBody
 }
 
 type CreateTagResponseObject interface {
@@ -1377,7 +1700,8 @@ func (response CreateTag400Response) VisitCreateTagResponse(w http.ResponseWrite
 }
 
 type DeleteTagRequestObject struct {
-	TagId TagIdPath `json:"tagId"`
+	TagId  TagIdPath `json:"tagId"`
+	Params DeleteTagParams
 }
 
 type DeleteTagResponseObject interface {
@@ -1427,8 +1751,9 @@ func (response GetTag404Response) VisitGetTagResponse(w http.ResponseWriter) err
 }
 
 type UpdateTagRequestObject struct {
-	TagId TagIdPath `json:"tagId"`
-	Body  *UpdateTagJSONRequestBody
+	TagId  TagIdPath `json:"tagId"`
+	Params UpdateTagParams
+	Body   *UpdateTagJSONRequestBody
 }
 
 type UpdateTagResponseObject interface {
@@ -1486,7 +1811,8 @@ func (response ListTimespans400Response) VisitListTimespansResponse(w http.Respo
 }
 
 type CreateTimespanRequestObject struct {
-	Body *CreateTimespanJSONRequestBody
+	Params CreateTimespanParams
+	Body   *CreateTimespanJSONRequestBody
 }
 
 type CreateTimespanResponseObject interface {
@@ -1512,6 +1838,7 @@ func (response CreateTimespan400Response) VisitCreateTimespanResponse(w http.Res
 
 type DeleteTimespanRequestObject struct {
 	TimespanId TimespanIdPath `json:"timespanId"`
+	Params     DeleteTimespanParams
 }
 
 type DeleteTimespanResponseObject interface {
@@ -1561,6 +1888,7 @@ func (response GetTimespan404Response) VisitGetTimespanResponse(w http.ResponseW
 
 type UpdateTimespanRequestObject struct {
 	TimespanId TimespanIdPath `json:"timespanId"`
+	Params     UpdateTimespanParams
 	Body       *UpdateTimespanJSONRequestBody
 }
 
@@ -1680,6 +2008,7 @@ func (response AuthLogin400Response) VisitAuthLoginResponse(w http.ResponseWrite
 }
 
 type AuthLogoutRequestObject struct {
+	Params AuthLogoutParams
 }
 
 type AuthLogoutResponseObject interface {
@@ -1831,8 +2160,10 @@ func (sh *strictHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) 
 }
 
 // UpdateCurrentUser operation middleware
-func (sh *strictHandler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams) {
 	var request UpdateCurrentUserRequestObject
+
+	request.Params = params
 
 	var body UpdateCurrentUserJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -1888,8 +2219,10 @@ func (sh *strictHandler) ListProjects(w http.ResponseWriter, r *http.Request, pa
 }
 
 // CreateProject operation middleware
-func (sh *strictHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) CreateProject(w http.ResponseWriter, r *http.Request, params CreateProjectParams) {
 	var request CreateProjectRequestObject
+
+	request.Params = params
 
 	var body CreateProjectJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -1919,10 +2252,11 @@ func (sh *strictHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteProject operation middleware
-func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
+func (sh *strictHandler) DeleteProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params DeleteProjectParams) {
 	var request DeleteProjectRequestObject
 
 	request.ProjectId = projectId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteProject(ctx, request.(DeleteProjectRequestObject))
@@ -1972,10 +2306,11 @@ func (sh *strictHandler) GetProject(w http.ResponseWriter, r *http.Request, proj
 }
 
 // UpdateProject operation middleware
-func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath) {
+func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params UpdateProjectParams) {
 	var request UpdateProjectRequestObject
 
 	request.ProjectId = projectId
+	request.Params = params
 
 	var body UpdateProjectJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2058,8 +2393,10 @@ func (sh *strictHandler) ListTags(w http.ResponseWriter, r *http.Request, params
 }
 
 // CreateTag operation middleware
-func (sh *strictHandler) CreateTag(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) CreateTag(w http.ResponseWriter, r *http.Request, params CreateTagParams) {
 	var request CreateTagRequestObject
+
+	request.Params = params
 
 	var body CreateTagJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2089,10 +2426,11 @@ func (sh *strictHandler) CreateTag(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteTag operation middleware
-func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
+func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params DeleteTagParams) {
 	var request DeleteTagRequestObject
 
 	request.TagId = tagId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteTag(ctx, request.(DeleteTagRequestObject))
@@ -2142,10 +2480,11 @@ func (sh *strictHandler) GetTag(w http.ResponseWriter, r *http.Request, tagId Ta
 }
 
 // UpdateTag operation middleware
-func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
+func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params UpdateTagParams) {
 	var request UpdateTagRequestObject
 
 	request.TagId = tagId
+	request.Params = params
 
 	var body UpdateTagJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2201,8 +2540,10 @@ func (sh *strictHandler) ListTimespans(w http.ResponseWriter, r *http.Request, p
 }
 
 // CreateTimespan operation middleware
-func (sh *strictHandler) CreateTimespan(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) CreateTimespan(w http.ResponseWriter, r *http.Request, params CreateTimespanParams) {
 	var request CreateTimespanRequestObject
+
+	request.Params = params
 
 	var body CreateTimespanJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2232,10 +2573,11 @@ func (sh *strictHandler) CreateTimespan(w http.ResponseWriter, r *http.Request) 
 }
 
 // DeleteTimespan operation middleware
-func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
+func (sh *strictHandler) DeleteTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params DeleteTimespanParams) {
 	var request DeleteTimespanRequestObject
 
 	request.TimespanId = timespanId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteTimespan(ctx, request.(DeleteTimespanRequestObject))
@@ -2284,10 +2626,11 @@ func (sh *strictHandler) GetTimespan(w http.ResponseWriter, r *http.Request, tim
 }
 
 // UpdateTimespan operation middleware
-func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath) {
+func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params UpdateTimespanParams) {
 	var request UpdateTimespanRequestObject
 
 	request.TimespanId = timespanId
+	request.Params = params
 
 	var body UpdateTimespanJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2369,8 +2712,10 @@ func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request, param
 }
 
 // AuthLogout operation middleware
-func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
 	var request AuthLogoutRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))

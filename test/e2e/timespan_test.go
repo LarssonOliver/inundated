@@ -18,7 +18,7 @@ func TestTimespan_CRUD(t *testing.T) {
 	uuids := []uuid.UUID{}
 
 	for i := range 2 {
-		resp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+		resp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
 			Name:  fmt.Sprintf("Tag %d", i+1),
 			Color: "#123456",
 		})
@@ -31,7 +31,7 @@ func TestTimespan_CRUD(t *testing.T) {
 	name := "Test Timespan"
 
 	// CREATE
-	createResp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+	createResp, err := client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{
 		Name:      &name,
 		StartTime: baseTime,
 		EndTime:   baseTime.Add(2 * time.Hour),
@@ -57,7 +57,7 @@ func TestTimespan_CRUD(t *testing.T) {
 	}
 
 	// UPDATE
-	updateResp, err := client.UpdateTimespanWithResponse(ctx, timespanId, UpdateTimespanJSONRequestBody{
+	updateResp, err := client.UpdateTimespanWithResponse(ctx, timespanId, &UpdateTimespanParams{XXSRFTOKEN: "token"}, UpdateTimespanJSONRequestBody{
 		Name: ptr("Updated Test Timespan"),
 	})
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestTimespan_CRUD(t *testing.T) {
 	require.GreaterOrEqual(t, len(listResp.JSON200.Data), 1)
 
 	// DELETE
-	deleteResp, err := client.DeleteTimespanWithResponse(ctx, timespanId)
+	deleteResp, err := client.DeleteTimespanWithResponse(ctx, timespanId, &DeleteTimespanParams{XXSRFTOKEN: "token"})
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
 
@@ -84,7 +84,7 @@ func TestTimespan_Create_InvalidInput(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	resp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{})
+	resp, err := client.CreateTimespanWithResponse(ctx, &CreateTimespanParams{XXSRFTOKEN: "token"}, CreateTimespanJSONRequestBody{})
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode())
 }

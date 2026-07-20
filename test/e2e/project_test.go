@@ -17,7 +17,7 @@ func TestProject_CRUD(t *testing.T) {
 
 	uuids := []uuid.UUID{}
 	for i := range 2 {
-		resp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
+		resp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
 			Name:  fmt.Sprintf("Tag %d", i+1),
 			Color: "#123456",
 		})
@@ -26,7 +26,7 @@ func TestProject_CRUD(t *testing.T) {
 	}
 
 	// CREATE
-	createResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+	createResp, err := client.CreateProjectWithResponse(ctx, &CreateProjectParams{XXSRFTOKEN: "token"}, CreateProjectJSONRequestBody{
 		Name:            "Test Project",
 		Color:           "#FF5733",
 		TimeBudgetHours: &hours,
@@ -48,7 +48,7 @@ func TestProject_CRUD(t *testing.T) {
 	require.ElementsMatch(t, uuids, *getResp.JSON200.TagIds)
 
 	// UPDATE
-	updateResp, err := client.UpdateProjectWithResponse(ctx, projectId, UpdateProjectJSONRequestBody{
+	updateResp, err := client.UpdateProjectWithResponse(ctx, projectId, &UpdateProjectParams{XXSRFTOKEN: "token"}, UpdateProjectJSONRequestBody{
 		Name: ptr("Updated Test Project"),
 	})
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestProject_CRUD(t *testing.T) {
 	require.GreaterOrEqual(t, len(listResp.JSON200.Data), 1)
 
 	// DELETE
-	deleteResp, err := client.DeleteProjectWithResponse(ctx, projectId)
+	deleteResp, err := client.DeleteProjectWithResponse(ctx, projectId, &DeleteProjectParams{XXSRFTOKEN: "token"})
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
 
@@ -75,7 +75,7 @@ func TestProject_Create_InvalidInput(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	resp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+	resp, err := client.CreateProjectWithResponse(ctx, &CreateProjectParams{XXSRFTOKEN: "token"}, CreateProjectJSONRequestBody{
 		Name: "",
 	})
 	require.NoError(t, err)

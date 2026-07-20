@@ -75,6 +75,7 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.CSRFHeader)
 
 	r.Handle("/health", handlers.HealthHandler())
 

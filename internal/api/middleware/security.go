@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+
+	"github.com/gorilla/csrf"
 )
 
 // SecurityHeaders sets security-relevant HTTP response headers.
@@ -55,4 +57,27 @@ func NoSniffJSON(next http.Handler) http.Handler {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		next.ServeHTTP(w, r)
 	})
+}
+
+func CSRFHeader(next http.Handler) http.Handler {
+	// TODO: read from config if available
+	csrfKey := []byte("your-secret-key") // Replace with
+
+	return csrf.Protect(
+		csrfKey,
+		csrf.Path("/"),
+		csrf.HttpOnly(false), // ⚠️ CRITICAL: Must be false so frontend JS can read it!
+		csrf.Secure(true),    // Only send over HTTPS
+		csrf.SameSite(csrf.SameSiteLaxMode),
+		csrf.RequestHeader("X-XSRF-TOKEN"), // The header the frontend must send back
+		csrf.CookieName("XSRF-TOKEN"),      // The cookie the frontend reads from
+
+		// Custom error handler to align with your API standards
+		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			// Match whatever structured error JSON your oapi-codegen setup expects
+			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
+		})),
+	)(next)
 }

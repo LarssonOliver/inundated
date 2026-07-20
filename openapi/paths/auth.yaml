@@ -61,6 +61,8 @@ logout:
     tags: [auth]
     summary: Log out
     operationId: authLogout
+    parameters:
+      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
     responses:
       "204":
         description: Session terminated
