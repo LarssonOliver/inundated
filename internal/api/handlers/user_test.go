@@ -60,7 +60,7 @@ func TestUserHandler_GetCurrentUser(t *testing.T) {
 					return model.User{}, errors.New("database disconnected")
 				}
 			},
-			expectedErr: "Internal server error",
+			expectedErr: "internal server error",
 		},
 	}
 
@@ -169,7 +169,7 @@ func TestUserHandler_UpdateCurrentUser(t *testing.T) {
 					return model.User{}, errors.New("db execution timed out")
 				}
 			},
-			expectedErr: "Internal server error",
+			expectedErr: "internal server error",
 		},
 	}
 
