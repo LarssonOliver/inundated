@@ -21,27 +21,27 @@ func NewServer(handler HttpHandler) *Server {
 
 // AuthCallback implements [StrictServerInterface].
 func (s *Server) AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error) {
-	panic("unimplemented")
+	return s.handler.AuthCallback(ctx, request)
 }
 
 // AuthLogin implements [StrictServerInterface].
 func (s *Server) AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error) {
-	panic("unimplemented")
+	return s.handler.AuthLogin(ctx, request)
 }
 
 // AuthLogout implements [StrictServerInterface].
 func (s *Server) AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error) {
-	panic("unimplemented")
+	return s.handler.AuthLogout(ctx, request)
 }
 
 // GetCurrentUser implements [StrictServerInterface].
 func (s *Server) GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error) {
-	panic("unimplemented")
+	return s.handler.GetCurrentUser(ctx, request)
 }
 
 // UpdateCurrentUser implements [StrictServerInterface].
 func (s *Server) UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error) {
-	panic("unimplemented")
+	return s.handler.UpdateCurrentUser(ctx, request)
 }
 
 // CreateTag implements StrictServerInterface.

@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
+	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/service"
 )
@@ -24,9 +25,11 @@ const timeout = 2 * time.Second
 var port int
 
 func startServer() *http.Server {
+	oidcClient := auth.NewOIDCClient()
 	repo := memory.NewMemoryStore()
 	svc := service.NewService(repo)
-	handler := handlers.NewHandler(svc)
+	authSvc := service.NewAuthService(svc, repo, repo, oidcClient)
+	handler := handlers.NewHandler(authSvc, svc)
 	server := api.NewServer(handler)
 
 	r := chi.NewMux()

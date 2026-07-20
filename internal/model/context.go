@@ -13,6 +13,6 @@ func GetCurrentUserFromContext(ctx context.Context) (User, bool) {
 	return user, ok
 }
 
-func SetCurrentUserInContext(ctx context.Context, user User) context.Context {
+func SetUserInContext(ctx context.Context, user User) context.Context {
 	return context.WithValue(ctx, UserContextKey, user)
 }

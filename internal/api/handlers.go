@@ -3,10 +3,17 @@ package api
 import "context"
 
 type HttpHandler interface {
+	AuthHandler
 	UserHandler
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+}
+
+type AuthHandler interface {
+	AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error)
+	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
+	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
 }
 
 type UserHandler interface {

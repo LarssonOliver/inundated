@@ -47,7 +47,7 @@ func TestGetCurrentUserFromContext(t *testing.T) {
 	}
 }
 
-func TestSetCurrentUserInContext(t *testing.T) {
+func TestSetUserInContext(t *testing.T) {
 	id := uuid.New()
 	tests := []struct {
 		name string // description of this test case
@@ -60,7 +60,7 @@ func TestSetCurrentUserInContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := model.SetCurrentUserInContext(context.Background(), tt.user)
+			got := model.SetUserInContext(context.Background(), tt.user)
 			require.NotNil(t, got)
 			retrievedUser, ok := model.GetCurrentUserFromContext(got)
 			require.True(t, ok)

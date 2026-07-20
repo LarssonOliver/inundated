@@ -144,3 +144,19 @@ func (u *UserServiceMock) UpdateCurrentUser(ctx context.Context, user model.User
 	return u.UpdateCurrentUserFn(ctx, user)
 }
 
+type AuthServiceMock struct {
+	BeginLoginFn    func(ctx context.Context, redirectURI string) (authorizationURL string, err error)
+	HandleCallbackFn func(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error)
+}
+
+var _ AuthService = (*AuthServiceMock)(nil)
+
+// BeginLogin implements [AuthService].
+func (a *AuthServiceMock) BeginLogin(ctx context.Context, redirectURI string) (authorizationURL string, err error) {
+	return a.BeginLoginFn(ctx, redirectURI)
+}
+
+// HandleCallback implements [AuthService].
+func (a *AuthServiceMock) HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error) {
+	return a.HandleCallbackFn(ctx, stateID, code)
+}

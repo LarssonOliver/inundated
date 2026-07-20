@@ -16,6 +16,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
+	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/config"
 	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
 	"github.com/larssonoliver/inundated/internal/repository"
@@ -26,10 +27,11 @@ import (
 
 var Version = "dev"
 
-func setupRepository(ctx context.Context, databaseUrl string) repository.Repository {
+func setupRepositories(ctx context.Context, databaseUrl string) (repository.Repository, repository.LoginStateRepository, repository.SessionRepository) {
 	if databaseUrl == "in-memory" {
 		log.Println("Using in-memory repository (not recommended for production)")
-		return memory.NewMemoryStore()
+		memoryStore := memory.NewMemoryStore()
+		return memoryStore, memoryStore, memoryStore
 	}
 	if strings.HasPrefix(databaseUrl, "postgresql://") {
 		log.Printf("Using postgres repository")
@@ -43,10 +45,10 @@ func setupRepository(ctx context.Context, databaseUrl string) repository.Reposit
 		if err != nil {
 			log.Fatalf("failed to connect to PostgreSQL: %v", err)
 		}
-		return repository
+		return repository, repository, repository
 	}
 	log.Fatalf("unsupported database URL: %s", databaseUrl)
-	return nil
+	return nil, nil, nil
 }
 
 func main() {
@@ -59,9 +61,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	repo := setupRepository(context.Background(), cfg.DatabaseURL)
+	oidcClient := auth.NewOIDCClient()
+
+	repo, loginStateRepo, sessionRepo := setupRepositories(context.Background(), cfg.DatabaseURL)
 	svc := service.NewService(repo)
-	handler := handlers.NewHandler(svc)
+	authSvc := service.NewAuthService(svc, sessionRepo, loginStateRepo, oidcClient)
+	handler := handlers.NewHandler(authSvc, svc)
 	server := api.NewServer(handler)
 
 	r := chi.NewMux()
@@ -79,6 +84,8 @@ func main() {
 			return r.URL.Path == "/health"
 		}))
 		r.Use(middleware.NoSniffJSON)
+		r.Use(middleware.OIDCAuth(svc, sessionRepo))
+		r.Use(middleware.RequireAuth())
 
 		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 	})
