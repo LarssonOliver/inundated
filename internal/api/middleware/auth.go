@@ -74,7 +74,8 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				return
 			}
 
-			ctx := model.SetUserInContext(r.Context(), user)
+			ctx := model.SetSessionInContext(r.Context(), session)
+			ctx = model.SetUserInContext(ctx, user)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

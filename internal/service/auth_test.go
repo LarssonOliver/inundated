@@ -327,4 +327,25 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		require.Empty(t, redirectUri, "Redirect URI should be empty when there is an error")
 		require.True(t, deleteCalled, "DeleteLoginState should have been called even when the login state is expired")
 	})
+
+	t.Run("LogoutDeletesSession", func(t *testing.T) {
+		id := uuid.New()
+		deleteCalled := false
+
+		loginStateRepository := &repository.LoginStateRepoMock{}
+		userService := &service.UserServiceMock{}
+		oidcClient := &auth.OIDCClientMock{}
+		sessionRepository := &repository.SessionRepoMock{
+			DeleteSessionFn: func(ctx context.Context, sessionID uuid.UUID) error {
+				require.Equal(t, id, sessionID, "Session ID should match the one provided for deletion")
+				deleteCalled = true
+				return nil
+			},
+		}
+
+		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
+		err := authService.LogoutSession(t.Context(), id)
+		require.NoError(t, err)
+		require.True(t, deleteCalled, "DeleteSession should have been called")
+	})
 }

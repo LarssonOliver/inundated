@@ -205,3 +205,74 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		assert.Equal(t, wantCookie.String(), got.Headers.SetCookie)
 	})
 }
+
+func TestAuthHandler_AuthLogout(t *testing.T) {
+	t.Run("missing session returns 401", func(t *testing.T) {
+		mock := &service.AuthServiceMock{
+			LogoutSessionFn: func(ctx context.Context, sessionID uuid.UUID) error {
+				t.Fatal("LogoutSession should not be called without a session")
+				return nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock)
+
+		resp, err := h.AuthLogout(
+			context.Background(),
+			api.AuthLogoutRequestObject{},
+		)
+
+		require.NoError(t, err)
+		assert.IsType(t, api.AuthLogout401Response{}, resp)
+	})
+
+	t.Run("service error returns error", func(t *testing.T) {
+		sessionID := uuid.New()
+		session := model.Session{
+			Id: sessionID,
+		}
+
+		mock := &service.AuthServiceMock{
+			LogoutSessionFn: func(ctx context.Context, gotSessionID uuid.UUID) error {
+				assert.Equal(t, sessionID, gotSessionID)
+				return errors.New("database error")
+			},
+		}
+		h := handlers.NewAuthHandler(mock)
+
+		ctx := model.SetSessionInContext(context.Background(), session)
+
+		resp, err := h.AuthLogout(
+			ctx,
+			api.AuthLogoutRequestObject{},
+		)
+
+		require.Error(t, err)
+		assert.EqualError(t, err, "failed to logout session")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("success returns 204", func(t *testing.T) {
+		sessionID := uuid.New()
+		session := model.Session{
+			Id: sessionID,
+		}
+
+		mock := &service.AuthServiceMock{
+			LogoutSessionFn: func(ctx context.Context, gotSessionID uuid.UUID) error {
+				assert.Equal(t, sessionID, gotSessionID)
+				return nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock)
+
+		ctx := model.SetSessionInContext(context.Background(), session)
+
+		resp, err := h.AuthLogout(
+			ctx,
+			api.AuthLogoutRequestObject{},
+		)
+
+		require.NoError(t, err)
+		assert.IsType(t, api.AuthLogout204Response{}, resp)
+	})
+}

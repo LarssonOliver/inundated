@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 type AuthService interface {
 	BeginLogin(ctx context.Context, redirectURI string) (authorizationURL string, err error)
 	HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error)
+	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
 }
 
 type AuthServiceImpl struct {
@@ -108,4 +110,15 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 	}
 
 	return session, loginState.RedirectUri, nil
+}
+
+// LogoutSession implements [AuthService].
+func (a *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID) error {
+	err := a.sessionRepository.DeleteSession(ctx, sessionId)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	return nil
 }

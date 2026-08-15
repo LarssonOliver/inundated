@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/auth"
+	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
 )
 
@@ -71,5 +72,15 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 
 // AuthLogout implements [api.AuthHandler].
 func (a *AuthHandler) AuthLogout(ctx context.Context, request api.AuthLogoutRequestObject) (api.AuthLogoutResponseObject, error) {
-	panic("unimplemented")
+	session, ok := model.GetSessionFromContext(ctx)
+	if !ok {
+		return api.AuthLogout401Response{}, nil
+	}
+
+	err := a.svc.LogoutSession(ctx, session.Id)
+	if err != nil {
+		return nil, errors.New("failed to logout session")
+	}
+
+	return api.AuthLogout204Response{}, nil
 }

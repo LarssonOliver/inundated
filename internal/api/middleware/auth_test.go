@@ -20,6 +20,7 @@ import (
 func TestOIDCAuth(t *testing.T) {
 	validUUID := uuid.New()
 	userID := uuid.New()
+	sessionID := uuid.New()
 
 	// Helper to create a base mock request handler
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,11 +82,11 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
-			name:        "Valid session - attaches user context successfully",
+			name:        "Valid session - attaches context successfully",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				u.GetOrCreateUserBySubFn = func(ctx context.Context, subject string) (model.User, error) {
 					assert.Equal(t, "sub_123", subject)
@@ -97,6 +98,9 @@ func TestOIDCAuth(t *testing.T) {
 				user, ok := model.GetCurrentUserFromContext(lastSeenCtx)
 				require.True(t, ok)
 				assert.Equal(t, userID, user.Id)
+				session, ok := model.GetSessionFromContext(lastSeenCtx)
+				require.True(t, ok)
+				assert.Equal(t, sessionID, session.Id)
 			},
 		},
 		{
