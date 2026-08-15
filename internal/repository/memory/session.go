@@ -70,3 +70,17 @@ func (t *MemoryStore) TouchSession(ctx context.Context, id uuid.UUID, expiresAt 
 
 	return model.Session{}, model.ErrNotFound
 }
+
+// DeleteAllExpiredSessions implements [repository.SessionRepository].
+func (t *MemoryStore) DeleteAllExpiredSessions(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for i, s := range t.sessions {
+		if s.ExpiresAt.Before(time.Now()) {
+			t.sessions = append(t.sessions[:i], t.sessions[i+1:]...)
+		}
+	}
+
+	return nil
+}

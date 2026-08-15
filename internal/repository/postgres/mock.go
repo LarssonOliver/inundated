@@ -146,6 +146,12 @@ func (m *MockRepository) TouchSession(ctx context.Context, id uuid.UUID, expires
 	return args.Get(0).(model.Session), args.Error(1)
 }
 
+// DeleteAllExpiredSessions implements [repository.SessionRepository].
+func (m *MockRepository) DeleteAllExpiredSessions(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 // CreateLoginState implements [repository.LoginStateRepository].
 func (m *MockRepository) CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error) {
 	args := m.Called(ctx, loginState)
@@ -163,3 +169,10 @@ func (m *MockRepository) GetLoginState(ctx context.Context, id uuid.UUID) (model
 	args := m.Called(ctx, id)
 	return args.Get(0).(model.LoginState), args.Error(1)
 }
+
+// DeleteAllExpiredLoginStates implements [repository.LoginStateRepository].
+func (m *MockRepository) DeleteAllExpiredLoginStates(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+

@@ -152,3 +152,14 @@ func TestDeleteLoginState_NilId(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
+
+func TestDeleteAllExpiredLoginStates_Success(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newLoginStateMock(t)
+
+	mock.ExpectExec(`DELETE FROM login_states WHERE expires_at < NOW()`).
+		WillReturnResult(pgxmock.NewResult("DELETE", 5))
+
+	err := repo.DeleteAllExpiredLoginStates(ctx)
+	require.NoError(t, err)
+}

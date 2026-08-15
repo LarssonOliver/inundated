@@ -133,6 +133,38 @@ func TestSessionRepositoryContract(t *testing.T) {
 			err := repo.DeleteSession(ctx, uuid.New())
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
+
+		t.Run(repoName+"DeleteAllExpiredSessions", func(t *testing.T) {
+			repo := newRepo(t)
+
+			sessions := []model.Session{
+				{
+					Id:        uuid.New(),
+					UserId:    uuid.New(),
+					Sub:       "auth0|expired1",
+					ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
+				},
+				{
+					Id:        uuid.New(),
+					UserId:    uuid.New(),
+					Sub:       "auth0|expired1",
+					ExpiresAt: time.Now().Add(time.Hour).UTC(),
+				},
+			}
+
+			_, err := repo.CreateSession(ctx, sessions[0])
+			require.NoError(t, err)
+			_, err = repo.CreateSession(ctx, sessions[1])
+			require.NoError(t, err)
+
+			err = repo.DeleteAllExpiredSessions(ctx)
+			require.NoError(t, err)
+
+			_, err = repo.GetSession(ctx, sessions[0].Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+			_, err = repo.GetSession(ctx, sessions[1].Id)
+			require.NoError(t, err)
+		})
 	}
 
 	// Memory

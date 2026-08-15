@@ -7,6 +7,6 @@ CREATE TABLE IF NOT EXISTS login_states (
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE INDEX idx_login_states_expires_at ON public.login_states(expires_at);
+CREATE INDEX idx_login_states_expires_at ON login_states(expires_at);
 
 COMMIT;

@@ -198,3 +198,14 @@ func TestDeleteSession_NilId(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
+
+func TestDeleteAllExpiredSessions_Success(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newSessionMock(t)
+
+	mock.ExpectExec(`DELETE FROM sessions WHERE expires_at < NOW()`).
+		WillReturnResult(pgxmock.NewResult("DELETE", 2))
+
+	err := repo.DeleteAllExpiredSessions(ctx)
+	require.NoError(t, err)
+}

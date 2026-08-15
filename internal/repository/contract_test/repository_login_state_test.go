@@ -98,6 +98,36 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
+		t.Run(repoName+"DeleteAllExpired", func(t *testing.T) {
+			repo := newRepo(t)
+			loginState := model.LoginState{
+				Id:           uuid.New(),
+				RedirectUri:  "https://example.com/expired",
+				CodeVerifier: "some-code",
+				ExpiresAt:    time.Now().Add(-time.Hour).UTC(),
+			}
+			loginState2 := model.LoginState{
+				Id:           uuid.New(),
+				RedirectUri:  "https://example.com/expired",
+				CodeVerifier: "some-code",
+				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
+			}
+
+			_, err := repo.CreateLoginState(ctx, loginState)
+			require.NoError(t, err)
+			_, err = repo.CreateLoginState(ctx, loginState2)
+			require.NoError(t, err)
+
+			err = repo.DeleteAllExpiredLoginStates(ctx)
+			require.NoError(t, err)
+
+			_, err = repo.GetLoginState(ctx, loginState.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			_, err = repo.GetLoginState(ctx, loginState2.Id)
+			require.NoError(t, err)
+		})
+
 		t.Run(repoName+"DeleteMissing", func(t *testing.T) {
 			repo := newRepo(t)
 

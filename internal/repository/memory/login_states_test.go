@@ -143,4 +143,34 @@ func TestMemoryStore_DeleteLoginState(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, loginStateB, got)
 	})
+
+	t.Run("DeleteAllExpiredLoginStates", func(t *testing.T) {
+		store := memory.NewMemoryStore()
+		loginState := model.LoginState{
+			Id:           uuid.New(),
+			RedirectUri:  "https://example.com/expired",
+			CodeVerifier: "some-code",
+			ExpiresAt:    time.Now().Add(-time.Hour).UTC(),
+		}
+		loginState2 := model.LoginState{
+			Id:           uuid.New(),
+			RedirectUri:  "https://example.com/expired",
+			CodeVerifier: "some-code",
+			ExpiresAt:    time.Now().Add(time.Hour).UTC(),
+		}
+
+		_, err := store.CreateLoginState(ctx, loginState)
+		require.NoError(t, err)
+		_, err = store.CreateLoginState(ctx, loginState2)
+		require.NoError(t, err)
+
+		err = store.DeleteAllExpiredLoginStates(ctx)
+		require.NoError(t, err)
+
+		_, err = store.GetLoginState(ctx, loginState.Id)
+		require.ErrorIs(t, err, model.ErrNotFound)
+
+		_, err = store.GetLoginState(ctx, loginState2.Id)
+		require.NoError(t, err)
+	})
 }

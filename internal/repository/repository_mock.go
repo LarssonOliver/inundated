@@ -41,18 +41,20 @@ type RepoMock struct {
 var _ SessionRepository = (*SessionRepoMock)(nil)
 
 type SessionRepoMock struct {
-	GetSessionFn    func(ctx context.Context, id uuid.UUID) (model.Session, error)
-	CreateSessionFn func(ctx context.Context, session model.Session) (model.Session, error)
-	TouchSessionFn  func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
-	DeleteSessionFn func(ctx context.Context, id uuid.UUID) error
+	GetSessionFn               func(ctx context.Context, id uuid.UUID) (model.Session, error)
+	CreateSessionFn            func(ctx context.Context, session model.Session) (model.Session, error)
+	TouchSessionFn             func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
+	DeleteSessionFn            func(ctx context.Context, id uuid.UUID) error
+	DeleteAllExpiredSessionsFn func(ctx context.Context) error
 }
 
 var _ LoginStateRepository = (*LoginStateRepoMock)(nil)
 
 type LoginStateRepoMock struct {
-	GetLoginStateFn    func(ctx context.Context, id uuid.UUID) (model.LoginState, error)
-	CreateLoginStateFn func(ctx context.Context, state model.LoginState) (model.LoginState, error)
-	DeleteLoginStateFn func(ctx context.Context, id uuid.UUID) error
+	GetLoginStateFn               func(ctx context.Context, id uuid.UUID) (model.LoginState, error)
+	CreateLoginStateFn            func(ctx context.Context, state model.LoginState) (model.LoginState, error)
+	DeleteLoginStateFn            func(ctx context.Context, id uuid.UUID) error
+	DeleteAllExpiredLoginStatesFn func(ctx context.Context) error
 }
 
 // CreateProject implements repository.ProjectRepository.
@@ -180,6 +182,11 @@ func (s *SessionRepoMock) TouchSession(ctx context.Context, id uuid.UUID, expire
 	return s.TouchSessionFn(ctx, id, expiresAt)
 }
 
+// DeleteAllExpiredSessions implements [SessionRepository].
+func (s *SessionRepoMock) DeleteAllExpiredSessions(ctx context.Context) error {
+	return s.DeleteAllExpiredSessionsFn(ctx)
+}
+
 // CreateLoginState implements [LoginStateRepository].
 func (l *LoginStateRepoMock) CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error) {
 	return l.CreateLoginStateFn(ctx, loginState)
@@ -193,4 +200,9 @@ func (l *LoginStateRepoMock) DeleteLoginState(ctx context.Context, id uuid.UUID)
 // GetLoginState implements [LoginStateRepository].
 func (l *LoginStateRepoMock) GetLoginState(ctx context.Context, id uuid.UUID) (model.LoginState, error) {
 	return l.GetLoginStateFn(ctx, id)
+}
+
+// DeleteAllExpiredLoginStates implements [LoginStateRepository].
+func (l *LoginStateRepoMock) DeleteAllExpiredLoginStates(ctx context.Context) error {
+	return l.DeleteAllExpiredLoginStatesFn(ctx)
 }

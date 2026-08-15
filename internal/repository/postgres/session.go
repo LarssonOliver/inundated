@@ -103,3 +103,16 @@ func (r *PostgresStore) TouchSession(ctx context.Context, id uuid.UUID, expiresA
 	}
 	return updated, nil
 }
+
+// DeleteAllExpiredSessions implements [repository.SessionRepository].
+func (r *PostgresStore) DeleteAllExpiredSessions(ctx context.Context) error {
+	const q = "DELETE FROM sessions WHERE expires_at < NOW()"
+
+	_, err := r.db.Exec(ctx, q)
+
+	if err != nil {
+		return fmt.Errorf("DeleteAllExpiredSessions: %w", err)
+	}
+
+	return nil
+}

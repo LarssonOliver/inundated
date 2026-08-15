@@ -214,4 +214,36 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, sessionB, got)
 	})
+
+	t.Run("DeleteAllExpiredSessions", func(t *testing.T) {
+		store := memory.NewMemoryStore()
+
+		sessions := []model.Session{
+			{
+				Id:        uuid.New(),
+				UserId:    uuid.New(),
+				Sub:       "auth0|expired1",
+				ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
+			},
+			{
+				Id:        uuid.New(),
+				UserId:    uuid.New(),
+				Sub:       "auth0|expired1",
+				ExpiresAt: time.Now().Add(time.Hour).UTC(),
+			},
+		}
+
+		_, err := store.CreateSession(ctx, sessions[0])
+		require.NoError(t, err)
+		_, err = store.CreateSession(ctx, sessions[1])
+		require.NoError(t, err)
+
+		err = store.DeleteAllExpiredSessions(ctx)
+		require.NoError(t, err)
+
+		_, err = store.GetSession(ctx, sessions[0].Id)
+		require.ErrorIs(t, err, model.ErrNotFound)
+		_, err = store.GetSession(ctx, sessions[1].Id)
+		require.NoError(t, err)
+	})
 }

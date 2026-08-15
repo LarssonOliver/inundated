@@ -77,3 +77,16 @@ func (r *PostgresStore) GetLoginState(ctx context.Context, id uuid.UUID) (model.
 	}
 	return ls, nil
 }
+
+// DeleteAllExpiredLoginStates implements [repository.LoginStateRepository].
+func (r *PostgresStore) DeleteAllExpiredLoginStates(ctx context.Context) error {
+	const q = "DELETE FROM login_states WHERE expires_at < NOW()"
+
+	_, err := r.db.Exec(ctx, q)
+
+	if err != nil {
+		return fmt.Errorf("DeleteAllExpiredLoginStates: %w", err)
+	}
+
+	return nil
+}

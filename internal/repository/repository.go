@@ -60,6 +60,7 @@ type SessionRepository interface {
 	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
 	TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSession(ctx context.Context, id uuid.UUID) error
+	DeleteAllExpiredSessions(ctx context.Context) error
 }
 
 // This interface is deliberately not included in the Repository interface.
@@ -69,4 +70,5 @@ type LoginStateRepository interface {
 	GetLoginState(ctx context.Context, id uuid.UUID) (model.LoginState, error)
 	CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error)
 	DeleteLoginState(ctx context.Context, id uuid.UUID) error
+	DeleteAllExpiredLoginStates(ctx context.Context) error
 }

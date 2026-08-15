@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -65,6 +66,10 @@ func main() {
 
 	repo, loginStateRepo, sessionRepo := setupRepositories(context.Background(), cfg.DatabaseURL)
 	svc := service.NewService(repo)
+
+	cleanupSvc := service.NewCleanupService(sessionRepo, loginStateRepo, 5 * time.Minute)
+	go cleanupSvc.Run(context.Background())
+
 	authSvc := service.NewAuthService(svc, sessionRepo, loginStateRepo, oidcClient)
 	handler := handlers.NewHandler(authSvc, svc)
 	server := api.NewServer(handler)
