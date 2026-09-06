@@ -78,11 +78,11 @@ func TestGetCurrentSessionFromContext(t *testing.T) {
 		ok      bool
 	}{
 		{
-			name:    "session in context",
-			ctx:     func() context.Context {
+			name: "session in context",
+			ctx: func() context.Context {
 				req, _ := http.NewRequest("GET", "/", nil)
 				session := model.Session{Id: id, Sub: "sub_123"}
-				return  context.WithValue(req.Context(), model.SessionContextKey, session)
+				return context.WithValue(req.Context(), model.SessionContextKey, session)
 			}(),
 			session: model.Session{Id: id, Sub: "sub_123"},
 			ok:      true,

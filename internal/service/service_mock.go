@@ -153,7 +153,7 @@ func (u *UserServiceMock) UpdateCurrentUser(ctx context.Context, user model.User
 type AuthServiceMock struct {
 	BeginLoginFn     func(ctx context.Context, redirectURI string) (authorizationURL string, err error)
 	HandleCallbackFn func(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error)
-	LogoutSessionFn   func(ctx context.Context, sessionId uuid.UUID) error
+	LogoutSessionFn  func(ctx context.Context, sessionId uuid.UUID) error
 }
 
 var _ AuthService = (*AuthServiceMock)(nil)

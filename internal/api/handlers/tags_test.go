@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestTagHandler_CreateTag(t *testing.T) {
 	tests := []struct {
 		name     string
