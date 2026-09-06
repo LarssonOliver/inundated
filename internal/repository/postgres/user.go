@@ -40,6 +40,70 @@ func (r *PostgresStore) CreateUser(ctx context.Context, user model.User) (model.
 	return created, nil
 }
 
+// CreateUserAdoptingOrphans implements [repository.UserRepository].
+//
+// The whole operation runs as a single statement so that the "is this the first
+// user" check and the ownership hand-over are atomic. Sibling CTEs do not see
+// new_user's insert, so is_first reflects the table state before this statement.
+// Two racing first logins therefore both compute is_first = true and both issue
+// the UPDATE; row locks serialise them, and the loser re-evaluates
+// "user_id IS NULL" and updates nothing. Whoever commits first adopts everything.
+func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+	if user.Sub == "" {
+		return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: sub must not be empty: %w", model.ErrInvalidArgument)
+	}
+	if user.Email == "" {
+		return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: email must not be empty: %w", model.ErrInvalidArgument)
+	}
+	if user.Id == uuid.Nil {
+		user.Id = uuid.New()
+	}
+
+	const q = `
+		WITH is_first AS (
+			SELECT NOT EXISTS (SELECT 1 FROM users) AS v
+		),
+		new_user AS (
+			INSERT INTO users (id, sub, email, name)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, sub, email, name
+		),
+		adopted_projects AS (
+			UPDATE projects SET user_id = $1
+			WHERE (SELECT v FROM is_first) AND user_id IS NULL
+			RETURNING 1
+		),
+		adopted_tags AS (
+			UPDATE tags SET user_id = $1
+			WHERE (SELECT v FROM is_first) AND user_id IS NULL
+			RETURNING 1
+		),
+		adopted_timespans AS (
+			UPDATE timespans SET user_id = $1
+			WHERE (SELECT v FROM is_first) AND user_id IS NULL
+			RETURNING 1
+		)
+		SELECT
+			nu.id, nu.sub, nu.email, nu.name,
+			(SELECT count(*) FROM adopted_projects)::int,
+			(SELECT count(*) FROM adopted_tags)::int,
+			(SELECT count(*) FROM adopted_timespans)::int
+		FROM new_user nu`
+
+	var created model.User
+	var adoption model.OrphanAdoption
+	err := r.db.QueryRow(ctx, q, user.Id, user.Sub, user.Email, user.Name).
+		Scan(&created.Id, &created.Sub, &created.Email, &created.Name,
+			&adoption.Projects, &adoption.Tags, &adoption.Timespans)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: sub already exists: %w", model.ErrAlreadyExists)
+		}
+		return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: %w", err)
+	}
+	return created, adoption, nil
+}
+
 // GetUser implements [repository.Repository].
 func (r *PostgresStore) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
 	if id == uuid.Nil {

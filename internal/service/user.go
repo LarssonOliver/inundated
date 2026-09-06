@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/larssonoliver/inundated/internal/model"
 )
@@ -26,7 +27,19 @@ func (s *ServiceImpl) GetOrCreateUserBySub(ctx context.Context, subject string) 
 		return model.User{}, err
 	}
 
-	return s.repository.CreateUser(ctx, model.User{Sub: subject})
+	// A brand new user. When it is the very first user in the system, it also
+	// takes ownership of every resource that predates user support.
+	created, adoption, err := s.repository.CreateUserAdoptingOrphans(ctx, model.User{Sub: subject})
+	if err != nil {
+		return model.User{}, err
+	}
+	if adoption.Total() > 0 {
+		log.Printf(
+			"first user %s adopted %d orphaned resources (%d projects, %d tags, %d timespans)",
+			created.Id, adoption.Total(), adoption.Projects, adoption.Tags, adoption.Timespans,
+		)
+	}
+	return created, nil
 }
 
 // UpdateCurrentUser implements [Service].

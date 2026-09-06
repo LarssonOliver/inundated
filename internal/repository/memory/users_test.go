@@ -2,7 +2,10 @@ package memory_test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -240,4 +243,91 @@ func TestUserStore_CreateMultiple(t *testing.T) {
 
 	got2, _ := store.GetUser(ctx, user2.Id)
 	require.Equal(t, "User 2", got2.Name)
+}
+
+func TestMemoryStore_CreateUserAdoptingOrphans_FirstUserClaimsResources(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+
+	tag, err := store.CreateTag(ctx, model.Tag{Name: "t", Color: "#123456"})
+	require.NoError(t, err)
+	project, err := store.CreateProject(ctx, model.Project{Name: "p", Color: "#123456"})
+	require.NoError(t, err)
+	start := time.Now().UTC()
+	timespan, err := store.CreateTimespan(ctx, model.Timespan{Name: "ts", StartTime: start, EndTime: start.Add(time.Hour)})
+	require.NoError(t, err)
+
+	user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
+	_, adoption, err := store.CreateUserAdoptingOrphans(ctx, user)
+	require.NoError(t, err)
+	require.Equal(t, model.OrphanAdoption{Projects: 1, Tags: 1, Timespans: 1}, adoption)
+
+	gotTag, _ := store.GetTag(ctx, tag.Id)
+	require.NotNil(t, gotTag.UserId)
+	require.Equal(t, user.Id, *gotTag.UserId)
+
+	gotProject, _ := store.GetProject(ctx, project.Id)
+	require.NotNil(t, gotProject.UserId)
+	require.Equal(t, user.Id, *gotProject.UserId)
+
+	gotTimespan, _ := store.GetTimespan(ctx, timespan.Id)
+	require.NotNil(t, gotTimespan.UserId)
+	require.Equal(t, user.Id, *gotTimespan.UserId)
+}
+
+func TestMemoryStore_CreateUserAdoptingOrphans_SecondUserAdoptsNothing(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+
+	_, err := store.CreateProject(ctx, model.Project{Name: "p", Color: "#123456"})
+	require.NoError(t, err)
+
+	_, _, err = store.CreateUserAdoptingOrphans(ctx, model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"})
+	require.NoError(t, err)
+
+	_, adoption, err := store.CreateUserAdoptingOrphans(ctx, model.User{Id: uuid.New(), Sub: "auth0|second", Email: "second@example.com", Name: "Second"})
+	require.NoError(t, err)
+	require.Equal(t, model.OrphanAdoption{}, adoption)
+}
+
+func TestMemoryStore_CreateUserAdoptingOrphans_ConcurrentFirstLoginsClaimOnce(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+
+	const nProjects = 20
+	for i := 0; i < nProjects; i++ {
+		_, err := store.CreateProject(ctx, model.Project{Name: "p", Color: "#123456"})
+		require.NoError(t, err)
+	}
+
+	const nUsers = 8
+	results := make(chan model.OrphanAdoption, nUsers)
+	var wg sync.WaitGroup
+	for i := 0; i < nUsers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, adoption, err := store.CreateUserAdoptingOrphans(ctx, model.User{
+				Id:    uuid.New(),
+				Sub:   fmt.Sprintf("auth0|user-%d", i),
+				Email: fmt.Sprintf("user-%d@example.com", i),
+				Name:  "User",
+			})
+			require.NoError(t, err)
+			results <- adoption
+		}(i)
+	}
+	wg.Wait()
+	close(results)
+
+	total := 0
+	adopters := 0
+	for a := range results {
+		total += a.Projects
+		if a.Projects > 0 {
+			adopters++
+		}
+	}
+	require.Equal(t, 1, adopters, "exactly one racing user should adopt the orphans")
+	require.Equal(t, nProjects, total)
 }

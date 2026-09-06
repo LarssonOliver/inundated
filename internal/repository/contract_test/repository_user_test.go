@@ -152,6 +152,71 @@ func TestUserRepositoryContract(t *testing.T) {
 			got, _ := repo.GetUser(ctx, user.Id)
 			require.Equal(t, "", got.Name)
 		})
+
+		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsExistingResources", func(t *testing.T) {
+			repo := newRepo(t)
+
+			seedOrphanResources(t, ctx, repo, 2, 3, 4)
+
+			user := model.User{
+				Id:    uuid.New(),
+				Sub:   "auth0|first",
+				Email: "first@example.com",
+				Name:  "First User",
+			}
+
+			created, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
+			require.NoError(t, err)
+			require.Equal(t, user.Sub, created.Sub)
+			require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 4}, adoption)
+		})
+
+		t.Run(repoName+"CreateUserAdoptingOrphans_SecondUserAdoptsNothing", func(t *testing.T) {
+			repo := newRepo(t)
+
+			seedOrphanResources(t, ctx, repo, 1, 1, 1)
+
+			_, first, err := repo.CreateUserAdoptingOrphans(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First",
+			})
+			require.NoError(t, err)
+			require.Equal(t, 3, first.Total())
+
+			// New resources created after the first user still land unowned
+			// (ownership is not threaded through the create path yet), but the
+			// second user must not adopt them.
+			seedOrphanResources(t, ctx, repo, 1, 1, 1)
+
+			_, second, err := repo.CreateUserAdoptingOrphans(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|second", Email: "second@example.com", Name: "Second",
+			})
+			require.NoError(t, err)
+			require.Equal(t, model.OrphanAdoption{}, second)
+		})
+
+		t.Run(repoName+"CreateUserAdoptingOrphans_NoResources", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|solo", Email: "solo@example.com", Name: "Solo",
+			})
+			require.NoError(t, err)
+			require.Equal(t, model.OrphanAdoption{}, adoption)
+		})
+
+		t.Run(repoName+"CreateUserAdoptingOrphans_DuplicateSub", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, _, err := repo.CreateUserAdoptingOrphans(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|dup", Email: "a@example.com", Name: "A",
+			})
+			require.NoError(t, err)
+
+			_, _, err = repo.CreateUserAdoptingOrphans(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|dup", Email: "b@example.com", Name: "B",
+			})
+			require.ErrorIs(t, err, model.ErrAlreadyExists)
+		})
 	}
 
 	// Memory

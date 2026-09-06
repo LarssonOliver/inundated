@@ -59,6 +59,53 @@ func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) (model.Us
 	return user, nil
 }
 
+// CreateUserAdoptingOrphans implements [repository.UserRepository].
+func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+	if user.Sub == "" || user.Email == "" {
+		return model.User{}, model.OrphanAdoption{}, model.ErrInvalidArgument
+	}
+	if user.Id == uuid.Nil {
+		user.Id = uuid.New()
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, exists := m.subToID[user.Sub]; exists {
+		return model.User{}, model.OrphanAdoption{}, model.ErrAlreadyExists
+	}
+
+	isFirst := len(m.users) == 0
+
+	m.users = append(m.users, user)
+	m.subToID[user.Sub] = user.Id
+
+	var adoption model.OrphanAdoption
+	if isFirst {
+		id := user.Id
+		for i := range m.projects {
+			if m.projects[i].UserId == nil {
+				m.projects[i].UserId = &id
+				adoption.Projects++
+			}
+		}
+		for i := range m.tags {
+			if m.tags[i].UserId == nil {
+				m.tags[i].UserId = &id
+				adoption.Tags++
+			}
+		}
+		for i := range m.timespans {
+			if m.timespans[i].UserId == nil {
+				m.timespans[i].UserId = &id
+				adoption.Timespans++
+			}
+		}
+	}
+
+	return user, adoption, nil
+}
+
 // UpdateUser implements [repository.UserRepository].
 func (m *MemoryStore) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
 	m.mu.Lock()
