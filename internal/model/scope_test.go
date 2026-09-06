@@ -25,6 +25,18 @@ func TestOwnerScope_ZeroValueIsUnowned(t *testing.T) {
 	require.Nil(t, model.OwnerScope{}.UserID())
 }
 
+func TestOwnerScope_UserIDReturnsACopy(t *testing.T) {
+	id := uuid.New()
+	scope := model.UserScope(id)
+
+	// mutating the returned pointer must not affect the scope
+	got := scope.UserID()
+	*got = uuid.New()
+
+	require.NotNil(t, scope.UserID())
+	require.Equal(t, id, *scope.UserID())
+}
+
 func TestUserScope_DoesNotAliasCallerVariable(t *testing.T) {
 	id := uuid.New()
 	scope := model.UserScope(id)

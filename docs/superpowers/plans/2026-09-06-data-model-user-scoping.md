@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Userless mode must keep working.** No current user ⇒ operate on `user_id IS NULL` rows. This is the zero value of `OwnerScope`.
-- **No schema change.** `user_id` stays nullable. Do not add migrations. The `idx_{projects,tags,timespans}_user_id` indexes from migration `0006` are sufficient.
+- **No schema change.** `user_id` stays nullable. Do not add migrations. Note: the `idx_{projects,tags,timespans}_user_id` btree indexes from migration `0006` do **not** accelerate the scoped `ListX`/aggregate queries — `user_id IS NOT DISTINCT FROM $N` has no btree strategy, so those queries seq-scan. Acceptable now (not a regression — list queries seq-scanned before this branch; tables are small); a follow-up index is needed before the data grows. See the design doc's "Known limitation / follow-up".
 - **No API surface change.** Do not touch `openapi/`, `internal/api/`, or `internal/api/handlers/`. Scope is derived server-side only.
 - **Cross-user access returns 404** — falls out of the existing `ErrNotFound` path. Do not add 403 responses or an owner field.
 - **`scope model.OwnerScope` is the parameter immediately after `ctx`** on every scoped repository method.

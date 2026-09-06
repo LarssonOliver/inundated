@@ -254,6 +254,15 @@ func TestProjectRepositoryContract(t *testing.T) {
 				Name: "a", Color: "#111111", TagIds: []uuid.UUID{tagB},
 			})
 			require.ErrorIs(t, err, model.ErrInvalidReference)
+
+			// The update path enforces the same guard: create a valid
+			// resource under scopeA, then try to attach scopeB's tag.
+			projA, err := repo.CreateProject(ctx, scopeA, model.Project{Name: "a", Color: "#111111"})
+			require.NoError(t, err)
+
+			projA.TagIds = []uuid.UUID{tagB}
+			_, err = repo.UpdateProject(ctx, scopeA, projA)
+			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
 		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
