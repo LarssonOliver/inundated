@@ -35,6 +35,7 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 		StartTime: timespan.StartTime,
 		EndTime:   timespan.EndTime,
 		TagIds:    tagIds,
+		UserId:    scope.UserID(),
 	}
 
 	t.mu.Lock()
@@ -50,7 +51,7 @@ func (t *MemoryStore) GetTimespan(ctx context.Context, scope model.OwnerScope, i
 	defer t.mu.RUnlock()
 
 	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == id })
-	if idx == -1 {
+	if idx == -1 || !matchesScope(t.timespans[idx].UserId, scope) {
 		return model.Timespan{}, model.ErrNotFound
 	}
 
@@ -63,7 +64,11 @@ func (t *MemoryStore) ListTimespans(ctx context.Context, scope model.OwnerScope,
 	defer t.mu.RUnlock()
 
 	all := make([]model.Timespan, 0, len(t.timespans))
-	all = append(all, t.timespans...)
+	for _, ts := range t.timespans {
+		if matchesScope(ts.UserId, scope) {
+			all = append(all, ts)
+		}
+	}
 	slices.SortFunc(all, func(a, b model.Timespan) int {
 		return -a.StartTime.Compare(b.StartTime) // Negate to sort in descending order
 	})
@@ -93,11 +98,14 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == timespan.Id })
+	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool {
+		return ts.Id == timespan.Id && matchesScope(ts.UserId, scope)
+	})
 	if idx == -1 {
 		return model.Timespan{}, model.ErrNotFound
 	}
 
+	timespan.UserId = t.timespans[idx].UserId
 	t.timespans[idx] = timespan
 	return timespan, nil
 }
@@ -107,7 +115,9 @@ func (t *MemoryStore) DeleteTimespan(ctx context.Context, scope model.OwnerScope
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == id })
+	idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool {
+		return ts.Id == id && matchesScope(ts.UserId, scope)
+	})
 	if idx == -1 {
 		return model.ErrNotFound
 	}

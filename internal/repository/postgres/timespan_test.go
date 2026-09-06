@@ -27,8 +27,14 @@ func expectTimespanTagsQuery(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, ta
 		WillReturnRows(rows)
 }
 
-// expectSetTimespanTags registers the delete + insert expectations.
+// expectSetTimespanTags registers the tag-scope check plus the delete + insert
+// expectations produced by setTimespanTags for the given tag list.
 func expectSetTimespanTags(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, tagIds []uuid.UUID) {
+	if len(tagIds) > 0 {
+		mock.ExpectQuery(`SELECT count\(\*\) FROM tags`).
+			WithArgs(tagIds, testScope.UserID()).
+			WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(tagIds)))
+	}
 	mock.ExpectExec(`DELETE FROM timespan_tags WHERE timespan_id = \$1`).
 		WithArgs(timespanId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
@@ -46,8 +52,8 @@ func TestGetTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 .* deleted_at IS NULL`).
-		WithArgs(ts.Id).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(ts.Id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
@@ -66,8 +72,8 @@ func TestGetTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 .* deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols))
 
 	_, err := repo.GetTimespan(ctx, testScope, id)
@@ -90,14 +96,15 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 
 	ts1, ts2 := aTimespan(), aTimespan()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
 				AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime).
@@ -121,14 +128,15 @@ func TestListTimespans_WithPaginationParams(t *testing.T) {
 
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 1, 1).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
 				AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime),
@@ -153,14 +161,15 @@ func TestListTimespans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols),
 		)
@@ -181,7 +190,7 @@ func TestCreateTimespan_Success(t *testing.T) {
 	ts := aTimespan()
 
 	mock.ExpectQuery(`INSERT INTO timespans`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
@@ -200,7 +209,7 @@ func TestCreateTimespan_GeneratesIdWhenNil(t *testing.T) {
 
 	generatedId := uuid.New()
 	mock.ExpectQuery(`INSERT INTO timespans`).
-		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime).
+		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(generatedId, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, generatedId, ts.TagIds)
@@ -244,13 +253,32 @@ func TestCreateTimespan_ZeroEndTimeAllowed(t *testing.T) {
 	ts.EndTime = time.Time{}
 
 	mock.ExpectQuery(`INSERT INTO timespans`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
 	_, err := repo.CreateTimespan(ctx, testScope, ts)
 	require.NoError(t, err)
+}
+
+func TestCreateTimespan_ForeignTagRejected(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	ts := aTimespan()
+
+	mock.ExpectQuery(`INSERT INTO timespans`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(timespanCols).
+			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
+
+	// tagsInScope finds fewer live, in-scope tags than requested.
+	mock.ExpectQuery(`SELECT count\(\*\) FROM tags`).
+		WithArgs(ts.TagIds, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(ts.TagIds) - 1))
+
+	_, err := repo.CreateTimespan(ctx, testScope, ts)
+	require.ErrorIs(t, err, model.ErrInvalidReference)
 }
 
 // ── UpdateTimespan ───────────────────────────────────────────────────────────
@@ -261,8 +289,8 @@ func TestUpdateTimespan_Success(t *testing.T) {
 	ts := aTimespan()
 	ts.Name = "renamed session"
 
-	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
@@ -278,8 +306,8 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnError(pgx.ErrNoRows)
 
 	_, err := repo.UpdateTimespan(ctx, testScope, ts)
@@ -321,8 +349,8 @@ func TestDeleteTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteTimespan(ctx, testScope, id))
@@ -333,8 +361,8 @@ func TestDeleteTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteTimespan(ctx, testScope, id)

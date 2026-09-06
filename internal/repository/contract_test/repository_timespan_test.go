@@ -271,6 +271,81 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Len(t, page.Data, 1)
 			require.Equal(t, 5, page.TotalCount)
 		})
+
+		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			start := time.Now().UTC()
+
+			tsA, err := repo.CreateTimespan(ctx, scopeA, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+			})
+			require.NoError(t, err)
+			_, err = repo.CreateTimespan(ctx, scopeB, model.Timespan{
+				Name: "b", StartTime: start, EndTime: start.Add(time.Hour),
+			})
+			require.NoError(t, err)
+
+			pageA, err := repo.ListTimespans(ctx, scopeA, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, pageA.Data, 1)
+			require.Equal(t, 1, pageA.TotalCount)
+
+			_, err = repo.GetTimespan(ctx, scopeB, tsA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			tsA.Name = "hijack"
+			_, err = repo.UpdateTimespan(ctx, scopeB, tsA)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			err = repo.DeleteTimespan(ctx, scopeB, tsA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+
+		t.Run(repoName+"CannotAttachAnotherUsersTag", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			tagB := seedTags(t, ctx, repo, scopeB, 1)[0]
+
+			start := time.Now().UTC()
+			_, err := repo.CreateTimespan(ctx, scopeA, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+				TagIds: []uuid.UUID{tagB},
+			})
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+		})
+
+		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			user := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, user)
+
+			start := time.Now().UTC()
+
+			owned, err := repo.CreateTimespan(ctx, user, model.Timespan{
+				Name: "owned", StartTime: start, EndTime: start.Add(time.Hour),
+			})
+			require.NoError(t, err)
+			_, err = repo.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{
+				Name: "unowned", StartTime: start, EndTime: start.Add(time.Hour),
+			})
+			require.NoError(t, err)
+
+			page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, page.Data, 1)
+
+			_, err = repo.GetTimespan(ctx, model.UnownedScope(), owned.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
 	}
 
 	// Memory
