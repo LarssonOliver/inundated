@@ -19,7 +19,12 @@ func UnownedScope() OwnerScope {
 	return OwnerScope{}
 }
 
-// UserID returns the scoped user id, or nil for the unowned scope.
+// UserID returns the scoped user id, or nil for the unowned scope. The returned
+// pointer is a copy: mutating it does not affect the scope.
 func (s OwnerScope) UserID() *uuid.UUID {
-	return s.userID
+	if s.userID == nil {
+		return nil
+	}
+	id := *s.userID
+	return &id
 }

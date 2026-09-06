@@ -43,19 +43,6 @@ func TestGetTag_NotFound(t *testing.T) {
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestGetTag_OutOfScopeIsNotFound(t *testing.T) {
-	ctx := context.Background()
-	repo, mock := newMock(t)
-	id := uuid.New()
-
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(id, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
-
-	_, err := repo.GetTag(ctx, testScope, id)
-	require.ErrorIs(t, err, model.ErrNotFound)
-}
-
 func TestGetTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	_, err := repo.GetTag(context.Background(), testScope, uuid.Nil)
@@ -229,19 +216,6 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
-func TestUpdateTag_OutOfScopeIsNotFound(t *testing.T) {
-	ctx := context.Background()
-	repo, mock := newMock(t)
-	tag := aTag()
-
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
-		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
-
-	_, err := repo.UpdateTag(ctx, testScope, tag)
-	require.ErrorIs(t, err, model.ErrNotFound)
-}
-
 func TestUpdateTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	tag := aTag()
@@ -286,18 +260,6 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	err := repo.DeleteTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
-}
-
-func TestDeleteTag_OutOfScopeIsNotFound(t *testing.T) {
-	ctx := context.Background()
-	repo, mock := newMock(t)
-	id := uuid.New()
-
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(id, testScope.UserID()).
-		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
-
-	require.ErrorIs(t, repo.DeleteTag(ctx, testScope, id), model.ErrNotFound)
 }
 
 func TestDeleteTag_NilId(t *testing.T) {

@@ -59,8 +59,9 @@ func seedTags(
 	return ids
 }
 
-// seedOrphanResources creates the given number of tags, projects and timespans,
-// all with a nil UserId (the create path does not assign ownership yet).
+// seedOrphanResources creates the given number of tags, projects and timespans
+// in the unowned scope (model.UnownedScope() → user_id IS NULL), so that
+// CreateUserAdoptingOrphans still adopts them for the first user.
 func seedOrphanResources(
 	t *testing.T,
 	ctx context.Context,

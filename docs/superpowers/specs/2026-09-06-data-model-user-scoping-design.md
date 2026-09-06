@@ -23,8 +23,10 @@ without authentication, to the pool of unowned (`user_id IS NULL`) rows.
   (the e2e server mounts no auth middleware). In that mode there is no current
   user; operations act on the `user_id IS NULL` pool. This is symmetric with
   authenticated mode, where the scope is a specific user id.
-- **No schema change.** `user_id` stays nullable (NULL is the unowned scope).
-  The `idx_{projects,tags,timespans}_user_id` indexes from `0006` are adequate.
+- **No schema change.** `user_id` stays nullable (NULL is the unowned scope). No
+  new migration. The `idx_{projects,tags,timespans}_user_id` btree indexes from
+  `0006` do **not** accelerate the scoped `ListX`/aggregate queries — see
+  "Known limitation / follow-up" below.
 - **No API surface change.** OpenAPI schemas and HTTP handlers are untouched. The
   scope is derived server-side from the request context, never sent by the
   client. No owner/`user_id` field is added to any response.
@@ -175,6 +177,20 @@ for the first user. Afterward that user's `ownerScope(ctx)` returns
 `UserScope(theirID)`, so they see exactly the rows they just adopted. A userless
 instance always resolves to `UnownedScope()` and sees the same NULL rows it
 always did.
+
+### Known limitation / follow-up — scoped list queries are not index-accelerated
+
+The scoped predicate `user_id IS NOT DISTINCT FROM $N` has no btree search
+strategy, so PostgreSQL cannot use the `idx_{projects,tags,timespans}_user_id`
+indexes from migration `0006` for it. `ListProjects` / `ListTags` /
+`ListTimespans` and both aggregates (`GetTotalDurationByTags`,
+`AggregateTimeSpentByTagsAndBuckets`) therefore seq-scan.
+
+This is **not a regression** — those list queries already seq-scanned before this
+branch, and the tables are small — so the single-predicate design stands as
+shipped. Before the data grows, a follow-up should either add a partial /
+expression index, or branch the predicate into `user_id = $N` (index-usable) vs.
+`user_id IS NULL` at query-build time.
 
 ## Testing
 
