@@ -11,6 +11,14 @@ type User struct {
 	Name  string // Non-nullable - empty string if not provided
 }
 
+// UserIdentity is the set of claims about a user obtained from the OIDC
+// provider on login. Email is required; Name may be empty.
+type UserIdentity struct {
+	Sub   string
+	Email string
+	Name  string
+}
+
 // OrphanAdoption reports how many previously unowned resources were assigned to
 // a newly created first user. It is the zero value for every subsequent user.
 type OrphanAdoption struct {

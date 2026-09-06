@@ -31,7 +31,8 @@ type Service interface {
 type UserService interface {
 	GetCurrentUser(ctx context.Context) (model.User, error)
 	UpdateCurrentUser(ctx context.Context, user model.User) (model.User, error)
-	GetOrCreateUserBySub(ctx context.Context, subject string) (model.User, error)
+	GetUserBySub(ctx context.Context, sub string) (model.User, error)
+	GetOrCreateUserByIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error)
 }
 
 type TagServiceGetIncludes struct {

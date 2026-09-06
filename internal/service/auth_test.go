@@ -123,16 +123,16 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		userService := &service.UserServiceMock{
-			GetOrCreateUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
-				require.Equal(t, userSub, sub, "User sub should match the one returned by the OIDC client")
+			GetOrCreateUserByIdentityFn: func(ctx context.Context, identity model.UserIdentity) (model.User, error) {
+				require.Equal(t, userSub, identity.Sub, "identity sub should match the one returned by the OIDC client")
+				require.Equal(t, userEmail, identity.Email, "identity email should match the one returned by the OIDC client")
+				require.Equal(t, userName, identity.Name, "identity name should match the one returned by the OIDC client")
 				return model.User{
-					Id:  userId,
-					Sub: sub,
+					Id:    userId,
+					Sub:   identity.Sub,
+					Email: identity.Email,
+					Name:  identity.Name,
 				}, nil
-			},
-			UpdateCurrentUserFn: func(ctx context.Context, user model.User) (model.User, error) {
-				require.Equal(t, userSub, user.Sub, "User sub should match the one returned by the OIDC client")
-				return user, nil
 			},
 		}
 		sessionRepository := &repository.SessionRepoMock{
@@ -264,7 +264,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		userService := &service.UserServiceMock{
-			GetOrCreateUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+			GetOrCreateUserByIdentityFn: func(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 				return model.User{}, errors.New("user service error")
 			},
 		}
@@ -303,16 +303,13 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		userService := &service.UserServiceMock{
-			GetOrCreateUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+			GetOrCreateUserByIdentityFn: func(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 				return model.User{
 					Id:    uuid.New(),
-					Name:  "user",
-					Sub:   sub,
-					Email: "user@example.com",
+					Name:  identity.Name,
+					Sub:   identity.Sub,
+					Email: identity.Email,
 				}, nil
-			},
-			UpdateCurrentUserFn: func(ctx context.Context, user model.User) (model.User, error) {
-				return user, nil
 			},
 		}
 		sessionRepository := &repository.SessionRepoMock{
