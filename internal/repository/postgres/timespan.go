@@ -17,12 +17,12 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 	}
 
 	const q = `
-		SELECT id, name, start_time, end_time 
-		FROM timespans 
-		WHERE id = $1 AND deleted_at IS NULL`
+		SELECT id, name, start_time, end_time
+		FROM timespans
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var ts model.Timespan
-	err := r.db.QueryRow(ctx, q, id).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
 	}
@@ -41,21 +41,21 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 	const countQ = `
 		SELECT COUNT(*)
 		FROM timespans
-		WHERE deleted_at IS NULL`
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1`
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, scope.UserID()).Scan(&totalCount); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
 	}
 
 	const dataQ = `
 		SELECT id, name, start_time, end_time
-		FROM timespans 
-		WHERE deleted_at IS NULL
+		FROM timespans
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY start_time DESC
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(ctx, dataQ, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, dataQ, scope.UserID(), params.Limit, params.Offset)
 	if err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans: %w", err)
 	}
@@ -107,18 +107,18 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 	}
 
 	const q = `
-		INSERT INTO timespans (id, name, start_time, end_time)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO timespans (id, name, start_time, end_time, user_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, name, start_time, end_time`
 
 	var created model.Timespan
-	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime).
+	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
 		Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime)
 	if err != nil {
 		return model.Timespan{}, fmt.Errorf("CreateTimespan: %w", err)
 	}
 
-	if err := r.setTimespanTags(ctx, created.Id, timespan.TagIds); err != nil {
+	if err := r.setTimespanTags(ctx, scope, created.Id, timespan.TagIds); err != nil {
 		return model.Timespan{}, err
 	}
 	created.TagIds = timespan.TagIds
@@ -138,11 +138,11 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 
 	const q = `
 		UPDATE timespans SET name = $2, start_time = $3, end_time = $4
-		WHERE id = $1 AND deleted_at IS NULL
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $5
 		RETURNING id, name, start_time, end_time`
 
 	var updated model.Timespan
-	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime).
+	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
 		Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
@@ -151,7 +151,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: %w", err)
 	}
 
-	if err := r.setTimespanTags(ctx, updated.Id, timespan.TagIds); err != nil {
+	if err := r.setTimespanTags(ctx, scope, updated.Id, timespan.TagIds); err != nil {
 		return model.Timespan{}, err
 	}
 	updated.TagIds = timespan.TagIds
@@ -164,11 +164,11 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerSco
 	}
 
 	const q = `
-		UPDATE timespans 
+		UPDATE timespans
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
-	res, err := r.db.Exec(ctx, q, id)
+	res, err := r.db.Exec(ctx, q, id, scope.UserID())
 	if err != nil {
 		return fmt.Errorf("DeleteTimespan: %w", err)
 	}
@@ -204,7 +204,14 @@ func (r *PostgresStore) timespanTagIds(ctx context.Context, timespanId uuid.UUID
 }
 
 // setTimespanTags replaces all tag associations for a time span.
-func (r *PostgresStore) setTimespanTags(ctx context.Context, timespanId uuid.UUID, tagIds []uuid.UUID) error {
+func (r *PostgresStore) setTimespanTags(ctx context.Context, scope model.OwnerScope, timespanId uuid.UUID, tagIds []uuid.UUID) error {
+	ok, err := r.tagsInScope(ctx, scope, tagIds)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("setTimespanTags: %w", model.ErrInvalidReference)
+	}
 	if _, err := r.db.Exec(ctx, `DELETE FROM timespan_tags WHERE timespan_id = $1`, timespanId); err != nil {
 		return fmt.Errorf("setTimespanTags delete: %w", err)
 	}

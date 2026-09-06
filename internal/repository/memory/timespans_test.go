@@ -11,6 +11,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMemoryStore_Timespan_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	start := time.Now()
+	ts, err := store.CreateTimespan(ctx, a, model.Timespan{Name: "x", StartTime: start, EndTime: start.Add(time.Hour)})
+	require.NoError(t, err)
+
+	_, err = store.GetTimespan(ctx, b, ts.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	page, err := store.ListTimespans(ctx, b, model.DefaultPaginationParams())
+	require.NoError(t, err)
+	require.Empty(t, page.Data)
+	require.Equal(t, 0, page.TotalCount)
+
+	ts.Name = "hijack"
+	_, err = store.UpdateTimespan(ctx, b, ts)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	err = store.DeleteTimespan(ctx, b, ts.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	got, err := store.GetTimespan(ctx, a, ts.Id)
+	require.NoError(t, err)
+	require.Equal(t, "x", got.Name)
+}
+
 func TestTimespanStore_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
 
