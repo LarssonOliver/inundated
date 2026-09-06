@@ -35,6 +35,7 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 		Color:      project.Color,
 		TimeBudget: project.TimeBudget,
 		TagIds:     tagIds,
+		UserId:     scope.UserID(),
 	}
 
 	t.mu.Lock()
@@ -50,8 +51,7 @@ func (t *MemoryStore) GetProject(ctx context.Context, scope model.OwnerScope, id
 	defer t.mu.RUnlock()
 
 	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == id })
-	// project, exists := t.projects[id]
-	if idx == -1 {
+	if idx == -1 || !matchesScope(t.projects[idx].UserId, scope) {
 		return model.Project{}, model.ErrNotFound
 	}
 
@@ -64,7 +64,11 @@ func (t *MemoryStore) ListProjects(ctx context.Context, scope model.OwnerScope, 
 	defer t.mu.RUnlock()
 
 	all := make([]model.Project, 0, len(t.projects))
-	all = append(all, t.projects...)
+	for _, p := range t.projects {
+		if matchesScope(p.UserId, scope) {
+			all = append(all, p)
+		}
+	}
 
 	total := len(all)
 	start := min(params.Offset, total)
@@ -91,11 +95,14 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == project.Id })
+	idx := slices.IndexFunc(t.projects, func(p model.Project) bool {
+		return p.Id == project.Id && matchesScope(p.UserId, scope)
+	})
 	if idx == -1 {
 		return model.Project{}, model.ErrNotFound
 	}
 
+	project.UserId = t.projects[idx].UserId
 	t.projects[idx] = project
 	return project, nil
 }
@@ -105,7 +112,9 @@ func (t *MemoryStore) DeleteProject(ctx context.Context, scope model.OwnerScope,
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	idx := slices.IndexFunc(t.projects, func(p model.Project) bool { return p.Id == id })
+	idx := slices.IndexFunc(t.projects, func(p model.Project) bool {
+		return p.Id == id && matchesScope(p.UserId, scope)
+	})
 	if idx == -1 {
 		return model.ErrNotFound
 	}

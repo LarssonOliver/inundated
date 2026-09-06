@@ -28,9 +28,14 @@ func expectProjectTagsQuery(mock pgxmock.PgxPoolIface, projectId uuid.UUID, tagI
 		WillReturnRows(rows)
 }
 
-// expectSetProjectTags registers the delete + insert expectations produced by
-// setProjectTags for the given tag list.
+// expectSetProjectTags registers the tag-scope check plus the delete + insert
+// expectations produced by setProjectTags for the given tag list.
 func expectSetProjectTags(mock pgxmock.PgxPoolIface, projectId uuid.UUID, tagIds []uuid.UUID) {
+	if len(tagIds) > 0 {
+		mock.ExpectQuery(`SELECT count\(\*\) FROM tags`).
+			WithArgs(tagIds, testScope.UserID()).
+			WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(tagIds)))
+	}
 	mock.ExpectExec(`DELETE FROM project_tags WHERE project_id = \$1`).
 		WithArgs(projectId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
@@ -48,8 +53,8 @@ func TestGetProject_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	p := aProject()
 
-	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(p.Id).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(p.Id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectProjectTagsQuery(mock, p.Id, p.TagIds)
@@ -69,8 +74,8 @@ func TestGetProject_NilTimeBudget(t *testing.T) {
 	p := aProject()
 	p.TimeBudget = nil
 
-	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(p.Id).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(p.Id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, nil))
 	expectProjectTagsQuery(mock, p.Id, nil)
@@ -85,8 +90,8 @@ func TestGetProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectQuery(`SELECT .* FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
 	_, err := repo.GetProject(ctx, testScope, id)
@@ -109,14 +114,15 @@ func TestListProjects_ReturnsAll(t *testing.T) {
 
 	p1, p2 := aProject(), aProject()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(projectCols).
 				AddRow(p1.Id, p1.Name, p1.Color, p1.TimeBudget).
@@ -140,14 +146,15 @@ func TestListProjects_WithPaginationParams(t *testing.T) {
 
 	p := aProject()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 1, 1).
 		WillReturnRows(
 			pgxmock.NewRows(projectCols).
 				AddRow(p.Id, p.Name, p.Color, p.TimeBudget),
@@ -172,14 +179,15 @@ func TestListProjects_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget FROM projects WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(projectCols),
 		)
@@ -200,7 +208,7 @@ func TestCreateProject_Success(t *testing.T) {
 	p := aProject()
 
 	mock.ExpectQuery(`INSERT INTO projects`).
-		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, p.TagIds)
@@ -218,7 +226,7 @@ func TestCreateProject_NoTags(t *testing.T) {
 	p.TagIds = nil
 
 	mock.ExpectQuery(`INSERT INTO projects`).
-		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, nil)
@@ -245,7 +253,7 @@ func TestCreateProject_GeneratesIdWhenNil(t *testing.T) {
 
 	generatedId := uuid.New()
 	mock.ExpectQuery(`INSERT INTO projects`).
-		WithArgs(pgxmock.AnyArg(), p.Name, p.Color, p.TimeBudget).
+		WithArgs(pgxmock.AnyArg(), p.Name, p.Color, p.TimeBudget, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(generatedId, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, generatedId, p.TagIds)
@@ -253,6 +261,25 @@ func TestCreateProject_GeneratesIdWhenNil(t *testing.T) {
 	got, err := repo.CreateProject(ctx, testScope, p)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
+}
+
+func TestCreateProject_ForeignTagRejected(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	p := aProject()
+
+	mock.ExpectQuery(`INSERT INTO projects`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(projectCols).
+			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
+
+	// tagsInScope finds fewer live, in-scope tags than requested.
+	mock.ExpectQuery(`SELECT count\(\*\) FROM tags`).
+		WithArgs(p.TagIds, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(p.TagIds) - 1))
+
+	_, err := repo.CreateProject(ctx, testScope, p)
+	require.ErrorIs(t, err, model.ErrInvalidReference)
 }
 
 // ── UpdateProject ────────────────────────────────────────────────────────────
@@ -265,8 +292,8 @@ func TestUpdateProject_Success(t *testing.T) {
 	newBudget := 4 * time.Hour
 	p.TimeBudget = &newBudget
 
-	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
+	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, p.TagIds)
@@ -282,8 +309,8 @@ func TestUpdateProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	p := aProject()
 
-	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
+	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5`).
+		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
 	_, err := repo.UpdateProject(ctx, testScope, p)
@@ -316,8 +343,8 @@ func TestDeleteProject_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteProject(ctx, testScope, id))
@@ -328,8 +355,8 @@ func TestDeleteProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteProject(ctx, testScope, id)
