@@ -23,10 +23,11 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
 
-	GetUserFn      func(ctx context.Context, id uuid.UUID) (model.User, error)
-	GetUserBySubFn func(ctx context.Context, sub string) (model.User, error)
-	CreateUserFn   func(ctx context.Context, user model.User) (model.User, error)
-	UpdateUserFn   func(ctx context.Context, user model.User) (model.User, error)
+	GetUserFn                   func(ctx context.Context, id uuid.UUID) (model.User, error)
+	GetUserBySubFn              func(ctx context.Context, sub string) (model.User, error)
+	CreateUserFn                func(ctx context.Context, user model.User) (model.User, error)
+	CreateUserAdoptingOrphansFn func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
+	UpdateUserFn                func(ctx context.Context, user model.User) (model.User, error)
 
 	CreateTimespanFn         func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespanFn         func(ctx context.Context, id uuid.UUID) error
@@ -120,6 +121,11 @@ func (t *RepoMock) GetUserBySub(ctx context.Context, sub string) (model.User, er
 // CreateUser implements repository.UserRepository.
 func (t *RepoMock) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	return t.CreateUserFn(ctx, user)
+}
+
+// CreateUserAdoptingOrphans implements repository.UserRepository.
+func (t *RepoMock) CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+	return t.CreateUserAdoptingOrphansFn(ctx, user)
 }
 
 // UpdateUser implements repository.UserRepository.

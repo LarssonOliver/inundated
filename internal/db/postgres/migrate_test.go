@@ -126,6 +126,24 @@ func TestIndividualMigrations(t *testing.T) {
 				assertIndexExists(t, ctx, pool, "idx_login_states_expires_at")
 			},
 		},
+		{
+			name:        "0006_add_user_id",
+			fromVersion: 5,
+			toVersion:   6,
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "tags", "user_id", sptr("uuid"))
+				assertIndexExists(t, ctx, pool, "idx_tags_user_id")
+				assertForeignKeyExists(t, ctx, pool, "tags", "tags_user_id_fkey")
+
+				assertColumnExists(t, ctx, pool, "projects", "user_id", sptr("uuid"))
+				assertIndexExists(t, ctx, pool, "idx_projects_user_id")
+				assertForeignKeyExists(t, ctx, pool, "projects", "projects_user_id_fkey")
+
+				assertColumnExists(t, ctx, pool, "timespans", "user_id", sptr("uuid"))
+				assertIndexExists(t, ctx, pool, "idx_timespans_user_id")
+				assertForeignKeyExists(t, ctx, pool, "timespans", "timespans_user_id_fkey")
+			},
+		},
 	}
 
 	for _, tc := range tests {

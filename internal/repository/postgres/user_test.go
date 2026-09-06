@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/larssonoliver/inundated/internal/model"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
@@ -134,6 +135,75 @@ func TestCreateUser_EmptyEmail(t *testing.T) {
 	user := aUser()
 	user.Email = ""
 	_, err := repo.CreateUser(context.Background(), user)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+}
+
+// ── CreateUserAdoptingOrphans ────────────────────────────────────────────────
+
+func adoptionRows(id uuid.UUID, sub, email, name string, projects, tags, timespans int) *pgxmock.Rows {
+	return pgxmock.NewRows([]string{"id", "sub", "email", "name", "projects", "tags", "timespans"}).
+		AddRow(id, sub, email, name, projects, tags, timespans)
+}
+
+func TestCreateUserAdoptingOrphans_FirstUserReportsAdoptedCounts(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	user := aUser()
+
+	mock.ExpectQuery(`INSERT INTO users`).
+		WithArgs(user.Id, user.Sub, user.Email, user.Name).
+		WillReturnRows(adoptionRows(user.Id, user.Sub, user.Email, user.Name, 3, 2, 5))
+
+	got, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
+	require.NoError(t, err)
+	assert.Equal(t, user, got)
+	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5}, adoption)
+}
+
+func TestCreateUserAdoptingOrphans_GeneratesIdWhenNil(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	user := aUser()
+	user.Id = uuid.Nil
+
+	mock.ExpectQuery(`INSERT INTO users`).
+		WithArgs(pgxmock.AnyArg(), user.Sub, user.Email, user.Name).
+		WillReturnRows(adoptionRows(uuid.New(), user.Sub, user.Email, user.Name, 0, 0, 0))
+
+	got, _, err := repo.CreateUserAdoptingOrphans(ctx, user)
+	require.NoError(t, err)
+	assert.NotEqual(t, uuid.Nil, got.Id)
+}
+
+func TestCreateUserAdoptingOrphans_DuplicateSub(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	user := aUser()
+
+	mock.ExpectQuery(`INSERT INTO users`).
+		WithArgs(user.Id, user.Sub, user.Email, user.Name).
+		WillReturnError(&pgconn.PgError{Code: "23505"})
+
+	_, _, err := repo.CreateUserAdoptingOrphans(ctx, user)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, model.ErrAlreadyExists))
+}
+
+func TestCreateUserAdoptingOrphans_EmptySub(t *testing.T) {
+	repo, _ := newMock(t)
+	user := aUser()
+	user.Sub = ""
+	_, _, err := repo.CreateUserAdoptingOrphans(context.Background(), user)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+}
+
+func TestCreateUserAdoptingOrphans_EmptyEmail(t *testing.T) {
+	repo, _ := newMock(t)
+	user := aUser()
+	user.Email = ""
+	_, _, err := repo.CreateUserAdoptingOrphans(context.Background(), user)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }

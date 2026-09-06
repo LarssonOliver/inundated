@@ -25,6 +25,11 @@ func (m *MockRepository) CreateUser(ctx context.Context, user model.User) (model
 	return args.Get(0).(model.User), args.Error(1)
 }
 
+func (m *MockRepository) CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+	args := m.Called(ctx, user)
+	return args.Get(0).(model.User), args.Get(1).(model.OrphanAdoption), args.Error(2)
+}
+
 func (m *MockRepository) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(model.User), args.Error(1)

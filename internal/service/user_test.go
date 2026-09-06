@@ -82,7 +82,7 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 		name        string
 		sub         string
 		getBySubFn  func(ctx context.Context, sub string) (model.User, error)
-		createFn    func(ctx context.Context, user model.User) (model.User, error)
+		createFn    func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
 		wantCreated bool
 		want        model.User
 		wantErr     bool
@@ -93,23 +93,23 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return existingUser, nil
 			},
-			createFn: func(ctx context.Context, user model.User) (model.User, error) {
-				t.Fatal("CreateUser should not be called when user already exists")
-				return model.User{}, nil
+			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+				t.Fatal("CreateUserAdoptingOrphans should not be called when user already exists")
+				return model.User{}, model.OrphanAdoption{}, nil
 			},
 			want:    existingUser,
 			wantErr: false,
 		},
 		{
-			name: "user does not exist - creates new user",
+			name: "user does not exist - creates new user and adopts orphans",
 			sub:  "auth0|new",
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, model.ErrNotFound
 			},
-			createFn: func(ctx context.Context, user model.User) (model.User, error) {
+			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
 				require.Equal(t, "auth0|new", user.Sub)
 				user.Id = uuid.New()
-				return user, nil
+				return user, model.OrphanAdoption{Projects: 2, Tags: 1, Timespans: 3}, nil
 			},
 			want:    model.User{Sub: "auth0|new"},
 			wantErr: false,
@@ -120,9 +120,9 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, errors.New("database error")
 			},
-			createFn: func(ctx context.Context, user model.User) (model.User, error) {
-				t.Fatal("CreateUser should not be called on a non-not-found lookup error")
-				return model.User{}, nil
+			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+				t.Fatal("CreateUserAdoptingOrphans should not be called on a non-not-found lookup error")
+				return model.User{}, model.OrphanAdoption{}, nil
 			},
 			wantErr: true,
 		},
@@ -132,8 +132,8 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, model.ErrNotFound
 			},
-			createFn: func(ctx context.Context, user model.User) (model.User, error) {
-				return model.User{}, errors.New("database error")
+			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+				return model.User{}, model.OrphanAdoption{}, errors.New("database error")
 			},
 			wantErr: true,
 		},
@@ -141,8 +141,8 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
-				GetUserBySubFn: tt.getBySubFn,
-				CreateUserFn:   tt.createFn,
+				GetUserBySubFn:              tt.getBySubFn,
+				CreateUserAdoptingOrphansFn: tt.createFn,
 			}
 			s := service.NewService(repo)
 
