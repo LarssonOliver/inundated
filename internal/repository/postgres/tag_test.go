@@ -12,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// tagCols is the ordered column list returned by tag queries.
+var tagCols = []string{"id", "name", "color", "user_id"}
+
 // ── GetTag ───────────────────────────────────────────────────────────────────
 
 func TestGetTag_Success(t *testing.T) {
@@ -19,10 +22,10 @@ func TestGetTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
 		WithArgs(tag.Id, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
-			AddRow(tag.Id, tag.Name, tag.Color))
+		WillReturnRows(pgxmock.NewRows(tagCols).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId))
 
 	got, err := repo.GetTag(ctx, testScope, tag.Id)
 	require.NoError(t, err)
@@ -34,9 +37,9 @@ func TestGetTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
 		WithArgs(id, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
+		WillReturnRows(pgxmock.NewRows(tagCols))
 
 	_, err := repo.GetTag(ctx, testScope, id)
 	require.Error(t, err)
@@ -66,12 +69,12 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
 		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "name", "color"}).
-				AddRow(t1.Id, t1.Name, t1.Color).
-				AddRow(t2.Id, t2.Name, t2.Color),
+			pgxmock.NewRows(tagCols).
+				AddRow(t1.Id, t1.Name, t1.Color, t1.UserId).
+				AddRow(t2.Id, t2.Name, t2.Color, t2.UserId),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
@@ -96,11 +99,11 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
 		WithArgs(testScope.UserID(), 1, 1).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "name", "color"}).
-				AddRow(tag.Id, tag.Name, tag.Color),
+			pgxmock.NewRows(tagCols).
+				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.PaginationParams{
@@ -127,10 +130,10 @@ func TestListTags_Empty(t *testing.T) {
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
 		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "name", "color"}),
+			pgxmock.NewRows(tagCols),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
@@ -148,10 +151,10 @@ func TestCreateTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\) RETURNING id, name, color, user_id`).
 		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
-			AddRow(tag.Id, tag.Name, tag.Color))
+		WillReturnRows(pgxmock.NewRows(tagCols).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId))
 
 	got, err := repo.CreateTag(ctx, testScope, tag)
 	require.NoError(t, err)
@@ -165,10 +168,10 @@ func TestCreateTag_GeneratesIdWhenNil(t *testing.T) {
 	tag := aTag()
 	tag.Id = uuid.Nil
 
-	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\) RETURNING id, name, color, user_id`).
 		WithArgs(pgxmock.AnyArg(), tag.Name, tag.Color, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
-			AddRow(uuid.New(), tag.Name, tag.Color))
+		WillReturnRows(pgxmock.NewRows(tagCols).
+			AddRow(uuid.New(), tag.Name, tag.Color, tag.UserId))
 
 	got, err := repo.CreateTag(ctx, testScope, tag)
 	require.NoError(t, err)
@@ -192,10 +195,10 @@ func TestUpdateTag_Success(t *testing.T) {
 	tag := aTag()
 	tag.Name = "updated-name"
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4 RETURNING id, name, color, user_id`).
 		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
-			AddRow(tag.Id, tag.Name, tag.Color))
+		WillReturnRows(pgxmock.NewRows(tagCols).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId))
 
 	got, err := repo.UpdateTag(ctx, testScope, tag)
 	require.NoError(t, err)
@@ -207,9 +210,9 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4 RETURNING id, name, color, user_id`).
 		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
+		WillReturnRows(pgxmock.NewRows(tagCols))
 
 	_, err := repo.UpdateTag(ctx, testScope, tag)
 	require.Error(t, err)

@@ -17,12 +17,12 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 	}
 
 	const q = `
-		SELECT id, name, color
+		SELECT id, name, color, user_id
 		FROM tags
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var t model.Tag
-	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&t.Id, &t.Name, &t.Color)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&t.Id, &t.Name, &t.Color, &t.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
 	}
@@ -44,7 +44,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 	}
 
 	const q = `
-		SELECT id, name, color
+		SELECT id, name, color, user_id
 		FROM tags
 		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY name
@@ -59,7 +59,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 	var tags []model.Tag
 	for rows.Next() {
 		var t model.Tag
-		if err := rows.Scan(&t.Id, &t.Name, &t.Color); err != nil {
+		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &t.UserId); err != nil {
 			return model.Page[model.Tag]{}, fmt.Errorf("ListTags scan: %w", err)
 		}
 		tags = append(tags, t)
@@ -89,11 +89,11 @@ func (r *PostgresStore) CreateTag(ctx context.Context, scope model.OwnerScope, t
 	const q = `
 		INSERT INTO tags (id, name, color, user_id)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, name, color`
+		RETURNING id, name, color, user_id`
 
 	var created model.Tag
 	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color, scope.UserID()).
-		Scan(&created.Id, &created.Name, &created.Color)
+		Scan(&created.Id, &created.Name, &created.Color, &created.UserId)
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("CreateTag: %w", err)
 	}
@@ -112,11 +112,11 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		UPDATE tags
 		SET name = $2, color = $3
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $4
-		RETURNING id, name, color`
+		RETURNING id, name, color, user_id`
 
 	var updated model.Tag
 	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color, scope.UserID()).
-		Scan(&updated.Id, &updated.Name, &updated.Color)
+		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, model.ErrNotFound)
 	}

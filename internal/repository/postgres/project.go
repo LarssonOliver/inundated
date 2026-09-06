@@ -16,12 +16,12 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 	}
 
 	const q = `
-		SELECT id, name, color, time_budget
+		SELECT id, name, color, time_budget, user_id
 		FROM projects
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var p model.Project
-	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
 	}
@@ -48,7 +48,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 	}
 
 	const dataQ = `
-		SELECT id, name, color, time_budget
+		SELECT id, name, color, time_budget, user_id
 		FROM projects
 		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY name
@@ -64,7 +64,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 
 	for rows.Next() {
 		var p model.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId); err != nil {
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		projects = append(projects, p)
@@ -105,11 +105,11 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 	const q = `
 		INSERT INTO projects (id, name, color, time_budget, user_id)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, name, color, time_budget`
+		RETURNING id, name, color, time_budget, user_id`
 
 	var created model.Project
 	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
-		Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget)
+		Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId)
 	if err != nil {
 		return model.Project{}, fmt.Errorf("CreateProject: %w", err)
 	}
@@ -132,11 +132,11 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 	const q = `
 		UPDATE projects SET name = $2, color = $3, time_budget = $4
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $5
-		RETURNING id, name, color, time_budget`
+		RETURNING id, name, color, time_budget, user_id`
 
 	var updated model.Project
 	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
-		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget)
+		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("UpdateProject %s: %w", project.Id, model.ErrNotFound)
 	}

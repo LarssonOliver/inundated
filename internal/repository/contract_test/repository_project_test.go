@@ -40,6 +40,8 @@ func TestProjectRepositoryContract(t *testing.T) {
 			created, err := repo.CreateProject(ctx, testScope, project)
 			require.NoError(t, err)
 			require.NotEqual(t, project.Id, created.Id)
+			require.NotNil(t, created.UserId)
+			require.Equal(t, *testScope.UserID(), *created.UserId)
 
 			got, err := repo.GetProject(ctx, testScope, created.Id)
 			require.NoError(t, err)
@@ -48,6 +50,20 @@ func TestProjectRepositoryContract(t *testing.T) {
 			require.ElementsMatch(t, tagIds, got.TagIds)
 			require.NotNil(t, got.TimeBudget)
 			require.Equal(t, budget, *got.TimeBudget)
+			require.NotNil(t, got.UserId)
+			require.Equal(t, *testScope.UserID(), *got.UserId)
+		})
+
+		t.Run(repoName+"UnownedCreateHasNilUserId", func(t *testing.T) {
+			repo := newRepo(t)
+
+			created, err := repo.CreateProject(ctx, model.UnownedScope(), model.Project{Name: "p", Color: "#111111"})
+			require.NoError(t, err)
+			require.Nil(t, created.UserId)
+
+			got, err := repo.GetProject(ctx, model.UnownedScope(), created.Id)
+			require.NoError(t, err)
+			require.Nil(t, got.UserId)
 		})
 
 		t.Run(repoName+"CreateFailsIfTagMissing", func(t *testing.T) {

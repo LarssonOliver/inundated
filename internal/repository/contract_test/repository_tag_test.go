@@ -21,18 +21,29 @@ func TestTagRepositoryContract(t *testing.T) {
 		t.Run(repoName+"CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
-			tag := model.Tag{
-				Name:  "work",
-				Color: "#ff0000",
-			}
-
-			created, err := repo.CreateTag(ctx, testScope, tag)
+			created, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "work", Color: "#ff0000"})
 			require.NoError(t, err)
-			require.NotEqual(t, tag.Id, created.Id)
+			require.NotEqual(t, uuid.Nil, created.Id)
+			require.NotNil(t, created.UserId)
+			require.Equal(t, *testScope.UserID(), *created.UserId)
 
 			got, err := repo.GetTag(ctx, testScope, created.Id)
 			require.NoError(t, err)
 			require.Equal(t, "work", got.Name)
+			require.NotNil(t, got.UserId)
+			require.Equal(t, *testScope.UserID(), *got.UserId)
+		})
+
+		t.Run(repoName+"UnownedCreateHasNilUserId", func(t *testing.T) {
+			repo := newRepo(t)
+
+			created, err := repo.CreateTag(ctx, model.UnownedScope(), model.Tag{Name: "u", Color: "#ffffff"})
+			require.NoError(t, err)
+			require.Nil(t, created.UserId)
+
+			got, err := repo.GetTag(ctx, model.UnownedScope(), created.Id)
+			require.NoError(t, err)
+			require.Nil(t, got.UserId)
 		})
 
 		t.Run(repoName+"GetMissing", func(t *testing.T) {

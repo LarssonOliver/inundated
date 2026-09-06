@@ -17,12 +17,12 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 	}
 
 	const q = `
-		SELECT id, name, start_time, end_time
+		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var ts model.Timespan
-	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
 	}
@@ -49,7 +49,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 	}
 
 	const dataQ = `
-		SELECT id, name, start_time, end_time
+		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
 		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY start_time DESC
@@ -65,7 +65,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 
 	for rows.Next() {
 		var ts model.Timespan
-		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime); err != nil {
+		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId); err != nil {
 			return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans scan: %w", err)
 		}
 		spans = append(spans, ts)
@@ -109,11 +109,11 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 	const q = `
 		INSERT INTO timespans (id, name, start_time, end_time, user_id)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, name, start_time, end_time`
+		RETURNING id, name, start_time, end_time, user_id`
 
 	var created model.Timespan
 	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
-		Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime)
+		Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime, &created.UserId)
 	if err != nil {
 		return model.Timespan{}, fmt.Errorf("CreateTimespan: %w", err)
 	}
@@ -139,11 +139,11 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 	const q = `
 		UPDATE timespans SET name = $2, start_time = $3, end_time = $4
 		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $5
-		RETURNING id, name, start_time, end_time`
+		RETURNING id, name, start_time, end_time, user_id`
 
 	var updated model.Timespan
 	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
-		Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime)
+		Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime, &updated.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
 	}
