@@ -19,12 +19,12 @@ func TestGetTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(tag.Id).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(tag.Id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
-	got, err := repo.GetTag(ctx, tag.Id)
+	got, err := repo.GetTag(ctx, testScope, tag.Id)
 	require.NoError(t, err)
 	assert.Equal(t, tag, got)
 }
@@ -34,18 +34,18 @@ func TestGetTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
 
-	_, err := repo.GetTag(ctx, id)
+	_, err := repo.GetTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestGetTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	_, err := repo.GetTag(context.Background(), uuid.Nil)
+	_, err := repo.GetTag(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -59,21 +59,22 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}).
 				AddRow(t1.Id, t1.Name, t1.Color).
 				AddRow(t2.Id, t2.Name, t2.Color),
 		)
 
-	page, err := repo.ListTags(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
 	require.NoError(t, err)
 
 	assert.Len(t, page.Data, 2)
@@ -88,20 +89,21 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 1, 1).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}).
 				AddRow(tag.Id, tag.Name, tag.Color),
 		)
 
-	page, err := repo.ListTags(ctx, model.PaginationParams{
+	page, err := repo.ListTags(ctx, testScope, model.PaginationParams{
 		Limit:  1,
 		Offset: 1,
 	})
@@ -118,19 +120,20 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}),
 		)
 
-	page, err := repo.ListTags(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
 
 	require.NoError(t, err)
 
@@ -145,12 +148,12 @@ func TestCreateTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`INSERT INTO tags`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
-	got, err := repo.CreateTag(ctx, tag)
+	got, err := repo.CreateTag(ctx, testScope, tag)
 	require.NoError(t, err)
 	assert.Equal(t, tag, got)
 }
@@ -162,12 +165,12 @@ func TestCreateTag_GeneratesIdWhenNil(t *testing.T) {
 	tag := aTag()
 	tag.Id = uuid.Nil
 
-	mock.ExpectQuery(`INSERT INTO tags`).
-		WithArgs(pgxmock.AnyArg(), tag.Name, tag.Color).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+		WithArgs(pgxmock.AnyArg(), tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(uuid.New(), tag.Name, tag.Color))
 
-	got, err := repo.CreateTag(ctx, tag)
+	got, err := repo.CreateTag(ctx, testScope, tag)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
 }
@@ -176,7 +179,7 @@ func TestCreateTag_EmptyName(t *testing.T) {
 	repo, _ := newMock(t)
 	tag := aTag()
 	tag.Name = ""
-	_, err := repo.CreateTag(context.Background(), tag)
+	_, err := repo.CreateTag(context.Background(), testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -189,12 +192,12 @@ func TestUpdateTag_Success(t *testing.T) {
 	tag := aTag()
 	tag.Name = "updated-name"
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
-	got, err := repo.UpdateTag(ctx, tag)
+	got, err := repo.UpdateTag(ctx, testScope, tag)
 	require.NoError(t, err)
 	assert.Equal(t, tag, got)
 }
@@ -204,11 +207,11 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
 
-	_, err := repo.UpdateTag(ctx, tag)
+	_, err := repo.UpdateTag(ctx, testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
@@ -217,7 +220,7 @@ func TestUpdateTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	tag := aTag()
 	tag.Id = uuid.Nil
-	_, err := repo.UpdateTag(context.Background(), tag)
+	_, err := repo.UpdateTag(context.Background(), testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -226,7 +229,7 @@ func TestUpdateTag_EmptyName(t *testing.T) {
 	repo, _ := newMock(t)
 	tag := aTag()
 	tag.Name = ""
-	_, err := repo.UpdateTag(context.Background(), tag)
+	_, err := repo.UpdateTag(context.Background(), testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -238,11 +241,11 @@ func TestDeleteTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	require.NoError(t, repo.DeleteTag(ctx, id))
+	require.NoError(t, repo.DeleteTag(ctx, testScope, id))
 }
 
 func TestDeleteTag_NotFound(t *testing.T) {
@@ -250,18 +253,18 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
-	err := repo.DeleteTag(ctx, id)
+	err := repo.DeleteTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestDeleteTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	err := repo.DeleteTag(context.Background(), uuid.Nil)
+	err := repo.DeleteTag(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }

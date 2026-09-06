@@ -10,6 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+
+func TestMemoryStore_Tag_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	tag, err := store.CreateTag(ctx, a, model.Tag{Name: "x", Color: "#123456"})
+	require.NoError(t, err)
+
+	_, err = store.GetTag(ctx, b, tag.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	page, err := store.ListTags(ctx, b, model.DefaultPaginationParams())
+	require.NoError(t, err)
+	require.Empty(t, page.Data)
+}
+
 func TestTagStore_CreateTag(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -68,7 +87,7 @@ func TestTagStore_CreateTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
-			got, gotErr := ta.CreateTag(context.Background(), tt.tag)
+			got, gotErr := ta.CreateTag(context.Background(), testScope, tt.tag)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -127,10 +146,10 @@ func TestTagStore_GetTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
-			tag, _ := ta.CreateTag(context.Background(), tt.createTag)
+			tag, _ := ta.CreateTag(context.Background(), testScope, tt.createTag)
 			getId := tt.getId(&tag)
 
-			got, gotErr := ta.GetTag(context.Background(), getId)
+			got, gotErr := ta.GetTag(context.Background(), testScope, getId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -237,12 +256,12 @@ func TestTagStore_ListTags(t *testing.T) {
 
 			insertedIds := make(map[uuid.UUID]bool)
 			for i, tag := range tt.insertTags {
-				createdTag, _ := ta.CreateTag(context.Background(), tag)
+				createdTag, _ := ta.CreateTag(context.Background(), testScope, tag)
 				tt.insertTags[i].Id = createdTag.Id
 				insertedIds[createdTag.Id] = true
 			}
 
-			page, gotErr := ta.ListTags(context.Background(), tt.params)
+			page, gotErr := ta.ListTags(context.Background(), testScope, tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
@@ -340,13 +359,13 @@ func TestTagStore_UpdateTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
-			insertedTag, _ := ta.CreateTag(context.Background(), tt.tag)
+			insertedTag, _ := ta.CreateTag(context.Background(), testScope, tt.tag)
 			editId := tt.editTagId(&insertedTag)
 
 			tt.editTag.Id = editId
 			tt.want.Id = editId
 
-			got, gotErr := ta.UpdateTag(context.Background(), tt.editTag)
+			got, gotErr := ta.UpdateTag(context.Background(), testScope, tt.editTag)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -402,10 +421,10 @@ func TestTagStore_DeleteTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
-			tag, _ := ta.CreateTag(context.Background(), tt.insertTag)
+			tag, _ := ta.CreateTag(context.Background(), testScope, tt.insertTag)
 			deleteId := tt.deleteId(&tag)
 
-			gotErr := ta.DeleteTag(context.Background(), deleteId)
+			gotErr := ta.DeleteTag(context.Background(), testScope, deleteId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -415,7 +434,7 @@ func TestTagStore_DeleteTag(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr)
-			_, err := ta.GetTag(context.Background(), deleteId)
+			_, err := ta.GetTag(context.Background(), testScope, deleteId)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}

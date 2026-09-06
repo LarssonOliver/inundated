@@ -18,7 +18,9 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		return model.ProjectStats{}, model.ErrInvalidArgument
 	}
 
-	project, err := s.repository.GetProject(ctx, input.ProjectID)
+	scope := ownerScope(ctx)
+
+	project, err := s.repository.GetProject(ctx, scope, input.ProjectID)
 	if err != nil {
 		return model.ProjectStats{}, err
 	}
@@ -76,7 +78,7 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		})
 	}
 
-	series, err := s.repository.AggregateTimeSpentByTagsAndBuckets(ctx, project.TagIds, bucketRanges)
+	series, err := s.repository.AggregateTimeSpentByTagsAndBuckets(ctx, scope, project.TagIds, bucketRanges)
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidArgument) {
 			return model.ProjectStats{}, model.ErrUnprocessable

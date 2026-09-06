@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -12,10 +13,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+
+// seedScopeUser inserts the users row that a UserScope's user_id foreign key
+// references, so owned resources can be created under that scope against a real
+// database. It is a no-op for the unowned scope and idempotent for a scope whose
+// user already exists.
+func seedScopeUser(t *testing.T, ctx context.Context, repo repository.Repository, scope model.OwnerScope) {
+	t.Helper()
+	id := scope.UserID()
+	if id == nil {
+		return
+	}
+	_, err := repo.CreateUser(ctx, model.User{
+		Id:    *id,
+		Sub:   "scope|" + id.String(),
+		Email: id.String() + "@scope.test",
+		Name:  "scope user",
+	})
+	if errors.Is(err, model.ErrAlreadyExists) {
+		return
+	}
+	require.NoError(t, err)
+}
+
 func seedTags(
 	t *testing.T,
 	ctx context.Context,
 	repo repository.TagRepository,
+	scope model.OwnerScope,
 	n int,
 ) []uuid.UUID {
 	t.Helper()
@@ -26,15 +52,16 @@ func seedTags(
 			Name:  fmt.Sprintf("tag-%d", i),
 			Color: "#123456",
 		}
-		created, err := repo.CreateTag(ctx, tag)
+		created, err := repo.CreateTag(ctx, scope, tag)
 		require.NoError(t, err)
 		ids[i] = created.Id
 	}
 	return ids
 }
 
-// seedOrphanResources creates the given number of tags, projects and timespans,
-// all with a nil UserId (the create path does not assign ownership yet).
+// seedOrphanResources creates the given number of tags, projects and timespans
+// in the unowned scope (model.UnownedScope() → user_id IS NULL), so that
+// CreateUserAdoptingOrphans still adopts them for the first user.
 func seedOrphanResources(
 	t *testing.T,
 	ctx context.Context,
@@ -43,10 +70,10 @@ func seedOrphanResources(
 ) {
 	t.Helper()
 
-	seedTags(t, ctx, repo, nTags)
+	seedTags(t, ctx, repo, model.UnownedScope(), nTags)
 
 	for i := range nProjects {
-		_, err := repo.CreateProject(ctx, model.Project{
+		_, err := repo.CreateProject(ctx, model.UnownedScope(), model.Project{
 			Name:  fmt.Sprintf("project-%d", i),
 			Color: "#123456",
 		})
@@ -56,7 +83,7 @@ func seedOrphanResources(
 	base := time.Now().UTC().Truncate(time.Millisecond)
 	for i := range nTimespans {
 		start := base.Add(time.Duration(i) * time.Hour)
-		_, err := repo.CreateTimespan(ctx, model.Timespan{
+		_, err := repo.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{
 			Name:      fmt.Sprintf("timespan-%d", i),
 			StartTime: start,
 			EndTime:   start.Add(30 * time.Minute),

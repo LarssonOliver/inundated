@@ -20,14 +20,14 @@ func TestTimespanService_GetTimespan(t *testing.T) {
 	tests := []struct {
 		name    string
 		id      uuid.UUID
-		getFn   func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
+		getFn   func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
 		want    model.Timespan
 		wantErr bool
 	}{
 		{
 			name: "successful get",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+			getFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 				return model.Timespan{Id: id, Name: "Test Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)}, nil
 			},
 			want:    model.Timespan{Id: testId, Name: "Test Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Second)},
@@ -36,7 +36,7 @@ func TestTimespanService_GetTimespan(t *testing.T) {
 		{
 			name: "repository error",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+			getFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 				return model.Timespan{}, errors.New("not found")
 			},
 			want:    model.Timespan{},
@@ -75,14 +75,14 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 	tests := []struct {
 		name    string
 		params  model.PaginationParams
-		listFn  func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
+		listFn  func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error)
 		want    model.Page[model.Timespan]
 		wantErr bool
 	}{
 		{
 			name:   "successful list",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: timespans, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Timespan]{Data: timespans, TotalCount: 2},
@@ -91,7 +91,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "repository error",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{}, errors.New("database error")
 			},
 			wantErr: true,
@@ -99,7 +99,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "pagination params are forwarded",
 			params: model.PaginationParams{Limit: 1, Offset: 1},
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 				require.Equal(t, 1, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Timespan]{Data: timespans[1:], TotalCount: 2}, nil
@@ -110,7 +110,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "empty page",
 			params: model.PaginationParams{Limit: 10, Offset: 100},
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2},
@@ -143,14 +143,14 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 	tests := []struct {
 		name     string
 		timespan model.Timespan
-		createFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+		createFn func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 		want     model.Timespan
 		wantErr  bool
 	}{
 		{
 			name:     "successful create",
 			timespan: model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 				timespan.Id = uuid.New()
 				return timespan, nil
 			},
@@ -160,7 +160,7 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 		{
 			name:     "ensure create generates new ID",
 			timespan: model.Timespan{Id: id, Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 				return timespan, nil
 			},
 			want:    model.Timespan{Id: id, Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
@@ -169,7 +169,7 @@ func TestTimespanService_CreateTimespan(t *testing.T) {
 		{
 			name:     "repository error",
 			timespan: model.Timespan{Name: "New Timespan", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
-			createFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 				return model.Timespan{}, errors.New("database error")
 			},
 			want:    model.Timespan{},
@@ -204,14 +204,14 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 	tests := []struct {
 		name     string
 		timespan model.Timespan
-		updateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
+		updateFn func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 		want     model.Timespan
 		wantErr  bool
 	}{
 		{
 			name:     "successful update",
 			timespan: model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
-			updateFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+			updateFn: func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 				return timespan, nil
 			},
 			want:    model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
@@ -220,7 +220,7 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 		{
 			name:     "repository error",
 			timespan: model.Timespan{Id: timespanId, Name: "Updated Timespan", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)},
-			updateFn: func(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+			updateFn: func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 				return model.Timespan{}, errors.New("database error")
 			},
 			want:    model.Timespan{},
@@ -251,19 +251,19 @@ func TestTimespanService_UpdateTimespan(t *testing.T) {
 func TestTimespanService_DeleteTimespan(t *testing.T) {
 	tests := []struct {
 		name     string
-		deleteFn func(ctx context.Context, id uuid.UUID) error
+		deleteFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 		wantErr  bool
 	}{
 		{
 			name: "successful delete",
-			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 				return nil
 			},
 			wantErr: false,
 		},
 		{
 			name: "repository error",
-			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 				return errors.New("database error")
 			},
 			wantErr: true,

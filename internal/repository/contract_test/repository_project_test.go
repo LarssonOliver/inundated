@@ -26,7 +26,7 @@ func TestProjectRepositoryContract(t *testing.T) {
 		t.Run(repoName+"CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
-			tagIds := seedTags(t, ctx, repo, 2)
+			tagIds := seedTags(t, ctx, repo, testScope, 2)
 
 			budget := time.Hour
 
@@ -37,11 +37,11 @@ func TestProjectRepositoryContract(t *testing.T) {
 				TagIds:     tagIds,
 			}
 
-			created, err := repo.CreateProject(ctx, project)
+			created, err := repo.CreateProject(ctx, testScope, project)
 			require.NoError(t, err)
 			require.NotEqual(t, project.Id, created.Id)
 
-			got, err := repo.GetProject(ctx, created.Id)
+			got, err := repo.GetProject(ctx, testScope, created.Id)
 			require.NoError(t, err)
 			require.Equal(t, "Project A", got.Name)
 			require.Equal(t, "#ff0000", got.Color)
@@ -59,17 +59,17 @@ func TestProjectRepositoryContract(t *testing.T) {
 				TagIds: []uuid.UUID{uuid.New()},
 			}
 
-			_, err := repo.CreateProject(ctx, project)
+			_, err := repo.CreateProject(ctx, testScope, project)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
 		t.Run(repoName+"List", func(t *testing.T) {
 			repo := newRepo(t)
 
-			_, _ = repo.CreateProject(ctx, model.Project{Name: "a", Color: "#ffffff"})
-			_, _ = repo.CreateProject(ctx, model.Project{Name: "b", Color: "#000000"})
+			_, _ = repo.CreateProject(ctx, testScope, model.Project{Name: "a", Color: "#ffffff"})
+			_, _ = repo.CreateProject(ctx, testScope, model.Project{Name: "b", Color: "#000000"})
 
-			page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
+			page, err := repo.ListProjects(ctx, testScope, model.DefaultPaginationParams())
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 2, page.TotalCount)
@@ -78,21 +78,21 @@ func TestProjectRepositoryContract(t *testing.T) {
 		t.Run(repoName+"Update", func(t *testing.T) {
 			repo := newRepo(t)
 
-			initialTags := seedTags(t, ctx, repo, 1)
-			newTags := seedTags(t, ctx, repo, 2)
+			initialTags := seedTags(t, ctx, repo, testScope, 1)
+			newTags := seedTags(t, ctx, repo, testScope, 2)
 
 			project := model.Project{
 				Name:   "Initial",
 				Color:  "#00ff00",
 				TagIds: initialTags,
 			}
-			created, _ := repo.CreateProject(ctx, project)
+			created, _ := repo.CreateProject(ctx, testScope, project)
 
 			project.Id = created.Id
 			project.Name = "Updated"
 			project.TagIds = newTags
 
-			updated, err := repo.UpdateProject(ctx, project)
+			updated, err := repo.UpdateProject(ctx, testScope, project)
 			require.NoError(t, err)
 			require.Equal(t, "Updated", updated.Name)
 			require.ElementsMatch(t, newTags, updated.TagIds)
@@ -106,12 +106,12 @@ func TestProjectRepositoryContract(t *testing.T) {
 				Color: "#0000ff",
 				Name:  "P",
 			}
-			created, _ := repo.CreateProject(ctx, project)
+			created, _ := repo.CreateProject(ctx, testScope, project)
 
 			project.Id = created.Id
 			project.TagIds = []uuid.UUID{uuid.New()}
 
-			_, err := repo.UpdateProject(ctx, project)
+			_, err := repo.UpdateProject(ctx, testScope, project)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
@@ -122,13 +122,13 @@ func TestProjectRepositoryContract(t *testing.T) {
 				Color: "#0000ff",
 				Name:  "Temp",
 			}
-			created, _ := repo.CreateProject(ctx, project)
+			created, _ := repo.CreateProject(ctx, testScope, project)
 			project.Id = created.Id
 
-			err := repo.DeleteProject(ctx, project.Id)
+			err := repo.DeleteProject(ctx, testScope, project.Id)
 			require.NoError(t, err)
 
-			_, err = repo.GetProject(ctx, project.Id)
+			_, err = repo.GetProject(ctx, testScope, project.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
@@ -136,18 +136,18 @@ func TestProjectRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
-				_, _ = repo.CreateProject(ctx, model.Project{
+				_, _ = repo.CreateProject(ctx, testScope, model.Project{
 					Name:  fmt.Sprintf("project-%d", i),
 					Color: "#000000",
 				})
 			}
 
-			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 2, Offset: 0})
+			page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 0})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
 
-			page2, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 2, Offset: 2})
+			page2, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 2})
 			require.NoError(t, err)
 			require.Len(t, page2.Data, 2)
 			require.Equal(t, 5, page2.TotalCount)
@@ -164,9 +164,9 @@ func TestProjectRepositoryContract(t *testing.T) {
 		t.Run(repoName+"ListPagination_OffsetBeyondEnd", func(t *testing.T) {
 			repo := newRepo(t)
 
-			_, _ = repo.CreateProject(ctx, model.Project{Name: "only", Color: "#000000"})
+			_, _ = repo.CreateProject(ctx, testScope, model.Project{Name: "only", Color: "#000000"})
 
-			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 10, Offset: 100})
+			page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 100})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 1, page.TotalCount)
@@ -176,13 +176,13 @@ func TestProjectRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
-				_, _ = repo.CreateProject(ctx, model.Project{
+				_, _ = repo.CreateProject(ctx, testScope, model.Project{
 					Name:  fmt.Sprintf("project-%d", i),
 					Color: "#000000",
 				})
 			}
 
-			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 3, Offset: 3})
+			page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 3, Offset: 3})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
@@ -191,7 +191,7 @@ func TestProjectRepositoryContract(t *testing.T) {
 		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
 			repo := newRepo(t)
 
-			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 10, Offset: 0})
+			page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 0})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 0, page.TotalCount)
@@ -201,16 +201,86 @@ func TestProjectRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			for i := range 5 {
-				_, _ = repo.CreateProject(ctx, model.Project{
+				_, _ = repo.CreateProject(ctx, testScope, model.Project{
 					Name:  fmt.Sprintf("project-%d", i),
 					Color: "#000000",
 				})
 			}
 
-			page, err := repo.ListProjects(ctx, model.PaginationParams{Limit: 1, Offset: 0})
+			page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{Limit: 1, Offset: 0})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 1)
 			require.Equal(t, 5, page.TotalCount)
+		})
+
+		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			projA, err := repo.CreateProject(ctx, scopeA, model.Project{Name: "a", Color: "#111111"})
+			require.NoError(t, err)
+			_, err = repo.CreateProject(ctx, scopeB, model.Project{Name: "b", Color: "#222222"})
+			require.NoError(t, err)
+
+			pageA, err := repo.ListProjects(ctx, scopeA, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, pageA.Data, 1)
+			require.Equal(t, 1, pageA.TotalCount)
+
+			_, err = repo.GetProject(ctx, scopeB, projA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			projA.Name = "hijack"
+			_, err = repo.UpdateProject(ctx, scopeB, projA)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			err = repo.DeleteProject(ctx, scopeB, projA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+
+		t.Run(repoName+"CannotAttachAnotherUsersTag", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			tagB := seedTags(t, ctx, repo, scopeB, 1)[0]
+
+			_, err := repo.CreateProject(ctx, scopeA, model.Project{
+				Name: "a", Color: "#111111", TagIds: []uuid.UUID{tagB},
+			})
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+
+			// The update path enforces the same guard: create a valid
+			// resource under scopeA, then try to attach scopeB's tag.
+			projA, err := repo.CreateProject(ctx, scopeA, model.Project{Name: "a", Color: "#111111"})
+			require.NoError(t, err)
+
+			projA.TagIds = []uuid.UUID{tagB}
+			_, err = repo.UpdateProject(ctx, scopeA, projA)
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+		})
+
+		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			user := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, user)
+
+			owned, err := repo.CreateProject(ctx, user, model.Project{Name: "owned", Color: "#111111"})
+			require.NoError(t, err)
+			_, err = repo.CreateProject(ctx, model.UnownedScope(), model.Project{Name: "unowned", Color: "#222222"})
+			require.NoError(t, err)
+
+			page, err := repo.ListProjects(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, page.Data, 1)
+
+			_, err = repo.GetProject(ctx, model.UnownedScope(), owned.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
 
@@ -224,6 +294,8 @@ func TestProjectRepositoryContract(t *testing.T) {
 	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
 		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		return postgres.NewPostgresStoreFromPool(pool)
+		repo := postgres.NewPostgresStoreFromPool(pool)
+		seedScopeUser(t, ctx, repo, testScope)
+		return repo
 	})
 }
