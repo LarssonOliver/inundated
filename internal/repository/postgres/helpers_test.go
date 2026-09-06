@@ -62,9 +62,10 @@ func dur(d time.Duration) *time.Duration { return &d }
 
 func aTag() model.Tag {
 	return model.Tag{
-		Id:    uuid.New(),
-		Name:  "backend",
-		Color: "#ff0000",
+		Id:     uuid.New(),
+		Name:   "backend",
+		Color:  "#ff0000",
+		UserId: testScope.UserID(),
 	}
 }
 

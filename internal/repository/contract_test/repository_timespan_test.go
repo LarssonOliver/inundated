@@ -41,6 +41,8 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			created, err := repo.CreateTimespan(ctx, testScope, ts)
 			ts.Id = created.Id
 			require.NoError(t, err)
+			require.NotNil(t, created.UserId)
+			require.Equal(t, *testScope.UserID(), *created.UserId)
 
 			got, err := repo.GetTimespan(ctx, testScope, ts.Id)
 			require.NoError(t, err)
@@ -48,6 +50,24 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.WithinDuration(t, start, got.StartTime, time.Millisecond)
 			require.WithinDuration(t, end, got.EndTime, time.Millisecond)
 			require.ElementsMatch(t, tagIds, got.TagIds)
+			require.NotNil(t, got.UserId)
+			require.Equal(t, *testScope.UserID(), *got.UserId)
+		})
+
+		t.Run(repoName+"UnownedCreateHasNilUserId", func(t *testing.T) {
+			repo := newRepo(t)
+
+			created, err := repo.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{
+				Name:      "t",
+				StartTime: time.Now().UTC(),
+				EndTime:   time.Now().UTC().Add(time.Hour),
+			})
+			require.NoError(t, err)
+			require.Nil(t, created.UserId)
+
+			got, err := repo.GetTimespan(ctx, model.UnownedScope(), created.Id)
+			require.NoError(t, err)
+			require.Nil(t, got.UserId)
 		})
 
 		t.Run("List", func(t *testing.T) {
