@@ -8,22 +8,27 @@ import (
 )
 
 func (s *ServiceImpl) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
-	return s.repository.GetTimespan(ctx, id)
+	scope := ownerScope(ctx)
+	return s.repository.GetTimespan(ctx, scope, id)
 }
 
 func (s *ServiceImpl) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	return s.repository.ListTimespans(ctx, params)
+	scope := ownerScope(ctx)
+	return s.repository.ListTimespans(ctx, scope, params)
 }
 
 func (s *ServiceImpl) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	scope := ownerScope(ctx)
 	timespan.Id = uuid.New()
-	return s.repository.CreateTimespan(ctx, timespan)
+	return s.repository.CreateTimespan(ctx, scope, timespan)
 }
 
 func (s *ServiceImpl) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return s.repository.UpdateTimespan(ctx, timespan)
+	scope := ownerScope(ctx)
+	return s.repository.UpdateTimespan(ctx, scope, timespan)
 }
 
 func (s *ServiceImpl) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	return s.repository.DeleteTimespan(ctx, id)
+	scope := ownerScope(ctx)
+	return s.repository.DeleteTimespan(ctx, scope, id)
 }

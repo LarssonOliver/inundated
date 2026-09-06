@@ -54,7 +54,7 @@ func TestGetProject_Success(t *testing.T) {
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectProjectTagsQuery(mock, p.Id, p.TagIds)
 
-	got, err := repo.GetProject(ctx, p.Id)
+	got, err := repo.GetProject(ctx, testScope, p.Id)
 	require.NoError(t, err)
 	assert.Equal(t, p.Id, got.Id)
 	assert.Equal(t, p.Name, got.Name)
@@ -75,7 +75,7 @@ func TestGetProject_NilTimeBudget(t *testing.T) {
 			AddRow(p.Id, p.Name, p.Color, nil))
 	expectProjectTagsQuery(mock, p.Id, nil)
 
-	got, err := repo.GetProject(ctx, p.Id)
+	got, err := repo.GetProject(ctx, testScope, p.Id)
 	require.NoError(t, err)
 	assert.Nil(t, got.TimeBudget)
 }
@@ -89,14 +89,14 @@ func TestGetProject_NotFound(t *testing.T) {
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
-	_, err := repo.GetProject(ctx, id)
+	_, err := repo.GetProject(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestGetProject_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	_, err := repo.GetProject(context.Background(), uuid.Nil)
+	_, err := repo.GetProject(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -126,7 +126,7 @@ func TestListProjects_ReturnsAll(t *testing.T) {
 	expectProjectTagsQuery(mock, p1.Id, p1.TagIds)
 	expectProjectTagsQuery(mock, p2.Id, p2.TagIds)
 
-	page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListProjects(ctx, testScope, model.DefaultPaginationParams())
 
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestListProjects_WithPaginationParams(t *testing.T) {
 
 	expectProjectTagsQuery(mock, p.Id, p.TagIds)
 
-	page, err := repo.ListProjects(ctx, model.PaginationParams{
+	page, err := repo.ListProjects(ctx, testScope, model.PaginationParams{
 		Limit:  1,
 		Offset: 1,
 	})
@@ -184,7 +184,7 @@ func TestListProjects_Empty(t *testing.T) {
 			pgxmock.NewRows(projectCols),
 		)
 
-	page, err := repo.ListProjects(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListProjects(ctx, testScope, model.DefaultPaginationParams())
 
 	require.NoError(t, err)
 
@@ -205,7 +205,7 @@ func TestCreateProject_Success(t *testing.T) {
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, p.TagIds)
 
-	got, err := repo.CreateProject(ctx, p)
+	got, err := repo.CreateProject(ctx, testScope, p)
 	require.NoError(t, err)
 	assert.Equal(t, p.Id, got.Id)
 	assert.ElementsMatch(t, p.TagIds, got.TagIds)
@@ -223,7 +223,7 @@ func TestCreateProject_NoTags(t *testing.T) {
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, nil)
 
-	got, err := repo.CreateProject(ctx, p)
+	got, err := repo.CreateProject(ctx, testScope, p)
 	require.NoError(t, err)
 	assert.Empty(t, got.TagIds)
 }
@@ -232,7 +232,7 @@ func TestCreateProject_EmptyName(t *testing.T) {
 	repo, _ := newMock(t)
 	p := aProject()
 	p.Name = ""
-	_, err := repo.CreateProject(context.Background(), p)
+	_, err := repo.CreateProject(context.Background(), testScope, p)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -250,7 +250,7 @@ func TestCreateProject_GeneratesIdWhenNil(t *testing.T) {
 			AddRow(generatedId, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, generatedId, p.TagIds)
 
-	got, err := repo.CreateProject(ctx, p)
+	got, err := repo.CreateProject(ctx, testScope, p)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
 }
@@ -271,7 +271,7 @@ func TestUpdateProject_Success(t *testing.T) {
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget))
 	expectSetProjectTags(mock, p.Id, p.TagIds)
 
-	got, err := repo.UpdateProject(ctx, p)
+	got, err := repo.UpdateProject(ctx, testScope, p)
 	require.NoError(t, err)
 	assert.Equal(t, "Renamed", got.Name)
 	assert.Equal(t, &newBudget, got.TimeBudget)
@@ -286,7 +286,7 @@ func TestUpdateProject_NotFound(t *testing.T) {
 		WithArgs(p.Id, p.Name, p.Color, p.TimeBudget).
 		WillReturnRows(pgxmock.NewRows(projectCols))
 
-	_, err := repo.UpdateProject(ctx, p)
+	_, err := repo.UpdateProject(ctx, testScope, p)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
@@ -295,7 +295,7 @@ func TestUpdateProject_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	p := aProject()
 	p.Id = uuid.Nil
-	_, err := repo.UpdateProject(context.Background(), p)
+	_, err := repo.UpdateProject(context.Background(), testScope, p)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -304,7 +304,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 	repo, _ := newMock(t)
 	p := aProject()
 	p.Name = ""
-	_, err := repo.UpdateProject(context.Background(), p)
+	_, err := repo.UpdateProject(context.Background(), testScope, p)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -320,7 +320,7 @@ func TestDeleteProject_Success(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	require.NoError(t, repo.DeleteProject(ctx, id))
+	require.NoError(t, repo.DeleteProject(ctx, testScope, id))
 }
 
 func TestDeleteProject_NotFound(t *testing.T) {
@@ -332,14 +332,14 @@ func TestDeleteProject_NotFound(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
-	err := repo.DeleteProject(ctx, id)
+	err := repo.DeleteProject(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestDeleteProject_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	err := repo.DeleteProject(context.Background(), uuid.Nil)
+	err := repo.DeleteProject(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }

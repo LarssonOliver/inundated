@@ -10,7 +10,7 @@ import (
 )
 
 // CreateProject implements [repository.ProjectRepository].
-func (t *MemoryStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
@@ -45,7 +45,7 @@ func (t *MemoryStore) CreateProject(ctx context.Context, project model.Project) 
 }
 
 // GetProject implements [repository.ProjectRepository].
-func (t *MemoryStore) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
+func (t *MemoryStore) GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -59,7 +59,7 @@ func (t *MemoryStore) GetProject(ctx context.Context, id uuid.UUID) (model.Proje
 }
 
 // ListProjects implements [repository.ProjectRepository].
-func (t *MemoryStore) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+func (t *MemoryStore) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -79,7 +79,7 @@ func (t *MemoryStore) ListProjects(ctx context.Context, params model.PaginationP
 }
 
 // UpdateProject implements [repository.ProjectRepository].
-func (t *MemoryStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 	if project.Name == "" || project.Color == "" || !utils.IsValidColor(project.Color) {
 		return model.Project{}, model.ErrInvalidArgument
 	}
@@ -101,7 +101,7 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, project model.Project) 
 }
 
 // DeleteProject implements [repository.ProjectRepository].
-func (t *MemoryStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

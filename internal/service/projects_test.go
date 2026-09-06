@@ -19,16 +19,16 @@ func TestProjectService_GetProject(t *testing.T) {
 	tests := []struct {
 		name        string
 		id          uuid.UUID
-		getFn       func(ctx context.Context, id uuid.UUID) (model.Project, error)
+		getFn       func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error)
 		includes    *service.ProjectServiceGetIncludes
-		totalTimeFn func(ctx context.Context, ids []uuid.UUID) (time.Duration, error)
+		totalTimeFn func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error)
 		want        model.Project
 		wantErr     bool
 	}{
 		{
 			name: "successful get",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{Id: id, Name: "Test Project", Color: "#abcdef"}, nil
 			},
 			want:    model.Project{Id: testId, Name: "Test Project", Color: "#abcdef"},
@@ -37,7 +37,7 @@ func TestProjectService_GetProject(t *testing.T) {
 		{
 			name: "repository error",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{}, errors.New("not found")
 			},
 			want:    model.Project{},
@@ -46,11 +46,11 @@ func TestProjectService_GetProject(t *testing.T) {
 		{
 			name: "Include total time",
 			id:   testId,
-			getFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			getFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{Id: id, Name: "Test Project", Color: "#abcdef", TagIds: []uuid.UUID{uuid.New()}}, nil
 			},
 			includes: &service.ProjectServiceGetIncludes{TotalTime: true},
-			totalTimeFn: func(ctx context.Context, ids []uuid.UUID) (time.Duration, error) {
+			totalTimeFn: func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error) {
 				return 2 * time.Hour, nil
 			},
 			want:    model.Project{Id: testId, Name: "Test Project", Color: "#abcdef", TotalTime: func() *time.Duration { d := 2 * time.Hour; return &d }()},
@@ -97,14 +97,14 @@ func TestProjectService_ListProjects(t *testing.T) {
 	tests := []struct {
 		name    string
 		params  model.PaginationParams
-		listFn  func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
+		listFn  func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error)
 		want    model.Page[model.Project]
 		wantErr bool
 	}{
 		{
 			name:   "successful list",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 				return model.Page[model.Project]{Data: projects, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Project]{Data: projects, TotalCount: 2},
@@ -113,7 +113,7 @@ func TestProjectService_ListProjects(t *testing.T) {
 		{
 			name:   "repository error",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 				return model.Page[model.Project]{}, errors.New("database error")
 			},
 			wantErr: true,
@@ -121,7 +121,7 @@ func TestProjectService_ListProjects(t *testing.T) {
 		{
 			name:   "pagination params are forwarded",
 			params: model.PaginationParams{Limit: 1, Offset: 1},
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 				require.Equal(t, 1, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Project]{Data: projects[1:], TotalCount: 2}, nil
@@ -132,7 +132,7 @@ func TestProjectService_ListProjects(t *testing.T) {
 		{
 			name:   "empty page",
 			params: model.PaginationParams{Limit: 10, Offset: 100},
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 				return model.Page[model.Project]{Data: []model.Project{}, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Project]{Data: []model.Project{}, TotalCount: 2},
@@ -164,14 +164,14 @@ func TestProjectService_CreateProject(t *testing.T) {
 	tests := []struct {
 		name     string
 		project  model.Project
-		createFn func(ctx context.Context, project model.Project) (model.Project, error)
+		createFn func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
 		want     model.Project
 		wantErr  bool
 	}{
 		{
 			name:    "successful create",
 			project: model.Project{Name: "New Project", Color: "#123456"},
-			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 				project.Id = uuid.New()
 				return project, nil
 			},
@@ -181,7 +181,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 		{
 			name:    "ensure create generates Id",
 			project: model.Project{Id: id, Name: "New Project", Color: "#123456"},
-			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 				return project, nil
 			},
 			want:    model.Project{Id: id, Name: "New Project", Color: "#123456"},
@@ -190,7 +190,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 		{
 			name:    "repository error",
 			project: model.Project{Name: "New Project", Color: "#123456"},
-			createFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+			createFn: func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 				return model.Project{}, errors.New("database error")
 			},
 			want:    model.Project{},
@@ -222,14 +222,14 @@ func TestProjectService_UpdateProject(t *testing.T) {
 	tests := []struct {
 		name     string
 		project  model.Project
-		updateFn func(ctx context.Context, project model.Project) (model.Project, error)
+		updateFn func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
 		want     model.Project
 		wantErr  bool
 	}{
 		{
 			name:    "successful update",
 			project: model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
-			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+			updateFn: func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 				return project, nil
 			},
 			want:    model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
@@ -238,7 +238,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 		{
 			name:    "repository error",
 			project: model.Project{Id: projectId, Name: "Updated Project", Color: "#654321"},
-			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+			updateFn: func(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 				return model.Project{}, errors.New("database error")
 			},
 			want:    model.Project{},
@@ -268,19 +268,19 @@ func TestProjectService_UpdateProject(t *testing.T) {
 func TestProjectService_DeleteProject(t *testing.T) {
 	tests := []struct {
 		name     string
-		deleteFn func(ctx context.Context, id uuid.UUID) error
+		deleteFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 		wantErr  bool
 	}{
 		{
 			name: "successful delete",
-			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 				return nil
 			},
 			wantErr: false,
 		},
 		{
 			name: "repository error",
-			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 				return errors.New("database error")
 			},
 			wantErr: true,
@@ -311,7 +311,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 	t.Run("successful get project stats", func(t *testing.T) {
 		repo := &repository.RepoMock{
-			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				require.Equal(t, projectID, id)
 				return model.Project{
 					Id:     projectID,
@@ -320,7 +320,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 					TagIds: []uuid.UUID{uuid.New()},
 				}, nil
 			},
-			AggregateTimeSpentByTagsAndBucketsFn: func(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+			AggregateTimeSpentByTagsAndBucketsFn: func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 				require.NotEmpty(t, tagIds)
 				require.Len(t, buckets, 2)
 				require.True(t, buckets[0].Start.Equal(base))
@@ -371,7 +371,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 	t.Run("project not found", func(t *testing.T) {
 		repo := &repository.RepoMock{
-			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{}, model.ErrNotFound
 			},
 		}
@@ -387,7 +387,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 	t.Run("project lookup error is propagated", func(t *testing.T) {
 		repo := &repository.RepoMock{
-			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{}, errors.New("db error")
 			},
 		}
@@ -405,7 +405,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 	t.Run("invalid interval", func(t *testing.T) {
 		repo := &repository.RepoMock{
-			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{Id: projectID}, nil
 			},
 		}
@@ -423,7 +423,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 	t.Run("unprocessable interval", func(t *testing.T) {
 		repo := &repository.RepoMock{
-			GetProjectFn: func(ctx context.Context, id uuid.UUID) (model.Project, error) {
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 				return model.Project{
 					Id:     projectID,
 					TagIds: []uuid.UUID{uuid.New()},

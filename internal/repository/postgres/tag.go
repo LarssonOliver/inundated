@@ -11,7 +11,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 	if id == uuid.Nil {
 		return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
 	}
@@ -32,7 +32,7 @@ func (r *PostgresStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, er
 	return t, nil
 }
 
-func (r *PostgresStore) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
 	const countQ = `
 		SELECT COUNT(*)
 		FROM tags
@@ -78,7 +78,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, params model.PaginationPar
 	}, nil
 }
 
-func (r *PostgresStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (r *PostgresStore) CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" {
 		return model.Tag{}, fmt.Errorf("CreateTag: name must not be empty: %w", model.ErrInvalidArgument)
 	}
@@ -100,7 +100,7 @@ func (r *PostgresStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag
 	return created, nil
 }
 
-func (r *PostgresStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
 	if tag.Id == uuid.Nil {
 		return model.Tag{}, fmt.Errorf("UpdateTag: id: %w", model.ErrInvalidArgument)
 	}
@@ -126,7 +126,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag
 	return updated, nil
 }
 
-func (r *PostgresStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
+func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
 		return fmt.Errorf("DeleteTag: id: %w", model.ErrInvalidArgument)
 	}

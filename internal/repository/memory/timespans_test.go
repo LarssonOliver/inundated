@@ -73,11 +73,11 @@ func TestTimespanStore_CreateTimespan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tagIds {
-				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				require.NoError(t, err)
 			}
 
-			got, gotErr := ta.CreateTimespan(context.Background(), tt.timespan)
+			got, gotErr := ta.CreateTimespan(context.Background(), testScope, tt.timespan)
 
 			if tt.wantErr {
 				require.Error(t, gotErr)
@@ -144,15 +144,15 @@ func TestTimespanStore_GetTimespan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tagIds {
-				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				require.NoError(t, err)
 			}
 
-			timespan, _ := ta.CreateTimespan(context.Background(), tt.createTimespan)
+			timespan, _ := ta.CreateTimespan(context.Background(), testScope, tt.createTimespan)
 			getId := tt.getId(&timespan)
 			tt.want.Id = getId
 
-			got, gotErr := ta.GetTimespan(context.Background(), getId)
+			got, gotErr := ta.GetTimespan(context.Background(), testScope, getId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -256,18 +256,18 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				require.NoError(t, err)
 			}
 
 			insertedIds := make(map[uuid.UUID]bool)
 			for i, timespan := range tt.insertTimespans {
-				createdTimespan, _ := ta.CreateTimespan(context.Background(), timespan)
+				createdTimespan, _ := ta.CreateTimespan(context.Background(), testScope, timespan)
 				tt.insertTimespans[i].Id = createdTimespan.Id
 				insertedIds[createdTimespan.Id] = true
 			}
 
-			page, gotErr := ta.ListTimespans(context.Background(), tt.params)
+			page, gotErr := ta.ListTimespans(context.Background(), testScope, tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -404,17 +404,17 @@ func TestTimespanStore_UpdateTimespan(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				_, err := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, err := ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				require.NoError(t, err)
 			}
 
-			insertedTimespan, _ := ta.CreateTimespan(context.Background(), tt.timespan)
+			insertedTimespan, _ := ta.CreateTimespan(context.Background(), testScope, tt.timespan)
 			editId := tt.editTimespanId(&insertedTimespan)
 
 			tt.editTimespan.Id = editId
 			tt.want.Id = editId
 
-			got, gotErr := ta.UpdateTimespan(context.Background(), tt.editTimespan)
+			got, gotErr := ta.UpdateTimespan(context.Background(), testScope, tt.editTimespan)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -475,10 +475,10 @@ func TestTimespanStore_DeleteTimespan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
-			timespan, _ := ta.CreateTimespan(context.Background(), tt.insertTimespan)
+			timespan, _ := ta.CreateTimespan(context.Background(), testScope, tt.insertTimespan)
 			deleteId := tt.deleteId(&timespan)
 
-			gotErr := ta.DeleteTimespan(context.Background(), deleteId)
+			gotErr := ta.DeleteTimespan(context.Background(), testScope, deleteId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -488,7 +488,7 @@ func TestTimespanStore_DeleteTimespan(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr)
-			timespan, err := ta.GetTimespan(context.Background(), deleteId)
+			timespan, err := ta.GetTimespan(context.Background(), testScope, deleteId)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
@@ -499,16 +499,16 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 
 	tags := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
 	for _, tagId := range tags {
-		_, err := m.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+		_, err := m.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 		require.NoError(t, err)
 	}
 
 	baseTime := time.Now()
 	ts1 := model.Timespan{Name: "T", StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
 	ts2 := model.Timespan{Name: "T", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(5 * time.Hour), TagIds: []uuid.UUID{tags[1], tags[2]}}
-	_, err := m.CreateTimespan(context.Background(), ts1)
+	_, err := m.CreateTimespan(context.Background(), testScope, ts1)
 	require.NoError(t, err)
-	_, err = m.CreateTimespan(context.Background(), ts2)
+	_, err = m.CreateTimespan(context.Background(), testScope, ts2)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -557,7 +557,7 @@ func TestMemoryStore_GetTotalDurationByTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := m.GetTotalDurationByTags(context.Background(), tt.tagIds)
+			got, gotErr := m.GetTotalDurationByTags(context.Background(), testScope, tt.tagIds)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -577,14 +577,14 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 
 	tags := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
 	for _, tagID := range tags {
-		_, err := m.CreateTag(ctx, model.Tag{Id: tagID, Name: "Tag", Color: "#FFFFFF"})
+		_, err := m.CreateTag(ctx, testScope, model.Tag{Id: tagID, Name: "Tag", Color: "#FFFFFF"})
 		require.NoError(t, err)
 	}
 
 	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// Matches both requested tags but must be counted once per bucket.
-	_, err := m.CreateTimespan(ctx, model.Timespan{
+	_, err := m.CreateTimespan(ctx, testScope, model.Timespan{
 		Name:      "T1",
 		StartTime: base.Add(15 * time.Minute),
 		EndTime:   base.Add(75 * time.Minute),
@@ -592,7 +592,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = m.CreateTimespan(ctx, model.Timespan{
+	_, err = m.CreateTimespan(ctx, testScope, model.Timespan{
 		Name:      "T2",
 		StartTime: base.Add(60 * time.Minute),
 		EndTime:   base.Add(120 * time.Minute),
@@ -601,7 +601,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 	require.NoError(t, err)
 
 	// Never included in queries below.
-	_, err = m.CreateTimespan(ctx, model.Timespan{
+	_, err = m.CreateTimespan(ctx, testScope, model.Timespan{
 		Name:      "T3",
 		StartTime: base,
 		EndTime:   base.Add(2 * time.Hour),
@@ -615,7 +615,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 			{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
 		}
 
-		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{tags[0], tags[1], tags[1]}, buckets)
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, []uuid.UUID{tags[0], tags[1], tags[1]}, buckets)
 		require.NoError(t, gotErr)
 		require.Len(t, got, 2)
 		require.Equal(t, buckets[0], got[0].Bucket)
@@ -630,7 +630,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 			{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)},
 		}
 
-		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{uuid.New()}, buckets)
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, []uuid.UUID{uuid.New()}, buckets)
 		require.NoError(t, gotErr)
 		require.Len(t, got, 2)
 		require.InDelta(t, 0.0, got[0].Value, 0.0001)
@@ -643,7 +643,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 			{Start: base, End: base.Add(1 * time.Hour)},
 		}
 
-		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, nil, buckets)
+		got, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, nil, buckets)
 		require.NoError(t, gotErr)
 		require.Len(t, got, 2)
 		require.Equal(t, buckets[0], got[0].Bucket)
@@ -657,7 +657,7 @@ func TestMemoryStore_AggregateTimeSpentByTagsAndBuckets(t *testing.T) {
 			{Start: base.Add(2 * time.Hour), End: base.Add(2 * time.Hour)},
 		}
 
-		_, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, []uuid.UUID{tags[0]}, buckets)
+		_, gotErr := m.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, []uuid.UUID{tags[0]}, buckets)
 		require.ErrorIs(t, gotErr, model.ErrInvalidArgument)
 	})
 }

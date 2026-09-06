@@ -10,7 +10,7 @@ import (
 )
 
 // CreateTimespan implements [repository.TimespanRepository].
-func (t *MemoryStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
@@ -45,7 +45,7 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, timespan model.Timespa
 }
 
 // GetTimespan implements [repository.TimespanRepository].
-func (t *MemoryStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+func (t *MemoryStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -58,7 +58,7 @@ func (t *MemoryStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Time
 }
 
 // ListTimespans implements [repository.TimespanRepository].
-func (t *MemoryStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+func (t *MemoryStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -81,7 +81,7 @@ func (t *MemoryStore) ListTimespans(ctx context.Context, params model.Pagination
 }
 
 // UpdateTimespan implements [repository.TimespanRepository].
-func (t *MemoryStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() || timespan.EndTime.IsZero() || timespan.EndTime.Before(timespan.StartTime) || timespan.EndTime.Equal(timespan.StartTime) {
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
@@ -103,7 +103,7 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, timespan model.Timespa
 }
 
 // DeleteTimespan implements [repository.TimespanRepository].
-func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -117,7 +117,7 @@ func (t *MemoryStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
 }
 
 // GetTotalDurationByTags implements [repository.Repository].
-func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
@@ -145,7 +145,7 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
-func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	_ = ctx
 
 	values := make([]model.BucketValue, len(buckets))

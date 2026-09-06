@@ -11,7 +11,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	if id == uuid.Nil {
 		return model.Timespan{}, fmt.Errorf("GetTimespan: id: %w", model.ErrInvalidArgument)
 	}
@@ -37,7 +37,7 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 	return ts, nil
 }
 
-func (r *PostgresStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
 	const countQ = `
 		SELECT COUNT(*)
 		FROM timespans
@@ -95,7 +95,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, params model.Paginati
 	}, nil
 }
 
-func (r *PostgresStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() {
 		return model.Timespan{}, fmt.Errorf("CreateTimespan: start_time must not be zero: %w", model.ErrInvalidArgument)
 	}
@@ -125,7 +125,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, timespan model.Times
 	return created, nil
 }
 
-func (r *PostgresStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.Id == uuid.Nil {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: id: %w", model.ErrInvalidArgument)
 	}
@@ -158,7 +158,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, timespan model.Times
 	return updated, nil
 }
 
-func (r *PostgresStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
 		return fmt.Errorf("DeleteTimespan: id: %w", model.ErrInvalidArgument)
 	}
@@ -220,7 +220,7 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, timespanId uuid.UUI
 }
 
 // GetTotalDurationByTags implements [repository.Repository].
-func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
@@ -247,7 +247,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
-func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	values := make([]model.BucketValue, len(buckets))
 	for i, bucket := range buckets {
 		if !bucket.End.After(bucket.Start) {
