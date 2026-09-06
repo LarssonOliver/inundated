@@ -17,19 +17,44 @@ func (s *ServiceImpl) GetCurrentUser(ctx context.Context) (model.User, error) {
 	return user, nil
 }
 
-// GetOrCreateUserBySub implements [Service].
-func (s *ServiceImpl) GetOrCreateUserBySub(ctx context.Context, subject string) (model.User, error) {
-	user, err := s.repository.GetUserBySub(ctx, subject)
-	if err == nil {
-		return user, nil
-	}
-	if !errors.Is(err, model.ErrNotFound) {
-		return model.User{}, err
+// GetUserBySub implements [UserService].
+func (s *ServiceImpl) GetUserBySub(ctx context.Context, sub string) (model.User, error) {
+	return s.repository.GetUserBySub(ctx, sub)
+}
+
+// GetOrCreateUserByIdentity implements [UserService].
+//
+// It reconciles the local user record with the claims from the OIDC provider:
+// a new subject is created (adopting orphaned resources when it is the first
+// user), and an existing user whose email or name has drifted from the identity
+// is updated. The returned user always reflects the identity.
+func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
+	user, err := s.repository.GetUserBySub(ctx, identity.Sub)
+	if err != nil {
+		if !errors.Is(err, model.ErrNotFound) {
+			return model.User{}, err
+		}
+		return s.createUserFromIdentity(ctx, identity)
 	}
 
-	// A brand new user. When it is the very first user in the system, it also
-	// takes ownership of every resource that predates user support.
-	created, adoption, err := s.repository.CreateUserAdoptingOrphans(ctx, model.User{Sub: subject})
+	if user.Email == identity.Email && user.Name == identity.Name {
+		return user, nil
+	}
+
+	user.Email = identity.Email
+	user.Name = identity.Name
+	return s.repository.UpdateUser(ctx, user)
+}
+
+// createUserFromIdentity creates a brand new user. When it is the very first
+// user in the system, it also takes ownership of every resource that predates
+// user support.
+func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
+	created, adoption, err := s.repository.CreateUserAdoptingOrphans(ctx, model.User{
+		Sub:   identity.Sub,
+		Email: identity.Email,
+		Name:  identity.Name,
+	})
 	if err != nil {
 		return model.User{}, err
 	}

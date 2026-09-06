@@ -56,7 +56,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				http.SetCookie(w, auth.NewSessionCookie(session))
 			}
 
-			user, err := userService.GetOrCreateUserBySub(r.Context(), session.Sub)
+			user, err := userService.GetUserBySub(r.Context(), session.Sub)
 			if err != nil {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 

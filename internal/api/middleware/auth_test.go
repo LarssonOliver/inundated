@@ -88,8 +88,8 @@ func TestOIDCAuth(t *testing.T) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
 					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
-				u.GetOrCreateUserBySubFn = func(ctx context.Context, subject string) (model.User, error) {
-					assert.Equal(t, "sub_123", subject)
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
+					assert.Equal(t, "sub_123", sub)
 					return model.User{Id: userID}, nil
 				}
 			},
@@ -101,6 +101,29 @@ func TestOIDCAuth(t *testing.T) {
 				session, ok := model.GetSessionFromContext(lastSeenCtx)
 				require.True(t, ok)
 				assert.Equal(t, sessionID, session.Id)
+			},
+		},
+		{
+			name:        "Session user no longer exists - deletes session and clears cookie",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+					return model.Session{Id: sessionID, Sub: "sub_gone", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+				}
+				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
+					assert.Equal(t, validUUID, id)
+					return nil
+				}
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
+					return model.User{}, model.ErrNotFound
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.False(t, nextCalledWithUser)
+				cookies := res.Cookies()
+				require.Len(t, cookies, 1)
+				assert.Equal(t, model.SessionCookieName, cookies[0].Name)
+				assert.Equal(t, -1, cookies[0].MaxAge)
 			},
 		},
 		{
@@ -116,7 +139,7 @@ func TestOIDCAuth(t *testing.T) {
 					assert.WithinDuration(t, time.Now().Add(24*time.Hour), expiresAt, 2*time.Second)
 					return model.Session{Sub: "sub_123", ExpiresAt: expiresAt}, nil
 				}
-				u.GetOrCreateUserBySubFn = func(ctx context.Context, subject string) (model.User, error) {
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
 					return model.User{Id: userID}, nil
 				}
 			},

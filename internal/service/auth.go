@@ -80,21 +80,13 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		return model.Session{}, "", err
 	}
 
-	user, err := a.userService.GetOrCreateUserBySub(ctx, identity.Sub)
+	user, err := a.userService.GetOrCreateUserByIdentity(ctx, model.UserIdentity{
+		Sub:   identity.Sub,
+		Email: identity.Email,
+		Name:  identity.Name,
+	})
 	if err != nil {
 		return model.Session{}, "", err
-	}
-
-	if user.Name != identity.Name || user.Email != identity.Email {
-		user, err = a.userService.UpdateCurrentUser(ctx, model.User{
-			Id:    user.Id,
-			Sub:   user.Sub,
-			Email: identity.Email,
-			Name:  identity.Name,
-		})
-		if err != nil {
-			return model.Session{}, "", err
-		}
 	}
 
 	session = model.Session{

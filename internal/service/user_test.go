@@ -70,7 +70,33 @@ func TestUserService_GetCurrentUser(t *testing.T) {
 	}
 }
 
-func TestUserService_GetOrCreateUserBySub(t *testing.T) {
+func TestUserService_GetUserBySub(t *testing.T) {
+	existingUser := model.User{Id: uuid.New(), Sub: "auth0|existing", Email: "e@example.com", Name: "E"}
+
+	t.Run("found", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				require.Equal(t, "auth0|existing", sub)
+				return existingUser, nil
+			},
+		}
+		got, err := service.NewService(repo).GetUserBySub(context.Background(), "auth0|existing")
+		require.NoError(t, err)
+		require.Equal(t, existingUser, got)
+	})
+
+	t.Run("not found is propagated", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return model.User{}, model.ErrNotFound
+			},
+		}
+		_, err := service.NewService(repo).GetUserBySub(context.Background(), "auth0|ghost")
+		require.ErrorIs(t, err, model.ErrNotFound)
+	})
+}
+
+func TestUserService_GetOrCreateUserByIdentity(t *testing.T) {
 	existingUser := model.User{
 		Id:    uuid.New(),
 		Sub:   "auth0|existing",
@@ -78,18 +104,20 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 		Name:  "Existing User",
 	}
 
+	newIdentity := model.UserIdentity{Sub: "auth0|new", Email: "new@example.com", Name: "New User"}
+
 	tests := []struct {
-		name        string
-		sub         string
-		getBySubFn  func(ctx context.Context, sub string) (model.User, error)
-		createFn    func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
-		wantCreated bool
-		want        model.User
-		wantErr     bool
+		name       string
+		identity   model.UserIdentity
+		getBySubFn func(ctx context.Context, sub string) (model.User, error)
+		createFn   func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
+		updateFn   func(ctx context.Context, user model.User) (model.User, error)
+		want       model.User
+		wantErr    bool
 	}{
 		{
-			name: "user already exists",
-			sub:  "auth0|existing",
+			name:     "existing user, identity unchanged - returned as is, no write",
+			identity: model.UserIdentity{Sub: existingUser.Sub, Email: existingUser.Email, Name: existingUser.Name},
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return existingUser, nil
 			},
@@ -97,26 +125,43 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 				t.Fatal("CreateUserAdoptingOrphans should not be called when user already exists")
 				return model.User{}, model.OrphanAdoption{}, nil
 			},
-			want:    existingUser,
-			wantErr: false,
+			updateFn: func(ctx context.Context, user model.User) (model.User, error) {
+				t.Fatal("UpdateUser should not be called when the identity has not drifted")
+				return model.User{}, nil
+			},
+			want: existingUser,
 		},
 		{
-			name: "user does not exist - creates new user and adopts orphans",
-			sub:  "auth0|new",
+			name:     "existing user, email drifted - updated to identity",
+			identity: model.UserIdentity{Sub: existingUser.Sub, Email: "changed@example.com", Name: existingUser.Name},
+			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return existingUser, nil
+			},
+			updateFn: func(ctx context.Context, user model.User) (model.User, error) {
+				require.Equal(t, existingUser.Id, user.Id)
+				require.Equal(t, "changed@example.com", user.Email)
+				return user, nil
+			},
+			want: model.User{Id: existingUser.Id, Sub: existingUser.Sub, Email: "changed@example.com", Name: existingUser.Name},
+		},
+		{
+			name:     "new subject - created from identity and adopts orphans",
+			identity: newIdentity,
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, model.ErrNotFound
 			},
 			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
-				require.Equal(t, "auth0|new", user.Sub)
+				require.Equal(t, newIdentity.Sub, user.Sub)
+				require.Equal(t, newIdentity.Email, user.Email)
+				require.Equal(t, newIdentity.Name, user.Name)
 				user.Id = uuid.New()
 				return user, model.OrphanAdoption{Projects: 2, Tags: 1, Timespans: 3}, nil
 			},
-			want:    model.User{Sub: "auth0|new"},
-			wantErr: false,
+			want: model.User{Sub: newIdentity.Sub, Email: newIdentity.Email, Name: newIdentity.Name},
 		},
 		{
-			name: "repository error on lookup",
-			sub:  "auth0|broken",
+			name:     "repository error on lookup",
+			identity: model.UserIdentity{Sub: "auth0|broken", Email: "b@example.com"},
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, errors.New("database error")
 			},
@@ -127,8 +172,8 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "repository error on create",
-			sub:  "auth0|new",
+			name:     "repository error on create",
+			identity: newIdentity,
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
 				return model.User{}, model.ErrNotFound
 			},
@@ -143,17 +188,19 @@ func TestUserService_GetOrCreateUserBySub(t *testing.T) {
 			repo := &repository.RepoMock{
 				GetUserBySubFn:              tt.getBySubFn,
 				CreateUserAdoptingOrphansFn: tt.createFn,
+				UpdateUserFn:                tt.updateFn,
 			}
 			s := service.NewService(repo)
 
-			got, gotErr := s.GetOrCreateUserBySub(context.Background(), tt.sub)
+			got, gotErr := s.GetOrCreateUserByIdentity(context.Background(), tt.identity)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
 			}
 			require.NoError(t, gotErr)
-			require.NotEqual(t, uuid.Nil, got.Id)
 			require.Equal(t, tt.want.Sub, got.Sub)
+			require.Equal(t, tt.want.Email, got.Email)
+			require.Equal(t, tt.want.Name, got.Name)
 		})
 	}
 }
