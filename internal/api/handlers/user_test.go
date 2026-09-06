@@ -20,10 +20,10 @@ func TestUserHandler_GetCurrentUser(t *testing.T) {
 	userID := uuid.New()
 
 	tests := []struct {
-		name          string
-		setupMock     func(u *service.UserServiceMock)
-		expectedResp  api.GetCurrentUserResponseObject
-		expectedErr   string
+		name         string
+		setupMock    func(u *service.UserServiceMock)
+		expectedResp api.GetCurrentUserResponseObject
+		expectedErr  string
 	}{
 		{
 			name: "Success - returns 200 JSON payload",
@@ -97,11 +97,11 @@ func TestUserHandler_UpdateCurrentUser(t *testing.T) {
 	newEmail := types.Email("new@example.com")
 
 	tests := []struct {
-		name          string
-		request       api.UpdateCurrentUserRequestObject
-		setupMock     func(u *service.UserServiceMock)
-		expectedResp  api.UpdateCurrentUserResponseObject
-		expectedErr   string
+		name         string
+		request      api.UpdateCurrentUserRequestObject
+		setupMock    func(u *service.UserServiceMock)
+		expectedResp api.UpdateCurrentUserResponseObject
+		expectedErr  string
 	}{
 		{
 			name: "Success - updates name and email fields specifically",
