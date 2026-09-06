@@ -51,6 +51,10 @@ func newLoginStateMock(t *testing.T) (repository.LoginStateRepository, pgxmock.P
 	return postgres.NewPostgresStoreWithQuerier(mock), mock
 }
 
+// testScope is the shared user scope for repository tests that exercise the
+// scoped code paths. The repositories ignore it for now.
+var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+
 // dur is a convenience helper for building *time.Duration literals.
 func dur(d time.Duration) *time.Duration { return &d }
 

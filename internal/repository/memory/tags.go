@@ -11,7 +11,7 @@ import (
 
 func (t *MemoryStore) tagsExist(ctx context.Context, tagIds []uuid.UUID) bool {
 	for _, tagId := range tagIds {
-		if _, err := t.GetTag(ctx, tagId); err != nil {
+		if _, err := t.GetTag(ctx, model.UnownedScope(), tagId); err != nil {
 			return false
 		}
 	}
@@ -19,7 +19,7 @@ func (t *MemoryStore) tagsExist(ctx context.Context, tagIds []uuid.UUID) bool {
 }
 
 // CreateTag implements [repository.TagRepository].
-func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (t *MemoryStore) CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
@@ -42,7 +42,7 @@ func (t *MemoryStore) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 }
 
 // GetTag implements [repository.TagRepository].
-func (t *MemoryStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
+func (t *MemoryStore) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -55,7 +55,7 @@ func (t *MemoryStore) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, erro
 }
 
 // ListTags implements [repository.TagRepository].
-func (t *MemoryStore) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -75,7 +75,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, params model.PaginationParam
 }
 
 // UpdateTag implements [repository.TagRepository].
-func (t *MemoryStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
 	if tag.Name == "" || tag.Color == "" || !utils.IsValidColor(tag.Color) {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
@@ -93,7 +93,7 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 }
 
 // DeleteTag implements [repository.TagRepository].
-func (t *MemoryStore) DeleteTag(ctx context.Context, id uuid.UUID) error {
+func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

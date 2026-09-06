@@ -26,7 +26,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		t.Run(repoName+"CreateAndGet", func(t *testing.T) {
 			repo := newRepo(t)
 
-			tagIds := seedTags(t, ctx, repo, 2)
+			tagIds := seedTags(t, ctx, repo, testScope, 2)
 
 			start := time.Now().Add(-time.Hour).Round(0)
 			end := time.Now().Round(0)
@@ -38,11 +38,11 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				TagIds:    tagIds,
 			}
 
-			created, err := repo.CreateTimespan(ctx, ts)
+			created, err := repo.CreateTimespan(ctx, testScope, ts)
 			ts.Id = created.Id
 			require.NoError(t, err)
 
-			got, err := repo.GetTimespan(ctx, ts.Id)
+			got, err := repo.GetTimespan(ctx, testScope, ts.Id)
 			require.NoError(t, err)
 			require.Equal(t, "Work session", got.Name)
 			require.WithinDuration(t, start, got.StartTime, time.Millisecond)
@@ -53,10 +53,10 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		t.Run("List", func(t *testing.T) {
 			repo := newRepo(t)
 
-			_, _ = repo.CreateTimespan(ctx, model.Timespan{Name: "a", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
-			_, _ = repo.CreateTimespan(ctx, model.Timespan{Name: "b", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
+			_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{Name: "a", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
+			_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{Name: "b", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
 
-			page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+			page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 2, page.TotalCount)
@@ -64,7 +64,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 		t.Run(repoName+"CreateWithEmptyName", func(t *testing.T) {
 			repo := newRepo(t)
-			tagIds := seedTags(t, ctx, repo, 1)
+			tagIds := seedTags(t, ctx, repo, testScope, 1)
 			start := time.Now().Add(-time.Hour)
 			end := time.Now()
 			ts := model.Timespan{
@@ -74,7 +74,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				TagIds:    tagIds,
 			}
 
-			_, err := repo.CreateTimespan(ctx, ts)
+			_, err := repo.CreateTimespan(ctx, testScope, ts)
 			require.NoError(t, err)
 		})
 
@@ -88,7 +88,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				TagIds:    []uuid.UUID{uuid.New()},
 			}
 
-			_, err := repo.CreateTimespan(ctx, ts)
+			_, err := repo.CreateTimespan(ctx, testScope, ts)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
@@ -100,12 +100,12 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				StartTime: time.Now(),
 				EndTime:   time.Now().Add(time.Hour),
 			}
-			created, _ := repo.CreateTimespan(ctx, ts)
+			created, _ := repo.CreateTimespan(ctx, testScope, ts)
 			ts.Id = created.Id
 
 			ts.TagIds = []uuid.UUID{uuid.New()}
 
-			_, err := repo.UpdateTimespan(ctx, ts)
+			_, err := repo.UpdateTimespan(ctx, testScope, ts)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 		})
 
@@ -117,10 +117,10 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				EndTime:   time.Now().Add(time.Hour),
 			}
 
-			created, _ := repo.CreateTimespan(ctx, ts)
+			created, _ := repo.CreateTimespan(ctx, testScope, ts)
 			ts.Id = created.Id
 			ts.Name = ""
-			uts, err := repo.UpdateTimespan(ctx, ts)
+			uts, err := repo.UpdateTimespan(ctx, testScope, ts)
 			require.NoError(t, err)
 			require.Equal(t, "", uts.Name)
 		})
@@ -133,49 +133,49 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				StartTime: time.Now(),
 				EndTime:   time.Now().Add(time.Hour),
 			}
-			created, _ := repo.CreateTimespan(ctx, ts)
+			created, _ := repo.CreateTimespan(ctx, testScope, ts)
 			ts.Id = created.Id
 
-			err := repo.DeleteTimespan(ctx, ts.Id)
+			err := repo.DeleteTimespan(ctx, testScope, ts.Id)
 			require.NoError(t, err)
 
-			_, err = repo.GetTimespan(ctx, ts.Id)
+			_, err = repo.GetTimespan(ctx, testScope, ts.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
 		t.Run(repoName+"GetTotalDurationByTags", func(t *testing.T) {
 			repo := newRepo(t)
 
-			tags := seedTags(t, ctx, repo, 4)
+			tags := seedTags(t, ctx, repo, testScope, 4)
 			baseTime := time.Now().Add(-3 * time.Hour)
 
 			ts1 := model.Timespan{StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tags[0], tags[1]}}
 			ts2 := model.Timespan{StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(4 * time.Hour), TagIds: []uuid.UUID{tags[1], tags[2]}}
-			_, err := repo.CreateTimespan(ctx, ts1)
+			_, err := repo.CreateTimespan(ctx, testScope, ts1)
 			require.NoError(t, err)
-			_, err = repo.CreateTimespan(ctx, ts2)
+			_, err = repo.CreateTimespan(ctx, testScope, ts2)
 			require.NoError(t, err)
 
-			d1, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[0]})
+			d1, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{tags[0]})
 			require.NoError(t, err)
 			require.Equal(t, time.Hour, d1)
 
-			d2, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[1]})
+			d2, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{tags[1]})
 			require.NoError(t, err)
 			require.Equal(t, 3*time.Hour, d2)
 
-			d3, err := repo.GetTotalDurationByTags(ctx, tags)
+			d3, err := repo.GetTotalDurationByTags(ctx, testScope, tags)
 			require.NoError(t, err)
 			require.Equal(t, 3*time.Hour, d3)
 
-			_, err = repo.GetTotalDurationByTags(ctx, []uuid.UUID{uuid.New()})
+			_, err = repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{uuid.New()})
 			require.NoError(t, err)
 
-			d4, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
+			d4, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{})
 			require.NoError(t, err)
 			require.Equal(t, 0*time.Hour, d4)
 
-			d5, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{tags[3]})
+			d5, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{tags[3]})
 			require.NoError(t, err)
 			require.Equal(t, 0*time.Hour, d5)
 		})
@@ -185,19 +185,19 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 			base := time.Now()
 			for i := range 5 {
-				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+				_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{
 					Name:      fmt.Sprintf("timespan-%d", i),
 					StartTime: base.Add(time.Duration(i) * time.Hour),
 					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 2, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 0})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
 
-			page2, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 2, Offset: 2})
+			page2, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 2})
 			require.NoError(t, err)
 			require.Len(t, page2.Data, 2)
 			require.Equal(t, 5, page2.TotalCount)
@@ -215,13 +215,13 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 
 			base := time.Now()
-			_, _ = repo.CreateTimespan(ctx, model.Timespan{
+			_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{
 				Name:      "only",
 				StartTime: base,
 				EndTime:   base.Add(time.Hour),
 			})
 
-			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 10, Offset: 100})
+			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 100})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 1, page.TotalCount)
@@ -232,14 +232,14 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 			base := time.Now()
 			for i := range 5 {
-				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+				_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{
 					Name:      fmt.Sprintf("timespan-%d", i),
 					StartTime: base.Add(time.Duration(i) * time.Hour),
 					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 3, Offset: 3})
+			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 3, Offset: 3})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
@@ -248,7 +248,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
 			repo := newRepo(t)
 
-			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 10, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 0})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 0, page.TotalCount)
@@ -259,14 +259,14 @@ func TestTimespanRepositoryContract(t *testing.T) {
 
 			base := time.Now()
 			for i := range 5 {
-				_, _ = repo.CreateTimespan(ctx, model.Timespan{
+				_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{
 					Name:      fmt.Sprintf("timespan-%d", i),
 					StartTime: base.Add(time.Duration(i) * time.Hour),
 					EndTime:   base.Add(time.Duration(i+1) * time.Hour),
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, model.PaginationParams{Limit: 1, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 1, Offset: 0})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 1)
 			require.Equal(t, 5, page.TotalCount)

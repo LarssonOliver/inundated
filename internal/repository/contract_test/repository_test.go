@@ -12,10 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+
 func seedTags(
 	t *testing.T,
 	ctx context.Context,
 	repo repository.TagRepository,
+	scope model.OwnerScope,
 	n int,
 ) []uuid.UUID {
 	t.Helper()
@@ -26,7 +29,7 @@ func seedTags(
 			Name:  fmt.Sprintf("tag-%d", i),
 			Color: "#123456",
 		}
-		created, err := repo.CreateTag(ctx, tag)
+		created, err := repo.CreateTag(ctx, scope, tag)
 		require.NoError(t, err)
 		ids[i] = created.Id
 	}
@@ -43,10 +46,10 @@ func seedOrphanResources(
 ) {
 	t.Helper()
 
-	seedTags(t, ctx, repo, nTags)
+	seedTags(t, ctx, repo, model.UnownedScope(), nTags)
 
 	for i := range nProjects {
-		_, err := repo.CreateProject(ctx, model.Project{
+		_, err := repo.CreateProject(ctx, model.UnownedScope(), model.Project{
 			Name:  fmt.Sprintf("project-%d", i),
 			Color: "#123456",
 		})
@@ -56,7 +59,7 @@ func seedOrphanResources(
 	base := time.Now().UTC().Truncate(time.Millisecond)
 	for i := range nTimespans {
 		start := base.Add(time.Duration(i) * time.Hour)
-		_, err := repo.CreateTimespan(ctx, model.Timespan{
+		_, err := repo.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{
 			Name:      fmt.Sprintf("timespan-%d", i),
 			StartTime: start,
 			EndTime:   start.Add(30 * time.Minute),

@@ -45,85 +45,85 @@ func (m *MockRepository) UpdateUser(ctx context.Context, user model.User) (model
 	return args.Get(0).(model.User), args.Error(1)
 }
 
-func (m *MockRepository) GetTag(ctx context.Context, id uuid.UUID) (model.Tag, error) {
-	args := m.Called(ctx, id)
+func (m *MockRepository) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
+	args := m.Called(ctx, scope, id)
 	return args.Get(0).(model.Tag), args.Error(1)
 }
 
-func (m *MockRepository) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
-	args := m.Called(ctx, params)
+func (m *MockRepository) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Tag]), args.Error(1)
 }
 
-func (m *MockRepository) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	args := m.Called(ctx, tag)
+func (m *MockRepository) CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
+	args := m.Called(ctx, scope, tag)
 	return args.Get(0).(model.Tag), args.Error(1)
 }
 
-func (m *MockRepository) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	args := m.Called(ctx, tag)
+func (m *MockRepository) UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
+	args := m.Called(ctx, scope, tag)
 	return args.Get(0).(model.Tag), args.Error(1)
 }
 
-func (m *MockRepository) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return m.Called(ctx, id).Error(0)
+func (m *MockRepository) DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return m.Called(ctx, scope, id).Error(0)
 }
 
-func (m *MockRepository) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
-	args := m.Called(ctx, id)
+func (m *MockRepository) GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+	args := m.Called(ctx, scope, id)
 	return args.Get(0).(model.Project), args.Error(1)
 }
 
-func (m *MockRepository) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
-	args := m.Called(ctx, params)
+func (m *MockRepository) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
+	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Project]), args.Error(1)
 }
 
-func (m *MockRepository) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	args := m.Called(ctx, project)
+func (m *MockRepository) CreateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
+	args := m.Called(ctx, scope, project)
 	return args.Get(0).(model.Project), args.Error(1)
 }
 
-func (m *MockRepository) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	args := m.Called(ctx, project)
+func (m *MockRepository) UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
+	args := m.Called(ctx, scope, project)
 	return args.Get(0).(model.Project), args.Error(1)
 }
 
-func (m *MockRepository) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	return m.Called(ctx, id).Error(0)
+func (m *MockRepository) DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return m.Called(ctx, scope, id).Error(0)
 }
 
-func (m *MockRepository) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
-	args := m.Called(ctx, id)
+func (m *MockRepository) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
+	args := m.Called(ctx, scope, id)
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	args := m.Called(ctx, params)
+func (m *MockRepository) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Timespan]), args.Error(1)
 }
 
-func (m *MockRepository) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	args := m.Called(ctx, timespan)
+func (m *MockRepository) CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
+	args := m.Called(ctx, scope, timespan)
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	args := m.Called(ctx, timespan)
+func (m *MockRepository) UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
+	args := m.Called(ctx, scope, timespan)
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	return m.Called(ctx, id).Error(0)
+func (m *MockRepository) DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return m.Called(ctx, scope, id).Error(0)
 }
 
-func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
-	args := m.Called(ctx, tagIds)
+func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
+	args := m.Called(ctx, scope, tagIds)
 	return args.Get(0).(time.Duration), args.Error(1)
 }
 
-func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
-	args := m.Called(ctx, tagIds, buckets)
+func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+	args := m.Called(ctx, scope, tagIds, buckets)
 	return args.Get(0).([]model.BucketValue), args.Error(1)
 }
 

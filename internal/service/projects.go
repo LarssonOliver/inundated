@@ -8,7 +8,9 @@ import (
 )
 
 func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *ProjectServiceGetIncludes) (model.Project, error) {
-	project, err := s.repository.GetProject(ctx, id)
+	scope := ownerScope(ctx)
+
+	project, err := s.repository.GetProject(ctx, scope, id)
 
 	if err != nil {
 		return model.Project{}, model.ErrNotFound
@@ -16,7 +18,7 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 
 	if includes != nil {
 		if includes.TotalTime && project.TagIds != nil && len(project.TagIds) > 0 {
-			totalTime, err := s.repository.GetTotalDurationByTags(ctx, project.TagIds)
+			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, project.TagIds)
 			if err != nil {
 				return model.Project{}, model.ErrNotFound
 			}
@@ -28,18 +30,22 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 }
 
 func (s *ServiceImpl) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
-	return s.repository.ListProjects(ctx, params)
+	scope := ownerScope(ctx)
+	return s.repository.ListProjects(ctx, scope, params)
 }
 
 func (s *ServiceImpl) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
+	scope := ownerScope(ctx)
 	project.Id = uuid.New()
-	return s.repository.CreateProject(ctx, project)
+	return s.repository.CreateProject(ctx, scope, project)
 }
 
 func (s *ServiceImpl) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	return s.repository.UpdateProject(ctx, project)
+	scope := ownerScope(ctx)
+	return s.repository.UpdateProject(ctx, scope, project)
 }
 
 func (s *ServiceImpl) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	return s.repository.DeleteProject(ctx, id)
+	scope := ownerScope(ctx)
+	return s.repository.DeleteProject(ctx, scope, id)
 }

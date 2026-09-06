@@ -10,7 +10,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Project, error) {
+func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 	if id == uuid.Nil {
 		return model.Project{}, fmt.Errorf("GetProject: id: %w", model.ErrInvalidArgument)
 	}
@@ -36,7 +36,7 @@ func (r *PostgresStore) GetProject(ctx context.Context, id uuid.UUID) (model.Pro
 	return p, nil
 }
 
-func (r *PostgresStore) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
 	const countQ = `
 		SELECT COUNT(*)
 		FROM projects
@@ -94,7 +94,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, params model.Paginatio
 	}, nil
 }
 
-func (r *PostgresStore) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 	if project.Name == "" {
 		return model.Project{}, fmt.Errorf("CreateProject: name must not be empty: %w", model.ErrInvalidArgument)
 	}
@@ -121,7 +121,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, project model.Project
 	return created, nil
 }
 
-func (r *PostgresStore) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
+func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 	if project.Id == uuid.Nil {
 		return model.Project{}, fmt.Errorf("UpdateProject: id: %w", model.ErrInvalidArgument)
 	}
@@ -151,7 +151,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, project model.Project
 	return updated, nil
 }
 
-func (r *PostgresStore) DeleteProject(ctx context.Context, id uuid.UUID) error {
+func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
 		return fmt.Errorf("DeleteProject: id: %w", model.ErrInvalidArgument)
 	}

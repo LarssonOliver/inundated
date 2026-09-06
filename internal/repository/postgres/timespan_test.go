@@ -52,7 +52,7 @@ func TestGetTimespan_Success(t *testing.T) {
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.GetTimespan(ctx, ts.Id)
+	got, err := repo.GetTimespan(ctx, testScope, ts.Id)
 	require.NoError(t, err)
 	assert.Equal(t, ts.Id, got.Id)
 	assert.Equal(t, ts.Name, got.Name)
@@ -70,14 +70,14 @@ func TestGetTimespan_NotFound(t *testing.T) {
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows(timespanCols))
 
-	_, err := repo.GetTimespan(ctx, id)
+	_, err := repo.GetTimespan(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestGetTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	_, err := repo.GetTimespan(context.Background(), uuid.Nil)
+	_, err := repo.GetTimespan(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -107,7 +107,7 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 	expectTimespanTagsQuery(mock, ts1.Id, ts1.TagIds)
 	expectTimespanTagsQuery(mock, ts2.Id, ts2.TagIds)
 
-	page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
 
 	require.NoError(t, err)
 
@@ -136,7 +136,7 @@ func TestListTimespans_WithPaginationParams(t *testing.T) {
 
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	page, err := repo.ListTimespans(ctx, model.PaginationParams{
+	page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{
 		Limit:  1,
 		Offset: 1,
 	})
@@ -165,7 +165,7 @@ func TestListTimespans_Empty(t *testing.T) {
 			pgxmock.NewRows(timespanCols),
 		)
 
-	page, err := repo.ListTimespans(ctx, model.DefaultPaginationParams())
+	page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
 
 	require.NoError(t, err)
 
@@ -186,7 +186,7 @@ func TestCreateTimespan_Success(t *testing.T) {
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.CreateTimespan(ctx, ts)
+	got, err := repo.CreateTimespan(ctx, testScope, ts)
 	require.NoError(t, err)
 	assert.Equal(t, ts.Id, got.Id)
 	assert.ElementsMatch(t, ts.TagIds, got.TagIds)
@@ -205,7 +205,7 @@ func TestCreateTimespan_GeneratesIdWhenNil(t *testing.T) {
 			AddRow(generatedId, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, generatedId, ts.TagIds)
 
-	got, err := repo.CreateTimespan(ctx, ts)
+	got, err := repo.CreateTimespan(ctx, testScope, ts)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
 }
@@ -214,7 +214,7 @@ func TestCreateTimespan_ZeroStartTime(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.StartTime = time.Time{}
-	_, err := repo.CreateTimespan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -223,7 +223,7 @@ func TestCreateTimespan_EndTimeBeforeStartTime(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.EndTime = ts.StartTime.Add(-1 * time.Minute)
-	_, err := repo.CreateTimespan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -232,7 +232,7 @@ func TestCreateTimespan_EndTimeEqualToStartTime(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.EndTime = ts.StartTime
-	_, err := repo.CreateTimespan(context.Background(), ts)
+	_, err := repo.CreateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -249,7 +249,7 @@ func TestCreateTimespan_ZeroEndTimeAllowed(t *testing.T) {
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	_, err := repo.CreateTimespan(ctx, ts)
+	_, err := repo.CreateTimespan(ctx, testScope, ts)
 	require.NoError(t, err)
 }
 
@@ -267,7 +267,7 @@ func TestUpdateTimespan_Success(t *testing.T) {
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
 
-	got, err := repo.UpdateTimespan(ctx, ts)
+	got, err := repo.UpdateTimespan(ctx, testScope, ts)
 	require.NoError(t, err)
 	assert.Equal(t, "renamed session", got.Name)
 	assert.ElementsMatch(t, ts.TagIds, got.TagIds)
@@ -282,7 +282,7 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime).
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := repo.UpdateTimespan(ctx, ts)
+	_, err := repo.UpdateTimespan(ctx, testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
@@ -291,7 +291,7 @@ func TestUpdateTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.Id = uuid.Nil
-	_, err := repo.UpdateTimespan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -300,7 +300,7 @@ func TestUpdateTimespan_ZeroStartTime(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.StartTime = time.Time{}
-	_, err := repo.UpdateTimespan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -309,7 +309,7 @@ func TestUpdateTimespan_EndTimeBeforeStartTime(t *testing.T) {
 	repo, _ := newMock(t)
 	ts := aTimespan()
 	ts.EndTime = ts.StartTime.Add(-time.Second)
-	_, err := repo.UpdateTimespan(context.Background(), ts)
+	_, err := repo.UpdateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -325,7 +325,7 @@ func TestDeleteTimespan_Success(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	require.NoError(t, repo.DeleteTimespan(ctx, id))
+	require.NoError(t, repo.DeleteTimespan(ctx, testScope, id))
 }
 
 func TestDeleteTimespan_NotFound(t *testing.T) {
@@ -337,14 +337,14 @@ func TestDeleteTimespan_NotFound(t *testing.T) {
 		WithArgs(id).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
-	err := repo.DeleteTimespan(ctx, id)
+	err := repo.DeleteTimespan(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestDeleteTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
-	err := repo.DeleteTimespan(context.Background(), uuid.Nil)
+	err := repo.DeleteTimespan(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -358,7 +358,7 @@ func TestGetTotalDurationByTags_Success(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(dur(2 * time.Hour)))
 
-	result, err := repo.GetTotalDurationByTags(ctx, ids)
+	result, err := repo.GetTotalDurationByTags(ctx, testScope, ids)
 	require.NoError(t, err)
 	require.Equal(t, 2*time.Hour, result)
 }
@@ -373,7 +373,7 @@ func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(nil))
 
-	_, err := repo.GetTotalDurationByTags(ctx, id)
+	_, err := repo.GetTotalDurationByTags(ctx, testScope, id)
 	require.NoError(t, err)
 }
 
@@ -381,7 +381,7 @@ func TestGetTotalDurationByTags_EmptyList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)
 
-	result, err := repo.GetTotalDurationByTags(ctx, []uuid.UUID{})
+	result, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{})
 	require.NoError(t, err)
 	require.Equal(t, 0*time.Hour, result)
 }
@@ -390,7 +390,7 @@ func TestGetTotalDurationByTags_NilList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)
 
-	out, err := repo.GetTotalDurationByTags(ctx, nil)
+	out, err := repo.GetTotalDurationByTags(ctx, testScope, nil)
 	require.NoError(t, err)
 	require.Equal(t, 0*time.Hour, out)
 }
@@ -412,7 +412,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_Success(t *testing.T) {
 			AddRow(buckets[0].Start, buckets[0].End, float64(45*60)).
 			AddRow(buckets[1].Start, buckets[1].End, float64(75*60)))
 
-	got, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	got, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, tagIDs, buckets)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, buckets[0], got[0].Bucket)
@@ -429,7 +429,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_InvalidBucket(t *testing.T) {
 		{Start: base, End: base},
 	}
 
-	_, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), []uuid.UUID{uuid.New()}, buckets)
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), testScope, []uuid.UUID{uuid.New()}, buckets)
 	require.Error(t, err)
 	require.ErrorIs(t, err, model.ErrInvalidArgument)
 }
@@ -443,7 +443,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_EmptyTagsReturnsZeroPerBucket(t *tes
 		{Start: base, End: base.Add(1 * time.Hour)},
 	}
 
-	got, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), nil, buckets)
+	got, err := repo.AggregateTimeSpentByTagsAndBuckets(context.Background(), testScope, nil, buckets)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, buckets[0], got[0].Bucket)
@@ -466,7 +466,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_QueryError(t *testing.T) {
 		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}).
 		WillReturnError(errors.New("db down"))
 
-	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, tagIDs, buckets)
 	require.Error(t, err)
 }
 
@@ -485,6 +485,6 @@ func TestAggregateTimeSpentByTagsAndBuckets_UsesCoarseBucketWindowPrefilter(t *t
 		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
 			AddRow(buckets[0].Start, buckets[0].End, float64(0)))
 
-	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, tagIDs, buckets)
+	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, tagIDs, buckets)
 	require.NoError(t, err)
 }
