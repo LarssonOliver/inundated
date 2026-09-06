@@ -1,8 +1,6 @@
 BEGIN;
 
--- Ownership of a resource. NULL means the resource predates user support
--- (or was created while running in userless mode); the first user to log in
--- adopts every such row. See CreateUserAdoptingOrphans in the postgres repo.
+-- Resource owner. NULL rows predate user support; the first user adopts them.
 
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS user_id UUID DEFAULT NULL;
 ALTER TABLE tags ADD CONSTRAINT tags_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id);
