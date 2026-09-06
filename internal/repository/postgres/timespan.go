@@ -38,24 +38,27 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 }
 
 func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	const countQ = `
+	ownerSQL, ownerArgs := ownerPredicate("user_id", scope, 1)
+	countQ := `
 		SELECT COUNT(*)
 		FROM timespans
-		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1`
+		WHERE deleted_at IS NULL AND ` + ownerSQL
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ, scope.UserID()).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, ownerArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
 	}
 
-	const dataQ = `
+	dataOwnerSQL, _ := ownerPredicate("user_id", scope, 3)
+	dataQ := `
 		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
-		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
+		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
 		ORDER BY start_time DESC
-		LIMIT $2 OFFSET $3`
+		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, dataQ, scope.UserID(), params.Limit, params.Offset)
+	args := append([]any{params.Limit, params.Offset}, ownerArgs...)
+	rows, err := r.db.Query(ctx, dataQ, args...)
 	if err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans: %w", err)
 	}
@@ -232,19 +235,21 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 		return 0, nil
 	}
 
-	const q = `
+	ownerSQL, ownerArgs := ownerPredicate("t.user_id", scope, 2)
+	q := `
 		SELECT
 			SUM(t.end_time - t.start_time) AS total_time
 		FROM timespans t
 		WHERE t.deleted_at IS NULL
-			AND t.user_id IS NOT DISTINCT FROM $2
+			AND ` + ownerSQL + `
 			AND EXISTS (
 			SELECT 1 FROM timespan_tags tt
 			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 		)`
 
 	var duration *time.Duration
-	err := r.db.QueryRow(ctx, q, tagIds, scope.UserID()).Scan(&duration)
+	args := append([]any{tagIds}, ownerArgs...)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&duration)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
 		return 0, nil
 	}
@@ -280,7 +285,8 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 		bucketEnds[i] = bucket.End
 	}
 
-	const q = `
+	ownerSQL, ownerArgs := ownerPredicate("t.user_id", scope, 4)
+	q := `
 		WITH input_buckets AS (
 			SELECT b_start, b_end, ord
 			FROM unnest($2::timestamptz[], $3::timestamptz[]) WITH ORDINALITY AS b(b_start, b_end, ord)
@@ -294,7 +300,7 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			FROM timespans t
 			CROSS JOIN bucket_window bw
 			WHERE t.deleted_at IS NULL
-				AND t.user_id IS NOT DISTINCT FROM $4
+				AND ` + ownerSQL + `
 				AND EXISTS (
 				SELECT 1 FROM timespan_tags tt
 				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
@@ -315,7 +321,8 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 		GROUP BY ib.ord, ib.b_start, ib.b_end
 		ORDER BY ib.ord`
 
-	rows, err := r.db.Query(ctx, q, tagIds, bucketStarts, bucketEnds, scope.UserID())
+	args := append([]any{tagIds, bucketStarts, bucketEnds}, ownerArgs...)
+	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets: %w", err)
 	}
