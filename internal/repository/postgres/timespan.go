@@ -236,13 +236,15 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 		SELECT
 			SUM(t.end_time - t.start_time) AS total_time
 		FROM timespans t
-		WHERE t.deleted_at IS NULL AND EXISTS (
+		WHERE t.deleted_at IS NULL
+			AND t.user_id IS NOT DISTINCT FROM $2
+			AND EXISTS (
 			SELECT 1 FROM timespan_tags tt
 			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 		)`
 
 	var duration *time.Duration
-	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
+	err := r.db.QueryRow(ctx, q, tagIds, scope.UserID()).Scan(&duration)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
 		return 0, nil
 	}
@@ -291,7 +293,9 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			SELECT t.id, t.start_time, t.end_time
 			FROM timespans t
 			CROSS JOIN bucket_window bw
-			WHERE t.deleted_at IS NULL AND EXISTS (
+			WHERE t.deleted_at IS NULL
+				AND t.user_id IS NOT DISTINCT FROM $4
+				AND EXISTS (
 				SELECT 1 FROM timespan_tags tt
 				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
@@ -311,7 +315,7 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 		GROUP BY ib.ord, ib.b_start, ib.b_end
 		ORDER BY ib.ord`
 
-	rows, err := r.db.Query(ctx, q, tagIds, bucketStarts, bucketEnds)
+	rows, err := r.db.Query(ctx, q, tagIds, bucketStarts, bucketEnds, scope.UserID())
 	if err != nil {
 		return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets: %w", err)
 	}
