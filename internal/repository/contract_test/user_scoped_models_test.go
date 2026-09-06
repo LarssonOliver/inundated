@@ -71,6 +71,58 @@ func modelsWithUserIDField(t *testing.T, dir string) []string {
 	return names
 }
 
+// Each user-scoped model must have a repository contract isolation subtest,
+// named "<memory|postgres>ScopeIsolation", proving cross-owner access is denied.
+// This fails if a user-scoped resource is added without scoping its queries.
+func TestUserScopedModelsHaveIsolationCoverage(t *testing.T) {
+	for modelName := range userScopedModels {
+		t.Run(modelName, func(t *testing.T) {
+			require.Truef(t, isolationSubtestExists(t, modelName),
+				"Test%sRepositoryContract needs a t.Run(repoName+\"ScopeIsolation\", …) subtest "+
+					"proving cross-owner access is denied", modelName)
+		})
+	}
+}
+
+// isolationSubtestExists reports whether Test<model>RepositoryContract in this
+// package registers a subtest named "<repoName>ScopeIsolation".
+func isolationSubtestExists(t *testing.T, modelName string) bool {
+	t.Helper()
+
+	entries, err := os.ReadDir(".")
+	require.NoError(t, err)
+
+	fnName := "Test" + modelName + "RepositoryContract"
+
+	fset := token.NewFileSet()
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, entry.Name(), nil, 0)
+		require.NoError(t, err)
+
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Name.Name != fnName {
+				continue
+			}
+			var found bool
+			ast.Inspect(fn, func(n ast.Node) bool {
+				bl, ok := n.(*ast.BasicLit)
+				if ok && bl.Kind == token.STRING && strings.Contains(bl.Value, "ScopeIsolation") {
+					found = true
+				}
+				return !found
+			})
+			if found {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func isPointerToUUID(expr ast.Expr) bool {
 	star, ok := expr.(*ast.StarExpr)
 	if !ok {
