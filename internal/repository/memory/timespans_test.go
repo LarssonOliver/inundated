@@ -41,6 +41,46 @@ func TestMemoryStore_Timespan_ScopeIsolation(t *testing.T) {
 	require.Equal(t, "x", got.Name)
 }
 
+func TestMemoryStore_Aggregates_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	m := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	tagA, err := m.CreateTag(ctx, a, model.Tag{Name: "a", Color: "#FFFFFF"})
+	require.NoError(t, err)
+	tagB, err := m.CreateTag(ctx, b, model.Tag{Name: "b", Color: "#FFFFFF"})
+	require.NoError(t, err)
+
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err = m.CreateTimespan(ctx, a, model.Timespan{
+		Name: "a", StartTime: base.Add(15 * time.Minute), EndTime: base.Add(45 * time.Minute), TagIds: []uuid.UUID{tagA.Id},
+	})
+	require.NoError(t, err)
+	_, err = m.CreateTimespan(ctx, b, model.Timespan{
+		Name: "b", StartTime: base, EndTime: base.Add(1 * time.Hour), TagIds: []uuid.UUID{tagB.Id},
+	})
+	require.NoError(t, err)
+
+	durA, err := m.GetTotalDurationByTags(ctx, a, []uuid.UUID{tagA.Id})
+	require.NoError(t, err)
+	require.Equal(t, 30*time.Minute, durA)
+
+	durCross, err := m.GetTotalDurationByTags(ctx, a, []uuid.UUID{tagB.Id})
+	require.NoError(t, err)
+	require.Equal(t, time.Duration(0), durCross)
+
+	buckets := []model.BucketRange{{Start: base, End: base.Add(1 * time.Hour)}}
+
+	got, err := m.AggregateTimeSpentByTagsAndBuckets(ctx, a, []uuid.UUID{tagA.Id}, buckets)
+	require.NoError(t, err)
+	require.InDelta(t, 30*60, got[0].Value, 0.0001)
+
+	cross, err := m.AggregateTimeSpentByTagsAndBuckets(ctx, a, []uuid.UUID{tagB.Id}, buckets)
+	require.NoError(t, err)
+	require.InDelta(t, 0.0, cross[0].Value, 0.0001)
+}
+
 func TestTimespanStore_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
 

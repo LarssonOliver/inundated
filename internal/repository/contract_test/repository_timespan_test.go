@@ -180,6 +180,36 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Equal(t, 0*time.Hour, d5)
 		})
 
+		t.Run(repoName+"GetTotalDurationByTags_IsScoped", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			tagA := seedTags(t, ctx, repo, scopeA, 1)[0]
+			tagB := seedTags(t, ctx, repo, scopeB, 1)[0]
+
+			start := time.Now().UTC().Truncate(time.Second)
+			_, err := repo.CreateTimespan(ctx, scopeA, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour), TagIds: []uuid.UUID{tagA},
+			})
+			require.NoError(t, err)
+			_, err = repo.CreateTimespan(ctx, scopeB, model.Timespan{
+				Name: "b", StartTime: start, EndTime: start.Add(2 * time.Hour), TagIds: []uuid.UUID{tagB},
+			})
+			require.NoError(t, err)
+
+			durA, err := repo.GetTotalDurationByTags(ctx, scopeA, []uuid.UUID{tagA})
+			require.NoError(t, err)
+			require.Equal(t, time.Hour, durA)
+
+			// even asking for B's tag under scope A yields nothing
+			durCross, err := repo.GetTotalDurationByTags(ctx, scopeA, []uuid.UUID{tagB})
+			require.NoError(t, err)
+			require.Equal(t, time.Duration(0), durCross)
+		})
+
 		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {
 			repo := newRepo(t)
 

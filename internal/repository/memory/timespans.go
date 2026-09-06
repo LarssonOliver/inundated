@@ -138,6 +138,9 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, scope model.Ow
 	timespanIds := []uuid.UUID{}
 	for _, inputTagId := range tagIds {
 		for _, timespan := range t.timespans {
+			if !matchesScope(timespan.UserId, scope) {
+				continue
+			}
 			if slices.Contains(timespan.TagIds, inputTagId) && !slices.Contains(timespanIds, timespan.Id) {
 				timespanIds = append(timespanIds, timespan.Id)
 			}
@@ -183,6 +186,9 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 	defer t.mu.RUnlock()
 
 	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) {
+			continue
+		}
 		if !timespanHasAnyTag(timespan.TagIds, tagSet) {
 			continue
 		}
