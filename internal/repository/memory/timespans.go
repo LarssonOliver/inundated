@@ -18,7 +18,7 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 	var tagIds []uuid.UUID
 
 	if timespan.TagIds != nil {
-		if !t.tagsExist(ctx, timespan.TagIds) {
+		if !t.tagsExist(ctx, scope, timespan.TagIds) {
 			return model.Timespan{}, model.ErrInvalidReference
 		}
 
@@ -86,7 +86,7 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
-	if timespan.TagIds != nil && !t.tagsExist(ctx, timespan.TagIds) {
+	if timespan.TagIds != nil && !t.tagsExist(ctx, scope, timespan.TagIds) {
 		return model.Timespan{}, model.ErrInvalidReference
 	}
 
