@@ -62,15 +62,15 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 25, 0).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagCols).
 				AddRow(t1.Id, t1.Name, t1.Color, t1.UserId).
@@ -92,15 +92,15 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 1, 1).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagCols).
 				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId),
@@ -123,15 +123,15 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 25, 0).
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagCols),
 		)
@@ -142,6 +142,34 @@ func TestListTags_Empty(t *testing.T) {
 
 	assert.Empty(t, page.Data)
 	assert.Equal(t, 0, page.TotalCount)
+}
+
+func TestListTags_UnownedScope(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tag := aTag()
+	tag.UserId = nil
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NULL`).
+		WithArgs().
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(1),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0).
+		WillReturnRows(
+			pgxmock.NewRows(tagCols).
+				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId),
+		)
+
+	page, err := repo.ListTags(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+	require.NoError(t, err)
+
+	assert.Len(t, page.Data, 1)
+	assert.Equal(t, 1, page.TotalCount)
 }
 
 // ── CreateTag ────────────────────────────────────────────────────────────────

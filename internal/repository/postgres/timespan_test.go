@@ -96,15 +96,15 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 
 	ts1, ts2 := aTimespan(), aTimespan()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 25, 0).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
 				AddRow(ts1.Id, ts1.Name, ts1.StartTime, ts1.EndTime, testScope.UserID()).
@@ -128,15 +128,15 @@ func TestListTimespans_WithPaginationParams(t *testing.T) {
 
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 1, 1).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
 				AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()),
@@ -161,15 +161,15 @@ func TestListTimespans_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
-		WithArgs(testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY start_time DESC LIMIT \$2 OFFSET \$3`).
-		WithArgs(testScope.UserID(), 25, 0).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols),
 		)
@@ -180,6 +180,35 @@ func TestListTimespans_Empty(t *testing.T) {
 
 	assert.Empty(t, page.Data)
 	assert.Equal(t, 0, page.TotalCount)
+}
+
+func TestListTimespans_UnownedScope(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	ts := aTimespan()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND user_id IS NULL`).
+		WithArgs().
+		WillReturnRows(
+			pgxmock.NewRows([]string{"count"}).
+				AddRow(1),
+		)
+
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0).
+		WillReturnRows(
+			pgxmock.NewRows(timespanCols).
+				AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, nil),
+		)
+
+	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
+
+	page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+	require.NoError(t, err)
+
+	assert.Len(t, page.Data, 1)
+	assert.Equal(t, 1, page.TotalCount)
 }
 
 // ── CreateTimespan ───────────────────────────────────────────────────────────
@@ -382,13 +411,27 @@ func TestGetTotalDurationByTags_Success(t *testing.T) {
 	repo, mock := newMock(t)
 
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
-	mock.ExpectQuery("SELECT .* FROM timespans t .* t.deleted_at IS NULL .* t.user_id IS NOT DISTINCT FROM \\$2").
-		WithArgs(ids, testScope.UserID()).
+	mock.ExpectQuery("SELECT .* FROM timespans t .* t.deleted_at IS NULL .* t.user_id = \\$2").
+		WithArgs(ids, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(dur(2 * time.Hour)))
 
 	result, err := repo.GetTotalDurationByTags(ctx, testScope, ids)
 	require.NoError(t, err)
 	require.Equal(t, 2*time.Hour, result)
+}
+
+func TestGetTotalDurationByTags_UnownedScope(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	ids := []uuid.UUID{uuid.New()}
+	mock.ExpectQuery("SELECT .* FROM timespans t .* t.deleted_at IS NULL .* t.user_id IS NULL").
+		WithArgs(ids).
+		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(dur(90 * time.Minute)))
+
+	result, err := repo.GetTotalDurationByTags(ctx, model.UnownedScope(), ids)
+	require.NoError(t, err)
+	require.Equal(t, 90*time.Minute, result)
 }
 
 func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
@@ -398,7 +441,7 @@ func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
 	id := []uuid.UUID{uuid.New()}
 
 	mock.ExpectQuery("SELECT .+ FROM timespans t .* t.deleted_at IS NULL").
-		WithArgs(id, testScope.UserID()).
+		WithArgs(id, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"total_time"}).AddRow(nil))
 
 	_, err := repo.GetTotalDurationByTags(ctx, testScope, id)
@@ -435,7 +478,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_Success(t *testing.T) {
 	}
 
 	mock.ExpectQuery(`WITH input_buckets AS`).
-		WithArgs(tagIDs, []time.Time{buckets[0].Start, buckets[1].Start}, []time.Time{buckets[0].End, buckets[1].End}, testScope.UserID()).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start, buckets[1].Start}, []time.Time{buckets[0].End, buckets[1].End}, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
 			AddRow(buckets[0].Start, buckets[0].End, float64(45*60)).
 			AddRow(buckets[1].Start, buckets[1].End, float64(75*60)))
@@ -447,6 +490,27 @@ func TestAggregateTimeSpentByTagsAndBuckets_Success(t *testing.T) {
 	require.Equal(t, buckets[1], got[1].Bucket)
 	require.InDelta(t, 45*60, got[0].Value, 0.0001)
 	require.InDelta(t, 75*60, got[1].Value, 0.0001)
+}
+
+func TestAggregateTimeSpentByTagsAndBuckets_UnownedScope(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tagIDs := []uuid.UUID{uuid.New()}
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	buckets := []model.BucketRange{
+		{Start: base, End: base.Add(1 * time.Hour)},
+	}
+
+	mock.ExpectQuery(`(?s)WITH input_buckets AS.*t.user_id IS NULL.*t.start_time < bw.max_end`).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}).
+		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
+			AddRow(buckets[0].Start, buckets[0].End, float64(30*60)))
+
+	got, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, model.UnownedScope(), tagIDs, buckets)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.InDelta(t, 30*60, got[0].Value, 0.0001)
 }
 
 func TestAggregateTimeSpentByTagsAndBuckets_InvalidBucket(t *testing.T) {
@@ -491,7 +555,7 @@ func TestAggregateTimeSpentByTagsAndBuckets_QueryError(t *testing.T) {
 	}
 
 	mock.ExpectQuery(`WITH input_buckets AS`).
-		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}, testScope.UserID()).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}, *testScope.UserID()).
 		WillReturnError(errors.New("db down"))
 
 	_, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, tagIDs, buckets)
@@ -508,8 +572,8 @@ func TestAggregateTimeSpentByTagsAndBuckets_UsesCoarseBucketWindowPrefilter(t *t
 		{Start: base, End: base.Add(1 * time.Hour)},
 	}
 
-	mock.ExpectQuery(`(?s)WITH input_buckets AS.*bucket_window AS.*t.user_id IS NOT DISTINCT FROM \$4.*t.start_time < bw.max_end.*t.end_time > bw.min_start`).
-		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}, testScope.UserID()).
+	mock.ExpectQuery(`(?s)WITH input_buckets AS.*bucket_window AS.*t.user_id = \$4.*t.start_time < bw.max_end.*t.end_time > bw.min_start`).
+		WithArgs(tagIDs, []time.Time{buckets[0].Start}, []time.Time{buckets[0].End}, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"bucket_start", "bucket_end", "value_seconds"}).
 			AddRow(buckets[0].Start, buckets[0].End, float64(0)))
 

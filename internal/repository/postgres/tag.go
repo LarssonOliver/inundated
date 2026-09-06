@@ -33,24 +33,27 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 }
 
 func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
-	const countQ = `
+	ownerSQL, ownerArgs := ownerPredicate("user_id", scope, 1)
+	countQ := `
 		SELECT COUNT(*)
 		FROM tags
-		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1`
+		WHERE deleted_at IS NULL AND ` + ownerSQL
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ, scope.UserID()).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, ownerArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("count tags: %w", err)
 	}
 
-	const q = `
+	dataOwnerSQL, _ := ownerPredicate("user_id", scope, 3)
+	q := `
 		SELECT id, name, color, user_id
 		FROM tags
-		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
+		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
 		ORDER BY name
-		LIMIT $2 OFFSET $3`
+		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, q, scope.UserID(), params.Limit, params.Offset)
+	args := append([]any{params.Limit, params.Offset}, ownerArgs...)
+	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("ListTags: %w", err)
 	}
