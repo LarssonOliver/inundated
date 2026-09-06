@@ -11,23 +11,20 @@ type User struct {
 	Name  string // Non-nullable - empty string if not provided
 }
 
-// UserIdentity is the set of claims about a user obtained from the OIDC
-// provider on login. Email is required; Name may be empty.
+// UserIdentity holds the claims from the OIDC provider. Email is required.
 type UserIdentity struct {
 	Sub   string
 	Email string
 	Name  string
 }
 
-// OrphanAdoption reports how many previously unowned resources were assigned to
-// a newly created first user. It is the zero value for every subsequent user.
+// OrphanAdoption counts the resources a first user claimed on creation.
 type OrphanAdoption struct {
 	Projects  int
 	Tags      int
 	Timespans int
 }
 
-// Total is the number of resources adopted across all resource types.
 func (a OrphanAdoption) Total() int {
 	return a.Projects + a.Tags + a.Timespans
 }

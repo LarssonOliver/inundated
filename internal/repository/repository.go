@@ -30,11 +30,9 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, user model.User) (model.User, error)
 	UpdateUser(ctx context.Context, user model.User) (model.User, error)
 
-	// CreateUserAdoptingOrphans creates a user, like CreateUser. Additionally,
-	// when the created user is the first user in the system, every project, tag
-	// and timespan with a NULL user_id is assigned to that user in the same
-	// atomic operation. The returned OrphanAdoption reports how many rows were
-	// claimed; it is the zero value for every user after the first.
+	// CreateUserAdoptingOrphans creates a user like CreateUser, and when it is
+	// the first user in the system atomically assigns every resource with a NULL
+	// user_id to it. See userScopedModels in the contract tests for the set.
 	CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
 }
 

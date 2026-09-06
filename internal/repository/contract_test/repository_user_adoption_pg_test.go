@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// countOwnedBy reports how many rows in the given table carry the given user_id.
+// countOwnedBy counts rows in table with the given user_id.
 func countOwnedBy(t *testing.T, ctx context.Context, pool *pgxpool.Pool, table string, userID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -28,16 +28,17 @@ func TestPostgres_CreateUserAdoptingOrphans_PopulatesUserIdColumn(t *testing.T) 
 	pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
 	repo := postgres.NewPostgresStoreFromPool(pool)
 
-	seedOrphanResources(t, ctx, repo, 2, 3, 4)
+	const perType = 3
+	seedOrphanResources(t, ctx, repo, perType, perType, perType)
 
 	user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
 	_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
-	require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 4}, adoption)
+	require.Equal(t, perType*len(userScopedModels), adoption.Total())
 
-	require.Equal(t, 3, countOwnedBy(t, ctx, pool, "projects", user.Id))
-	require.Equal(t, 2, countOwnedBy(t, ctx, pool, "tags", user.Id))
-	require.Equal(t, 4, countOwnedBy(t, ctx, pool, "timespans", user.Id))
+	for _, table := range userScopedModels {
+		require.Equal(t, perType, countOwnedBy(t, ctx, pool, table, user.Id), "table %q", table)
+	}
 }
 
 // Two logins racing to be the first must not split ownership: row locks in the
@@ -87,7 +88,6 @@ func TestPostgres_CreateUserAdoptingOrphans_ConcurrentFirstLoginsClaimOnce(t *te
 	require.Equal(t, 1, adopters, "exactly one racing user should adopt the orphans")
 	require.Equal(t, nProjects, countOwnedBy(t, ctx, pool, "projects", winner))
 
-	// No project should be left unowned.
 	var unowned int
 	require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM projects WHERE user_id IS NULL").Scan(&unowned))
 	require.Equal(t, 0, unowned)

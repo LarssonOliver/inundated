@@ -22,12 +22,8 @@ func (s *ServiceImpl) GetUserBySub(ctx context.Context, sub string) (model.User,
 	return s.repository.GetUserBySub(ctx, sub)
 }
 
-// GetOrCreateUserByIdentity implements [UserService].
-//
-// It reconciles the local user record with the claims from the OIDC provider:
-// a new subject is created (adopting orphaned resources when it is the first
-// user), and an existing user whose email or name has drifted from the identity
-// is updated. The returned user always reflects the identity.
+// GetOrCreateUserByIdentity reconciles the local user record with the OIDC
+// claims: unknown subjects are created, and a drifted email or name is updated.
 func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 	user, err := s.repository.GetUserBySub(ctx, identity.Sub)
 	if err != nil {
@@ -46,9 +42,6 @@ func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity mo
 	return s.repository.UpdateUser(ctx, user)
 }
 
-// createUserFromIdentity creates a brand new user. When it is the very first
-// user in the system, it also takes ownership of every resource that predates
-// user support.
 func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 	created, adoption, err := s.repository.CreateUserAdoptingOrphans(ctx, model.User{
 		Sub:   identity.Sub,

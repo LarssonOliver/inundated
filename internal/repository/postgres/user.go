@@ -42,12 +42,10 @@ func (r *PostgresStore) CreateUser(ctx context.Context, user model.User) (model.
 
 // CreateUserAdoptingOrphans implements [repository.UserRepository].
 //
-// The whole operation runs as a single statement so that the "is this the first
-// user" check and the ownership hand-over are atomic. Sibling CTEs do not see
-// new_user's insert, so is_first reflects the table state before this statement.
-// Two racing first logins therefore both compute is_first = true and both issue
-// the UPDATE; row locks serialise them, and the loser re-evaluates
-// "user_id IS NULL" and updates nothing. Whoever commits first adopts everything.
+// One statement keeps the first-user check and the hand-over atomic: sibling
+// CTEs don't see new_user's insert, so is_first reflects the pre-statement
+// state, and racing first logins serialise on the UPDATE row locks - the loser
+// re-checks "user_id IS NULL" and claims nothing.
 func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
 	if user.Sub == "" {
 		return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: sub must not be empty: %w", model.ErrInvalidArgument)

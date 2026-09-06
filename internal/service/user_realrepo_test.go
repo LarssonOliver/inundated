@@ -11,15 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Regression: a brand new user logging in used to fail because the service
-// created the user with only a sub, and the repository rejects an empty email.
-// GetOrCreateUserByIdentity must persist the full identity.
+// Regression: a first login used to fail because the service created the user
+// with only a sub, which the repository rejects for having no email.
 func TestUserService_GetOrCreateUserByIdentity_MemoryBacked(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewMemoryStore()
 	svc := service.NewService(store)
 
-	// Seed a resource that predates user support.
 	start := time.Now().UTC()
 	_, err := store.CreateTimespan(ctx, model.Timespan{Name: "old", StartTime: start, EndTime: start.Add(time.Hour)})
 	require.NoError(t, err)
@@ -32,7 +30,6 @@ func TestUserService_GetOrCreateUserByIdentity_MemoryBacked(t *testing.T) {
 	require.Equal(t, identity.Email, created.Email)
 	require.Equal(t, identity.Name, created.Name)
 
-	// The user is persisted and the first user adopted the orphan timespan.
 	persisted, err := store.GetUserBySub(ctx, identity.Sub)
 	require.NoError(t, err)
 	require.Equal(t, created.Id, persisted.Id)
@@ -43,7 +40,7 @@ func TestUserService_GetOrCreateUserByIdentity_MemoryBacked(t *testing.T) {
 	require.NotNil(t, page.Data[0].UserId)
 	require.Equal(t, created.Id, *page.Data[0].UserId)
 
-	// Logging in again with a drifted email updates the record in place.
+	// Re-login with a drifted email updates the record in place.
 	updated, err := svc.GetOrCreateUserByIdentity(ctx, model.UserIdentity{Sub: identity.Sub, Email: "new@example.com", Name: "Abc"})
 	require.NoError(t, err)
 	require.Equal(t, created.Id, updated.Id)
