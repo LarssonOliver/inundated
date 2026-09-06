@@ -283,6 +283,8 @@ func TestTimespanRepositoryContract(t *testing.T) {
 	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
 		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		return postgres.NewPostgresStoreFromPool(pool)
+		repo := postgres.NewPostgresStoreFromPool(pool)
+		seedScopeUser(t, ctx, repo, testScope)
+		return repo
 	})
 }

@@ -19,8 +19,8 @@ func TestGetTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(tag.Id).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(tag.Id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
@@ -34,13 +34,26 @@ func TestGetTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
 
 	_, err := repo.GetTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
+}
+
+func TestGetTag_OutOfScopeIsNotFound(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	id := uuid.New()
+
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
+
+	_, err := repo.GetTag(ctx, testScope, id)
+	require.ErrorIs(t, err, model.ErrNotFound)
 }
 
 func TestGetTag_NilId(t *testing.T) {
@@ -59,14 +72,15 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}).
 				AddRow(t1.Id, t1.Name, t1.Color).
@@ -88,14 +102,15 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 1, 1).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}).
 				AddRow(tag.Id, tag.Name, tag.Color),
@@ -118,14 +133,15 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1`).
+		WithArgs(testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0).
+	mock.ExpectQuery(`SELECT id, name, color FROM tags WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$1 ORDER BY name LIMIT \$2 OFFSET \$3`).
+		WithArgs(testScope.UserID(), 25, 0).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "name", "color"}),
 		)
@@ -145,8 +161,8 @@ func TestCreateTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`INSERT INTO tags`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
@@ -162,8 +178,8 @@ func TestCreateTag_GeneratesIdWhenNil(t *testing.T) {
 	tag := aTag()
 	tag.Id = uuid.Nil
 
-	mock.ExpectQuery(`INSERT INTO tags`).
-		WithArgs(pgxmock.AnyArg(), tag.Name, tag.Color).
+	mock.ExpectQuery(`INSERT INTO tags \(id, name, color, user_id\) VALUES \(\$1, \$2, \$3, \$4\)`).
+		WithArgs(pgxmock.AnyArg(), tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(uuid.New(), tag.Name, tag.Color))
 
@@ -189,8 +205,8 @@ func TestUpdateTag_Success(t *testing.T) {
 	tag := aTag()
 	tag.Name = "updated-name"
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}).
 			AddRow(tag.Id, tag.Name, tag.Color))
 
@@ -204,13 +220,26 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL`).
-		WithArgs(tag.Id, tag.Name, tag.Color).
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
 
 	_, err := repo.UpdateTag(ctx, testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
+}
+
+func TestUpdateTag_OutOfScopeIsNotFound(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	tag := aTag()
+
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$4`).
+		WithArgs(tag.Id, tag.Name, tag.Color, testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "name", "color"}))
+
+	_, err := repo.UpdateTag(ctx, testScope, tag)
+	require.ErrorIs(t, err, model.ErrNotFound)
 }
 
 func TestUpdateTag_NilId(t *testing.T) {
@@ -238,8 +267,8 @@ func TestDeleteTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteTag(ctx, testScope, id))
@@ -250,13 +279,25 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL`).
-		WithArgs(id).
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
+}
+
+func TestDeleteTag_OutOfScopeIsNotFound(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	id := uuid.New()
+
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
+		WithArgs(id, testScope.UserID()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+
+	require.ErrorIs(t, repo.DeleteTag(ctx, testScope, id), model.ErrNotFound)
 }
 
 func TestDeleteTag_NilId(t *testing.T) {

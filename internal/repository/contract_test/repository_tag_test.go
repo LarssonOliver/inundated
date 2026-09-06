@@ -173,6 +173,65 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.Equal(t, 5, page.TotalCount) // TotalCount is always the full count
 			require.Len(t, page.Data, 1)
 		})
+
+		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			tagA, err := repo.CreateTag(ctx, scopeA, model.Tag{Name: "a", Color: "#111111"})
+			require.NoError(t, err)
+			_, err = repo.CreateTag(ctx, scopeB, model.Tag{Name: "b", Color: "#222222"})
+			require.NoError(t, err)
+
+			// List is scoped
+			pageA, err := repo.ListTags(ctx, scopeA, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, pageA.Data, 1)
+			require.Equal(t, 1, pageA.TotalCount)
+			require.Equal(t, tagA.Id, pageA.Data[0].Id)
+
+			// Get across scope is a miss
+			_, err = repo.GetTag(ctx, scopeB, tagA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			// Update across scope is a miss
+			tagA.Name = "hijack"
+			_, err = repo.UpdateTag(ctx, scopeB, tagA)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			// Delete across scope is a miss
+			err = repo.DeleteTag(ctx, scopeB, tagA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			// The owner still sees an untouched tag
+			got, err := repo.GetTag(ctx, scopeA, tagA.Id)
+			require.NoError(t, err)
+			require.Equal(t, "a", got.Name)
+		})
+
+		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			user := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, user)
+
+			owned, err := repo.CreateTag(ctx, user, model.Tag{Name: "owned", Color: "#111111"})
+			require.NoError(t, err)
+			unowned, err := repo.CreateTag(ctx, model.UnownedScope(), model.Tag{Name: "unowned", Color: "#222222"})
+			require.NoError(t, err)
+
+			unownedPage, err := repo.ListTags(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, unownedPage.Data, 1)
+			require.Equal(t, unowned.Id, unownedPage.Data[0].Id)
+
+			_, err = repo.GetTag(ctx, model.UnownedScope(), owned.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+			_, err = repo.GetTag(ctx, user, unowned.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
 	}
 
 	// Memory
@@ -185,6 +244,8 @@ func TestTagRepositoryContract(t *testing.T) {
 	run(t, "postgres", func(t *testing.T) repository.Repository {
 		t.Parallel()
 		pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
-		return postgres.NewPostgresStoreFromPool(pool)
+		repo := postgres.NewPostgresStoreFromPool(pool)
+		seedScopeUser(t, ctx, repo, testScope)
+		return repo
 	})
 }

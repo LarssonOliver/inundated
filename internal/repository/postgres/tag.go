@@ -17,12 +17,12 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 	}
 
 	const q = `
-		SELECT id, name, color 
-		FROM tags 
-		WHERE id = $1 AND deleted_at IS NULL`
+		SELECT id, name, color
+		FROM tags
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var t model.Tag
-	err := r.db.QueryRow(ctx, q, id).Scan(&t.Id, &t.Name, &t.Color)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&t.Id, &t.Name, &t.Color)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
 	}
@@ -36,21 +36,21 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 	const countQ = `
 		SELECT COUNT(*)
 		FROM tags
-		WHERE deleted_at IS NULL`
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1`
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, scope.UserID()).Scan(&totalCount); err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("count tags: %w", err)
 	}
 
 	const q = `
 		SELECT id, name, color
-		FROM tags 
-		WHERE deleted_at IS NULL
+		FROM tags
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY name
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(ctx, q, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, q, scope.UserID(), params.Limit, params.Offset)
 	if err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("ListTags: %w", err)
 	}
@@ -87,12 +87,12 @@ func (r *PostgresStore) CreateTag(ctx context.Context, scope model.OwnerScope, t
 	}
 
 	const q = `
-		INSERT INTO tags (id, name, color)
-		VALUES ($1, $2, $3)
+		INSERT INTO tags (id, name, color, user_id)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, color`
 
 	var created model.Tag
-	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color).
+	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color, scope.UserID()).
 		Scan(&created.Id, &created.Name, &created.Color)
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("CreateTag: %w", err)
@@ -109,13 +109,13 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 	}
 
 	const q = `
-		UPDATE tags 
+		UPDATE tags
 		SET name = $2, color = $3
-		WHERE id = $1 AND deleted_at IS NULL
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $4
 		RETURNING id, name, color`
 
 	var updated model.Tag
-	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color).
+	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color, scope.UserID()).
 		Scan(&updated.Id, &updated.Name, &updated.Color)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, model.ErrNotFound)
@@ -132,11 +132,11 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 	}
 
 	const q = `
-		UPDATE tags 
+		UPDATE tags
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
-	res, err := r.db.Exec(ctx, q, id)
+	res, err := r.db.Exec(ctx, q, id, scope.UserID())
 	if err != nil {
 		return fmt.Errorf("DeleteTag: %w", err)
 	}

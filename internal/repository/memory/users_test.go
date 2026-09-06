@@ -262,15 +262,15 @@ func TestMemoryStore_CreateUserAdoptingOrphans_FirstUserClaimsResources(t *testi
 	require.NoError(t, err)
 	require.Equal(t, model.OrphanAdoption{Projects: 1, Tags: 1, Timespans: 1}, adoption)
 
-	gotTag, _ := store.GetTag(ctx, model.UnownedScope(), tag.Id)
+	gotTag, _ := store.GetTag(ctx, model.UserScope(user.Id), tag.Id)
 	require.NotNil(t, gotTag.UserId)
 	require.Equal(t, user.Id, *gotTag.UserId)
 
-	gotProject, _ := store.GetProject(ctx, model.UnownedScope(), project.Id)
+	gotProject, _ := store.GetProject(ctx, model.UserScope(user.Id), project.Id)
 	require.NotNil(t, gotProject.UserId)
 	require.Equal(t, user.Id, *gotProject.UserId)
 
-	gotTimespan, _ := store.GetTimespan(ctx, model.UnownedScope(), timespan.Id)
+	gotTimespan, _ := store.GetTimespan(ctx, model.UserScope(user.Id), timespan.Id)
 	require.NotNil(t, gotTimespan.UserId)
 	require.Equal(t, user.Id, *gotTimespan.UserId)
 }

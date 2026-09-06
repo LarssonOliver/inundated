@@ -12,6 +12,23 @@ import (
 
 var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
 
+func TestMemoryStore_Tag_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	tag, err := store.CreateTag(ctx, a, model.Tag{Name: "x", Color: "#123456"})
+	require.NoError(t, err)
+
+	_, err = store.GetTag(ctx, b, tag.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	page, err := store.ListTags(ctx, b, model.DefaultPaginationParams())
+	require.NoError(t, err)
+	require.Empty(t, page.Data)
+}
+
 func TestTagStore_CreateTag(t *testing.T) {
 	tests := []struct {
 		name    string

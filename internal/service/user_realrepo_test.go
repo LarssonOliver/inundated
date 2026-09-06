@@ -34,7 +34,7 @@ func TestUserService_GetOrCreateUserByIdentity_MemoryBacked(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, created.Id, persisted.Id)
 
-	page, err := store.ListTimespans(ctx, model.UnownedScope(), model.PaginationParams{Limit: 10})
+	page, err := store.ListTimespans(ctx, model.UserScope(created.Id), model.PaginationParams{Limit: 10})
 	require.NoError(t, err)
 	require.Len(t, page.Data, 1)
 	require.NotNil(t, page.Data[0].UserId)
