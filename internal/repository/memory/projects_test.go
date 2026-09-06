@@ -15,6 +15,35 @@ func ptrd(d time.Duration) *time.Duration {
 	return &d
 }
 
+func TestMemoryStore_Project_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	proj, err := store.CreateProject(ctx, a, model.Project{Name: "x", Color: "#123456"})
+	require.NoError(t, err)
+
+	_, err = store.GetProject(ctx, b, proj.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	page, err := store.ListProjects(ctx, b, model.DefaultPaginationParams())
+	require.NoError(t, err)
+	require.Empty(t, page.Data)
+	require.Equal(t, 0, page.TotalCount)
+
+	proj.Name = "hijack"
+	_, err = store.UpdateProject(ctx, b, proj)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	err = store.DeleteProject(ctx, b, proj.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	got, err := store.GetProject(ctx, a, proj.Id)
+	require.NoError(t, err)
+	require.Equal(t, "x", got.Name)
+}
+
 func TestProjectStore_CreateProject(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 

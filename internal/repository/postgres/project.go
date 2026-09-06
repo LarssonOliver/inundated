@@ -16,12 +16,12 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 	}
 
 	const q = `
-		SELECT id, name, color, time_budget 
-		FROM projects 
-		WHERE id = $1 AND deleted_at IS NULL`
+		SELECT id, name, color, time_budget
+		FROM projects
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
 	var p model.Project
-	err := r.db.QueryRow(ctx, q, id).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget)
+	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
 	}
@@ -40,21 +40,21 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 	const countQ = `
 		SELECT COUNT(*)
 		FROM projects
-		WHERE deleted_at IS NULL`
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1`
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, scope.UserID()).Scan(&totalCount); err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects count: %w", err)
 	}
 
 	const dataQ = `
 		SELECT id, name, color, time_budget
-		FROM projects 
-		WHERE deleted_at IS NULL
+		FROM projects
+		WHERE deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $1
 		ORDER BY name
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(ctx, dataQ, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, dataQ, scope.UserID(), params.Limit, params.Offset)
 	if err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects: %w", err)
 	}
@@ -103,18 +103,18 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 	}
 
 	const q = `
-		INSERT INTO projects (id, name, color, time_budget)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO projects (id, name, color, time_budget, user_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, name, color, time_budget`
 
 	var created model.Project
-	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget).
+	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
 		Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget)
 	if err != nil {
 		return model.Project{}, fmt.Errorf("CreateProject: %w", err)
 	}
 
-	if err := r.setProjectTags(ctx, created.Id, project.TagIds); err != nil {
+	if err := r.setProjectTags(ctx, scope, created.Id, project.TagIds); err != nil {
 		return model.Project{}, err
 	}
 	created.TagIds = project.TagIds
@@ -131,11 +131,11 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 
 	const q = `
 		UPDATE projects SET name = $2, color = $3, time_budget = $4
-		WHERE id = $1 AND deleted_at IS NULL
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $5
 		RETURNING id, name, color, time_budget`
 
 	var updated model.Project
-	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget).
+	err := r.db.QueryRow(ctx, q, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
 		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("UpdateProject %s: %w", project.Id, model.ErrNotFound)
@@ -144,7 +144,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 		return model.Project{}, fmt.Errorf("UpdateProject: %w", err)
 	}
 
-	if err := r.setProjectTags(ctx, updated.Id, project.TagIds); err != nil {
+	if err := r.setProjectTags(ctx, scope, updated.Id, project.TagIds); err != nil {
 		return model.Project{}, err
 	}
 	updated.TagIds = project.TagIds
@@ -159,9 +159,9 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	const q = `
 		UPDATE projects
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
 
-	res, err := r.db.Exec(ctx, q, id)
+	res, err := r.db.Exec(ctx, q, id, scope.UserID())
 	if err != nil {
 		return fmt.Errorf("DeleteProject: %w", err)
 	}
@@ -196,8 +196,30 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) 
 	return ids, rows.Err()
 }
 
+// tagsInScope reports whether every id refers to a live tag owned by scope.
+func (r *PostgresStore) tagsInScope(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (bool, error) {
+	if len(tagIds) == 0 {
+		return true, nil
+	}
+	const q = `
+		SELECT count(*) FROM tags
+		WHERE id = ANY($1) AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
+	var n int
+	if err := r.db.QueryRow(ctx, q, tagIds, scope.UserID()).Scan(&n); err != nil {
+		return false, fmt.Errorf("tagsInScope: %w", err)
+	}
+	return n == len(tagIds), nil
+}
+
 // setProjectTags replaces all tag associations for a project.
-func (r *PostgresStore) setProjectTags(ctx context.Context, projectId uuid.UUID, tagIds []uuid.UUID) error {
+func (r *PostgresStore) setProjectTags(ctx context.Context, scope model.OwnerScope, projectId uuid.UUID, tagIds []uuid.UUID) error {
+	ok, err := r.tagsInScope(ctx, scope, tagIds)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("setProjectTags: %w", model.ErrInvalidReference)
+	}
 	if _, err := r.db.Exec(ctx, `DELETE FROM project_tags WHERE project_id = $1`, projectId); err != nil {
 		return fmt.Errorf("setProjectTags delete: %w", err)
 	}

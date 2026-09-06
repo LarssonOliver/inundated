@@ -212,6 +212,67 @@ func TestProjectRepositoryContract(t *testing.T) {
 			require.Len(t, page.Data, 1)
 			require.Equal(t, 5, page.TotalCount)
 		})
+
+		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			projA, err := repo.CreateProject(ctx, scopeA, model.Project{Name: "a", Color: "#111111"})
+			require.NoError(t, err)
+			_, err = repo.CreateProject(ctx, scopeB, model.Project{Name: "b", Color: "#222222"})
+			require.NoError(t, err)
+
+			pageA, err := repo.ListProjects(ctx, scopeA, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, pageA.Data, 1)
+			require.Equal(t, 1, pageA.TotalCount)
+
+			_, err = repo.GetProject(ctx, scopeB, projA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			projA.Name = "hijack"
+			_, err = repo.UpdateProject(ctx, scopeB, projA)
+			require.ErrorIs(t, err, model.ErrNotFound)
+
+			err = repo.DeleteProject(ctx, scopeB, projA.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+
+		t.Run(repoName+"CannotAttachAnotherUsersTag", func(t *testing.T) {
+			repo := newRepo(t)
+			scopeA := model.UserScope(uuid.New())
+			scopeB := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scopeA)
+			seedScopeUser(t, ctx, repo, scopeB)
+
+			tagB := seedTags(t, ctx, repo, scopeB, 1)[0]
+
+			_, err := repo.CreateProject(ctx, scopeA, model.Project{
+				Name: "a", Color: "#111111", TagIds: []uuid.UUID{tagB},
+			})
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+		})
+
+		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
+			repo := newRepo(t)
+			user := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, user)
+
+			owned, err := repo.CreateProject(ctx, user, model.Project{Name: "owned", Color: "#111111"})
+			require.NoError(t, err)
+			_, err = repo.CreateProject(ctx, model.UnownedScope(), model.Project{Name: "unowned", Color: "#222222"})
+			require.NoError(t, err)
+
+			page, err := repo.ListProjects(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Len(t, page.Data, 1)
+
+			_, err = repo.GetProject(ctx, model.UnownedScope(), owned.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
+		})
 	}
 
 	// Memory
