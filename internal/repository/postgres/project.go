@@ -37,18 +37,18 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 }
 
 func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
-	ownerSQL, ownerArgs := ownerPredicate("user_id", scope, 1)
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
 	countQ := `
 		SELECT COUNT(*)
 		FROM projects
-		WHERE deleted_at IS NULL AND ` + ownerSQL
+		WHERE deleted_at IS NULL AND ` + countOwnerSQL
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ, ownerArgs...).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects count: %w", err)
 	}
 
-	dataOwnerSQL, _ := ownerPredicate("user_id", scope, 3)
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	dataQ := `
 		SELECT id, name, color, time_budget, user_id
 		FROM projects
@@ -56,7 +56,6 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
-	args := append([]any{params.Limit, params.Offset}, ownerArgs...)
 	rows, err := r.db.Query(ctx, dataQ, args...)
 	if err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects: %w", err)
@@ -241,7 +240,7 @@ func (r *PostgresStore) setProjectTags(ctx context.Context, q Querier, projectId
 			`INSERT INTO project_tags (project_id, tag_id) VALUES ($1, $2)`,
 			projectId, tagId,
 		); err != nil {
-			return fmt.Errorf("setProjectTags insert: %w", model.ErrInvalidReference)
+			return fmt.Errorf("setProjectTags insert: %w: %w", model.ErrInvalidReference, err)
 		}
 	}
 	return nil
