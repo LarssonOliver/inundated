@@ -68,13 +68,3 @@ func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model
 	}
 	return created, nil
 }
-
-// UpdateCurrentUser implements [Service].
-func (s *ServiceImpl) UpdateCurrentUser(ctx context.Context, user model.User) (model.User, error) {
-	current, err := s.GetCurrentUser(ctx)
-	if err != nil {
-		return model.User{}, err
-	}
-	user.Id = current.Id
-	return s.repository.UpdateUser(ctx, user)
-}

@@ -84,9 +84,9 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 
 	t.Run("redirect param is confined to a site-relative path", func(t *testing.T) {
 		cases := map[string]string{
-			"/dashboard":            "/dashboard",
-			"/projects/1?tab=notes": "/projects/1?tab=notes",
-			"":                      "/",
+			"/dashboard":                     "/dashboard",
+			"/projects/1?tab=notes":          "/projects/1?tab=notes",
+			"":                               "/",
 			"https://evil.example.com/phish": "/",
 			"//evil.example.com":             "/",
 			"/\\evil.example.com":            "/",

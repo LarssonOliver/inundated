@@ -52,8 +52,6 @@ components:
   schemas:
     User:
       $ref: "./schemas/users.yaml#/User"
-    UpdateUser:
-      $ref: "./schemas/users.yaml#/UpdateUser"
     Tag:
       $ref: "./schemas/tags.yaml#/Tag"
     CreateTag:

@@ -39,11 +39,6 @@ func (s *Server) GetCurrentUser(ctx context.Context, request GetCurrentUserReque
 	return s.handler.GetCurrentUser(ctx, request)
 }
 
-// UpdateCurrentUser implements [StrictServerInterface].
-func (s *Server) UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error) {
-	return s.handler.UpdateCurrentUser(ctx, request)
-}
-
 // CreateTag implements StrictServerInterface.
 func (s *Server) CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error) {
 	return s.handler.CreateTag(ctx, request)

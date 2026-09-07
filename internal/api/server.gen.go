@@ -28,9 +28,6 @@ type ServerInterface interface {
 	// Get current user
 	// (GET /api/me)
 	GetCurrentUser(w http.ResponseWriter, r *http.Request)
-	// Update current user
-	// (PUT /api/me)
-	UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams)
 	// List projects
 	// (GET /api/projects)
 	ListProjects(w http.ResponseWriter, r *http.Request, params ListProjectsParams)
@@ -106,12 +103,6 @@ func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request, params
 // Get current user
 // (GET /api/me)
 func (_ Unimplemented) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Update current user
-// (PUT /api/me)
-func (_ Unimplemented) UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -357,56 +348,6 @@ func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCurrentUser(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateCurrentUser operation middleware
-func (siw *ServerInterfaceWrapper) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UpdateCurrentUserParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
-		var XXSRFTOKEN XSRFTokenHeader
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
-			return
-		}
-
-		params.XXSRFTOKEN = XXSRFTOKEN
-
-	} else {
-		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateCurrentUser(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1357,9 +1298,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/me", wrapper.GetCurrentUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Put(options.BaseURL+"/api/me", wrapper.UpdateCurrentUser)
-	})
-	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/projects", wrapper.ListProjects)
 	})
 	r.Group(func(r chi.Router) {
@@ -1555,40 +1493,6 @@ type GetCurrentUser401Response struct {
 }
 
 func (response GetCurrentUser401Response) VisitGetCurrentUserResponse(w http.ResponseWriter) error {
-	w.WriteHeader(401)
-	return nil
-}
-
-type UpdateCurrentUserRequestObject struct {
-	Params UpdateCurrentUserParams
-	Body   *UpdateCurrentUserJSONRequestBody
-}
-
-type UpdateCurrentUserResponseObject interface {
-	VisitUpdateCurrentUserResponse(w http.ResponseWriter) error
-}
-
-type UpdateCurrentUser200JSONResponse User
-
-func (response UpdateCurrentUser200JSONResponse) VisitUpdateCurrentUserResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateCurrentUser400Response struct {
-}
-
-func (response UpdateCurrentUser400Response) VisitUpdateCurrentUserResponse(w http.ResponseWriter) error {
-	w.WriteHeader(400)
-	return nil
-}
-
-type UpdateCurrentUser401Response struct {
-}
-
-func (response UpdateCurrentUser401Response) VisitUpdateCurrentUserResponse(w http.ResponseWriter) error {
 	w.WriteHeader(401)
 	return nil
 }
@@ -2059,9 +1963,6 @@ type StrictServerInterface interface {
 	// Get current user
 	// (GET /api/me)
 	GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error)
-	// Update current user
-	// (PUT /api/me)
-	UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error)
 	// List projects
 	// (GET /api/projects)
 	ListProjects(ctx context.Context, request ListProjectsRequestObject) (ListProjectsResponseObject, error)
@@ -2236,39 +2137,6 @@ func (sh *strictHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetCurrentUserResponseObject); ok {
 		if err := validResponse.VisitGetCurrentUserResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UpdateCurrentUser operation middleware
-func (sh *strictHandler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request, params UpdateCurrentUserParams) {
-	var request UpdateCurrentUserRequestObject
-
-	request.Params = params
-
-	var body UpdateCurrentUserJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateCurrentUser(ctx, request.(UpdateCurrentUserRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateCurrentUser")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateCurrentUserResponseObject); ok {
-		if err := validResponse.VisitUpdateCurrentUserResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

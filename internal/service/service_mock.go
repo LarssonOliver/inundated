@@ -123,7 +123,6 @@ func (m *ProjectServiceMock) UpdateProject(ctx context.Context, project model.Pr
 
 type UserServiceMock struct {
 	GetCurrentUserFn            func(ctx context.Context) (model.User, error)
-	UpdateCurrentUserFn         func(ctx context.Context, user model.User) (model.User, error)
 	GetUserBySubFn              func(ctx context.Context, sub string) (model.User, error)
 	GetOrCreateUserByIdentityFn func(ctx context.Context, identity model.UserIdentity) (model.User, error)
 }
@@ -143,11 +142,6 @@ func (u *UserServiceMock) GetUserBySub(ctx context.Context, sub string) (model.U
 // GetOrCreateUserByIdentity implements [UserService].
 func (u *UserServiceMock) GetOrCreateUserByIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 	return u.GetOrCreateUserByIdentityFn(ctx, identity)
-}
-
-// UpdateCurrentUser implements [UserService].
-func (u *UserServiceMock) UpdateCurrentUser(ctx context.Context, user model.User) (model.User, error) {
-	return u.UpdateCurrentUserFn(ctx, user)
 }
 
 type AuthServiceMock struct {

@@ -18,7 +18,6 @@ type AuthHandler interface {
 
 type UserHandler interface {
 	GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error)
-	UpdateCurrentUser(ctx context.Context, request UpdateCurrentUserRequestObject) (UpdateCurrentUserResponseObject, error)
 }
 
 type TagHandler interface {
