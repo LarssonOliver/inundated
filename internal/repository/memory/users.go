@@ -39,6 +39,14 @@ func (m *MemoryStore) GetUserBySub(ctx context.Context, sub string) (model.User,
 	return m.users[idx], nil
 }
 
+// HasUsers implements [repository.UserRepository].
+func (m *MemoryStore) HasUsers(ctx context.Context) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return len(m.users) > 0, nil
+}
+
 // CreateUser implements [repository.UserRepository].
 func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) (model.User, error) {
 	if user.Sub == "" || user.Email == "" {

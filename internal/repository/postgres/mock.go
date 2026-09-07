@@ -40,6 +40,11 @@ func (m *MockRepository) GetUserBySub(ctx context.Context, sub string) (model.Us
 	return args.Get(0).(model.User), args.Error(1)
 }
 
+func (m *MockRepository) HasUsers(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockRepository) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
 	args := m.Called(ctx, user)
 	return args.Get(0).(model.User), args.Error(1)

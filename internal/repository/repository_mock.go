@@ -25,6 +25,7 @@ type RepoMock struct {
 
 	GetUserFn                   func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn              func(ctx context.Context, sub string) (model.User, error)
+	HasUsersFn                  func(ctx context.Context) (bool, error)
 	CreateUserFn                func(ctx context.Context, user model.User) (model.User, error)
 	CreateUserAdoptingOrphansFn func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
 	UpdateUserFn                func(ctx context.Context, user model.User) (model.User, error)
@@ -116,6 +117,11 @@ func (t *RepoMock) GetUser(ctx context.Context, id uuid.UUID) (model.User, error
 // GetUserBySub implements repository.UserRepository.
 func (t *RepoMock) GetUserBySub(ctx context.Context, sub string) (model.User, error) {
 	return t.GetUserBySubFn(ctx, sub)
+}
+
+// HasUsers implements repository.UserRepository.
+func (t *RepoMock) HasUsers(ctx context.Context) (bool, error) {
+	return t.HasUsersFn(ctx)
 }
 
 // CreateUser implements repository.UserRepository.

@@ -62,13 +62,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	oidcClient := auth.NewOIDCClient()
+	ctx := context.Background()
 
-	repo, loginStateRepo, sessionRepo := setupRepositories(context.Background(), cfg.DatabaseURL)
+	repo, loginStateRepo, sessionRepo := setupRepositories(ctx, cfg.DatabaseURL)
 	svc := service.NewService(repo)
 
+	if err := service.EnsureAuthConfigConsistent(ctx, repo, cfg.OIDC.Enabled()); err != nil {
+		log.Fatalf("auth configuration: %v", err)
+	}
+
+	oidcClient := auth.NewOIDCClientWithConfig(auth.OIDCClientConfig{
+		IssuerURL:    cfg.OIDC.IssuerURL,
+		ClientID:     cfg.OIDC.ClientID,
+		ClientSecret: cfg.OIDC.ClientSecret,
+		RedirectURL:  cfg.OIDC.RedirectURL,
+		Scopes:       cfg.OIDC.Scopes,
+		HTTPTimeout:  cfg.OIDC.HTTPTimeout,
+	})
+
 	cleanupSvc := service.NewCleanupService(sessionRepo, loginStateRepo, 5*time.Minute)
-	go cleanupSvc.Run(context.Background())
+	go cleanupSvc.Run(ctx)
 
 	authSvc := service.NewAuthService(svc, sessionRepo, loginStateRepo, oidcClient)
 	handler := handlers.NewHandler(authSvc, svc)
@@ -90,8 +103,11 @@ func main() {
 			return r.URL.Path == "/health"
 		}))
 		r.Use(middleware.NoSniffJSON)
-		r.Use(middleware.OIDCAuth(svc, sessionRepo))
-		r.Use(middleware.RequireAuth())
+
+		if cfg.OIDC.Enabled() {
+			r.Use(middleware.OIDCAuth(svc, sessionRepo))
+			r.Use(middleware.RequireAuth())
+		}
 
 		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 	})
@@ -105,6 +121,12 @@ func main() {
 	s := &http.Server{
 		Handler: r,
 		Addr:    addrStr,
+	}
+
+	if cfg.OIDC.Enabled() {
+		log.Printf("OIDC authentication enabled (issuer: %s)", cfg.OIDC.IssuerURL)
+	} else {
+		log.Printf("OIDC not configured; running in userless mode")
 	}
 
 	log.Printf("Starting inundated %s on %s", Version, addrStr)

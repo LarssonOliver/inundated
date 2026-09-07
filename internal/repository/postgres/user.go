@@ -102,6 +102,17 @@ func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user mode
 	return created, adoption, nil
 }
 
+// HasUsers implements [repository.UserRepository].
+func (r *PostgresStore) HasUsers(ctx context.Context) (bool, error) {
+	const q = `SELECT EXISTS (SELECT 1 FROM users)`
+
+	var exists bool
+	if err := r.db.QueryRow(ctx, q).Scan(&exists); err != nil {
+		return false, fmt.Errorf("HasUsers: %w", err)
+	}
+	return exists, nil
+}
+
 // GetUser implements [repository.Repository].
 func (r *PostgresStore) GetUser(ctx context.Context, id uuid.UUID) (model.User, error) {
 	if id == uuid.Nil {
