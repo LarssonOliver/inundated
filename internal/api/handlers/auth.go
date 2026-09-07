@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"errors"
+	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
@@ -27,14 +29,30 @@ func NewAuthHandler(svc service.AuthService, secureCookies bool) *AuthHandler {
 	}
 }
 
+// safeRedirectPath confines the post-login redirect to a path on this site.
+// Anything that could send the browser to another origin -- an absolute URL, a
+// protocol-relative "//host", a "/\host", a non-http scheme, or a value with
+// control characters -- collapses to "/". This keeps the login flow from being
+// used as an open redirector.
+func safeRedirectPath(raw string) string {
+	if raw == "" || raw[0] != '/' || strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, "/\\") {
+		return "/"
+	}
+	if strings.ContainsAny(raw, "\x00\r\n\t") {
+		return "/"
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.IsAbs() || u.Host != "" {
+		return "/"
+	}
+	return u.String()
+}
+
 // AuthLogin implements [api.AuthHandler].
 func (a *AuthHandler) AuthLogin(ctx context.Context, request api.AuthLoginRequestObject) (api.AuthLoginResponseObject, error) {
-	redirectUrl := ""
-
-	if request.Params.Redirect == nil || *request.Params.Redirect == "" {
-		redirectUrl = "/"
-	} else {
-		redirectUrl = *request.Params.Redirect
+	redirectUrl := "/"
+	if request.Params.Redirect != nil {
+		redirectUrl = safeRedirectPath(*request.Params.Redirect)
 	}
 
 	authUrl, err := a.svc.BeginLogin(ctx, redirectUrl)
@@ -68,7 +86,9 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 
 	return api.AuthCallback302Response{
 		Headers: api.AuthCallback302ResponseHeaders{
-			Location:  redirectUrl,
+			// Re-checked here even though BeginLogin already sanitizes it: this
+			// value ends up verbatim in a Location header.
+			Location:  safeRedirectPath(redirectUrl),
 			SetCookie: auth.NewSessionCookie(session, a.secureCookies).String(),
 		},
 	}, nil

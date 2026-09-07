@@ -82,6 +82,41 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 		assert.Equal(t, redirect, gotRedirect)
 	})
 
+	t.Run("redirect param is confined to a site-relative path", func(t *testing.T) {
+		cases := map[string]string{
+			"/dashboard":            "/dashboard",
+			"/projects/1?tab=notes": "/projects/1?tab=notes",
+			"":                      "/",
+			"https://evil.example.com/phish": "/",
+			"//evil.example.com":             "/",
+			"/\\evil.example.com":            "/",
+			"javascript:alert(1)":            "/",
+			"relative/no/slash":              "/",
+			"/ok\nSet-Cookie: x=y":           "/",
+		}
+
+		for in, want := range cases {
+			t.Run(in, func(t *testing.T) {
+				var got string
+				mock := &service.AuthServiceMock{
+					BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
+						got = redirectURI
+						return "https://provider.example/authorize", nil
+					},
+				}
+				h := handlers.NewAuthHandler(mock, true)
+
+				redirect := in
+				_, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
+					Params: api.AuthLoginParams{Redirect: &redirect},
+				})
+
+				require.NoError(t, err)
+				assert.Equal(t, want, got)
+			})
+		}
+	})
+
 	t.Run("service error results in generic error and nil response", func(t *testing.T) {
 		mock := &service.AuthServiceMock{
 			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
