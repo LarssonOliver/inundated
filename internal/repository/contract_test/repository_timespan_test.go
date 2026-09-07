@@ -372,6 +372,11 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			})
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 
+			// The rejected create leaves no orphan timespan row.
+			page, err := repo.ListTimespans(ctx, scopeA, model.DefaultPaginationParams())
+			require.NoError(t, err)
+			require.Empty(t, page.Data)
+
 			// The update path enforces the same guard: create a valid
 			// resource under scopeA, then try to attach scopeB's tag.
 			tsA, err := repo.CreateTimespan(ctx, scopeA, model.Timespan{
@@ -380,8 +385,15 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 
 			tsA.TagIds = []uuid.UUID{tagB}
+			tsA.Name = "renamed"
 			_, err = repo.UpdateTimespan(ctx, scopeA, tsA)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
+
+			// The rejected update rolled back the name change too.
+			got, err := repo.GetTimespan(ctx, scopeA, tsA.Id)
+			require.NoError(t, err)
+			require.Equal(t, "a", got.Name)
+			require.Empty(t, got.TagIds)
 		})
 
 		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {

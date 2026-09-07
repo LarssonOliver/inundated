@@ -49,7 +49,29 @@ type Querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // Ensure *pgxpool.Pool satisfies Querier at compile time.
 var _ Querier = (*pgxpool.Pool)(nil)
+
+// withTx runs fn inside a transaction, committing on success and rolling back
+// on any error.
+func (r *PostgresStore) withTx(ctx context.Context, fn func(q Querier) error) (err error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+	if err = fn(tx); err != nil {
+		return err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
+}
