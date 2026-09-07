@@ -100,31 +100,35 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 
 		t.Run(repoName+"DeleteAllExpired", func(t *testing.T) {
 			repo := newRepo(t)
-			loginState := model.LoginState{
-				Id:           uuid.New(),
-				RedirectUri:  "https://example.com/expired",
-				CodeVerifier: "some-code",
-				ExpiresAt:    time.Now().Add(-time.Hour).UTC(),
+			// Several consecutive expired entries plus a live one.
+			expired := make([]model.LoginState, 3)
+			for i := range expired {
+				expired[i] = model.LoginState{
+					Id:           uuid.New(),
+					RedirectUri:  "/expired",
+					CodeVerifier: "some-code",
+					ExpiresAt:    time.Now().Add(-time.Hour).UTC(),
+				}
+				_, err := repo.CreateLoginState(ctx, expired[i])
+				require.NoError(t, err)
 			}
-			loginState2 := model.LoginState{
+			live := model.LoginState{
 				Id:           uuid.New(),
-				RedirectUri:  "https://example.com/expired",
+				RedirectUri:  "/live",
 				CodeVerifier: "some-code",
 				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 			}
-
-			_, err := repo.CreateLoginState(ctx, loginState)
-			require.NoError(t, err)
-			_, err = repo.CreateLoginState(ctx, loginState2)
+			_, err := repo.CreateLoginState(ctx, live)
 			require.NoError(t, err)
 
 			err = repo.DeleteAllExpiredLoginStates(ctx)
 			require.NoError(t, err)
 
-			_, err = repo.GetLoginState(ctx, loginState.Id)
-			require.ErrorIs(t, err, model.ErrNotFound)
-
-			_, err = repo.GetLoginState(ctx, loginState2.Id)
+			for _, ls := range expired {
+				_, err = repo.GetLoginState(ctx, ls.Id)
+				require.ErrorIs(t, err, model.ErrNotFound)
+			}
+			_, err = repo.GetLoginState(ctx, live.Id)
 			require.NoError(t, err)
 		})
 
