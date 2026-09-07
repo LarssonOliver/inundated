@@ -88,6 +88,12 @@ export OIDC_HTTP_TIMEOUT="10s"              # default
 The redirect URI is derived as `$PUBLIC_BASE_URL/api/auth/callback` — register
 exactly that with your provider.
 
+`PUBLIC_BASE_URL` also controls cookie security: when it is an `https://` origin
+the session and CSRF cookies are marked `Secure` and CSRF enforces HTTPS-origin
+checks. Set it to your real `https://` origin in any deployment reachable over
+HTTPS, including userless ones — otherwise the browser accepts the cookies over
+plain HTTP too.
+
 The first user to log in adopts all pre-existing resources. Once any user
 exists the server refuses to start without OIDC configured, so authentication
 can't be silently switched off.

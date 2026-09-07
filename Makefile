@@ -10,7 +10,7 @@ BINARY := ${BINARY_DIR}/inundated
 build: ${BINARY}
 
 dev:
-	go run cmd/server/main.go
+	PUBLIC_BASE_URL=http://localhost:5173 go run cmd/server/main.go
 
 ${BINARY}: build-frontend
 	mkdir -p ${BINARY_DIR}

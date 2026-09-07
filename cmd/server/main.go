@@ -68,6 +68,15 @@ func resolveCSRFKey(configured string) []byte {
 	return key
 }
 
+// secureCookies reports whether cookies should carry the Secure attribute and
+// whether gorilla/csrf should enforce its HTTPS Origin rules. It is on only when
+// the app's public origin is an https:// URL; a plain-HTTP dev server (no
+// PUBLIC_BASE_URL, or an http:// one) needs it off or the browser drops the
+// cookies and the CSRF check rejects the http:// Origin.
+func secureCookies(cfg *config.Config) bool {
+	return strings.HasPrefix(cfg.PublicBaseURL, "https://")
+}
+
 // newRouter wires the HTTP middleware stack and routes. API routes are served at
 // the paths declared in the OpenAPI spec (/api/...), with the generated handler
 // mounted at the root. When OIDC is configured, everything under /api except
@@ -76,11 +85,14 @@ func resolveCSRFKey(configured string) []byte {
 func newRouter(cfg *config.Config, svc service.Service, sessionRepo repository.SessionRepository, server api.StrictServerInterface, csrfKey []byte) http.Handler {
 	r := chi.NewMux()
 
+	secure := secureCookies(cfg)
+
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
-	r.Use(middleware.CSRF(csrfKey))
+	r.Use(middleware.CSRF(csrfKey, secure))
+	r.Use(middleware.ExposeCSRFToken(secure))
 
 	r.Handle("/health", handlers.HealthHandler())
 
@@ -157,6 +169,10 @@ func main() {
 		log.Printf("OIDC authentication enabled (issuer: %s)", cfg.OIDC.IssuerURL)
 	} else {
 		log.Printf("OIDC not configured; running in userless mode")
+	}
+
+	if !secureCookies(cfg) {
+		log.Printf("warning: insecure cookies (Secure attribute off, CSRF HTTPS-origin checks relaxed); set PUBLIC_BASE_URL to an https:// origin in production")
 	}
 
 	log.Printf("Starting inundated %s on %s", Version, addrStr)

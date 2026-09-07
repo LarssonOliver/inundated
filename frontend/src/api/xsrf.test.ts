@@ -17,10 +17,10 @@ describe("xsrfToken", () => {
     expect(xsrfToken()).toBe("abc123");
   });
 
-  it("URL-decodes the cookie value", () => {
-    document.cookie = `XSRF-TOKEN=${encodeURIComponent("a/b+c=")}`;
+  it("returns the base64 token verbatim", () => {
+    document.cookie = "XSRF-TOKEN=aGVsbG8+d29ybGQ/Zm9v=";
 
-    expect(xsrfToken()).toBe("a/b+c=");
+    expect(xsrfToken()).toBe("aGVsbG8+d29ybGQ/Zm9v=");
   });
 
   it("picks the XSRF-TOKEN cookie out from among others", () => {

@@ -59,24 +59,65 @@ func NoSniffJSON(next http.Handler) http.Handler {
 	})
 }
 
-// CSRF returns middleware that enforces double-submit CSRF protection on unsafe
-// methods. authKey signs the tokens and must be 32 bytes.
-func CSRF(authKey []byte) func(http.Handler) http.Handler {
-	return csrf.Protect(
+// XSRFCookieName is the JS-readable cookie carrying the CSRF token the SPA must
+// echo back in the X-XSRF-TOKEN header on unsafe requests. It is distinct from
+// gorilla/csrf's own signed session cookie.
+const XSRFCookieName = "XSRF-TOKEN"
+
+// XSRFHeaderName is the request header the SPA sends the token back in.
+const XSRFHeaderName = "X-XSRF-TOKEN"
+
+// CSRF returns middleware that enforces CSRF protection on unsafe methods.
+// gorilla/csrf keeps an HMAC-signed token in its own HttpOnly session cookie and
+// expects a per-request masked copy of it in the X-XSRF-TOKEN header; that
+// masked token is published to the SPA by [ExposeCSRFToken]. authKey signs the
+// token and must be 32 bytes.
+//
+// secure should be false only for plain-HTTP local development: a Secure cookie
+// would never reach the browser, and gorilla/csrf's default HTTPS assumption
+// makes it reject the http:// Origin the browser sends.
+func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
+	protect := csrf.Protect(
 		authKey,
 		csrf.Path("/"),
-		csrf.HttpOnly(false), // ⚠️ CRITICAL: Must be false so frontend JS can read it!
-		csrf.Secure(true),    // Only send over HTTPS
+		csrf.Secure(secure),
 		csrf.SameSite(csrf.SameSiteLaxMode),
-		csrf.RequestHeader("X-XSRF-TOKEN"), // The header the frontend must send back
-		csrf.CookieName("XSRF-TOKEN"),      // The cookie the frontend reads from
+		csrf.RequestHeader(XSRFHeaderName),
 
-		// Custom error handler to align with your API standards
 		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			// Match whatever structured error JSON your oapi-codegen setup expects
 			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
 		})),
 	)
+
+	return func(next http.Handler) http.Handler {
+		guarded := protect(next)
+		if secure {
+			return guarded
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			guarded.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
+		})
+	}
+}
+
+// ExposeCSRFToken publishes the current CSRF token in a JS-readable cookie so the
+// SPA can read it and send it back in the X-XSRF-TOKEN header. It must be mounted
+// inside (after) [CSRF], which populates the token. secure mirrors the flag
+// passed to CSRF.
+func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.SetCookie(w, &http.Cookie{
+				Name:     XSRFCookieName,
+				Value:    csrf.Token(r),
+				Path:     "/",
+				Secure:   secure,
+				HttpOnly: false, // the SPA must be able to read this one
+				SameSite: http.SameSiteLaxMode,
+			})
+			next.ServeHTTP(w, r)
+		})
+	}
 }
