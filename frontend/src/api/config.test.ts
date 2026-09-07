@@ -33,4 +33,24 @@ describe("API client wiring", () => {
     const init = fetchSpy.mock.calls[0][1] as RequestInit;
     expect(new Headers(init.headers).get("X-XSRF-TOKEN")).toBe("tok");
   });
+
+  it("bounces the browser to login when a data request returns 401", async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 401 }));
+    const assign = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { origin: "https://app.example", pathname: "/tags", search: "", assign },
+    });
+
+    try {
+      await tagsApi.listTags().catch(() => {});
+      expect(assign).toHaveBeenCalledWith("/api/auth/login?redirect=%2Ftags");
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
 });
