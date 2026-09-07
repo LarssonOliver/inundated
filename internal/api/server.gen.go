@@ -1505,10 +1505,16 @@ type AuthLogoutResponseObject interface {
 	VisitAuthLogoutResponse(w http.ResponseWriter) error
 }
 
+type AuthLogout204ResponseHeaders struct {
+	SetCookie string
+}
+
 type AuthLogout204Response struct {
+	Headers AuthLogout204ResponseHeaders
 }
 
 func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
 }
