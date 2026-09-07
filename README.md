@@ -98,6 +98,35 @@ The first user to log in adopts all pre-existing resources. Once any user
 exists the server refuses to start without OIDC configured, so authentication
 can't be silently switched off.
 
+### Trying the auth flow locally with Docker Compose
+
+`docker-compose.yml` runs PostgreSQL and a mock OIDC provider
+([mock-oauth2-server](https://github.com/navikt/mock-oauth2-server)). Run the app
+itself on the host so it shares `localhost` with your browser and the issuer URL.
+`make dev-auth` starts the backend with the matching flags:
+
+```bash
+docker compose up -d
+
+# terminal 1 — backend
+make dev-auth
+
+# terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+Open <http://localhost:5173> and follow a login link. The mock provider shows a
+form where you enter any username and, optionally, a `claims` JSON blob such as
+`{"email":"alice@example.com","name":"Alice"}` to mint the ID token. The first
+account to log in adopts the existing resources.
+
+`CSRF_AUTH_KEY` is left unset here, so the server generates an ephemeral one and
+in-flight logins don't survive a backend restart — fine for testing.
+
+```bash
+docker compose down -v   # stop and wipe the database
+```
+
 ---
 
 ## 🏗 Building for Production
