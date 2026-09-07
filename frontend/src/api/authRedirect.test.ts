@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { authRedirectMiddleware } from "./authRedirect";
-import type { ResponseContext } from "./generated";
+import type { Middleware, ResponseContext } from "./generated";
 
 function responseContext(url: string, status: number): ResponseContext {
   return {
@@ -14,8 +13,13 @@ function responseContext(url: string, status: number): ResponseContext {
 describe("authRedirectMiddleware", () => {
   let assign: ReturnType<typeof vi.fn>;
   let originalLocation: Location;
+  let authRedirectMiddleware: Middleware;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Fresh module each test: the middleware keeps a "already redirecting" flag.
+    vi.resetModules();
+    ({ authRedirectMiddleware } = await import("./authRedirect"));
+
     assign = vi.fn();
     originalLocation = window.location;
     Object.defineProperty(window, "location", {
@@ -46,5 +50,15 @@ describe("authRedirectMiddleware", () => {
     await authRedirectMiddleware.post!(responseContext("/api/projects", 200));
 
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("starts navigating only once when several requests 401 together", async () => {
+    await Promise.all([
+      authRedirectMiddleware.post!(responseContext("/api/projects", 401)),
+      authRedirectMiddleware.post!(responseContext("/api/tags", 401)),
+      authRedirectMiddleware.post!(responseContext("/api/timespans", 401)),
+    ]);
+
+    expect(assign).toHaveBeenCalledTimes(1);
   });
 });
