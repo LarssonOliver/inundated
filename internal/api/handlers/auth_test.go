@@ -31,7 +31,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 				return wantAuthURL, nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
 			Params: api.AuthLoginParams{Redirect: nil},
@@ -53,7 +53,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 				return "https://provider.example/authorize", nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		_, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
 			Params: api.AuthLoginParams{Redirect: &empty},
@@ -72,7 +72,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 				return "https://provider.example/authorize", nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		_, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
 			Params: api.AuthLoginParams{Redirect: &redirect},
@@ -88,7 +88,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 				return "", errors.New("provider unreachable")
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
 			Params: api.AuthLoginParams{Redirect: nil},
@@ -105,7 +105,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 func TestAuthHandler_AuthCallback(t *testing.T) {
 	t.Run("missing code returns 400", func(t *testing.T) {
 		mock := &service.AuthServiceMock{}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
 			Params: api.AuthCallbackParams{Code: "", State: uuid.NewString()},
@@ -117,7 +117,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 	t.Run("missing state returns 400", func(t *testing.T) {
 		mock := &service.AuthServiceMock{}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
 			Params: api.AuthCallbackParams{Code: "authcode", State: ""},
@@ -135,7 +135,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 				return model.Session{}, "", nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
 			Params: api.AuthCallbackParams{Code: "authcode", State: "not-a-uuid"},
@@ -154,7 +154,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 				return model.Session{}, "", errors.New("invalid code")
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
 			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
@@ -182,7 +182,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 				return session, wantRedirect, nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
 			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
@@ -205,6 +205,25 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		}
 		assert.Equal(t, wantCookie.String(), got.Headers.SetCookie)
 	})
+
+	t.Run("plain-HTTP origin issues the session cookie without the Secure attribute", func(t *testing.T) {
+		state := uuid.New()
+		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
+		mock := &service.AuthServiceMock{
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+				return session, "/", nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, false)
+
+		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
+		})
+
+		require.NoError(t, err)
+		got := resp.(api.AuthCallback302Response)
+		assert.NotContains(t, got.Headers.SetCookie, "Secure")
+	})
 }
 
 func TestAuthHandler_AuthLogout(t *testing.T) {
@@ -215,7 +234,7 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 				return nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthLogout(
 			context.Background(),
@@ -238,7 +257,7 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 				return errors.New("database error")
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		ctx := model.SetSessionInContext(context.Background(), session)
 
@@ -264,7 +283,7 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 				return nil
 			},
 		}
-		h := handlers.NewAuthHandler(mock)
+		h := handlers.NewAuthHandler(mock, true)
 
 		ctx := model.SetSessionInContext(context.Background(), session)
 
@@ -276,6 +295,6 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 		require.NoError(t, err)
 		got, ok := resp.(api.AuthLogout204Response)
 		require.True(t, ok, "expected AuthLogout204Response, got %T", resp)
-		assert.Equal(t, auth.ClearSessionCookie().String(), got.Headers.SetCookie)
+		assert.Equal(t, auth.ClearSessionCookie(true).String(), got.Headers.SetCookie)
 	})
 }

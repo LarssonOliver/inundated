@@ -16,7 +16,7 @@ import (
 // the endpoints that begin and complete the OIDC login flow.
 var PublicAPIPaths = []string{"/api/auth/login", "/api/auth/callback"}
 
-func OIDCAuth(userService service.UserService, sessionRepository repository.SessionRepository) func(http.Handler) http.Handler {
+func OIDCAuth(userService service.UserService, sessionRepository repository.SessionRepository, secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -41,7 +41,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			if time.Now().After(session.ExpiresAt) {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
-				http.SetCookie(w, auth.ClearSessionCookie())
+				http.SetCookie(w, auth.ClearSessionCookie(secure))
 
 				next.ServeHTTP(w, r)
 				return
@@ -49,15 +49,19 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 
 			if session.ExpiresAt.Before(time.Now().Add(6 * time.Hour)) {
 				newExpiry := time.Now().Add(24 * time.Hour)
-				session, _ = sessionRepository.TouchSession(r.Context(), sessionId, newExpiry)
-				http.SetCookie(w, auth.NewSessionCookie(session))
+				// A failed renewal is not fatal: the current session is still
+				// valid, so keep using it and let the next request retry.
+				if renewed, err := sessionRepository.TouchSession(r.Context(), sessionId, newExpiry); err == nil {
+					session = renewed
+					http.SetCookie(w, auth.NewSessionCookie(session, secure))
+				}
 			}
 
 			user, err := userService.GetUserBySub(r.Context(), session.Sub)
 			if err != nil {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
-				http.SetCookie(w, auth.ClearSessionCookie())
+				http.SetCookie(w, auth.ClearSessionCookie(secure))
 
 				next.ServeHTTP(w, r)
 				return

@@ -104,7 +104,7 @@ func newRouter(cfg *config.Config, svc service.Service, sessionRepo repository.S
 		r.Use(middleware.NoSniffJSON)
 
 		if cfg.OIDC.Enabled() {
-			r.Use(middleware.OIDCAuth(svc, sessionRepo))
+			r.Use(middleware.OIDCAuth(svc, sessionRepo, secure))
 			r.Use(middleware.RequireAuth(middleware.PublicAPIPaths...))
 		} else {
 			// No provider to talk to: the OIDC routes don't exist here.
@@ -153,7 +153,7 @@ func main() {
 	go cleanupSvc.Run(ctx)
 
 	authSvc := service.NewAuthService(svc, sessionRepo, loginStateRepo, oidcClient)
-	handler := handlers.NewHandler(authSvc, svc)
+	handler := handlers.NewHandler(authSvc, svc, secureCookies(cfg))
 	server := api.NewServer(handler)
 
 	r := newRouter(cfg, svc, sessionRepo, server, resolveCSRFKey(cfg.CSRFAuthKey))

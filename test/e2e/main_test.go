@@ -29,7 +29,7 @@ func startServer() *http.Server {
 	repo := memory.NewMemoryStore()
 	svc := service.NewService(repo)
 	authSvc := service.NewAuthService(svc, repo, repo, oidcClient)
-	handler := handlers.NewHandler(authSvc, svc)
+	handler := handlers.NewHandler(authSvc, svc, false)
 	server := api.NewServer(handler)
 
 	r := chi.NewMux()
