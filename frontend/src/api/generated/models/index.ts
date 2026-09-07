@@ -15,3 +15,5 @@ export * from './Timespan';
 export * from './UpdateProject';
 export * from './UpdateTag';
 export * from './UpdateTimespan';
+export * from './UpdateUser';
+export * from './User';

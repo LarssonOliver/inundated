@@ -1,20 +1,20 @@
 # TagsApi
 
-All URIs are relative to */api*
+All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTag**](TagsApi.md#createtag) | **POST** /tags | Create tag |
-| [**deleteTag**](TagsApi.md#deletetag) | **DELETE** /tags/{tagId} | Delete tag |
-| [**getTag**](TagsApi.md#gettag) | **GET** /tags/{tagId} | Get tag |
-| [**listTags**](TagsApi.md#listtags) | **GET** /tags | List tags |
-| [**updateTag**](TagsApi.md#updatetag) | **PATCH** /tags/{tagId} | Update tag |
+| [**createTag**](TagsApi.md#createtag) | **POST** /api/tags | Create tag |
+| [**deleteTag**](TagsApi.md#deletetag) | **DELETE** /api/tags/{tagId} | Delete tag |
+| [**getTag**](TagsApi.md#gettag) | **GET** /api/tags/{tagId} | Get tag |
+| [**listTags**](TagsApi.md#listtags) | **GET** /api/tags | List tags |
+| [**updateTag**](TagsApi.md#updatetag) | **PATCH** /api/tags/{tagId} | Update tag |
 
 
 
 ## createTag
 
-> Tag createTag(createTag)
+> Tag createTag(xXSRFTOKEN, createTag)
 
 Create tag
 
@@ -29,9 +29,15 @@ import type { CreateTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // CreateTag
     createTag: ...,
   } satisfies CreateTagRequest;
@@ -53,6 +59,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **createTag** | [CreateTag](CreateTag.md) |  | |
 
 ### Return type
@@ -61,7 +68,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -80,7 +87,7 @@ No authorization required
 
 ## deleteTag
 
-> deleteTag(tagId)
+> deleteTag(xXSRFTOKEN, tagId)
 
 Delete tag
 
@@ -95,9 +102,15 @@ import type { DeleteTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies DeleteTagRequest;
@@ -119,6 +132,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **tagId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
@@ -127,7 +141,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -161,7 +175,11 @@ import type { GetTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // string
@@ -196,7 +214,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -230,7 +248,11 @@ import type { ListTagsRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
@@ -265,7 +287,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -284,7 +306,7 @@ No authorization required
 
 ## updateTag
 
-> Tag updateTag(tagId, updateTag)
+> Tag updateTag(xXSRFTOKEN, tagId, updateTag)
 
 Update tag
 
@@ -299,9 +321,15 @@ import type { UpdateTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // UpdateTag
@@ -325,6 +353,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **tagId** | `string` |  | [Defaults to `undefined`] |
 | **updateTag** | [UpdateTag](UpdateTag.md) |  | |
 
@@ -334,7 +363,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 

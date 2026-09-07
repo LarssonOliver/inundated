@@ -35,10 +35,12 @@ import {
 } from '../models/UpdateTag';
 
 export interface CreateTagRequest {
+    xXSRFTOKEN: string;
     createTag: CreateTag;
 }
 
 export interface DeleteTagRequest {
+    xXSRFTOKEN: string;
     tagId: string;
 }
 
@@ -53,6 +55,7 @@ export interface ListTagsRequest {
 }
 
 export interface UpdateTagRequest {
+    xXSRFTOKEN: string;
     tagId: string;
     updateTag: UpdateTag;
 }
@@ -66,6 +69,13 @@ export class TagsApi extends runtime.BaseAPI {
      * Creates request options for createTag without sending the request
      */
     async createTagRequestOpts(requestParameters: CreateTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xXSRFTOKEN'] == null) {
+            throw new runtime.RequiredError(
+                'xXSRFTOKEN',
+                'Required parameter "xXSRFTOKEN" was null or undefined when calling createTag().'
+            );
+        }
+
         if (requestParameters['createTag'] == null) {
             throw new runtime.RequiredError(
                 'createTag',
@@ -79,8 +89,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (requestParameters['xXSRFTOKEN'] != null) {
+            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        }
 
-        let urlPath = `/tags`;
+
+        let urlPath = `/api/tags`;
 
         return {
             path: urlPath,
@@ -113,6 +127,13 @@ export class TagsApi extends runtime.BaseAPI {
      * Creates request options for deleteTag without sending the request
      */
     async deleteTagRequestOpts(requestParameters: DeleteTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xXSRFTOKEN'] == null) {
+            throw new runtime.RequiredError(
+                'xXSRFTOKEN',
+                'Required parameter "xXSRFTOKEN" was null or undefined when calling deleteTag().'
+            );
+        }
+
         if (requestParameters['tagId'] == null) {
             throw new runtime.RequiredError(
                 'tagId',
@@ -124,8 +145,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (requestParameters['xXSRFTOKEN'] != null) {
+            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        }
 
-        let urlPath = `/tags/{tagId}`;
+
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {
@@ -173,7 +198,7 @@ export class TagsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/tags/{tagId}`;
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {
@@ -219,7 +244,7 @@ export class TagsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/tags`;
+        let urlPath = `/api/tags`;
 
         return {
             path: urlPath,
@@ -251,6 +276,13 @@ export class TagsApi extends runtime.BaseAPI {
      * Creates request options for updateTag without sending the request
      */
     async updateTagRequestOpts(requestParameters: UpdateTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xXSRFTOKEN'] == null) {
+            throw new runtime.RequiredError(
+                'xXSRFTOKEN',
+                'Required parameter "xXSRFTOKEN" was null or undefined when calling updateTag().'
+            );
+        }
+
         if (requestParameters['tagId'] == null) {
             throw new runtime.RequiredError(
                 'tagId',
@@ -271,8 +303,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (requestParameters['xXSRFTOKEN'] != null) {
+            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        }
 
-        let urlPath = `/tags/{tagId}`;
+
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {
