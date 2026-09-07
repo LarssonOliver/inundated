@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -151,7 +152,8 @@ func TestUserHandler_UpdateCurrentUser(t *testing.T) {
 					return initialUser, nil
 				}
 				u.UpdateCurrentUserFn = func(ctx context.Context, user model.User) (model.User, error) {
-					return model.User{}, model.ErrInvalidArgument
+					// The repositories wrap this cause with fmt.Errorf("...: %w", ...).
+					return model.User{}, fmt.Errorf("UpdateUser: email must not be empty: %w", model.ErrInvalidArgument)
 				}
 			},
 			expectedResp: api.UpdateCurrentUser400Response{},
