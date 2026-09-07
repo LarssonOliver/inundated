@@ -3,11 +3,13 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
+	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/config"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
@@ -32,6 +34,24 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
+// The derived OIDC redirect URI must point at a route the API actually serves
+// without a session, or login breaks. config can't import middleware, so this
+// guards the two definitions against drift.
+func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(func(k string) (string, bool) {
+		return map[string]string{
+			"OIDC_ISSUER_URL":    "https://issuer.example.com",
+			"OIDC_CLIENT_ID":     "id",
+			"OIDC_CLIENT_SECRET": "secret",
+			"PUBLIC_BASE_URL":    "https://app.example.com",
+		}[k], true
+	}))
+	require.NoError(t, err)
+
+	path := strings.TrimPrefix(cfg.OIDC.RedirectURL, "https://app.example.com")
+	assert.Contains(t, middleware.PublicAPIPaths, path)
+}
+
 func TestNewRouter_UserlessMode(t *testing.T) {
 	cfg := &config.Config{} // OIDC unset
 	server, svc, repo := buildTestServer(auth.NewOIDCClient())
@@ -52,13 +72,15 @@ func TestNewRouter_UserlessMode(t *testing.T) {
 }
 
 func TestNewRouter_OIDCMode(t *testing.T) {
-	cfg := &config.Config{OIDC: config.OIDCConfig{
-		IssuerURL:    "https://issuer.example.com",
-		ClientID:     "id",
-		ClientSecret: "secret",
-		RedirectURL:  "https://app.example.com/api/auth/callback",
-		HTTPTimeout:  time.Second,
-	}}
+	cfg := &config.Config{
+		PublicBaseURL: "https://app.example.com",
+		OIDC: config.OIDCConfig{
+			IssuerURL:    "https://issuer.example.com",
+			ClientID:     "id",
+			ClientSecret: "secret",
+			HTTPTimeout:  time.Second,
+		},
+	}
 
 	oidcMock := auth.NewOIDCClientMock()
 	oidcMock.BeginAuthorizationFn = func(state string) (auth.OIDCAuthorizationRequest, error) {
