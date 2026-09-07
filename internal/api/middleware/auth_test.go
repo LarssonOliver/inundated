@@ -147,6 +147,33 @@ func TestOIDCAuth(t *testing.T) {
 				assert.True(t, nextCalledWithUser)
 			},
 		},
+		{
+			name:        "Session renewal fails transiently - keeps the still-valid session and authenticates",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
+				}
+				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+					return model.Session{}, errors.New("transient database error")
+				}
+				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
+					t.Fatal("a still-valid session must not be deleted when renewal fails")
+					return nil
+				}
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
+					assert.Equal(t, "sub_123", sub, "the original session's subject must survive a failed renewal")
+					return model.User{Id: userID}, nil
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.True(t, nextCalledWithUser)
+				assert.Empty(t, res.Cookies(), "no session cookie should be rewritten when renewal fails")
+				session, ok := model.GetSessionFromContext(lastSeenCtx)
+				require.True(t, ok)
+				assert.Equal(t, sessionID, session.Id)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -175,7 +202,7 @@ func TestOIDCAuth(t *testing.T) {
 				})
 			}
 
-			mw := middleware.OIDCAuth(userMock, sessionMock)
+			mw := middleware.OIDCAuth(userMock, sessionMock, true)
 			mw(testHandler).ServeHTTP(rec, req)
 
 			res := rec.Result()

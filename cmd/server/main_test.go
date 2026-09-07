@@ -20,11 +20,11 @@ import (
 
 var testCSRFKey = []byte("0123456789abcdef0123456789abcdef")
 
-func buildTestServer(oidc auth.OIDCClient) (api.StrictServerInterface, service.Service, *memory.MemoryStore) {
+func buildTestServer(oidc auth.OIDCClient, secureCookies bool) (api.StrictServerInterface, service.Service, *memory.MemoryStore) {
 	repo := memory.NewMemoryStore()
 	svc := service.NewService(repo)
 	authSvc := service.NewAuthService(svc, repo, repo, oidc)
-	return api.NewServer(handlers.NewHandler(authSvc, svc)), svc, repo
+	return api.NewServer(handlers.NewHandler(authSvc, svc, secureCookies)), svc, repo
 }
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
@@ -69,7 +69,7 @@ func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
 
 func TestNewRouter_UserlessMode(t *testing.T) {
 	cfg := &config.Config{} // OIDC unset
-	server, svc, repo := buildTestServer(auth.NewOIDCClient())
+	server, svc, repo := buildTestServer(auth.NewOIDCClient(), secureCookies(cfg))
 	r := newRouter(cfg, svc, repo, server, testCSRFKey)
 
 	t.Run("health is public", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 		return auth.OIDCAuthorizationRequest{Uri: "https://issuer.example.com/authorize?state=" + state, CodeVerifier: "verifier"}, nil
 	}
 
-	server, svc, repo := buildTestServer(oidcMock)
+	server, svc, repo := buildTestServer(oidcMock, secureCookies(cfg))
 	r := newRouter(cfg, svc, repo, server, testCSRFKey)
 
 	t.Run("resource routes require a session", func(t *testing.T) {

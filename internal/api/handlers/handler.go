@@ -15,13 +15,13 @@ type Handler struct {
 
 var _ api.HttpHandler = (*Handler)(nil)
 
-func NewHandler(authSvc service.AuthService, svc service.Service) *Handler {
+func NewHandler(authSvc service.AuthService, svc service.Service, secureCookies bool) *Handler {
 	return &Handler{
 		UserHandler:     *NewUserHandler(svc),
 		TagHandler:      *NewTagHandler(svc),
 		ProjectHandler:  *NewProjectHandler(svc),
 		TimespanHandler: *NewTimespanHandler(svc),
 
-		AuthHandler: *NewAuthHandler(authSvc),
+		AuthHandler: *NewAuthHandler(authSvc, secureCookies),
 	}
 }

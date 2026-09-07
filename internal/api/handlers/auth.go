@@ -13,13 +13,17 @@ import (
 
 type AuthHandler struct {
 	svc service.AuthService
+	// secureCookies controls the Secure attribute on the session cookie; it is
+	// off for a plain-HTTP origin so the browser keeps the cookie.
+	secureCookies bool
 }
 
 var _ api.AuthHandler = (*AuthHandler)(nil)
 
-func NewAuthHandler(svc service.AuthService) *AuthHandler {
+func NewAuthHandler(svc service.AuthService, secureCookies bool) *AuthHandler {
 	return &AuthHandler{
-		svc,
+		svc:           svc,
+		secureCookies: secureCookies,
 	}
 }
 
@@ -65,7 +69,7 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 	return api.AuthCallback302Response{
 		Headers: api.AuthCallback302ResponseHeaders{
 			Location:  redirectUrl,
-			SetCookie: auth.NewSessionCookie(session).String(),
+			SetCookie: auth.NewSessionCookie(session, a.secureCookies).String(),
 		},
 	}, nil
 }
@@ -84,7 +88,7 @@ func (a *AuthHandler) AuthLogout(ctx context.Context, request api.AuthLogoutRequ
 
 	return api.AuthLogout204Response{
 		Headers: api.AuthLogout204ResponseHeaders{
-			SetCookie: auth.ClearSessionCookie().String(),
+			SetCookie: auth.ClearSessionCookie(a.secureCookies).String(),
 		},
 	}, nil
 }
