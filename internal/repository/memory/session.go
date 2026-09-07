@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,11 +77,10 @@ func (t *MemoryStore) DeleteAllExpiredSessions(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	for i, s := range t.sessions {
-		if s.ExpiresAt.Before(time.Now()) {
-			t.sessions = append(t.sessions[:i], t.sessions[i+1:]...)
-		}
-	}
+	now := time.Now()
+	t.sessions = slices.DeleteFunc(t.sessions, func(s model.Session) bool {
+		return s.ExpiresAt.Before(now)
+	})
 
 	return nil
 }

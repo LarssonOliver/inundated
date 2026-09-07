@@ -137,32 +137,36 @@ func TestSessionRepositoryContract(t *testing.T) {
 		t.Run(repoName+"DeleteAllExpiredSessions", func(t *testing.T) {
 			repo := newRepo(t)
 
-			sessions := []model.Session{
-				{
+			// Several consecutive expired entries plus a live one: every
+			// expired session must go, regardless of ordering.
+			expired := make([]model.Session, 3)
+			for i := range expired {
+				expired[i] = model.Session{
 					Id:        uuid.New(),
 					UserId:    uuid.New(),
-					Sub:       "auth0|expired1",
+					Sub:       "auth0|expired",
 					ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
-				},
-				{
-					Id:        uuid.New(),
-					UserId:    uuid.New(),
-					Sub:       "auth0|expired1",
-					ExpiresAt: time.Now().Add(time.Hour).UTC(),
-				},
+				}
+				_, err := repo.CreateSession(ctx, expired[i])
+				require.NoError(t, err)
 			}
-
-			_, err := repo.CreateSession(ctx, sessions[0])
-			require.NoError(t, err)
-			_, err = repo.CreateSession(ctx, sessions[1])
+			live := model.Session{
+				Id:        uuid.New(),
+				UserId:    uuid.New(),
+				Sub:       "auth0|live",
+				ExpiresAt: time.Now().Add(time.Hour).UTC(),
+			}
+			_, err := repo.CreateSession(ctx, live)
 			require.NoError(t, err)
 
 			err = repo.DeleteAllExpiredSessions(ctx)
 			require.NoError(t, err)
 
-			_, err = repo.GetSession(ctx, sessions[0].Id)
-			require.ErrorIs(t, err, model.ErrNotFound)
-			_, err = repo.GetSession(ctx, sessions[1].Id)
+			for _, s := range expired {
+				_, err = repo.GetSession(ctx, s.Id)
+				require.ErrorIs(t, err, model.ErrNotFound)
+			}
+			_, err = repo.GetSession(ctx, live.Id)
 			require.NoError(t, err)
 		})
 	}
