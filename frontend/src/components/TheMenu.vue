@@ -18,6 +18,12 @@
         </ul>
       </nav>
       <div class="footer">
+        <div v-if="userStore.user" class="account">
+          <span class="account-name" :title="userStore.user.email">
+            {{ userStore.user.name || userStore.user.email }}
+          </span>
+          <button type="button" class="logout" @click="userStore.logout()">Log out</button>
+        </div>
         <strong> Inundated {{ version }} </strong>
       </div>
     </div>
@@ -27,6 +33,9 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { version } from "@/../package.json";
+import { useUserStore } from "@/stores/user";
+
+const userStore = useUserStore();
 
 const isExpanded = ref(true);
 // const toggleSidebar = () => {
@@ -61,6 +70,34 @@ const sidebarStyle = computed(() => ({
 
 .footer strong {
   color: var(--nord3);
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  margin-bottom: 0.75em;
+}
+
+.account-name {
+  color: var(--nord4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--nord8);
+  cursor: pointer;
+  font: inherit;
+}
+
+.logout:hover {
+  text-decoration: underline;
 }
 
 .title {
