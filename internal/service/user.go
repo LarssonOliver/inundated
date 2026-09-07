@@ -33,12 +33,21 @@ func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity mo
 		return s.createUserFromIdentity(ctx, identity)
 	}
 
-	if user.Email == identity.Email && user.Name == identity.Name {
+	// Adopt drifted claims, but never let an omitted claim blank a field the
+	// user already has: email is required, so wiping it would lock the account
+	// out on the next login.
+	changed := false
+	if identity.Email != "" && identity.Email != user.Email {
+		user.Email = identity.Email
+		changed = true
+	}
+	if identity.Name != "" && identity.Name != user.Name {
+		user.Name = identity.Name
+		changed = true
+	}
+	if !changed {
 		return user, nil
 	}
-
-	user.Email = identity.Email
-	user.Name = identity.Name
 	return s.repository.UpdateUser(ctx, user)
 }
 

@@ -145,6 +145,31 @@ func TestUserService_GetOrCreateUserByIdentity(t *testing.T) {
 			want: model.User{Id: existingUser.Id, Sub: existingUser.Sub, Email: "changed@example.com", Name: existingUser.Name},
 		},
 		{
+			name:     "existing user, identity omits email - kept as is, not blanked",
+			identity: model.UserIdentity{Sub: existingUser.Sub, Email: "", Name: existingUser.Name},
+			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return existingUser, nil
+			},
+			updateFn: func(ctx context.Context, user model.User) (model.User, error) {
+				t.Fatal("UpdateUser must not be called to wipe an existing email the IdP stopped sending")
+				return model.User{}, nil
+			},
+			want: existingUser,
+		},
+		{
+			name:     "existing user, identity omits name - kept as is, email still drifts",
+			identity: model.UserIdentity{Sub: existingUser.Sub, Email: "moved@example.com", Name: ""},
+			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return existingUser, nil
+			},
+			updateFn: func(ctx context.Context, user model.User) (model.User, error) {
+				require.Equal(t, "moved@example.com", user.Email)
+				require.Equal(t, existingUser.Name, user.Name)
+				return user, nil
+			},
+			want: model.User{Id: existingUser.Id, Sub: existingUser.Sub, Email: "moved@example.com", Name: existingUser.Name},
+		},
+		{
 			name:     "new subject - created from identity and adopts orphans",
 			identity: newIdentity,
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
