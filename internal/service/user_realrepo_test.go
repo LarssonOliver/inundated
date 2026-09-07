@@ -49,4 +49,15 @@ func TestUserService_GetOrCreateUserByIdentity_MemoryBacked(t *testing.T) {
 	persisted, err = store.GetUserBySub(ctx, identity.Sub)
 	require.NoError(t, err)
 	require.Equal(t, "new@example.com", persisted.Email)
+
+	// Re-login where the IdP stops sending the email claim must not wipe the
+	// stored email (the repository would reject the empty value and lock the
+	// account out).
+	reloggedIn, err := svc.GetOrCreateUserByIdentity(ctx, model.UserIdentity{Sub: identity.Sub, Name: "Abc"})
+	require.NoError(t, err)
+	require.Equal(t, "new@example.com", reloggedIn.Email)
+
+	persisted, err = store.GetUserBySub(ctx, identity.Sub)
+	require.NoError(t, err)
+	require.Equal(t, "new@example.com", persisted.Email)
 }
