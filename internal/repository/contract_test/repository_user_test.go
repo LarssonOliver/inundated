@@ -204,6 +204,23 @@ func TestUserRepositoryContract(t *testing.T) {
 			require.Equal(t, model.OrphanAdoption{}, adoption)
 		})
 
+		t.Run(repoName+"HasUsers", func(t *testing.T) {
+			repo := newRepo(t)
+
+			has, err := repo.HasUsers(ctx)
+			require.NoError(t, err)
+			require.False(t, has)
+
+			_, err = repo.CreateUser(ctx, model.User{
+				Id: uuid.New(), Sub: "auth0|hasusers", Email: "h@example.com", Name: "H",
+			})
+			require.NoError(t, err)
+
+			has, err = repo.HasUsers(ctx)
+			require.NoError(t, err)
+			require.True(t, has)
+		})
+
 		t.Run(repoName+"CreateUserAdoptingOrphans_DuplicateSub", func(t *testing.T) {
 			repo := newRepo(t)
 

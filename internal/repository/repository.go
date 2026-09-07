@@ -27,6 +27,12 @@ type TagRepository interface {
 type UserRepository interface {
 	GetUser(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySub(ctx context.Context, sub string) (model.User, error)
+
+	// HasUsers reports whether any user exists. Once true it cannot become
+	// false again, so callers use it to detect that the system has left
+	// userless mode for good.
+	HasUsers(ctx context.Context) (bool, error)
+
 	CreateUser(ctx context.Context, user model.User) (model.User, error)
 	UpdateUser(ctx context.Context, user model.User) (model.User, error)
 

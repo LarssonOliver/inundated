@@ -38,8 +38,10 @@ type OIDCClientImpl struct {
 	verifier *oidc.IDTokenVerifier
 }
 
+// NewOIDCClient returns a client with no provider configured. It is only useful
+// where authentication is disabled (userless mode); any call that needs the
+// provider will fail. Use [NewOIDCClientWithConfig] to configure OIDC.
 func NewOIDCClient() *OIDCClientImpl {
-	// TODO: Parse config
 	return &OIDCClientImpl{}
 }
 

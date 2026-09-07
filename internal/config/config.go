@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // Config holds all runtime configuration for the application.
@@ -19,7 +21,30 @@ type Config struct {
 
 	// Observability
 	LogLevel string
+
+	// Authentication
+	OIDC OIDCConfig
 }
+
+// OIDCConfig holds the OpenID Connect client configuration. When IssuerURL is
+// empty the application runs in "userless" mode with no authentication.
+type OIDCConfig struct {
+	IssuerURL    string
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+	Scopes       []string
+	HTTPTimeout  time.Duration
+}
+
+// Enabled reports whether OIDC authentication is configured.
+func (c OIDCConfig) Enabled() bool {
+	return c.IssuerURL != ""
+}
+
+var defaultOIDCScopes = []string{"openid", "profile", "email"}
+
+const defaultOIDCHTTPTimeout = 10 * time.Second
 
 // Option is a functional option for configuring the loader itself.
 type Option func(*loader)
@@ -82,6 +107,15 @@ func (l *loader) envOrInt(key string, def int) int {
 // 	return def
 // }
 
+func (l *loader) envOrDuration(key string, def time.Duration) time.Duration {
+	if v, ok := l.envLookup(key); ok && v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return def
+}
+
 func (l *loader) load() (*Config, error) {
 	fs := flag.NewFlagSet("inundated", flag.ContinueOnError)
 
@@ -102,6 +136,24 @@ func (l *loader) load() (*Config, error) {
 	logLevel := fs.String("log-level", l.envOr("LOG_LEVEL", "info"),
 		"Log level: debug|info|warn|error (env: LOG_LEVEL)")
 
+	oidcIssuerURL := fs.String("oidc-issuer-url", l.envOr("OIDC_ISSUER_URL", ""),
+		"OIDC provider issuer URL; enables authentication when set (env: OIDC_ISSUER_URL)")
+
+	oidcClientID := fs.String("oidc-client-id", l.envOr("OIDC_CLIENT_ID", ""),
+		"OIDC client ID (env: OIDC_CLIENT_ID)")
+
+	oidcClientSecret := fs.String("oidc-client-secret", l.envOr("OIDC_CLIENT_SECRET", ""),
+		"OIDC client secret (env: OIDC_CLIENT_SECRET)")
+
+	oidcRedirectURL := fs.String("oidc-redirect-url", l.envOr("OIDC_REDIRECT_URL", ""),
+		"OIDC redirect URL; must match a URI registered with the provider (env: OIDC_REDIRECT_URL)")
+
+	oidcScopes := fs.String("oidc-scopes", l.envOr("OIDC_SCOPES", strings.Join(defaultOIDCScopes, ",")),
+		"Comma-separated OIDC scopes to request (env: OIDC_SCOPES)")
+
+	oidcHTTPTimeout := fs.Duration("oidc-http-timeout", l.envOrDuration("OIDC_HTTP_TIMEOUT", defaultOIDCHTTPTimeout),
+		"Timeout for OIDC discovery, JWKS, and token requests (env: OIDC_HTTP_TIMEOUT)")
+
 	// ------------------------------------------------------------------ //
 
 	// Override the default Usage so -help / --help prints our custom page.
@@ -118,6 +170,14 @@ func (l *loader) load() (*Config, error) {
 		Port:        *port,
 		DatabaseURL: *databaseURL,
 		LogLevel:    *logLevel,
+		OIDC: OIDCConfig{
+			IssuerURL:    *oidcIssuerURL,
+			ClientID:     *oidcClientID,
+			ClientSecret: *oidcClientSecret,
+			RedirectURL:  *oidcRedirectURL,
+			Scopes:       splitAndTrim(*oidcScopes),
+			HTTPTimeout:  *oidcHTTPTimeout,
+		},
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -139,7 +199,44 @@ func (c *Config) validate() error {
 	if c.DatabaseURL == "" {
 		return fmt.Errorf("config: database-url must not be empty")
 	}
+	if err := c.OIDC.validate(); err != nil {
+		return err
+	}
 	return nil
+}
+
+// validate ensures OIDC is either fully configured or left entirely unset.
+func (c *OIDCConfig) validate() error {
+	if !c.Enabled() {
+		return nil
+	}
+	var missing []string
+	if c.ClientID == "" {
+		missing = append(missing, "oidc-client-id")
+	}
+	if c.ClientSecret == "" {
+		missing = append(missing, "oidc-client-secret")
+	}
+	if c.RedirectURL == "" {
+		missing = append(missing, "oidc-redirect-url")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("config: oidc-issuer-url is set but these are missing: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// splitAndTrim splits a comma-separated list, trimming whitespace and dropping
+// empty entries.
+func splitAndTrim(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // printHelp writes a nicely formatted help page to stderr.
