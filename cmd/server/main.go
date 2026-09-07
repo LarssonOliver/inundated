@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -52,6 +53,62 @@ func setupRepositories(ctx context.Context, databaseUrl string) (repository.Repo
 	return nil, nil, nil
 }
 
+// resolveCSRFKey returns the configured CSRF key, or a random ephemeral one when
+// none is set. An ephemeral key is fine for local use but means CSRF tokens
+// (and thus in-flight form submissions) don't survive a restart.
+func resolveCSRFKey(configured string) []byte {
+	if configured != "" {
+		return []byte(configured)
+	}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		log.Fatalf("failed to generate ephemeral CSRF key: %v", err)
+	}
+	log.Printf("warning: CSRF_AUTH_KEY not set; generated an ephemeral key")
+	return key
+}
+
+// newRouter wires the HTTP middleware stack and routes. API routes are served at
+// the paths declared in the OpenAPI spec (/api/...), with the generated handler
+// mounted at the root. When OIDC is configured, everything under /api except
+// PublicAPIPaths requires a session; in userless mode the /api/auth/* routes are
+// hidden entirely.
+func newRouter(cfg *config.Config, svc service.Service, sessionRepo repository.SessionRepository, server api.StrictServerInterface, csrfKey []byte) http.Handler {
+	r := chi.NewMux()
+
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Recoverer)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.CSRF(csrfKey))
+
+	r.Handle("/health", handlers.HealthHandler())
+
+	r.Group(func(r chi.Router) {
+		logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
+		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
+			return r.URL.Path == "/health"
+		}))
+		r.Use(middleware.NoSniffJSON)
+
+		if cfg.OIDC.Enabled() {
+			r.Use(middleware.OIDCAuth(svc, sessionRepo))
+			r.Use(middleware.RequireAuth(middleware.PublicAPIPaths...))
+		} else {
+			// No provider to talk to: the OIDC routes don't exist here.
+			r.Use(middleware.RejectPathPrefixes("/api/auth/"))
+		}
+
+		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Handle("/*", handlers.FrontendHandler())
+	})
+
+	return r
+}
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -87,34 +144,7 @@ func main() {
 	handler := handlers.NewHandler(authSvc, svc)
 	server := api.NewServer(handler)
 
-	r := chi.NewMux()
-
-	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
-	r.Use(chimiddleware.Recoverer)
-	r.Use(middleware.SecurityHeaders)
-	r.Use(middleware.CSRFHeader)
-
-	r.Handle("/health", handlers.HealthHandler())
-
-	r.Route("/api", func(r chi.Router) {
-		logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
-		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
-			return r.URL.Path == "/health"
-		}))
-		r.Use(middleware.NoSniffJSON)
-
-		if cfg.OIDC.Enabled() {
-			r.Use(middleware.OIDCAuth(svc, sessionRepo))
-			r.Use(middleware.RequireAuth())
-		}
-
-		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
-	})
-
-	r.Group(func(r chi.Router) {
-		r.Handle("/*", handlers.FrontendHandler())
-	})
+	r := newRouter(cfg, svc, sessionRepo, server, resolveCSRFKey(cfg.CSRFAuthKey))
 
 	addrStr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 

@@ -16,6 +16,15 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// OIDC callback
+	// (GET /api/auth/callback)
+	AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams)
+	// Initiate OIDC login
+	// (GET /api/auth/login)
+	AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams)
+	// Log out
+	// (POST /api/auth/logout)
+	AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams)
 	// Get current user
 	// (GET /api/me)
 	GetCurrentUser(w http.ResponseWriter, r *http.Request)
@@ -70,20 +79,29 @@ type ServerInterface interface {
 	// Update time span
 	// (PATCH /api/timespans/{timespanId})
 	UpdateTimespan(w http.ResponseWriter, r *http.Request, timespanId TimespanIdPath, params UpdateTimespanParams)
-	// OIDC callback
-	// (GET /auth/callback)
-	AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams)
-	// Initiate OIDC login
-	// (GET /auth/login)
-	AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams)
-	// Log out
-	// (POST /auth/logout)
-	AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// OIDC callback
+// (GET /api/auth/callback)
+func (_ Unimplemented) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Initiate OIDC login
+// (GET /api/auth/login)
+func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Log out
+// (POST /api/auth/logout)
+func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Get current user
 // (GET /api/me)
@@ -193,24 +211,6 @@ func (_ Unimplemented) UpdateTimespan(w http.ResponseWriter, r *http.Request, ti
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// OIDC callback
-// (GET /auth/callback)
-func (_ Unimplemented) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Initiate OIDC login
-// (GET /auth/login)
-func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Log out
-// (POST /auth/logout)
-func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -219,6 +219,132 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// AuthCallback operation middleware
+func (siw *ServerInterfaceWrapper) AuthCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthCallbackParams
+
+	// ------------- Required query parameter "code" -------------
+
+	if paramValue := r.URL.Query().Get("code"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "code", r.URL.Query(), &params.Code)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "state" -------------
+
+	if paramValue := r.URL.Query().Get("state"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "state", r.URL.Query(), &params.State)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthCallback(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthLoginParams
+
+	// ------------- Optional query parameter "redirect" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "redirect", r.URL.Query(), &params.Redirect)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "redirect", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogin(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthLogoutParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
+		var XXSRFTOKEN XSRFTokenHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
+			return
+		}
+
+		params.XXSRFTOKEN = XXSRFTOKEN
+
+	} else {
+		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogout(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetCurrentUser operation middleware
 func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -1105,132 +1231,6 @@ func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// AuthCallback operation middleware
-func (siw *ServerInterfaceWrapper) AuthCallback(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AuthCallbackParams
-
-	// ------------- Required query parameter "code" -------------
-
-	if paramValue := r.URL.Query().Get("code"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "code", r.URL.Query(), &params.Code)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
-		return
-	}
-
-	// ------------- Required query parameter "state" -------------
-
-	if paramValue := r.URL.Query().Get("state"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "state", r.URL.Query(), &params.State)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthCallback(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// AuthLogin operation middleware
-func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AuthLoginParams
-
-	// ------------- Optional query parameter "redirect" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "redirect", r.URL.Query(), &params.Redirect)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "redirect", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthLogin(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// AuthLogout operation middleware
-func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AuthLogoutParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-XSRF-TOKEN" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-XSRF-TOKEN")]; found {
-		var XXSRFTOKEN XSRFTokenHeader
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-XSRF-TOKEN", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-XSRF-TOKEN", valueList[0], &XXSRFTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-XSRF-TOKEN", Err: err})
-			return
-		}
-
-		params.XXSRFTOKEN = XXSRFTOKEN
-
-	} else {
-		err := fmt.Errorf("Header parameter X-XSRF-TOKEN is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-XSRF-TOKEN", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthLogout(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -1345,6 +1345,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/auth/callback", wrapper.AuthCallback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/auth/login", wrapper.AuthLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/auth/logout", wrapper.AuthLogout)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/me", wrapper.GetCurrentUser)
 	})
 	r.Group(func(r chi.Router) {
@@ -1398,17 +1407,126 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/api/timespans/{timespanId}", wrapper.UpdateTimespan)
 	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/auth/callback", wrapper.AuthCallback)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/auth/login", wrapper.AuthLogin)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/auth/logout", wrapper.AuthLogout)
-	})
 
 	return r
+}
+
+type AuthCallbackRequestObject struct {
+	Params AuthCallbackParams
+}
+
+type AuthCallbackResponseObject interface {
+	VisitAuthCallbackResponse(w http.ResponseWriter) error
+}
+
+type AuthCallback200Response struct {
+}
+
+func (response AuthCallback200Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type AuthCallback302ResponseHeaders struct {
+	Location  Location
+	SetCookie string
+}
+
+type AuthCallback302Response struct {
+	Headers AuthCallback302ResponseHeaders
+}
+
+func (response AuthCallback302Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthCallback400Response struct {
+}
+
+func (response AuthCallback400Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type AuthCallback401Response struct {
+}
+
+func (response AuthCallback401Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type AuthLoginRequestObject struct {
+	Params AuthLoginParams
+}
+
+type AuthLoginResponseObject interface {
+	VisitAuthLoginResponse(w http.ResponseWriter) error
+}
+
+type AuthLogin200Response struct {
+}
+
+func (response AuthLogin200Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type AuthLogin302ResponseHeaders struct {
+	Location Location
+}
+
+type AuthLogin302Response struct {
+	Headers AuthLogin302ResponseHeaders
+}
+
+func (response AuthLogin302Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthLogin400Response struct {
+}
+
+func (response AuthLogin400Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type AuthLogoutRequestObject struct {
+	Params AuthLogoutParams
+}
+
+type AuthLogoutResponseObject interface {
+	VisitAuthLogoutResponse(w http.ResponseWriter) error
+}
+
+type AuthLogout204Response struct {
+}
+
+func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AuthLogout302Response struct {
+}
+
+func (response AuthLogout302Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(302)
+	return nil
+}
+
+type AuthLogout401Response struct {
+}
+
+func (response AuthLogout401Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
 }
 
 type GetCurrentUserRequestObject struct {
@@ -1921,126 +2039,17 @@ func (response UpdateTimespan404Response) VisitUpdateTimespanResponse(w http.Res
 	return nil
 }
 
-type AuthCallbackRequestObject struct {
-	Params AuthCallbackParams
-}
-
-type AuthCallbackResponseObject interface {
-	VisitAuthCallbackResponse(w http.ResponseWriter) error
-}
-
-type AuthCallback200Response struct {
-}
-
-func (response AuthCallback200Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
-}
-
-type AuthCallback302ResponseHeaders struct {
-	Location  Location
-	SetCookie string
-}
-
-type AuthCallback302Response struct {
-	Headers AuthCallback302ResponseHeaders
-}
-
-func (response AuthCallback302Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
-	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
-	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
-	w.WriteHeader(302)
-	return nil
-}
-
-type AuthCallback400Response struct {
-}
-
-func (response AuthCallback400Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
-	w.WriteHeader(400)
-	return nil
-}
-
-type AuthCallback401Response struct {
-}
-
-func (response AuthCallback401Response) VisitAuthCallbackResponse(w http.ResponseWriter) error {
-	w.WriteHeader(401)
-	return nil
-}
-
-type AuthLoginRequestObject struct {
-	Params AuthLoginParams
-}
-
-type AuthLoginResponseObject interface {
-	VisitAuthLoginResponse(w http.ResponseWriter) error
-}
-
-type AuthLogin200Response struct {
-}
-
-func (response AuthLogin200Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
-}
-
-type AuthLogin302ResponseHeaders struct {
-	Location Location
-}
-
-type AuthLogin302Response struct {
-	Headers AuthLogin302ResponseHeaders
-}
-
-func (response AuthLogin302Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
-	w.WriteHeader(302)
-	return nil
-}
-
-type AuthLogin400Response struct {
-}
-
-func (response AuthLogin400Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
-	w.WriteHeader(400)
-	return nil
-}
-
-type AuthLogoutRequestObject struct {
-	Params AuthLogoutParams
-}
-
-type AuthLogoutResponseObject interface {
-	VisitAuthLogoutResponse(w http.ResponseWriter) error
-}
-
-type AuthLogout204Response struct {
-}
-
-func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type AuthLogout302Response struct {
-}
-
-func (response AuthLogout302Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
-	w.WriteHeader(302)
-	return nil
-}
-
-type AuthLogout401Response struct {
-}
-
-func (response AuthLogout401Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
-	w.WriteHeader(401)
-	return nil
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// OIDC callback
+	// (GET /api/auth/callback)
+	AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error)
+	// Initiate OIDC login
+	// (GET /api/auth/login)
+	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
+	// Log out
+	// (POST /api/auth/logout)
+	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
 	// Get current user
 	// (GET /api/me)
 	GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error)
@@ -2095,15 +2104,6 @@ type StrictServerInterface interface {
 	// Update time span
 	// (PATCH /api/timespans/{timespanId})
 	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
-	// OIDC callback
-	// (GET /auth/callback)
-	AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error)
-	// Initiate OIDC login
-	// (GET /auth/login)
-	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
-	// Log out
-	// (POST /auth/logout)
-	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -2133,6 +2133,84 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// AuthCallback operation middleware
+func (sh *strictHandler) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
+	var request AuthCallbackRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthCallback(ctx, request.(AuthCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthCallback")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthCallbackResponseObject); ok {
+		if err := validResponse.VisitAuthCallbackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthLogin operation middleware
+func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
+	var request AuthLoginRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogin(ctx, request.(AuthLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
+		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthLogout operation middleware
+func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
+	var request AuthLogoutRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
+		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetCurrentUser operation middleware
@@ -2652,84 +2730,6 @@ func (sh *strictHandler) UpdateTimespan(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateTimespanResponseObject); ok {
 		if err := validResponse.VisitUpdateTimespanResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// AuthCallback operation middleware
-func (sh *strictHandler) AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams) {
-	var request AuthCallbackRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthCallback(ctx, request.(AuthCallbackRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthCallback")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthCallbackResponseObject); ok {
-		if err := validResponse.VisitAuthCallbackResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// AuthLogin operation middleware
-func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request, params AuthLoginParams) {
-	var request AuthLoginRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthLogin(ctx, request.(AuthLoginRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthLogin")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
-		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// AuthLogout operation middleware
-func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request, params AuthLogoutParams) {
-	var request AuthLogoutRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthLogout")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
-		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
