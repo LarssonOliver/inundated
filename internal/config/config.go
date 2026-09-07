@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -22,6 +23,11 @@ type Config struct {
 	// Observability
 	LogLevel string
 
+	// PublicBaseURL is the origin this app is reached at (scheme + host, no
+	// trailing slash), e.g. https://inundated.example.com. Required when OIDC
+	// is enabled, where it forms the redirect URI.
+	PublicBaseURL string
+
 	// Authentication
 	OIDC OIDCConfig
 
@@ -39,10 +45,17 @@ type OIDCConfig struct {
 	IssuerURL    string
 	ClientID     string
 	ClientSecret string
-	RedirectURL  string
-	Scopes       []string
-	HTTPTimeout  time.Duration
+
+	// RedirectURL is derived from Config.PublicBaseURL, not configured directly.
+	RedirectURL string
+
+	Scopes      []string
+	HTTPTimeout time.Duration
 }
+
+// oidcCallbackPath is the route that completes the OIDC flow. It must match the
+// path registered by the generated API handler (see middleware.PublicAPIPaths).
+const oidcCallbackPath = "/api/auth/callback"
 
 // Enabled reports whether OIDC authentication is configured.
 func (c OIDCConfig) Enabled() bool {
@@ -152,8 +165,8 @@ func (l *loader) load() (*Config, error) {
 	oidcClientSecret := fs.String("oidc-client-secret", l.envOr("OIDC_CLIENT_SECRET", ""),
 		"OIDC client secret (env: OIDC_CLIENT_SECRET)")
 
-	oidcRedirectURL := fs.String("oidc-redirect-url", l.envOr("OIDC_REDIRECT_URL", ""),
-		"OIDC redirect URL; must match a URI registered with the provider (env: OIDC_REDIRECT_URL)")
+	publicBaseURL := fs.String("public-base-url", l.envOr("PUBLIC_BASE_URL", ""),
+		"Public origin of this app (scheme + host), e.g. https://inundated.example.com; required when OIDC is enabled (env: PUBLIC_BASE_URL)")
 
 	oidcScopes := fs.String("oidc-scopes", l.envOr("OIDC_SCOPES", strings.Join(defaultOIDCScopes, ",")),
 		"Comma-separated OIDC scopes to request (env: OIDC_SCOPES)")
@@ -175,16 +188,19 @@ func (l *loader) load() (*Config, error) {
 		return nil, fmt.Errorf("config: parse error: %w", err)
 	}
 
+	baseURL := strings.TrimRight(*publicBaseURL, "/")
+
 	cfg := &Config{
-		Host:        *host,
-		Port:        *port,
-		DatabaseURL: *databaseURL,
-		LogLevel:    *logLevel,
+		Host:          *host,
+		Port:          *port,
+		DatabaseURL:   *databaseURL,
+		LogLevel:      *logLevel,
+		PublicBaseURL: baseURL,
 		OIDC: OIDCConfig{
 			IssuerURL:    *oidcIssuerURL,
 			ClientID:     *oidcClientID,
 			ClientSecret: *oidcClientSecret,
-			RedirectURL:  *oidcRedirectURL,
+			RedirectURL:  redirectURLFor(baseURL),
 			Scopes:       splitAndTrim(*oidcScopes),
 			HTTPTimeout:  *oidcHTTPTimeout,
 		},
@@ -210,8 +226,16 @@ func (c *Config) validate() error {
 	if c.DatabaseURL == "" {
 		return fmt.Errorf("config: database-url must not be empty")
 	}
+	if c.PublicBaseURL != "" {
+		if err := validatePublicBaseURL(c.PublicBaseURL); err != nil {
+			return err
+		}
+	}
 	if err := c.OIDC.validate(); err != nil {
 		return err
+	}
+	if c.OIDC.Enabled() && c.PublicBaseURL == "" {
+		return fmt.Errorf("config: public-base-url is required when oidc-issuer-url is set")
 	}
 	if c.CSRFAuthKey != "" && len(c.CSRFAuthKey) != csrfAuthKeyLen {
 		return fmt.Errorf("config: csrf-auth-key must be exactly %d bytes, got %d", csrfAuthKeyLen, len(c.CSRFAuthKey))
@@ -231,11 +255,35 @@ func (c *OIDCConfig) validate() error {
 	if c.ClientSecret == "" {
 		missing = append(missing, "oidc-client-secret")
 	}
-	if c.RedirectURL == "" {
-		missing = append(missing, "oidc-redirect-url")
-	}
 	if len(missing) > 0 {
 		return fmt.Errorf("config: oidc-issuer-url is set but these are missing: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// redirectURLFor derives the OIDC redirect URI from the public base URL.
+func redirectURLFor(baseURL string) string {
+	if baseURL == "" {
+		return ""
+	}
+	return baseURL + oidcCallbackPath
+}
+
+// validatePublicBaseURL requires a bare origin: an http(s) scheme, a host, and
+// no path, query, or fragment.
+func validatePublicBaseURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("config: public-base-url is not a valid URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("config: public-base-url must start with http:// or https://")
+	}
+	if u.Host == "" {
+		return fmt.Errorf("config: public-base-url must include a host")
+	}
+	if strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("config: public-base-url must be a bare origin (scheme + host), e.g. https://inundated.example.com")
 	}
 	return nil
 }

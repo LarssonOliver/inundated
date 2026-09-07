@@ -72,18 +72,21 @@ make dev
 ### Enabling authentication (OIDC)
 
 By default inundated runs in **userless mode**: no login, and every resource is
-shared. To put it behind an OpenID Connect provider, set the issuer URL and
-client credentials:
+shared. To put it behind an OpenID Connect provider, set the issuer URL, client
+credentials, and the app's public origin:
 
 ```bash
 export OIDC_ISSUER_URL="https://accounts.example.com"
 export OIDC_CLIENT_ID="inundated"
 export OIDC_CLIENT_SECRET="…"
-export OIDC_REDIRECT_URL="https://inundated.example.com/api/auth/callback"
+export PUBLIC_BASE_URL="https://inundated.example.com"
 # optional:
 export OIDC_SCOPES="openid,profile,email"   # default
 export OIDC_HTTP_TIMEOUT="10s"              # default
 ```
+
+The redirect URI is derived as `$PUBLIC_BASE_URL/api/auth/callback` — register
+exactly that with your provider.
 
 The first user to log in adopts all pre-existing resources. Once any user
 exists the server refuses to start without OIDC configured, so authentication
