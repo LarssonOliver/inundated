@@ -140,6 +140,26 @@ func TestOIDCPartialConfigRejected(t *testing.T) {
 	}
 }
 
+func TestCSRFAuthKeyEmptyByDefault(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.Empty(t, cfg.CSRFAuthKey)
+}
+
+func TestCSRFAuthKeyFromEnv(t *testing.T) {
+	key := "0123456789abcdef0123456789abcdef" // 32 bytes
+	env := map[string]string{"CSRF_AUTH_KEY": key}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.Equal(t, key, cfg.CSRFAuthKey)
+}
+
+func TestCSRFAuthKeyWrongLengthRejected(t *testing.T) {
+	env := map[string]string{"CSRF_AUTH_KEY": "too-short"}
+	_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.Error(t, err)
+}
+
 func TestOIDCInvalidTimeoutFallsBackToDefault(t *testing.T) {
 	env := map[string]string{
 		"OIDC_ISSUER_URL":    "https://issuer.example.com",

@@ -20,11 +20,11 @@ tags:
   - name: timespans
     description: Timespan-related operations
 paths:
-  /auth/login:
+  /api/auth/login:
     $ref: "./paths/auth.yaml#/login"
-  /auth/callback:
+  /api/auth/callback:
     $ref: "./paths/auth.yaml#/callback"
-  /auth/logout:
+  /api/auth/logout:
     $ref: "./paths/auth.yaml#/logout"
 
   /api/me:

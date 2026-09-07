@@ -256,6 +256,24 @@ type TimespanIdPath = openapi_types.UUID
 // Timezone defines model for timezone.
 type Timezone = string
 
+// AuthCallbackParams defines parameters for AuthCallback.
+type AuthCallbackParams struct {
+	Code  Code  `form:"code" json:"code"`
+	State State `form:"state" json:"state"`
+}
+
+// AuthLoginParams defines parameters for AuthLogin.
+type AuthLoginParams struct {
+	// Redirect Optional application-relative path to return to after successful authentication.
+	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
+}
+
+// AuthLogoutParams defines parameters for AuthLogout.
+type AuthLogoutParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
 // UpdateCurrentUserParams defines parameters for UpdateCurrentUser.
 type UpdateCurrentUserParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
@@ -378,24 +396,6 @@ type DeleteTimespanParams struct {
 
 // UpdateTimespanParams defines parameters for UpdateTimespan.
 type UpdateTimespanParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// AuthCallbackParams defines parameters for AuthCallback.
-type AuthCallbackParams struct {
-	Code  Code  `form:"code" json:"code"`
-	State State `form:"state" json:"state"`
-}
-
-// AuthLoginParams defines parameters for AuthLogin.
-type AuthLoginParams struct {
-	// Redirect Optional application-relative path to return to after successful authentication.
-	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
-}
-
-// AuthLogoutParams defines parameters for AuthLogout.
-type AuthLogoutParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }

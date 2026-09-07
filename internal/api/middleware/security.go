@@ -59,12 +59,11 @@ func NoSniffJSON(next http.Handler) http.Handler {
 	})
 }
 
-func CSRFHeader(next http.Handler) http.Handler {
-	// TODO: read from config if available
-	csrfKey := []byte("your-secret-key") // Replace with
-
+// CSRF returns middleware that enforces double-submit CSRF protection on unsafe
+// methods. authKey signs the tokens and must be 32 bytes.
+func CSRF(authKey []byte) func(http.Handler) http.Handler {
 	return csrf.Protect(
-		csrfKey,
+		authKey,
 		csrf.Path("/"),
 		csrf.HttpOnly(false), // ⚠️ CRITICAL: Must be false so frontend JS can read it!
 		csrf.Secure(true),    // Only send over HTTPS
@@ -79,5 +78,5 @@ func CSRFHeader(next http.Handler) http.Handler {
 			// Match whatever structured error JSON your oapi-codegen setup expects
 			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
 		})),
-	)(next)
+	)
 }

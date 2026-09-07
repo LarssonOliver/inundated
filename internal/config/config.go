@@ -24,7 +24,14 @@ type Config struct {
 
 	// Authentication
 	OIDC OIDCConfig
+
+	// CSRFAuthKey is the 32-byte key used to sign CSRF tokens. When empty the
+	// server generates an ephemeral key at startup.
+	CSRFAuthKey string
 }
+
+// csrfAuthKeyLen is the exact byte length gorilla/csrf requires.
+const csrfAuthKeyLen = 32
 
 // OIDCConfig holds the OpenID Connect client configuration. When IssuerURL is
 // empty the application runs in "userless" mode with no authentication.
@@ -154,6 +161,9 @@ func (l *loader) load() (*Config, error) {
 	oidcHTTPTimeout := fs.Duration("oidc-http-timeout", l.envOrDuration("OIDC_HTTP_TIMEOUT", defaultOIDCHTTPTimeout),
 		"Timeout for OIDC discovery, JWKS, and token requests (env: OIDC_HTTP_TIMEOUT)")
 
+	csrfAuthKey := fs.String("csrf-auth-key", l.envOr("CSRF_AUTH_KEY", ""),
+		fmt.Sprintf("%d-byte key for signing CSRF tokens; generated ephemerally if unset (env: CSRF_AUTH_KEY)", csrfAuthKeyLen))
+
 	// ------------------------------------------------------------------ //
 
 	// Override the default Usage so -help / --help prints our custom page.
@@ -178,6 +188,7 @@ func (l *loader) load() (*Config, error) {
 			Scopes:       splitAndTrim(*oidcScopes),
 			HTTPTimeout:  *oidcHTTPTimeout,
 		},
+		CSRFAuthKey: *csrfAuthKey,
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -201,6 +212,9 @@ func (c *Config) validate() error {
 	}
 	if err := c.OIDC.validate(); err != nil {
 		return err
+	}
+	if c.CSRFAuthKey != "" && len(c.CSRFAuthKey) != csrfAuthKeyLen {
+		return fmt.Errorf("config: csrf-auth-key must be exactly %d bytes, got %d", csrfAuthKeyLen, len(c.CSRFAuthKey))
 	}
 	return nil
 }

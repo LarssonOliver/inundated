@@ -265,6 +265,24 @@ type TimespanIdPath = openapi_types.UUID
 // Timezone defines model for timezone.
 type Timezone = string
 
+// AuthCallbackParams defines parameters for AuthCallback.
+type AuthCallbackParams struct {
+	Code  Code  `form:"code" json:"code"`
+	State State `form:"state" json:"state"`
+}
+
+// AuthLoginParams defines parameters for AuthLogin.
+type AuthLoginParams struct {
+	// Redirect Optional application-relative path to return to after successful authentication.
+	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
+}
+
+// AuthLogoutParams defines parameters for AuthLogout.
+type AuthLogoutParams struct {
+	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
+}
+
 // UpdateCurrentUserParams defines parameters for UpdateCurrentUser.
 type UpdateCurrentUserParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
@@ -391,24 +409,6 @@ type UpdateTimespanParams struct {
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
-// AuthCallbackParams defines parameters for AuthCallback.
-type AuthCallbackParams struct {
-	Code  Code  `form:"code" json:"code"`
-	State State `form:"state" json:"state"`
-}
-
-// AuthLoginParams defines parameters for AuthLogin.
-type AuthLoginParams struct {
-	// Redirect Optional application-relative path to return to after successful authentication.
-	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
-}
-
-// AuthLogoutParams defines parameters for AuthLogout.
-type AuthLogoutParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
 // UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.
 type UpdateCurrentUserJSONRequestBody = UpdateUser
 
@@ -503,6 +503,15 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// AuthCallback request
+	AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthLogin request
+	AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthLogout request
+	AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCurrentUser request
 	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -570,15 +579,42 @@ type ClientInterface interface {
 	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
 
-	// AuthCallback request
-	AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+func (c *Client) AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
 
-	// AuthLogin request
-	AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+func (c *Client) AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLoginRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
 
-	// AuthLogout request
-	AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+func (c *Client) AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -881,40 +917,150 @@ func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthCallbackRequest(c.Server, params)
+// NewAuthCallbackRequest generates requests for AuthCallback
+func NewAuthCallbackRequest(server string, params *AuthCallbackParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+
+	operationPath := fmt.Sprintf("/api/auth/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
 		return nil, err
 	}
-	return c.Client.Do(req)
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "code", runtime.ParamLocationQuery, params.Code); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "state", runtime.ParamLocationQuery, params.State); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
-func (c *Client) AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLoginRequest(c.Server, params)
+// NewAuthLoginRequest generates requests for AuthLogin
+func NewAuthLoginRequest(server string, params *AuthLoginParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+
+	operationPath := fmt.Sprintf("/api/auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
 		return nil, err
 	}
-	return c.Client.Do(req)
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Redirect != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "redirect", runtime.ParamLocationQuery, *params.Redirect); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
-func (c *Client) AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLogoutRequest(c.Server, params)
+// NewAuthLogoutRequest generates requests for AuthLogout
+func NewAuthLogoutRequest(server string, params *AuthLogoutParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+
+	operationPath := fmt.Sprintf("/api/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
 		return nil, err
 	}
-	return c.Client.Do(req)
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-XSRF-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
 }
 
 // NewGetCurrentUserRequest generates requests for GetCurrentUser
@@ -1918,152 +2064,6 @@ func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, 
 	return req, nil
 }
 
-// NewAuthCallbackRequest generates requests for AuthCallback
-func NewAuthCallbackRequest(server string, params *AuthCallbackParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/callback")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "code", runtime.ParamLocationQuery, params.Code); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "state", runtime.ParamLocationQuery, params.State); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewAuthLoginRequest generates requests for AuthLogin
-func NewAuthLoginRequest(server string, params *AuthLoginParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/login")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Redirect != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "redirect", runtime.ParamLocationQuery, *params.Redirect); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewAuthLogoutRequest generates requests for AuthLogout
-func NewAuthLogoutRequest(server string, params *AuthLogoutParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/logout")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -2107,6 +2107,15 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// AuthCallbackWithResponse request
+	AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error)
+
+	// AuthLoginWithResponse request
+	AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+
+	// AuthLogoutWithResponse request
+	AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+
 	// GetCurrentUserWithResponse request
 	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
 
@@ -2174,15 +2183,69 @@ type ClientWithResponsesInterface interface {
 	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
 	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+}
 
-	// AuthCallbackWithResponse request
-	AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error)
+type AuthCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
 
-	// AuthLoginWithResponse request
-	AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+// Status returns HTTPResponse.Status
+func (r AuthCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
 
-	// AuthLogoutWithResponse request
-	AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AuthLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AuthLogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetCurrentUserResponse struct {
@@ -2578,67 +2641,31 @@ func (r UpdateTimespanResponse) StatusCode() int {
 	return 0
 }
 
-type AuthCallbackResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r AuthCallbackResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
+// AuthCallbackWithResponse request returning *AuthCallbackResponse
+func (c *ClientWithResponses) AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error) {
+	rsp, err := c.AuthCallback(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
 	}
-	return http.StatusText(0)
+	return ParseAuthCallbackResponse(rsp)
 }
 
-// StatusCode returns HTTPResponse.StatusCode
-func (r AuthCallbackResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
+// AuthLoginWithResponse request returning *AuthLoginResponse
+func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
+	rsp, err := c.AuthLogin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
 	}
-	return 0
+	return ParseAuthLoginResponse(rsp)
 }
 
-type AuthLoginResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r AuthLoginResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
+// AuthLogoutWithResponse request returning *AuthLogoutResponse
+func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
+	rsp, err := c.AuthLogout(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
 	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AuthLoginResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type AuthLogoutResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r AuthLogoutResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AuthLogoutResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
+	return ParseAuthLogoutResponse(rsp)
 }
 
 // GetCurrentUserWithResponse request returning *GetCurrentUserResponse
@@ -2859,31 +2886,52 @@ func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, ti
 	return ParseUpdateTimespanResponse(rsp)
 }
 
-// AuthCallbackWithResponse request returning *AuthCallbackResponse
-func (c *ClientWithResponses) AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error) {
-	rsp, err := c.AuthCallback(ctx, params, reqEditors...)
+// ParseAuthCallbackResponse parses an HTTP response from a AuthCallbackWithResponse call
+func ParseAuthCallbackResponse(rsp *http.Response) (*AuthCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthCallbackResponse(rsp)
+
+	response := &AuthCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
-// AuthLoginWithResponse request returning *AuthLoginResponse
-func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
-	rsp, err := c.AuthLogin(ctx, params, reqEditors...)
+// ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
+func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLoginResponse(rsp)
+
+	response := &AuthLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
-// AuthLogoutWithResponse request returning *AuthLogoutResponse
-func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
-	rsp, err := c.AuthLogout(ctx, params, reqEditors...)
+// ParseAuthLogoutResponse parses an HTTP response from a AuthLogoutWithResponse call
+func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLogoutResponse(rsp)
+
+	response := &AuthLogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseGetCurrentUserResponse parses an HTTP response from a GetCurrentUserWithResponse call
@@ -3319,54 +3367,6 @@ func ParseUpdateTimespanResponse(rsp *http.Response) (*UpdateTimespanResponse, e
 		}
 		response.JSON200 = &dest
 
-	}
-
-	return response, nil
-}
-
-// ParseAuthCallbackResponse parses an HTTP response from a AuthCallbackWithResponse call
-func ParseAuthCallbackResponse(rsp *http.Response) (*AuthCallbackResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthCallbackResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
-func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthLoginResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParseAuthLogoutResponse parses an HTTP response from a AuthLogoutWithResponse call
-func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthLogoutResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
 	}
 
 	return response, nil
