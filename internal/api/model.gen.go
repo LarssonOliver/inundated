@@ -190,15 +190,6 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
-// UpdateUser defines model for UpdateUser.
-type UpdateUser struct {
-	// Email Email address
-	Email *openapi_types.Email `json:"email,omitempty"`
-
-	// Name Display name
-	Name *string `json:"name,omitempty"`
-}
-
 // User defines model for User.
 type User struct {
 	// Email Email from OIDC token
@@ -270,12 +261,6 @@ type AuthLoginParams struct {
 
 // AuthLogoutParams defines parameters for AuthLogout.
 type AuthLogoutParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// UpdateCurrentUserParams defines parameters for UpdateCurrentUser.
-type UpdateCurrentUserParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
@@ -399,9 +384,6 @@ type UpdateTimespanParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
-
-// UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.
-type UpdateCurrentUserJSONRequestBody = UpdateUser
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject

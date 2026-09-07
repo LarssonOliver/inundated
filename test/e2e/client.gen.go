@@ -199,15 +199,6 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
-// UpdateUser defines model for UpdateUser.
-type UpdateUser struct {
-	// Email Email address
-	Email *openapi_types.Email `json:"email,omitempty"`
-
-	// Name Display name
-	Name *string `json:"name,omitempty"`
-}
-
 // User defines model for User.
 type User struct {
 	// Email Email from OIDC token
@@ -279,12 +270,6 @@ type AuthLoginParams struct {
 
 // AuthLogoutParams defines parameters for AuthLogout.
 type AuthLogoutParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// UpdateCurrentUserParams defines parameters for UpdateCurrentUser.
-type UpdateCurrentUserParams struct {
 	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
@@ -409,9 +394,6 @@ type UpdateTimespanParams struct {
 	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
-// UpdateCurrentUserJSONRequestBody defines body for UpdateCurrentUser for application/json ContentType.
-type UpdateCurrentUserJSONRequestBody = UpdateUser
-
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject
 
@@ -515,11 +497,6 @@ type ClientInterface interface {
 	// GetCurrentUser request
 	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateCurrentUserWithBody request with any body
-	UpdateCurrentUserWithBody(ctx context.Context, params *UpdateCurrentUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateCurrentUser(ctx context.Context, params *UpdateCurrentUserParams, body UpdateCurrentUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListProjects request
 	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -619,30 +596,6 @@ func (c *Client) AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEd
 
 func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetCurrentUserRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateCurrentUserWithBody(ctx context.Context, params *UpdateCurrentUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateCurrentUserRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateCurrentUser(ctx context.Context, params *UpdateCurrentUserParams, body UpdateCurrentUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateCurrentUserRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1085,59 +1038,6 @@ func NewGetCurrentUserRequest(server string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateCurrentUserRequest calls the generic UpdateCurrentUser builder with application/json body
-func NewUpdateCurrentUserRequest(server string, params *UpdateCurrentUserParams, body UpdateCurrentUserJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateCurrentUserRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewUpdateCurrentUserRequestWithBody generates requests for UpdateCurrentUser with any type of body
-func NewUpdateCurrentUserRequestWithBody(server string, params *UpdateCurrentUserParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/me")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
 	}
 
 	return req, nil
@@ -2119,11 +2019,6 @@ type ClientWithResponsesInterface interface {
 	// GetCurrentUserWithResponse request
 	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
 
-	// UpdateCurrentUserWithBodyWithResponse request with any body
-	UpdateCurrentUserWithBodyWithResponse(ctx context.Context, params *UpdateCurrentUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCurrentUserResponse, error)
-
-	UpdateCurrentUserWithResponse(ctx context.Context, params *UpdateCurrentUserParams, body UpdateCurrentUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCurrentUserResponse, error)
-
 	// ListProjectsWithResponse request
 	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
 
@@ -2264,28 +2159,6 @@ func (r GetCurrentUserResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetCurrentUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UpdateCurrentUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *User
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateCurrentUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateCurrentUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2677,23 +2550,6 @@ func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, re
 	return ParseGetCurrentUserResponse(rsp)
 }
 
-// UpdateCurrentUserWithBodyWithResponse request with arbitrary body returning *UpdateCurrentUserResponse
-func (c *ClientWithResponses) UpdateCurrentUserWithBodyWithResponse(ctx context.Context, params *UpdateCurrentUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCurrentUserResponse, error) {
-	rsp, err := c.UpdateCurrentUserWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateCurrentUserResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateCurrentUserWithResponse(ctx context.Context, params *UpdateCurrentUserParams, body UpdateCurrentUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCurrentUserResponse, error) {
-	rsp, err := c.UpdateCurrentUser(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateCurrentUserResponse(rsp)
-}
-
 // ListProjectsWithResponse request returning *ListProjectsResponse
 func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
 	rsp, err := c.ListProjects(ctx, params, reqEditors...)
@@ -2943,32 +2799,6 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 	}
 
 	response := &GetCurrentUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest User
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateCurrentUserResponse parses an HTTP response from a UpdateCurrentUserWithResponse call
-func ParseUpdateCurrentUserResponse(rsp *http.Response) (*UpdateCurrentUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateCurrentUserResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
