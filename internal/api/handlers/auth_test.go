@@ -13,6 +13,7 @@ import (
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
+	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
 )
@@ -251,7 +252,7 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 
-	t.Run("success returns 204", func(t *testing.T) {
+	t.Run("success returns 204 and clears the session cookie", func(t *testing.T) {
 		sessionID := uuid.New()
 		session := model.Session{
 			Id: sessionID,
@@ -273,6 +274,8 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		assert.IsType(t, api.AuthLogout204Response{}, resp)
+		got, ok := resp.(api.AuthLogout204Response)
+		require.True(t, ok, "expected AuthLogout204Response, got %T", resp)
+		assert.Equal(t, auth.ClearSessionCookie().String(), got.Headers.SetCookie)
 	})
 }

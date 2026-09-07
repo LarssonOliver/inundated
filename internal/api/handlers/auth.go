@@ -82,5 +82,9 @@ func (a *AuthHandler) AuthLogout(ctx context.Context, request api.AuthLogoutRequ
 		return nil, errors.New("failed to logout session")
 	}
 
-	return api.AuthLogout204Response{}, nil
+	return api.AuthLogout204Response{
+		Headers: api.AuthLogout204ResponseHeaders{
+			SetCookie: auth.ClearSessionCookie().String(),
+		},
+	}, nil
 }

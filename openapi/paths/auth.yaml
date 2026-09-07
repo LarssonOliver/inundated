@@ -66,6 +66,11 @@ logout:
     responses:
       "204":
         description: Session terminated
+        headers:
+          Set-Cookie:
+            description: Clears the session cookie.
+            schema:
+              type: string
       "302":
         description: Session terminated and browser redirected
       "401":

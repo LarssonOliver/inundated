@@ -41,15 +41,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			if time.Now().After(session.ExpiresAt) {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
-				http.SetCookie(w, &http.Cookie{
-					Name:     model.SessionCookieName,
-					Value:    "",
-					Path:     "/",
-					MaxAge:   -1,
-					Secure:   true,
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
+				http.SetCookie(w, auth.ClearSessionCookie())
 
 				next.ServeHTTP(w, r)
 				return
@@ -65,15 +57,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			if err != nil {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
-				http.SetCookie(w, &http.Cookie{
-					Name:     model.SessionCookieName,
-					Value:    "",
-					Path:     "/",
-					MaxAge:   -1,
-					Secure:   true,
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
+				http.SetCookie(w, auth.ClearSessionCookie())
 
 				next.ServeHTTP(w, r)
 				return
