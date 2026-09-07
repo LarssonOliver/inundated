@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./tags";
 import { GetTagIncludeEnum, type TagsApi } from "./generated";
 
 const { createTagsApi } = __test__;
+
+const XSRF = "test-token";
 
 function mockGeneratedApi(): Mocked<TagsApi> {
   return {
@@ -21,6 +23,11 @@ describe("tags API", () => {
 
   beforeEach(() => {
     api = mockGeneratedApi();
+    document.cookie = `XSRF-TOKEN=${XSRF}`;
+  });
+
+  afterEach(() => {
+    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 
   it("listTags maps paginated API response to domain tags", async () => {
@@ -97,6 +104,7 @@ describe("tags API", () => {
     });
 
     expect(api.createTag).toHaveBeenCalledWith({
+      xXSRFTOKEN: XSRF,
       createTag: { name: "New", color: "#000" },
     });
 
@@ -120,6 +128,7 @@ describe("tags API", () => {
     });
 
     expect(api.updateTag).toHaveBeenCalledWith({
+      xXSRFTOKEN: XSRF,
       tagId: "1",
       updateTag: { name: "Updated" },
     });
@@ -138,6 +147,7 @@ describe("tags API", () => {
     await sut.deleteTag("dead-id");
 
     expect(api.deleteTag).toHaveBeenCalledWith({
+      xXSRFTOKEN: XSRF,
       tagId: "dead-id",
     });
   });

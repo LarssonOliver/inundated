@@ -1,20 +1,20 @@
 # TimespansApi
 
-All URIs are relative to */api*
+All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /timespans | Create time span |
-| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /timespans/{timespanId} | Delete time span |
-| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /timespans/{timespanId} | Get time span |
-| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /timespans | List time spans |
-| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /timespans/{timespanId} | Update time span |
+| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /api/timespans | Create time span |
+| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /api/timespans/{timespanId} | Delete time span |
+| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /api/timespans/{timespanId} | Get time span |
+| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /api/timespans | List time spans |
+| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /api/timespans/{timespanId} | Update time span |
 
 
 
 ## createTimespan
 
-> Timespan createTimespan(createTimespan)
+> Timespan createTimespan(xXSRFTOKEN, createTimespan)
 
 Create time span
 
@@ -29,9 +29,15 @@ import type { CreateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // CreateTimespan
     createTimespan: ...,
   } satisfies CreateTimespanRequest;
@@ -53,6 +59,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **createTimespan** | [CreateTimespan](CreateTimespan.md) |  | |
 
 ### Return type
@@ -61,7 +68,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -80,7 +87,7 @@ No authorization required
 
 ## deleteTimespan
 
-> deleteTimespan(timespanId)
+> deleteTimespan(xXSRFTOKEN, timespanId)
 
 Delete time span
 
@@ -95,9 +102,15 @@ import type { DeleteTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     timespanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies DeleteTimespanRequest;
@@ -119,6 +132,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **timespanId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
@@ -127,7 +141,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -161,7 +175,11 @@ import type { GetTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // string
@@ -193,7 +211,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -227,7 +245,11 @@ import type { ListTimespansRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
@@ -262,7 +284,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -281,7 +303,7 @@ No authorization required
 
 ## updateTimespan
 
-> Timespan updateTimespan(timespanId, updateTimespan)
+> Timespan updateTimespan(xXSRFTOKEN, timespanId, updateTimespan)
 
 Update time span
 
@@ -296,9 +318,15 @@ import type { UpdateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
+    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
+    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     timespanId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // UpdateTimespan
@@ -322,6 +350,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **timespanId** | `string` |  | [Defaults to `undefined`] |
 | **updateTimespan** | [UpdateTimespan](UpdateTimespan.md) |  | |
 
@@ -331,7 +360,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
