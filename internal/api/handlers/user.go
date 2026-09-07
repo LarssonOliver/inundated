@@ -26,7 +26,7 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 func (u *UserHandler) GetCurrentUser(ctx context.Context, request api.GetCurrentUserRequestObject) (api.GetCurrentUserResponseObject, error) {
 	user, err := u.svc.GetCurrentUser(ctx)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.GetCurrentUser401Response{}, nil
 	} else if err != nil {
 		return nil, errors.New("internal server error")
@@ -46,7 +46,7 @@ func (u *UserHandler) GetCurrentUser(ctx context.Context, request api.GetCurrent
 func (u *UserHandler) UpdateCurrentUser(ctx context.Context, request api.UpdateCurrentUserRequestObject) (api.UpdateCurrentUserResponseObject, error) {
 	user, err := u.svc.GetCurrentUser(ctx)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.UpdateCurrentUser401Response{}, nil
 	} else if err != nil {
 		return nil, errors.New("internal server error")
@@ -61,7 +61,7 @@ func (u *UserHandler) UpdateCurrentUser(ctx context.Context, request api.UpdateC
 
 	reply, err := u.svc.UpdateCurrentUser(ctx, user)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.UpdateCurrentUser400Response{}, nil
 	} else if err != nil {
 		return nil, errors.New("internal server error")

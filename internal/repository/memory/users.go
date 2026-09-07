@@ -116,6 +116,10 @@ func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.
 
 // UpdateUser implements [repository.UserRepository].
 func (m *MemoryStore) UpdateUser(ctx context.Context, user model.User) (model.User, error) {
+	if user.Email == "" {
+		return model.User{}, model.ErrInvalidArgument
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

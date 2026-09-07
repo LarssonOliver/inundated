@@ -103,6 +103,25 @@ func TestUserRepositoryContract(t *testing.T) {
 			require.Equal(t, newName, got.Name)
 		})
 
+		t.Run(repoName+"UpdateRejectsEmptyEmail", func(t *testing.T) {
+			repo := newRepo(t)
+
+			user := model.User{
+				Id:    uuid.New(),
+				Sub:   "auth0|emptyemail",
+				Email: "present@example.com",
+				Name:  "Present",
+			}
+			_, err := repo.CreateUser(ctx, user)
+			require.NoError(t, err)
+
+			_, err = repo.UpdateUser(ctx, model.User{Id: user.Id, Email: "", Name: "Present"})
+			require.ErrorIs(t, err, model.ErrInvalidArgument)
+
+			got, _ := repo.GetUser(ctx, user.Id)
+			require.Equal(t, "present@example.com", got.Email, "the rejected update must not have persisted")
+		})
+
 		t.Run(repoName+"UpdateMissing", func(t *testing.T) {
 			repo := newRepo(t)
 
