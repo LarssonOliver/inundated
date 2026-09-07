@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -56,15 +57,19 @@ type Querier interface {
 var _ Querier = (*pgxpool.Pool)(nil)
 
 // withTx runs fn inside a transaction, committing on success and rolling back
-// on any error.
+// on any error or panic.
 func (r *PostgresStore) withTx(ctx context.Context, fn func(q Querier) error) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
+		if p := recover(); p != nil {
+			rollback(ctx, tx)
+			panic(p)
+		}
 		if err != nil {
-			_ = tx.Rollback(ctx)
+			rollback(ctx, tx)
 		}
 	}()
 	if err = fn(tx); err != nil {
@@ -74,4 +79,12 @@ func (r *PostgresStore) withTx(ctx context.Context, fn func(q Querier) error) (e
 		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
+}
+
+// rollback aborts tx, giving the ROLLBACK its own short-lived context so it still
+// runs when the caller's ctx has already been cancelled (e.g. client disconnect).
+func rollback(ctx context.Context, tx pgx.Tx) {
+	rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	_ = tx.Rollback(rbCtx)
 }
