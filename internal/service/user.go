@@ -48,6 +48,12 @@ func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity mo
 }
 
 func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
+	if s.registrationDisabled {
+		return model.User{}, fmt.Errorf(
+			"refusing to enroll new OIDC subject %q: %w", identity.Sub, model.ErrRegistrationDisabled,
+		)
+	}
+
 	if identity.Email == "" {
 		return model.User{}, fmt.Errorf(
 			"OIDC identity %q has no email claim; check that the provider returns email for the configured scopes: %w",

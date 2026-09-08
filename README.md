@@ -98,6 +98,35 @@ The first user to log in adopts all pre-existing resources. Once any user
 exists the server refuses to start without OIDC configured, so authentication
 can't be silently switched off.
 
+#### Closing registration
+
+By default any identity your OIDC provider authenticates gets an account on
+first login. Once every expected user has logged in at least once, set:
+
+```bash
+export DISABLE_USER_REGISTRATION=true   # or --disable-user-registration
+```
+
+With this on, a login from an identity that has no account is rejected (the
+account is not created and no resources are adopted); existing users are
+unaffected. Leave it off for the very first login so you can enrol yourself.
+
+### Deploying behind a reverse proxy
+
+inundated does not terminate TLS or emit HSTS itself. Run it behind a proxy
+(Caddy, nginx, Traefik, …) that:
+
+- terminates HTTPS and sets `Strict-Transport-Security`;
+- sets `X-Forwarded-For` / `X-Real-IP` to the real client address **and strips
+  any client-supplied copies** — the built-in per-IP rate limits (100 req/min
+  general, 10 req/min on `/api/auth/*`) key off that value;
+- forwards to the app's `HOST:PORT`.
+
+Also set `PUBLIC_BASE_URL` to the external `https://` origin and
+`CSRF_AUTH_KEY` to a persistent 32-byte value (an unset key is regenerated on
+every restart, invalidating in-flight logins and ruling out more than one
+instance). API request bodies are capped at 1 MiB.
+
 ### Trying the auth flow locally with Docker Compose
 
 `docker-compose.yml` runs PostgreSQL and a mock OIDC provider

@@ -122,6 +122,68 @@ func TestNewRouter_UserlessMode(t *testing.T) {
 	})
 }
 
+func TestNewHTTPServer_HasTimeouts(t *testing.T) {
+	s := newHTTPServer("127.0.0.1:0", http.NotFoundHandler())
+
+	assert.Positive(t, s.ReadHeaderTimeout)
+	assert.Positive(t, s.ReadTimeout)
+	assert.Positive(t, s.WriteTimeout)
+	assert.Positive(t, s.IdleTimeout)
+}
+
+func TestNewRouter_RateLimiting(t *testing.T) {
+	cfg := &config.Config{}
+	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
+	r := newRouter(cfg, svc, repo, server, testCSRFKey)
+
+	callFrom := func(path, ip string) int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.RemoteAddr = ip + ":40000"
+		r.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	t.Run("a per-IP flood on the API is shed with 429", func(t *testing.T) {
+		const ip = "203.0.113.10"
+		got429 := false
+		for i := 0; i < middleware.APIRateLimitRequests+5; i++ {
+			if callFrom("/api/projects", ip) == http.StatusTooManyRequests {
+				got429 = true
+				break
+			}
+		}
+		assert.True(t, got429, "expected the API rate limit to kick in within the window")
+	})
+
+	t.Run("another IP is unaffected", func(t *testing.T) {
+		assert.Equal(t, http.StatusOK, callFrom("/api/projects", "203.0.113.99"))
+	})
+}
+
+func TestNewRouter_BodyLimit(t *testing.T) {
+	cfg := &config.Config{}
+	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
+	r := newRouter(cfg, svc, repo, server, testCSRFKey)
+
+	cookies, token := csrfHandshake(t, r)
+
+	oversized := `{"name":"` + strings.Repeat("x", int(middleware.MaxAPIBodyBytes)+1) + `"}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/projects", strings.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://example.com")
+	req.Header.Set(middleware.XSRFHeaderName, token)
+	req.RemoteAddr = "198.51.100.5:40000"
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	r.ServeHTTP(rec, req)
+
+	assert.NotEqual(t, http.StatusCreated, rec.Code, "an oversized body must never reach the handler")
+	assert.GreaterOrEqual(t, rec.Code, 400)
+}
+
 func TestNewRouter_OIDCMode(t *testing.T) {
 	cfg := &config.Config{
 		PublicBaseURL: "https://app.example.com",

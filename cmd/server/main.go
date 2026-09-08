@@ -73,6 +73,20 @@ func shouldUseSecureCookies(cfg *config.Config) bool {
 	return strings.HasPrefix(cfg.PublicBaseURL, "https://")
 }
 
+// newHTTPServer wraps the router in a server with timeouts set, so a slow or
+// idle client can't pin a connection open indefinitely (Go's zero-value
+// http.Server has no read/write deadline at all).
+func newHTTPServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+}
+
 func newRouter(
 	cfg *config.Config,
 	svc service.Service,
@@ -97,6 +111,14 @@ func newRouter(
 		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
 			return r.URL.Path == "/health"
 		}))
+		// Rate limiting sits ahead of the CSRF HMAC and the session lookup so a
+		// flood is shed cheaply. The auth routes get a tighter budget because
+		// each callback fans out to the IdP. Both key on the RealIP-resolved
+		// address, so they are only as sound as the proxy in front.
+		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
+		r.Use(middleware.RateLimitByIPForPrefixes(
+			middleware.AuthRateLimitRequests, middleware.AuthRateLimitWindow, "/api/auth/"))
+		r.Use(middleware.MaxBodyBytes(middleware.MaxAPIBodyBytes))
 		r.Use(middleware.NoSniffJSON)
 		// CSRF only guards the API. The SPA reads its XSRF-TOKEN off the
 		// first (safe) /api/me probe; static assets and /health would
@@ -136,10 +158,17 @@ func main() {
 	ctx := context.Background()
 
 	repo, loginStateRepo, sessionRepo := setupRepositories(ctx, cfg.DatabaseURL)
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, service.WithRegistrationDisabled(cfg.DisableUserRegistration))
 
 	if err := service.EnsureAuthConfigConsistent(ctx, repo, cfg.OIDC.Enabled()); err != nil {
 		log.Fatalf("auth configuration: %v", err)
+	}
+
+	if cfg.DisableUserRegistration {
+		log.Printf("user registration disabled; only OIDC identities with an existing account can log in")
+		if hasUsers, err := repo.HasUsers(ctx); err == nil && !hasUsers {
+			log.Printf("warning: registration is disabled and no users exist yet -- nobody can log in until you enable it once")
+		}
 	}
 
 	oidcClient := auth.NewOIDCClientWithConfig(auth.OIDCClientConfig{
@@ -162,10 +191,7 @@ func main() {
 
 	addrStr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 
-	s := &http.Server{
-		Handler: r,
-		Addr:    addrStr,
-	}
+	s := newHTTPServer(addrStr, r)
 
 	if cfg.OIDC.Enabled() {
 		log.Printf("OIDC authentication enabled (issuer: %s)", cfg.OIDC.IssuerURL)

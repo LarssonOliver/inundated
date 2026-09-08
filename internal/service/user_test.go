@@ -242,6 +242,43 @@ func TestUserService_GetOrCreateUserByIdentity(t *testing.T) {
 	}
 }
 
+func TestUserService_GetOrCreateUserByIdentity_RegistrationDisabled(t *testing.T) {
+	existing := model.User{Id: uuid.New(), Sub: "auth0|existing", Email: "e@example.com", Name: "E"}
+
+	t.Run("new subject is rejected before touching the repository", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return model.User{}, model.ErrNotFound
+			},
+			CreateUserAdoptingOrphansFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+				t.Fatal("CreateUserAdoptingOrphans must not be called when registration is disabled")
+				return model.User{}, model.OrphanAdoption{}, nil
+			},
+		}
+		s := service.NewService(repo, service.WithRegistrationDisabled(true))
+
+		_, err := s.GetOrCreateUserByIdentity(context.Background(),
+			model.UserIdentity{Sub: "auth0|new", Email: "new@example.com", Name: "New"})
+
+		require.ErrorIs(t, err, model.ErrRegistrationDisabled)
+	})
+
+	t.Run("existing user still logs in", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return existing, nil
+			},
+		}
+		s := service.NewService(repo, service.WithRegistrationDisabled(true))
+
+		got, err := s.GetOrCreateUserByIdentity(context.Background(),
+			model.UserIdentity{Sub: existing.Sub, Email: existing.Email, Name: existing.Name})
+
+		require.NoError(t, err)
+		require.Equal(t, existing.Id, got.Id)
+	})
+}
+
 func TestUserService_GetOrCreateUserByIdentity_ConcurrentCreateLosesRace(t *testing.T) {
 	identity := model.UserIdentity{Sub: "auth0|racer", Email: "racer@example.com", Name: "Racer"}
 	winner := model.User{Id: uuid.New(), Sub: identity.Sub, Email: identity.Email, Name: identity.Name}

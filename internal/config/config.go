@@ -19,6 +19,11 @@ type Config struct {
 	PublicBaseURL string
 	OIDC          OIDCConfig
 	CSRFAuthKey   string
+
+	// DisableUserRegistration, when true, rejects logins from OIDC identities
+	// that don't already have an account. Existing users are unaffected. Flip
+	// this on once every expected user has been enrolled.
+	DisableUserRegistration bool
 }
 
 const csrfAuthKeyLen = 32
@@ -88,14 +93,14 @@ func (l *loader) envOrInt(key string, def int) int {
 	return def
 }
 
-// func (l *loader) envOrBool(key string, def bool) bool {
-// 	if v, ok := l.envLookup(key); ok && v != "" {
-// 		if b, err := strconv.ParseBool(v); err == nil {
-// 			return b
-// 		}
-// 	}
-// 	return def
-// }
+func (l *loader) envOrBool(key string, def bool) bool {
+	if v, ok := l.envLookup(key); ok && v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
+		}
+	}
+	return def
+}
 
 func (l *loader) envOrDuration(key string, def time.Duration) time.Duration {
 	if v, ok := l.envLookup(key); ok && v != "" {
@@ -147,6 +152,9 @@ func (l *loader) load() (*Config, error) {
 	csrfAuthKey := fs.String("csrf-auth-key", l.envOr("CSRF_AUTH_KEY", ""),
 		fmt.Sprintf("%d-byte key for signing CSRF tokens; generated ephemerally if unset (env: CSRF_AUTH_KEY)", csrfAuthKeyLen))
 
+	disableUserRegistration := fs.Bool("disable-user-registration", l.envOrBool("DISABLE_USER_REGISTRATION", false),
+		"Reject logins from OIDC identities without an existing account (env: DISABLE_USER_REGISTRATION)")
+
 	// ------------------------------------------------------------------ //
 
 	fs.Usage = func() { printHelp(fs) }
@@ -173,7 +181,8 @@ func (l *loader) load() (*Config, error) {
 			Scopes:       splitAndTrim(*oidcScopes),
 			HTTPTimeout:  *oidcHTTPTimeout,
 		},
-		CSRFAuthKey: *csrfAuthKey,
+		CSRFAuthKey:             *csrfAuthKey,
+		DisableUserRegistration: *disableUserRegistration,
 	}
 
 	if err := cfg.validate(); err != nil {
