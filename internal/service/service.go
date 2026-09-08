@@ -19,9 +19,6 @@ var _ Service = (*ServiceImpl)(nil)
 // ServiceOption tweaks a ServiceImpl at construction time.
 type ServiceOption func(*ServiceImpl)
 
-// WithRegistrationDisabled makes GetOrCreateUserByIdentity reject an OIDC
-// identity that doesn't already map to a user, instead of creating one.
-// Existing users are unaffected.
 func WithRegistrationDisabled(disabled bool) ServiceOption {
 	return func(s *ServiceImpl) { s.registrationDisabled = disabled }
 }

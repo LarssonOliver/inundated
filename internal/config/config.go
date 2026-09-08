@@ -12,17 +12,13 @@ import (
 )
 
 type Config struct {
-	Host          string
-	Port          int
-	DatabaseURL   string
-	LogLevel      string
-	PublicBaseURL string
-	OIDC          OIDCConfig
-	CSRFAuthKey   string
-
-	// DisableUserRegistration, when true, rejects logins from OIDC identities
-	// that don't already have an account. Existing users are unaffected. Flip
-	// this on once every expected user has been enrolled.
+	Host                    string
+	Port                    int
+	DatabaseURL             string
+	LogLevel                string
+	PublicBaseURL           string
+	OIDC                    OIDCConfig
+	CSRFAuthKey             string
 	DisableUserRegistration bool
 }
 
