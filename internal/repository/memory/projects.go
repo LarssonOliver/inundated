@@ -22,8 +22,9 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 			return model.Project{}, model.ErrInvalidReference
 		}
 
-		tagIds = make([]uuid.UUID, len(project.TagIds))
-		copy(tagIds, project.TagIds)
+		deduped := utils.DedupeUUIDs(project.TagIds)
+		tagIds = make([]uuid.UUID, len(deduped))
+		copy(tagIds, deduped)
 	} else {
 		tagIds = []uuid.UUID{}
 	}
@@ -88,8 +89,11 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 		return model.Project{}, model.ErrInvalidArgument
 	}
 
-	if project.TagIds != nil && !t.tagsExist(ctx, scope, project.TagIds) {
-		return model.Project{}, model.ErrInvalidReference
+	if project.TagIds != nil {
+		if !t.tagsExist(ctx, scope, project.TagIds) {
+			return model.Project{}, model.ErrInvalidReference
+		}
+		project.TagIds = utils.DedupeUUIDs(project.TagIds)
 	}
 
 	t.mu.Lock()

@@ -396,6 +396,30 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Empty(t, got.TagIds)
 		})
 
+		t.Run(repoName+"RepeatingATagIdIsAccepted", func(t *testing.T) {
+			repo := newRepo(t)
+			scope := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scope)
+			tag := seedTags(t, ctx, repo, scope, 1)[0]
+
+			start := time.Now().UTC()
+			created, err := repo.CreateTimespan(ctx, scope, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+				TagIds: []uuid.UUID{tag, tag},
+			})
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{tag}, created.TagIds)
+
+			got, err := repo.GetTimespan(ctx, scope, created.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{tag}, got.TagIds)
+
+			created.TagIds = []uuid.UUID{tag, tag}
+			updated, err := repo.UpdateTimespan(ctx, scope, created)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{tag}, updated.TagIds)
+		})
+
 		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
 			repo := newRepo(t)
 			user := model.UserScope(uuid.New())

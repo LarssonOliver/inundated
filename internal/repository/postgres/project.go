@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
@@ -104,6 +105,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 	if project.Id == uuid.Nil {
 		project.Id = uuid.New()
 	}
+	project.TagIds = utils.DedupeUUIDs(project.TagIds)
 
 	var created model.Project
 	err := r.withTx(ctx, func(q Querier) error {
@@ -139,6 +141,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 	if project.Name == "" {
 		return model.Project{}, fmt.Errorf("UpdateProject: name must not be empty: %w", model.ErrInvalidArgument)
 	}
+	project.TagIds = utils.DedupeUUIDs(project.TagIds)
 
 	var updated model.Project
 	err := r.withTx(ctx, func(q Querier) error {

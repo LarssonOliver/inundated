@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 // CreateTimespan implements [repository.TimespanRepository].
@@ -22,8 +23,9 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 			return model.Timespan{}, model.ErrInvalidReference
 		}
 
-		tagIds = make([]uuid.UUID, len(timespan.TagIds))
-		copy(tagIds, timespan.TagIds)
+		deduped := utils.DedupeUUIDs(timespan.TagIds)
+		tagIds = make([]uuid.UUID, len(deduped))
+		copy(tagIds, deduped)
 	} else {
 		tagIds = []uuid.UUID{}
 	}
@@ -91,8 +93,11 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
-	if timespan.TagIds != nil && !t.tagsExist(ctx, scope, timespan.TagIds) {
-		return model.Timespan{}, model.ErrInvalidReference
+	if timespan.TagIds != nil {
+		if !t.tagsExist(ctx, scope, timespan.TagIds) {
+			return model.Timespan{}, model.ErrInvalidReference
+		}
+		timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 	}
 
 	t.mu.Lock()
