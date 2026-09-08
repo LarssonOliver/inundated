@@ -26,7 +26,12 @@ func SecurityHeaders(next http.Handler) http.Handler {
 
 		// Content Security Policy
 		// - default-src 'self': only load resources from the same origin by default
-		// - script-src 'self': no inline scripts, no eval
+		// - script-src 'self': no inline scripts, no eval. The Vite/Vue
+		//   production build emits only external module scripts (verified: the
+		//   built index.html has a single <script type="module" src=...>), so no
+		//   'unsafe-inline' is needed -- and leaving it out is what keeps an HTML
+		//   injection from running script that reads the JS-readable XSRF-TOKEN
+		//   cookie and forging CSRF-valid requests.
 		// - style-src 'self' 'unsafe-inline': allow inline styles (common with Vue; tighten if possible)
 		// - img-src 'self' data:: allow same-origin images and data URIs (e.g. base64 icons)
 		// - connect-src 'self': XHR/fetch only to same origin
@@ -36,7 +41,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		// - form-action 'self': restrict where forms can submit
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline'; "+
+				"script-src 'self'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' data:; "+
 				"connect-src 'self'; "+
