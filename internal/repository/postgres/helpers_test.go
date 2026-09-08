@@ -27,6 +27,34 @@ func newMock(t *testing.T) (repository.Repository, pgxmock.PgxPoolIface) {
 	return postgres.NewPostgresStoreWithQuerier(mock), mock
 }
 
+func newSessionMock(t *testing.T) (repository.SessionRepository, pgxmock.PgxPoolIface) {
+	t.Helper()
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("unfulfilled pgxmock expectations: %v", err)
+		}
+	})
+	return postgres.NewPostgresStoreWithQuerier(mock), mock
+}
+
+func newLoginStateMock(t *testing.T) (repository.LoginStateRepository, pgxmock.PgxPoolIface) {
+	t.Helper()
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("unfulfilled pgxmock expectations: %v", err)
+		}
+	})
+	return postgres.NewPostgresStoreWithQuerier(mock), mock
+}
+
+// testScope is the owner scope that the postgres unit and contract tests run
+// under; every scoped query is expected to filter on and bind its user id.
+var testScope = model.UserScope(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+
 // dur is a convenience helper for building *time.Duration literals.
 func dur(d time.Duration) *time.Duration { return &d }
 
@@ -34,9 +62,10 @@ func dur(d time.Duration) *time.Duration { return &d }
 
 func aTag() model.Tag {
 	return model.Tag{
-		Id:    uuid.New(),
-		Name:  "backend",
-		Color: "#ff0000",
+		Id:     uuid.New(),
+		Name:   "backend",
+		Color:  "#ff0000",
+		UserId: testScope.UserID(),
 	}
 }
 
@@ -58,5 +87,36 @@ func aTimespan() model.Timespan {
 		StartTime: now,
 		EndTime:   now.Add(2 * time.Hour),
 		TagIds:    []uuid.UUID{uuid.New()},
+	}
+}
+
+func aUser() model.User {
+	return model.User{
+		Id:    uuid.New(),
+		Sub:   "auth0|user123",
+		Name:  "Test User",
+		Email: "test@example.com",
+	}
+}
+
+const testSessionToken = "s3ss10n-t0k3n"
+
+func aSession() model.Session {
+	return model.Session{
+		Id:        uuid.New(),
+		UserId:    uuid.New(),
+		Sub:       "auth0|user123",
+		CreatedAt: time.Now().Add(-time.Hour).UTC(),
+		ExpiresAt: time.Now().Add(time.Hour).UTC(),
+	}
+}
+
+func aLoginState() model.LoginState {
+	return model.LoginState{
+		Id:           uuid.New(),
+		RedirectUri:  "https://example.com/callback",
+		CodeVerifier: "s3cr3t",
+		Nonce:        "n0nce",
+		ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 	}
 }

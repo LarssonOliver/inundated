@@ -13,4 +13,5 @@ type Project struct {
 	TimeBudget *time.Duration
 	TagIds     []uuid.UUID
 	TotalTime  *time.Duration
+	UserId     *uuid.UUID
 }

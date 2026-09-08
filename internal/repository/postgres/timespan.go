@@ -9,20 +9,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	if id == uuid.Nil {
 		return model.Timespan{}, fmt.Errorf("GetTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
-		SELECT id, name, start_time, end_time 
-		FROM timespans 
-		WHERE id = $1 AND deleted_at IS NULL`
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
+		SELECT id, name, start_time, end_time, user_id
+		FROM timespans
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var ts model.Timespan
-	err := r.db.QueryRow(ctx, q, id).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
 	}
@@ -37,25 +39,27 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, id uuid.UUID) (model.Ti
 	return ts, nil
 }
 
-func (r *PostgresStore) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	const countQ = `
+func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
+	countQ := `
 		SELECT COUNT(*)
 		FROM timespans
-		WHERE deleted_at IS NULL`
+		WHERE deleted_at IS NULL AND ` + countOwnerSQL
 
 	var totalCount int
-	if err := r.db.QueryRow(ctx, countQ).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
 	}
 
-	const dataQ = `
-		SELECT id, name, start_time, end_time
-		FROM timespans 
-		WHERE deleted_at IS NULL
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
+	dataQ := `
+		SELECT id, name, start_time, end_time, user_id
+		FROM timespans
+		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
 		ORDER BY start_time DESC
 		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(ctx, dataQ, params.Limit, params.Offset)
+	rows, err := r.db.Query(ctx, dataQ, args...)
 	if err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans: %w", err)
 	}
@@ -65,7 +69,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, params model.Paginati
 
 	for rows.Next() {
 		var ts model.Timespan
-		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime); err != nil {
+		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId); err != nil {
 			return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans scan: %w", err)
 		}
 		spans = append(spans, ts)
@@ -95,7 +99,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, params model.Paginati
 	}, nil
 }
 
-func (r *PostgresStore) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.StartTime.IsZero() {
 		return model.Timespan{}, fmt.Errorf("CreateTimespan: start_time must not be zero: %w", model.ErrInvalidArgument)
 	}
@@ -105,27 +109,36 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, timespan model.Times
 	if timespan.Id == uuid.Nil {
 		timespan.Id = uuid.New()
 	}
-
-	const q = `
-		INSERT INTO timespans (id, name, start_time, end_time)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, name, start_time, end_time`
+	timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 
 	var created model.Timespan
-	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime).
-		Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime)
-	if err != nil {
-		return model.Timespan{}, fmt.Errorf("CreateTimespan: %w", err)
-	}
+	err := r.withTx(ctx, func(q Querier) error {
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("CreateTimespan: %w", model.ErrInvalidReference)
+		}
 
-	if err := r.setTimespanTags(ctx, created.Id, timespan.TagIds); err != nil {
+		const insert = `
+			INSERT INTO timespans (id, name, start_time, end_time, user_id)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, name, start_time, end_time, user_id`
+		if err := q.QueryRow(ctx, insert, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
+			Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime, &created.UserId); err != nil {
+			return fmt.Errorf("CreateTimespan: %w", err)
+		}
+		return r.setTimespanTags(ctx, q, created.Id, timespan.TagIds)
+	})
+	if err != nil {
 		return model.Timespan{}, err
 	}
 	created.TagIds = timespan.TagIds
 	return created, nil
 }
 
-func (r *PostgresStore) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.Id == uuid.Nil {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: id: %w", model.ErrInvalidArgument)
 	}
@@ -135,40 +148,52 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, timespan model.Times
 	if !timespan.EndTime.IsZero() && !timespan.EndTime.After(timespan.StartTime) {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: end_time must be after start_time: %w", model.ErrInvalidArgument)
 	}
-
-	const q = `
-		UPDATE timespans SET name = $2, start_time = $3, end_time = $4
-		WHERE id = $1 AND deleted_at IS NULL
-		RETURNING id, name, start_time, end_time`
+	timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 
 	var updated model.Timespan
-	err := r.db.QueryRow(ctx, q, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime).
-		Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Timespan{}, fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
-	}
-	if err != nil {
-		return model.Timespan{}, fmt.Errorf("UpdateTimespan: %w", err)
-	}
+	err := r.withTx(ctx, func(q Querier) error {
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("UpdateTimespan: %w", model.ErrInvalidReference)
+		}
 
-	if err := r.setTimespanTags(ctx, updated.Id, timespan.TagIds); err != nil {
+		ownerSQL, args := ownerPredicate("user_id", scope, []any{timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime})
+		update := `
+			UPDATE timespans SET name = $2, start_time = $3, end_time = $4
+			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
+			RETURNING id, name, start_time, end_time, user_id`
+		err = q.QueryRow(ctx, update, args...).
+			Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime, &updated.UserId)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
+		}
+		if err != nil {
+			return fmt.Errorf("UpdateTimespan: %w", err)
+		}
+		return r.setTimespanTags(ctx, q, updated.Id, timespan.TagIds)
+	})
+	if err != nil {
 		return model.Timespan{}, err
 	}
 	updated.TagIds = timespan.TagIds
 	return updated, nil
 }
 
-func (r *PostgresStore) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
 		return fmt.Errorf("DeleteTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
-		UPDATE timespans 
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
+		UPDATE timespans
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
-	res, err := r.db.Exec(ctx, q, id)
+	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("DeleteTimespan: %w", err)
 	}
@@ -204,38 +229,41 @@ func (r *PostgresStore) timespanTagIds(ctx context.Context, timespanId uuid.UUID
 }
 
 // setTimespanTags replaces all tag associations for a time span.
-func (r *PostgresStore) setTimespanTags(ctx context.Context, timespanId uuid.UUID, tagIds []uuid.UUID) error {
-	if _, err := r.db.Exec(ctx, `DELETE FROM timespan_tags WHERE timespan_id = $1`, timespanId); err != nil {
+func (r *PostgresStore) setTimespanTags(ctx context.Context, q Querier, timespanId uuid.UUID, tagIds []uuid.UUID) error {
+	if _, err := q.Exec(ctx, `DELETE FROM timespan_tags WHERE timespan_id = $1`, timespanId); err != nil {
 		return fmt.Errorf("setTimespanTags delete: %w", err)
 	}
 	for _, tagId := range tagIds {
-		if _, err := r.db.Exec(ctx,
+		if _, err := q.Exec(ctx,
 			`INSERT INTO timespan_tags (timespan_id, tag_id) VALUES ($1, $2)`,
 			timespanId, tagId,
 		); err != nil {
-			return fmt.Errorf("setTimespanTags insert: %w", model.ErrInvalidReference)
+			return fmt.Errorf("setTimespanTags insert: %w: %w", model.ErrInvalidReference, err)
 		}
 	}
 	return nil
 }
 
 // GetTotalDurationByTags implements [repository.Repository].
-func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uuid.UUID) (time.Duration, error) {
+func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
 	if len(tagIds) == 0 {
 		return 0, nil
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
+	q := `
 		SELECT
 			SUM(t.end_time - t.start_time) AS total_time
 		FROM timespans t
-		WHERE t.deleted_at IS NULL AND EXISTS (
+		WHERE t.deleted_at IS NULL
+			AND ` + ownerSQL + `
+			AND EXISTS (
 			SELECT 1 FROM timespan_tags tt
 			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 		)`
 
 	var duration *time.Duration
-	err := r.db.QueryRow(ctx, q, tagIds).Scan(&duration)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&duration)
 	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
 		return 0, nil
 	}
@@ -247,7 +275,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, tagIds []uui
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
-func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
+func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	values := make([]model.BucketValue, len(buckets))
 	for i, bucket := range buckets {
 		if !bucket.End.After(bucket.Start) {
@@ -271,7 +299,8 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 		bucketEnds[i] = bucket.End
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds, bucketStarts, bucketEnds})
+	q := `
 		WITH input_buckets AS (
 			SELECT b_start, b_end, ord
 			FROM unnest($2::timestamptz[], $3::timestamptz[]) WITH ORDINALITY AS b(b_start, b_end, ord)
@@ -284,7 +313,9 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			SELECT t.id, t.start_time, t.end_time
 			FROM timespans t
 			CROSS JOIN bucket_window bw
-			WHERE t.deleted_at IS NULL AND EXISTS (
+			WHERE t.deleted_at IS NULL
+				AND ` + ownerSQL + `
+				AND EXISTS (
 				SELECT 1 FROM timespan_tags tt
 				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
 			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
@@ -304,7 +335,7 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 		GROUP BY ib.ord, ib.b_start, ib.b_end
 		ORDER BY ib.ord`
 
-	rows, err := r.db.Query(ctx, q, tagIds, bucketStarts, bucketEnds)
+	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("AggregateTimeSpentByTagsAndBuckets: %w", err)
 	}

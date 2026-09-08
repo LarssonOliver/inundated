@@ -15,6 +15,35 @@ func ptrd(d time.Duration) *time.Duration {
 	return &d
 }
 
+func TestMemoryStore_Project_ScopeIsolation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	a := model.UserScope(uuid.New())
+	b := model.UserScope(uuid.New())
+
+	proj, err := store.CreateProject(ctx, a, model.Project{Name: "x", Color: "#123456"})
+	require.NoError(t, err)
+
+	_, err = store.GetProject(ctx, b, proj.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	page, err := store.ListProjects(ctx, b, model.DefaultPaginationParams())
+	require.NoError(t, err)
+	require.Empty(t, page.Data)
+	require.Equal(t, 0, page.TotalCount)
+
+	proj.Name = "hijack"
+	_, err = store.UpdateProject(ctx, b, proj)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	err = store.DeleteProject(ctx, b, proj.Id)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
+	got, err := store.GetProject(ctx, a, proj.Id)
+	require.NoError(t, err)
+	require.Equal(t, "x", got.Name)
+}
+
 func TestProjectStore_CreateProject(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -76,10 +105,10 @@ func TestProjectStore_CreateProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tt.project.TagIds {
-				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
-			got, gotErr := ta.CreateProject(context.Background(), tt.project)
+			got, gotErr := ta.CreateProject(context.Background(), testScope, tt.project)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -148,12 +177,12 @@ func TestProjectStore_GetProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tt.createProject.TagIds {
-				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
-			project, _ := ta.CreateProject(context.Background(), tt.createProject)
+			project, _ := ta.CreateProject(context.Background(), testScope, tt.createProject)
 			getId := tt.getId(&project)
 
-			got, gotErr := ta.GetProject(context.Background(), getId)
+			got, gotErr := ta.GetProject(context.Background(), testScope, getId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -268,17 +297,17 @@ func TestProjectStore_ListProjects(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
 			for _, tagId := range tagIds {
-				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 
 			insertedIds := make(map[uuid.UUID]bool)
 			for i, project := range tt.insertProjects {
-				createdProject, _ := ta.CreateProject(context.Background(), project)
+				createdProject, _ := ta.CreateProject(context.Background(), testScope, project)
 				tt.insertProjects[i].Id = createdProject.Id
 				insertedIds[createdProject.Id] = true
 			}
 
-			page, gotErr := ta.ListProjects(context.Background(), tt.params)
+			page, gotErr := ta.ListProjects(context.Background(), testScope, tt.params)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -391,20 +420,20 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 			for _, tagId := range tagIds {
-				_, _ = ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				_, _ = ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 			}
 			for i, tagId := range tt.project.TagIds {
-				tag, _ := ta.CreateTag(context.Background(), model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
+				tag, _ := ta.CreateTag(context.Background(), testScope, model.Tag{Id: tagId, Name: "Tag", Color: "#FFFFFF"})
 				tagIds[i] = tag.Id
 			}
 
-			insertedProject, _ := ta.CreateProject(context.Background(), tt.project)
+			insertedProject, _ := ta.CreateProject(context.Background(), testScope, tt.project)
 			editId := tt.editProjectId(&insertedProject)
 
 			tt.editProject.Id = editId
 			tt.want.Id = editId
 
-			got, gotErr := ta.UpdateProject(context.Background(), tt.editProject)
+			got, gotErr := ta.UpdateProject(context.Background(), testScope, tt.editProject)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -468,10 +497,10 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := memory.NewMemoryStore()
 
-			project, _ := ta.CreateProject(context.Background(), tt.insertProject)
+			project, _ := ta.CreateProject(context.Background(), testScope, tt.insertProject)
 			deleteId := tt.deleteId(&project)
 
-			gotErr := ta.DeleteProject(context.Background(), deleteId)
+			gotErr := ta.DeleteProject(context.Background(), testScope, deleteId)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				if tt.errType != nil {
@@ -481,7 +510,7 @@ func TestProjectStore_DeleteProject(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr)
-			project, err := ta.GetProject(context.Background(), deleteId)
+			project, err := ta.GetProject(context.Background(), testScope, deleteId)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
