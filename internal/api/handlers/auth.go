@@ -156,8 +156,11 @@ func (a *AuthHandler) AuthLogout(ctx context.Context, request api.AuthLogoutRequ
 		return api.AuthLogout401Response{}, nil
 	}
 
+	// A session that is already gone (double-clicked logout, or the cleanup
+	// goroutine reaped the row mid-request) is the desired end state, not a
+	// failure: fall through to 204 and still clear the cookie.
 	err := a.svc.LogoutSession(ctx, session.Id)
-	if err != nil {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, errors.New("failed to logout session")
 	}
 
