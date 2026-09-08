@@ -23,7 +23,6 @@ docs/TimespansApi.md
 docs/UpdateProject.md
 docs/UpdateTag.md
 docs/UpdateTimespan.md
-docs/UpdateUser.md
 docs/User.md
 docs/UsersApi.md
 index.ts
@@ -42,7 +41,6 @@ models/Timespan.ts
 models/UpdateProject.ts
 models/UpdateTag.ts
 models/UpdateTimespan.ts
-models/UpdateUser.ts
 models/User.ts
 models/index.ts
 runtime.ts

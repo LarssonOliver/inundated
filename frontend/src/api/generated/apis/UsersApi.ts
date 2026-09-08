@@ -14,20 +14,10 @@
 
 import * as runtime from '../runtime';
 import {
-    type UpdateUser,
-    UpdateUserFromJSON,
-    UpdateUserToJSON,
-} from '../models/UpdateUser';
-import {
     type User,
     UserFromJSON,
     UserToJSON,
 } from '../models/User';
-
-export interface UpdateCurrentUserRequest {
-    xXSRFTOKEN: string;
-    updateUser: UpdateUser;
-}
 
 /**
  * 
@@ -68,64 +58,6 @@ export class UsersApi extends runtime.BaseAPI {
      */
     async getCurrentUser(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<User> {
         const response = await this.getCurrentUserRaw(initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Creates request options for updateCurrentUser without sending the request
-     */
-    async updateCurrentUserRequestOpts(requestParameters: UpdateCurrentUserRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling updateCurrentUser().'
-            );
-        }
-
-        if (requestParameters['updateUser'] == null) {
-            throw new runtime.RequiredError(
-                'updateUser',
-                'Required parameter "updateUser" was null or undefined when calling updateCurrentUser().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
-        }
-
-
-        let urlPath = `/api/me`;
-
-        return {
-            path: urlPath,
-            method: 'PUT',
-            headers: headerParameters,
-            query: queryParameters,
-            body: UpdateUserToJSON(requestParameters['updateUser']),
-        };
-    }
-
-    /**
-     * Update current user
-     */
-    async updateCurrentUserRaw(requestParameters: UpdateCurrentUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<User>> {
-        const requestOptions = await this.updateCurrentUserRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => UserFromJSON(jsonValue));
-    }
-
-    /**
-     * Update current user
-     */
-    async updateCurrentUser(requestParameters: UpdateCurrentUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<User> {
-        const response = await this.updateCurrentUserRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

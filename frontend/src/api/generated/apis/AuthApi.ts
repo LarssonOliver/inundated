@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 export interface AuthCallbackRequest {
     code: string;
     state: string;
+    inundatedLogin?: string;
 }
 
 export interface AuthLoginRequest {
