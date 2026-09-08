@@ -69,6 +69,64 @@ export DATABASE_URL="postgresql://user:password@localhost/inundated"
 make dev
 ```
 
+### Enabling authentication (OIDC)
+
+By default inundated runs in **userless mode**: no login, and every resource is
+shared. To put it behind an OpenID Connect provider, set the issuer URL, client
+credentials, and the app's public origin:
+
+```bash
+export OIDC_ISSUER_URL="https://accounts.example.com"
+export OIDC_CLIENT_ID="inundated"
+export OIDC_CLIENT_SECRET="…"
+export PUBLIC_BASE_URL="https://inundated.example.com"
+# optional:
+export OIDC_SCOPES="openid,profile,email"   # default
+export OIDC_HTTP_TIMEOUT="10s"              # default
+```
+
+The redirect URI is derived as `$PUBLIC_BASE_URL/api/auth/callback` — register
+exactly that with your provider.
+
+`PUBLIC_BASE_URL` also controls cookie security: when it is an `https://` origin
+the session and CSRF cookies are marked `Secure` and CSRF enforces HTTPS-origin
+checks. Set it to your real `https://` origin in any deployment reachable over
+HTTPS, including userless ones — otherwise the browser accepts the cookies over
+plain HTTP too.
+
+The first user to log in adopts all pre-existing resources. Once any user
+exists the server refuses to start without OIDC configured, so authentication
+can't be silently switched off.
+
+### Trying the auth flow locally with Docker Compose
+
+`docker-compose.yml` runs PostgreSQL and a mock OIDC provider
+([mock-oauth2-server](https://github.com/navikt/mock-oauth2-server)). Run the app
+itself on the host so it shares `localhost` with your browser and the issuer URL.
+`make dev-auth` starts the backend with the matching flags:
+
+```bash
+docker compose up -d
+
+# terminal 1 — backend
+make dev-auth
+
+# terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+Open <http://localhost:5173> and follow a login link. The mock provider shows a
+form where you enter any username and, optionally, a `claims` JSON blob such as
+`{"email":"alice@example.com","name":"Alice"}` to mint the ID token. The first
+account to log in adopts the existing resources.
+
+`CSRF_AUTH_KEY` is left unset here, so the server generates an ephemeral one and
+in-flight logins don't survive a backend restart — fine for testing.
+
+```bash
+docker compose down -v   # stop and wipe the database
+```
+
 ---
 
 ## 🏗 Building for Production

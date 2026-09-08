@@ -6,11 +6,21 @@ VERSION ?= $(shell git describe --tags --always --dirty)
 BINARY_DIR := bin
 BINARY := ${BINARY_DIR}/inundated
 
-.PHONY: build dev build-frontend
+.PHONY: build dev dev-auth build-frontend
 build: ${BINARY}
 
 dev:
 	go run cmd/server/main.go
+
+dev-auth:
+	@echo "==> Starting server with OIDC authentication..."
+	go run cmd/server/main.go \
+		-database-url="postgresql://inundated:inundated@localhost:5432/inundated?sslmode=disable" \
+		-oidc-issuer-url="http://localhost:9090/default" \
+		-oidc-client-id="inundated" \
+		-oidc-client-secret="inundated-secret" \
+		-public-base-url="http://localhost:5173" \
+		-log-level="debug"
 
 ${BINARY}: build-frontend
 	mkdir -p ${BINARY_DIR}
