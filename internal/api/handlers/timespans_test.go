@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -189,6 +191,30 @@ func TestTimespanHandler_GetTimespan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimespanHandler_GetTimespan_ErrorMapping(t *testing.T) {
+	t.Run("a wrapped ErrNotFound from the service maps to 404", func(t *testing.T) {
+		svc := &service.TimespanServiceMock{
+			GetFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
+			},
+		}
+		got, err := handlers.NewTimespanHandler(svc).GetTimespan(context.Background(), api.GetTimespanRequestObject{TimespanId: uuid.New()})
+		require.NoError(t, err)
+		assert.IsType(t, api.GetTimespan404Response{}, got)
+	})
+
+	t.Run("an infrastructure error is surfaced as a 5xx, not a 404", func(t *testing.T) {
+		svc := &service.TimespanServiceMock{
+			GetFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{}, errors.New("connection refused")
+			},
+		}
+		got, err := handlers.NewTimespanHandler(svc).GetTimespan(context.Background(), api.GetTimespanRequestObject{TimespanId: uuid.New()})
+		assert.Nil(t, got)
+		require.Error(t, err)
+	})
 }
 
 func TestTimespanHandler_ListTimespans(t *testing.T) {

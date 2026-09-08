@@ -43,7 +43,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 
 	reply, err := p.svc.CreateProject(ctx, project)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.CreateProject400Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeleteProjectRequestObject) (api.DeleteProjectResponseObject, error) {
 	err := p.svc.DeleteProject(ctx, request.ProjectId)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.DeleteProject404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 	reply, err := p.svc.GetProject(ctx, request.ProjectId, &includes)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.GetProject404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdateProjectRequestObject) (api.UpdateProjectResponseObject, error) {
 	project, err := p.svc.GetProject(ctx, request.ProjectId, nil)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.UpdateProject404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 
 	reply, err := p.svc.UpdateProject(ctx, project)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.UpdateProject400Response{}, nil
 	} else if err != nil {
 		return nil, err

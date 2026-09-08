@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -86,6 +87,47 @@ func TestProjectService_GetProject(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProjectService_GetProject_ErrorContract(t *testing.T) {
+	id := uuid.New()
+
+	t.Run("a not-found from the repository surfaces as ErrNotFound", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
+			},
+		}
+		_, err := service.NewService(repo).GetProject(context.Background(), id, nil)
+		require.ErrorIs(t, err, model.ErrNotFound)
+	})
+
+	t.Run("an infrastructure error is propagated, not masked as ErrNotFound", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, errors.New("connection refused")
+			},
+		}
+		_, err := service.NewService(repo).GetProject(context.Background(), id, nil)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "connection refused")
+		require.NotErrorIs(t, err, model.ErrNotFound)
+	})
+
+	t.Run("an infrastructure error from the total-time include is propagated", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+				return model.Project{Id: id, TagIds: []uuid.UUID{uuid.New()}}, nil
+			},
+			GetTotalDurationByTagsFn: func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error) {
+				return 0, errors.New("statement timeout")
+			},
+		}
+		_, err := service.NewService(repo).GetProject(context.Background(), id, &service.ProjectServiceGetIncludes{TotalTime: true})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "statement timeout")
+		require.NotErrorIs(t, err, model.ErrNotFound)
+	})
 }
 
 func TestProjectService_ListProjects(t *testing.T) {
