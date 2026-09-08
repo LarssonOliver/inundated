@@ -11,4 +11,5 @@ type Tag struct {
 	Name      string
 	Color     string
 	TotalTime *time.Duration
+	UserId    *uuid.UUID
 }
