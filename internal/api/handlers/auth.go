@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -80,15 +79,10 @@ func (a *AuthHandler) AuthLogin(ctx context.Context, request api.AuthLoginReques
 		return nil, errors.New("failed to initiate login")
 	}
 
-	binding := &http.Cookie{
-		Name:     loginBindingCookieName,
-		Value:    state,
-		Path:     "/",
-		MaxAge:   int(loginBindingTTL.Seconds()),
-		HttpOnly: true,
-		Secure:   a.secureCookies,
-		SameSite: http.SameSiteLaxMode,
-	}
+	binding := auth.BaseCookie(loginBindingCookieName, a.secureCookies)
+	binding.Value = state
+	binding.HttpOnly = true
+	binding.MaxAge = int(loginBindingTTL.Seconds())
 
 	return api.AuthLogin302Response{
 		Headers: api.AuthLogin302ResponseHeaders{
