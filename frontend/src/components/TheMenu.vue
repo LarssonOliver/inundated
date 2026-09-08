@@ -22,7 +22,7 @@
           <span class="account-name" :title="userStore.user.email">
             {{ userStore.user.name || userStore.user.email }}
           </span>
-          <button type="button" class="logout" @click="userStore.logout()">Log out</button>
+          <button class="btn-info logout" @click="userStore.logout()">Log out</button>
         </div>
         <strong> Inundated {{ version }} </strong>
       </div>
@@ -84,20 +84,6 @@ const sidebarStyle = computed(() => ({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.logout {
-  align-self: flex-start;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--nord8);
-  cursor: pointer;
-  font: inherit;
-}
-
-.logout:hover {
-  text-decoration: underline;
 }
 
 .title {
