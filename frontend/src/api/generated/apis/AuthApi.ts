@@ -24,10 +24,6 @@ export interface AuthLoginRequest {
     redirect?: string;
 }
 
-export interface AuthLogoutRequest {
-    xXSRFTOKEN: string;
-}
-
 /**
  * 
  */
@@ -138,20 +134,13 @@ export class AuthApi extends runtime.BaseAPI {
     /**
      * Creates request options for authLogout without sending the request
      */
-    async authLogoutRequestOpts(requestParameters: AuthLogoutRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling authLogout().'
-            );
-        }
-
+    async authLogoutRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
@@ -168,8 +157,8 @@ export class AuthApi extends runtime.BaseAPI {
     /**
      * Log out
      */
-    async authLogoutRaw(requestParameters: AuthLogoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        const requestOptions = await this.authLogoutRequestOpts(requestParameters);
+    async authLogoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.authLogoutRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
@@ -178,8 +167,8 @@ export class AuthApi extends runtime.BaseAPI {
     /**
      * Log out
      */
-    async authLogout(requestParameters: AuthLogoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.authLogoutRaw(requestParameters, initOverrides);
+    async authLogout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.authLogoutRaw(initOverrides);
     }
 
 }

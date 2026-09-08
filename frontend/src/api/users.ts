@@ -5,7 +5,6 @@ import {
   UsersApi as GeneratedUsersApi,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
-import { xsrfToken } from "@/api/xsrf";
 
 export interface UsersApi {
   /**
@@ -36,7 +35,7 @@ function createUsersApi(
 
     async logout(): Promise<void> {
       try {
-        await auth.authLogout({ xXSRFTOKEN: xsrfToken() });
+        await auth.authLogout();
       } catch (error) {
         // A 401 here means the session was already gone server-side; that is
         // the outcome logout wanted, so let the caller proceed to reload.

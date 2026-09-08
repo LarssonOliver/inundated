@@ -15,7 +15,7 @@ All URIs are relative to *http://localhost*
 
 ## createProject
 
-> Project createProject(xXSRFTOKEN, createProject)
+> Project createProject(createProject)
 
 Create project
 
@@ -33,12 +33,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // CreateProject
     createProject: ...,
   } satisfies CreateProjectRequest;
@@ -60,7 +60,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **createProject** | [CreateProject](CreateProject.md) |  | |
 
 ### Return type
@@ -69,7 +68,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -88,7 +87,7 @@ example().catch(console.error);
 
 ## deleteProject
 
-> deleteProject(xXSRFTOKEN, projectId)
+> deleteProject(projectId)
 
 Delete project
 
@@ -106,12 +105,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     projectId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies DeleteProjectRequest;
@@ -133,7 +132,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **projectId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
@@ -142,7 +140,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -393,7 +391,7 @@ example().catch(console.error);
 
 ## updateProject
 
-> Project updateProject(xXSRFTOKEN, projectId, updateProject)
+> Project updateProject(projectId, updateProject)
 
 Update project
 
@@ -411,12 +409,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     projectId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // UpdateProject
@@ -440,7 +438,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **projectId** | `string` |  | [Defaults to `undefined`] |
 | **updateProject** | [UpdateProject](UpdateProject.md) |  | |
 
@@ -450,7 +447,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 

@@ -12,7 +12,7 @@ func TestTag_CRUD(t *testing.T) {
 	client := newClient()
 
 	// CREATE
-	createResp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
+	createResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
 		Name:  "Test Tag",
 		Color: "#FF5733",
 	})
@@ -30,7 +30,7 @@ func TestTag_CRUD(t *testing.T) {
 	require.Equal(t, tagId, getResp.JSON200.Id)
 
 	// UPDATE
-	updateResp, err := client.UpdateTagWithResponse(ctx, tagId, &UpdateTagParams{XXSRFTOKEN: "token"}, UpdateTagJSONRequestBody{
+	updateResp, err := client.UpdateTagWithResponse(ctx, tagId, UpdateTagJSONRequestBody{
 		Name: ptr("Updated Test Tag"),
 	})
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestTag_CRUD(t *testing.T) {
 	require.GreaterOrEqual(t, len(listResp.JSON200.Data), 1)
 
 	// DELETE
-	deleteResp, err := client.DeleteTagWithResponse(ctx, tagId, &DeleteTagParams{XXSRFTOKEN: "token"})
+	deleteResp, err := client.DeleteTagWithResponse(ctx, tagId)
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
 
@@ -57,7 +57,7 @@ func TestTag_Create_InvalidInput(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
 
-	resp, err := client.CreateTagWithResponse(ctx, &CreateTagParams{XXSRFTOKEN: "token"}, CreateTagJSONRequestBody{
+	resp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{
 		Name: "",
 	})
 	require.NoError(t, err)

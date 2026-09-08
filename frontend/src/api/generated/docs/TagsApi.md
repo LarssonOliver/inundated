@@ -14,7 +14,7 @@ All URIs are relative to *http://localhost*
 
 ## createTag
 
-> Tag createTag(xXSRFTOKEN, createTag)
+> Tag createTag(createTag)
 
 Create tag
 
@@ -32,12 +32,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new TagsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // CreateTag
     createTag: ...,
   } satisfies CreateTagRequest;
@@ -59,7 +59,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **createTag** | [CreateTag](CreateTag.md) |  | |
 
 ### Return type
@@ -68,7 +67,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -87,7 +86,7 @@ example().catch(console.error);
 
 ## deleteTag
 
-> deleteTag(xXSRFTOKEN, tagId)
+> deleteTag(tagId)
 
 Delete tag
 
@@ -105,12 +104,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new TagsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies DeleteTagRequest;
@@ -132,7 +131,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **tagId** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
@@ -141,7 +139,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -306,7 +304,7 @@ example().catch(console.error);
 
 ## updateTag
 
-> Tag updateTag(xXSRFTOKEN, tagId, updateTag)
+> Tag updateTag(tagId, updateTag)
 
 Update tag
 
@@ -324,12 +322,12 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new TagsApi(config);
 
   const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
     // string
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // UpdateTag
@@ -353,7 +351,6 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
 | **tagId** | `string` |  | [Defaults to `undefined`] |
 | **updateTag** | [UpdateTag](UpdateTag.md) |  | |
 
@@ -363,7 +360,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 

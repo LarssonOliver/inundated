@@ -1,8 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./timespans";
 import type { TimespansApi } from "./generated";
-
-const XSRF = "test-token";
 
 const { createTimespansApi } = __test__;
 
@@ -25,11 +23,6 @@ describe("timespans API", () => {
 
   beforeEach(() => {
     api = mockGeneratedApi();
-    document.cookie = `XSRF-TOKEN=${XSRF}`;
-  });
-
-  afterEach(() => {
-    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 
   it("listTimespans maps paginated API response to domain timespans", async () => {
@@ -110,7 +103,6 @@ describe("timespans API", () => {
     });
 
     expect(api.createTimespan).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       createTimespan: { name: "New", startTime: d1, endTime: d2, tagIds: new Set() },
     });
 
@@ -137,7 +129,6 @@ describe("timespans API", () => {
     });
 
     expect(api.updateTimespan).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       timespanId: "1",
       updateTimespan: { name: "Updated" },
     });
@@ -158,7 +149,6 @@ describe("timespans API", () => {
     await sut.deleteTimespan("dead-id");
 
     expect(api.deleteTimespan).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       timespanId: "dead-id",
     });
   });
