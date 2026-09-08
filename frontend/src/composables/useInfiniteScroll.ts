@@ -1,5 +1,5 @@
 import type { Ref } from "vue";
-import { onBeforeUnmount, watch } from "vue";
+import { getCurrentScope, onScopeDispose, watch } from "vue";
 
 interface PaginatedStore {
   isLoading: boolean;
@@ -67,7 +67,12 @@ export function useInfiniteScroll(
   );
 
   initObserver();
-  onBeforeUnmount(cleanup);
+
+  // Auto-clean up when used inside a component's setup (or any effect scope);
+  // callers outside a scope, such as unit tests, use the returned cleanup().
+  if (getCurrentScope()) {
+    onScopeDispose(cleanup);
+  }
 
   return { cleanup };
 }

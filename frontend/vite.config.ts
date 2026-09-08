@@ -28,5 +28,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Node 22+ ships a native, opt-in `localStorage` global that stays inert and
+    // prints an ExperimentalWarning unless started with --localstorage-file.
+    // Turning it off lets jsdom install its own working localStorage instead.
+    execArgv: ["--no-experimental-webstorage"],
   },
 });
