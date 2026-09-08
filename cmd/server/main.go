@@ -114,6 +114,16 @@ func newRouter(cfg *config.Config, svc service.Service, sessionRepo repository.S
 		api.HandlerFromMux(api.NewStrictHandler(server, nil), r)
 	})
 
+	// Any /api/* path the generated handler does not claim is a real 404, not a
+	// route into the SPA. Without this it falls through to the frontend handler
+	// below and returns index.html with a 200, which API clients (and the SPA's
+	// own error handling) can misread as success.
+	r.Handle("/api/*", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"not found"}`))
+	}))
+
 	r.Group(func(r chi.Router) {
 		r.Handle("/*", handlers.FrontendHandler())
 	})
