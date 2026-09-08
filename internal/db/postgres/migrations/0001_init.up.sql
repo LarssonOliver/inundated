@@ -1,14 +1,14 @@
 BEGIN;
 
 -- Tags
-CREATE TABLE tags (
+CREATE TABLE IF NOT EXISTS tags (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     color TEXT NOT NULL
 );
 
 -- Projects
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     color TEXT NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE projects (
 );
 
 -- Project-Tag join table
-CREATE TABLE project_tags (
+CREATE TABLE IF NOT EXISTS project_tags (
     project_id UUID NOT NULL,
     tag_id UUID NOT NULL,
     PRIMARY KEY (project_id, tag_id),
@@ -25,7 +25,7 @@ CREATE TABLE project_tags (
 );
 
 -- Timespans
-CREATE TABLE timespans (
+CREATE TABLE IF NOT EXISTS timespans (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE timespans (
 );
 
 -- Timespan-Tag join table
-CREATE TABLE timespan_tags (
+CREATE TABLE IF NOT EXISTS timespan_tags (
     timespan_id UUID NOT NULL,
     tag_id UUID NOT NULL,
     PRIMARY KEY (timespan_id, tag_id),
