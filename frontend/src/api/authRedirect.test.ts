@@ -46,6 +46,12 @@ describe("authRedirectMiddleware", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it("ignores a 401 from an auth route so logging out doesn't bounce back into login", async () => {
+    await authRedirectMiddleware.post!(responseContext("/api/auth/logout", 401));
+
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("does nothing on a successful response", async () => {
     await authRedirectMiddleware.post!(responseContext("/api/projects", 200));
 

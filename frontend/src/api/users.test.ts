@@ -79,4 +79,20 @@ describe("users API", () => {
 
     expect(auth.authLogout).toHaveBeenCalledWith({ xXSRFTOKEN: XSRF });
   });
+
+  it("logout treats a 401 as already-logged-out", async () => {
+    auth.authLogout.mockRejectedValue(new ResponseError(new Response(null, { status: 401 })));
+
+    const sut = createUsersApi(users, auth);
+
+    await expect(sut.logout()).resolves.toBeUndefined();
+  });
+
+  it("logout still throws on a non-401 failure", async () => {
+    auth.authLogout.mockRejectedValue(new ResponseError(new Response(null, { status: 500 })));
+
+    const sut = createUsersApi(users, auth);
+
+    await expect(sut.logout()).rejects.toBeInstanceOf(ResponseError);
+  });
 });
