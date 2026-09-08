@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { csrfRetryMiddleware } from "./csrfRetry";
-import type { ResponseContext } from "./generated";
+import type { ResponseContext } from "@/api/generated";
 
 function context(
   status: number,

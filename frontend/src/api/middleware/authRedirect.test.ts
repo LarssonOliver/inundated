@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Middleware, ResponseContext } from "./generated";
+import type { Middleware, ResponseContext } from "@/api/generated";
 
 function responseContext(url: string, status: number): ResponseContext {
   return {
