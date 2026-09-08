@@ -19,6 +19,26 @@ func NewServer(handler HttpHandler) *Server {
 	}
 }
 
+// AuthCallback implements [StrictServerInterface].
+func (s *Server) AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error) {
+	return s.handler.AuthCallback(ctx, request)
+}
+
+// AuthLogin implements [StrictServerInterface].
+func (s *Server) AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error) {
+	return s.handler.AuthLogin(ctx, request)
+}
+
+// AuthLogout implements [StrictServerInterface].
+func (s *Server) AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error) {
+	return s.handler.AuthLogout(ctx, request)
+}
+
+// GetCurrentUser implements [StrictServerInterface].
+func (s *Server) GetCurrentUser(ctx context.Context, request GetCurrentUserRequestObject) (GetCurrentUserResponseObject, error) {
+	return s.handler.GetCurrentUser(ctx, request)
+}
+
 // CreateTag implements StrictServerInterface.
 func (s *Server) CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error) {
 	return s.handler.CreateTag(ctx, request)
