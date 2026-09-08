@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/larssonoliver/inundated/internal/repository"
@@ -45,6 +46,14 @@ func (c *CleanupServiceImpl) Run(ctx context.Context) {
 }
 
 func (c *CleanupServiceImpl) cleanup(ctx context.Context) {
-	_ = c.sessionRepository.DeleteAllExpiredSessions(ctx)
-	_ = c.loginStateRepository.DeleteAllExpiredLoginStates(ctx)
+	// The sweep runs on a timer with nobody watching its return value, so a
+	// persistent failure would otherwise be invisible while the sessions /
+	// login_states tables grow without bound. Log and carry on; the next tick
+	// retries.
+	if err := c.sessionRepository.DeleteAllExpiredSessions(ctx); err != nil {
+		log.Printf("cleanup: deleting expired sessions: %v", err)
+	}
+	if err := c.loginStateRepository.DeleteAllExpiredLoginStates(ctx); err != nil {
+		log.Printf("cleanup: deleting expired login states: %v", err)
+	}
 }
