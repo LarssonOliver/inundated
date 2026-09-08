@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,43 +12,9 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockTimespanService struct {
-	CreateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
-	UpdateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
-}
-
-var _ service.TimespanService = (*mockTimespanService)(nil)
-
-// CreateTimespan implements [service.TimespanService].
-func (m *mockTimespanService) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return m.CreateFn(ctx, timespan)
-}
-
-// DeleteTimespan implements [service.TimespanService].
-func (m *mockTimespanService) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
-	return m.DeleteFn(ctx, id)
-}
-
-// GetTimespan implements [service.TimespanService].
-func (m *mockTimespanService) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
-	return m.GetFn(ctx, id)
-}
-
-// ListTimespans implements [service.TimespanService].
-func (m *mockTimespanService) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	return m.ListFn(ctx, params)
-}
-
-// UpdateTimespan implements [service.TimespanService].
-func (m *mockTimespanService) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
-	return m.UpdateFn(ctx, timespan)
-}
 
 func TestTimespanHandler_CreateTimespan(t *testing.T) {
 	baseTime := time.Now()
@@ -83,7 +50,7 @@ func TestTimespanHandler_CreateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				CreateFn: tt.createFn,
 			}
 
@@ -140,7 +107,7 @@ func TestTimespanHandler_DeleteTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				DeleteFn: tt.deleteFn,
 			}
 
@@ -197,7 +164,7 @@ func TestTimespanHandler_GetTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				GetFn: tt.getFn,
 			}
 
@@ -224,6 +191,30 @@ func TestTimespanHandler_GetTimespan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimespanHandler_GetTimespan_ErrorMapping(t *testing.T) {
+	t.Run("a wrapped ErrNotFound from the service maps to 404", func(t *testing.T) {
+		svc := &service.TimespanServiceMock{
+			GetFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
+			},
+		}
+		got, err := handlers.NewTimespanHandler(svc).GetTimespan(context.Background(), api.GetTimespanRequestObject{TimespanId: uuid.New()})
+		require.NoError(t, err)
+		assert.IsType(t, api.GetTimespan404Response{}, got)
+	})
+
+	t.Run("an infrastructure error is surfaced as a 5xx, not a 404", func(t *testing.T) {
+		svc := &service.TimespanServiceMock{
+			GetFn: func(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+				return model.Timespan{}, errors.New("connection refused")
+			},
+		}
+		got, err := handlers.NewTimespanHandler(svc).GetTimespan(context.Background(), api.GetTimespanRequestObject{TimespanId: uuid.New()})
+		assert.Nil(t, got)
+		require.Error(t, err)
+	})
 }
 
 func TestTimespanHandler_ListTimespans(t *testing.T) {
@@ -336,7 +327,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{ListFn: tt.listFn}
+			svc := &service.TimespanServiceMock{ListFn: tt.listFn}
 			ta := handlers.NewTimespanHandler(svc)
 			params := tt.initParams()
 			request := api.ListTimespansRequestObject{}
@@ -439,7 +430,7 @@ func TestTimespanHandler_UpdateTimespan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockTimespanService{
+			svc := &service.TimespanServiceMock{
 				UpdateFn: tt.updateFn,
 				GetFn:    tt.getFn,
 			}
@@ -473,4 +464,41 @@ func TestTimespanHandler_UpdateTimespan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimespanHandler_InvalidReferenceMapsTo400(t *testing.T) {
+	// A tag id that isn't the caller's (or doesn't exist) surfaces from the
+	// repository as a wrapped model.ErrInvalidReference: bad client input, not
+	// a server fault. It must map to 400 without leaking the wrapped string.
+	invalidRef := fmt.Errorf("CreateTimespan: %w", model.ErrInvalidReference)
+	now := time.Now()
+
+	t.Run("CreateTimespan", func(t *testing.T) {
+		h := handlers.NewTimespanHandler(&service.TimespanServiceMock{
+			CreateFn: func(context.Context, model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, invalidRef
+			},
+		})
+		got, err := h.CreateTimespan(context.Background(), api.CreateTimespanRequestObject{
+			Body: &api.CreateTimespan{StartTime: now, EndTime: now.Add(time.Hour), TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.CreateTimespan400Response{}, got)
+	})
+
+	t.Run("UpdateTimespan", func(t *testing.T) {
+		existing := model.Timespan{Id: uuid.New(), Name: "t", StartTime: now, EndTime: now.Add(time.Hour)}
+		h := handlers.NewTimespanHandler(&service.TimespanServiceMock{
+			GetFn: func(context.Context, uuid.UUID) (model.Timespan, error) { return existing, nil },
+			UpdateFn: func(context.Context, model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, invalidRef
+			},
+		})
+		got, err := h.UpdateTimespan(context.Background(), api.UpdateTimespanRequestObject{
+			TimespanId: existing.Id,
+			Body:       &api.UpdateTimespan{TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.UpdateTimespan400Response{}, got)
+	})
 }

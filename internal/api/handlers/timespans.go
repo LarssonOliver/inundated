@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -40,7 +41,7 @@ func (p *TimespanHandler) CreateTimespan(ctx context.Context, request api.Create
 
 	reply, err := p.svc.CreateTimespan(ctx, timespan)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.CreateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -64,7 +65,7 @@ func (p *TimespanHandler) CreateTimespan(ctx context.Context, request api.Create
 func (p *TimespanHandler) DeleteTimespan(ctx context.Context, request api.DeleteTimespanRequestObject) (api.DeleteTimespanResponseObject, error) {
 	err := p.svc.DeleteTimespan(ctx, request.TimespanId)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.DeleteTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func (p *TimespanHandler) DeleteTimespan(ctx context.Context, request api.Delete
 func (p *TimespanHandler) GetTimespan(ctx context.Context, request api.GetTimespanRequestObject) (api.GetTimespanResponseObject, error) {
 	reply, err := p.svc.GetTimespan(ctx, request.TimespanId)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.GetTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -151,7 +152,7 @@ func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTim
 func (p *TimespanHandler) UpdateTimespan(ctx context.Context, request api.UpdateTimespanRequestObject) (api.UpdateTimespanResponseObject, error) {
 	timespan, err := p.svc.GetTimespan(ctx, request.TimespanId)
 
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return api.UpdateTimespan404Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -175,7 +176,7 @@ func (p *TimespanHandler) UpdateTimespan(ctx context.Context, request api.Update
 
 	reply, err := p.svc.UpdateTimespan(ctx, timespan)
 
-	if err == model.ErrInvalidArgument {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.UpdateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err

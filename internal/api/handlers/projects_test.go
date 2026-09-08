@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,52 +12,9 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockProjectService struct {
-	CreateFn   func(ctx context.Context, project model.Project) (model.Project, error)
-	DeleteFn   func(ctx context.Context, id uuid.UUID) error
-	GetFn      func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error)
-	GetStatsFn func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error)
-	ListFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error)
-	UpdateFn   func(ctx context.Context, project model.Project) (model.Project, error)
-}
-
-var _ service.ProjectService = (*mockProjectService)(nil)
-
-// CreateProject implements [service.ProjectService].
-func (m *mockProjectService) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	return m.CreateFn(ctx, project)
-}
-
-// DeleteProject implements [service.ProjectService].
-func (m *mockProjectService) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	return m.DeleteFn(ctx, id)
-}
-
-// GetProject implements [service.ProjectService].
-func (m *mockProjectService) GetProject(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
-	return m.GetFn(ctx, id, i)
-}
-
-// ListProjects implements [service.ProjectService].
-func (m *mockProjectService) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
-	return m.ListFn(ctx, params)
-}
-
-// GetProjectStats implements [service.ProjectService].
-func (m *mockProjectService) GetProjectStats(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
-	if m.GetStatsFn == nil {
-		return model.ProjectStats{}, model.ErrNotImplemented
-	}
-	return m.GetStatsFn(ctx, input)
-}
-
-// UpdateProject implements [service.ProjectService].
-func (m *mockProjectService) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	return m.UpdateFn(ctx, project)
-}
 
 func TestProjectHandler_CreateProject(t *testing.T) {
 	tests := []struct {
@@ -88,7 +46,7 @@ func TestProjectHandler_CreateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
+			svc := &service.ProjectServiceMock{
 				CreateFn: tt.createFn,
 			}
 
@@ -145,7 +103,7 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
+			svc := &service.ProjectServiceMock{
 				DeleteFn: tt.deleteFn,
 			}
 
@@ -221,7 +179,7 @@ func TestProjectHandler_GetProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
+			svc := &service.ProjectServiceMock{
 				GetFn: tt.getFn,
 			}
 
@@ -366,7 +324,7 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{ListFn: tt.listFn}
+			svc := &service.ProjectServiceMock{ListFn: tt.listFn}
 			ta := handlers.NewProjectHandler(svc)
 			params := tt.initParams()
 			request := api.ListProjectsRequestObject{}
@@ -473,7 +431,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
+			svc := &service.ProjectServiceMock{
 				UpdateFn: tt.updateFn,
 				GetFn:    tt.getFn,
 			}
@@ -577,7 +535,7 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := &mockProjectService{
+			svc := &service.ProjectServiceMock{
 				GetStatsFn: tt.getStatsFn,
 			}
 
@@ -626,4 +584,43 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProjectHandler_InvalidReferenceMapsTo400(t *testing.T) {
+	// A tag id that isn't the caller's (or doesn't exist) surfaces from the
+	// repository as a wrapped model.ErrInvalidReference. That is bad client
+	// input, not a server fault: it must map to 400 and must not leak the
+	// wrapped error string to the client.
+	invalidRef := fmt.Errorf("CreateProject: %w", model.ErrInvalidReference)
+
+	t.Run("CreateProject", func(t *testing.T) {
+		h := handlers.NewProjectHandler(&service.ProjectServiceMock{
+			CreateFn: func(context.Context, model.Project) (model.Project, error) {
+				return model.Project{}, invalidRef
+			},
+		})
+		got, err := h.CreateProject(context.Background(), api.CreateProjectRequestObject{
+			Body: &api.CreateProject{Name: "p", Color: "#123456", TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.CreateProject400Response{}, got)
+	})
+
+	t.Run("UpdateProject", func(t *testing.T) {
+		existing := model.Project{Id: uuid.New(), Name: "p", Color: "#123456"}
+		h := handlers.NewProjectHandler(&service.ProjectServiceMock{
+			GetFn: func(context.Context, uuid.UUID, *service.ProjectServiceGetIncludes) (model.Project, error) {
+				return existing, nil
+			},
+			UpdateFn: func(context.Context, model.Project) (model.Project, error) {
+				return model.Project{}, invalidRef
+			},
+		})
+		got, err := h.UpdateProject(context.Background(), api.UpdateProjectRequestObject{
+			ProjectId: existing.Id,
+			Body:      &api.UpdateProject{TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.UpdateProject400Response{}, got)
+	})
 }
