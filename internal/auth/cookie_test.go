@@ -10,6 +10,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBaseCookie(t *testing.T) {
+	got := BaseCookie("whatever", true)
+	assert.Equal(t, "whatever", got.Name)
+	assert.Equal(t, "/", got.Path)
+	assert.Equal(t, http.SameSiteLaxMode, got.SameSite)
+	assert.True(t, got.Secure)
+	assert.False(t, BaseCookie("whatever", false).Secure)
+}
+
 func TestNewSessionCookie(t *testing.T) {
 	session := model.Session{Id: uuid.New(), Token: "opaque-session-token", ExpiresAt: time.Now().Add(24 * time.Hour)}
 
@@ -20,6 +29,9 @@ func TestNewSessionCookie(t *testing.T) {
 		assert.NotContains(t, got.Value, session.Id.String())
 		assert.True(t, got.HttpOnly)
 		assert.True(t, got.Secure)
+		assert.Equal(t, "/", got.Path)
+		assert.Equal(t, http.SameSiteLaxMode, got.SameSite)
+		assert.Equal(t, session.ExpiresAt, got.Expires)
 	})
 
 	t.Run("insecure origin omits the Secure attribute so the browser keeps the cookie", func(t *testing.T) {

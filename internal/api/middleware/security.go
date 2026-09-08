@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/csrf"
+
+	"github.com/larssonoliver/inundated/internal/auth"
 )
 
 // SecurityHeaders sets security-relevant HTTP response headers.
@@ -137,12 +139,8 @@ func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
 // token. csrf.Token(r) is populated by [CSRF] before it runs its verification,
 // so this is also valid from the CSRF error handler.
 func writeXSRFCookie(w http.ResponseWriter, r *http.Request, secure bool) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     XSRFCookieName,
-		Value:    csrf.Token(r),
-		Path:     "/",
-		Secure:   secure,
-		HttpOnly: false, // the SPA must be able to read this one
-		SameSite: http.SameSiteLaxMode,
-	})
+	c := auth.BaseCookie(XSRFCookieName, secure)
+	c.Value = csrf.Token(r)
+	c.HttpOnly = false // the SPA must be able to read this one
+	http.SetCookie(w, c)
 }
