@@ -13,14 +13,16 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	tag, err := s.repository.GetTag(ctx, scope, id)
 
 	if err != nil {
-		return model.Tag{}, model.ErrNotFound
+		// Propagate as-is: a genuine miss already carries model.ErrNotFound,
+		// and an infrastructure failure must not be masked as a 404.
+		return model.Tag{}, err
 	}
 
 	if includes != nil {
 		if includes.TotalTime {
 			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, []uuid.UUID{tag.Id})
 			if err != nil {
-				return model.Tag{}, model.ErrNotFound
+				return model.Tag{}, err
 			}
 			tag.TotalTime = &totalTime
 		}

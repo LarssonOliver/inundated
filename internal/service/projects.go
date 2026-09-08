@@ -13,14 +13,16 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 	project, err := s.repository.GetProject(ctx, scope, id)
 
 	if err != nil {
-		return model.Project{}, model.ErrNotFound
+		// Propagate as-is: a genuine miss already carries model.ErrNotFound,
+		// and an infrastructure failure must not be masked as a 404.
+		return model.Project{}, err
 	}
 
 	if includes != nil {
-		if includes.TotalTime && project.TagIds != nil && len(project.TagIds) > 0 {
+		if includes.TotalTime && len(project.TagIds) > 0 {
 			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, project.TagIds)
 			if err != nil {
-				return model.Project{}, model.ErrNotFound
+				return model.Project{}, err
 			}
 			project.TotalTime = &totalTime
 		}
