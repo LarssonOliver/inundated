@@ -85,6 +85,13 @@ func TestNewRouter_UserlessMode(t *testing.T) {
 		assert.Equal(t, http.StatusOK, get(t, r, "/api/projects").Code)
 	})
 
+	t.Run("an unknown API route is a JSON 404, not the SPA", func(t *testing.T) {
+		rec := get(t, r, "/api/does-not-exist")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Contains(t, rec.Header().Get("Content-Type"), "json")
+		assert.NotContains(t, rec.Body.String(), "<!DOCTYPE html>")
+	})
+
 	t.Run("a mutation without a CSRF token is rejected", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/projects",
@@ -144,5 +151,11 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 
 	t.Run("health is still public", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, get(t, r, "/health").Code)
+	})
+
+	t.Run("an unknown API route is a JSON 404, not the SPA", func(t *testing.T) {
+		rec := get(t, r, "/api/does-not-exist")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Contains(t, rec.Header().Get("Content-Type"), "json")
 	})
 }
