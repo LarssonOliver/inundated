@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./projects";
 import type { ProjectsApi, ProjectStatsMetricEnum } from "./generated";
 
 const { createProjectsApi } = __test__;
-
-const XSRF = "test-token";
 
 function mockGeneratedApi(): Mocked<ProjectsApi> {
   return {
@@ -25,11 +23,6 @@ describe("projects API", () => {
 
   beforeEach(() => {
     api = mockGeneratedApi();
-    document.cookie = `XSRF-TOKEN=${XSRF}`;
-  });
-
-  afterEach(() => {
-    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 
   it("listProjects maps paginated API response to domain projects", async () => {
@@ -106,7 +99,6 @@ describe("projects API", () => {
     });
 
     expect(api.createProject).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       createProject: { name: "New", color: "#000", tagIds: new Set() },
     });
 
@@ -131,7 +123,6 @@ describe("projects API", () => {
     });
 
     expect(api.updateProject).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       projectId: "1",
       updateProject: { name: "Updated" },
     });
@@ -151,7 +142,6 @@ describe("projects API", () => {
     await sut.deleteProject("dead-id");
 
     expect(api.deleteProject).toHaveBeenCalledWith({
-      xXSRFTOKEN: XSRF,
       projectId: "dead-id",
     });
   });

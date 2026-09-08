@@ -157,7 +157,7 @@ No authorization required
 
 ## authLogout
 
-> authLogout(xXSRFTOKEN)
+> authLogout()
 
 Log out
 
@@ -175,16 +175,13 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
   });
   const api = new AuthApi(config);
 
-  const body = {
-    // string | Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-    xXSRFTOKEN: xXSRFTOKEN_example,
-  } satisfies AuthLogoutRequest;
-
   try {
-    const data = await api.authLogout(body);
+    const data = await api.authLogout();
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -197,10 +194,7 @@ example().catch(console.error);
 
 ### Parameters
 
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **xXSRFTOKEN** | `string` | Anti-CSRF token extracted from the XSRF-TOKEN cookie. | [Defaults to `undefined`] |
+This endpoint does not need any parameter.
 
 ### Return type
 
@@ -208,7 +202,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie)
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 

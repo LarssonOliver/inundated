@@ -35,12 +35,10 @@ import {
 } from '../models/UpdateTimespan';
 
 export interface CreateTimespanRequest {
-    xXSRFTOKEN: string;
     createTimespan: CreateTimespan;
 }
 
 export interface DeleteTimespanRequest {
-    xXSRFTOKEN: string;
     timespanId: string;
 }
 
@@ -54,7 +52,6 @@ export interface ListTimespansRequest {
 }
 
 export interface UpdateTimespanRequest {
-    xXSRFTOKEN: string;
     timespanId: string;
     updateTimespan: UpdateTimespan;
 }
@@ -68,13 +65,6 @@ export class TimespansApi extends runtime.BaseAPI {
      * Creates request options for createTimespan without sending the request
      */
     async createTimespanRequestOpts(requestParameters: CreateTimespanRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling createTimespan().'
-            );
-        }
-
         if (requestParameters['createTimespan'] == null) {
             throw new runtime.RequiredError(
                 'createTimespan',
@@ -88,8 +78,8 @@ export class TimespansApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
@@ -126,13 +116,6 @@ export class TimespansApi extends runtime.BaseAPI {
      * Creates request options for deleteTimespan without sending the request
      */
     async deleteTimespanRequestOpts(requestParameters: DeleteTimespanRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling deleteTimespan().'
-            );
-        }
-
         if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
                 'timespanId',
@@ -144,8 +127,8 @@ export class TimespansApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
@@ -271,13 +254,6 @@ export class TimespansApi extends runtime.BaseAPI {
      * Creates request options for updateTimespan without sending the request
      */
     async updateTimespanRequestOpts(requestParameters: UpdateTimespanRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling updateTimespan().'
-            );
-        }
-
         if (requestParameters['timespanId'] == null) {
             throw new runtime.RequiredError(
                 'timespanId',
@@ -298,8 +274,8 @@ export class TimespansApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 

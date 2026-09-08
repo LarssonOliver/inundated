@@ -68,8 +68,9 @@ logout:
     tags: [auth]
     summary: Log out
     operationId: authLogout
-    parameters:
-      - $ref: "../parameters/auth.yaml#/XSRFTokenHeader"
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     responses:
       "204":
         description: Session terminated

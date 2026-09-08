@@ -1,7 +1,6 @@
 import type { Tag } from "@/model";
 import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
-import { xsrfToken } from "@/api/xsrf";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 
 export interface PaginationMetadata {
@@ -60,14 +59,13 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
 
     async createTag(tag: Omit<Tag, "id">): Promise<Tag> {
       const newTag = toApiCreateTag(tag);
-      const response = await api.createTag({ xXSRFTOKEN: xsrfToken(), createTag: newTag });
+      const response = await api.createTag({ createTag: newTag });
       return tagMapper.fromApi(response);
     },
 
     async updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag> {
       const updateTag = toApiUpdateTag(tag);
       const response = await api.updateTag({
-        xXSRFTOKEN: xsrfToken(),
         tagId: id,
         updateTag: updateTag,
       });
@@ -75,7 +73,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
     },
 
     async deleteTag(id: string): Promise<void> {
-      return await api.deleteTag({ xXSRFTOKEN: xsrfToken(), tagId: id });
+      return await api.deleteTag({ tagId: id });
     },
   };
 }

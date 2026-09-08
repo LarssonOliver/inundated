@@ -49,6 +49,15 @@ components:
       type: apiKey
       in: cookie
       name: inundated_session
+    xsrfToken:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: >
+        Double-submit CSRF token. The server publishes the value in the
+        JS-readable XSRF-TOKEN cookie; every unsafe request must echo it back
+        in this header. Required in addition to the session cookie on all
+        state-changing operations.
   schemas:
     User:
       $ref: "./schemas/users.yaml#/User"

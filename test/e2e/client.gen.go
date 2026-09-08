@@ -20,6 +20,7 @@ import (
 
 const (
 	SessionCookieScopes = "sessionCookie.Scopes"
+	XsrfTokenScopes     = "xsrfToken.Scopes"
 )
 
 // Defines values for ProjectStatsMetric.
@@ -214,9 +215,6 @@ type User struct {
 	Sub string `json:"sub"`
 }
 
-// XSRFTokenHeader defines model for XSRFTokenHeader.
-type XSRFTokenHeader = string
-
 // Code defines model for code.
 type Code = string
 
@@ -274,12 +272,6 @@ type AuthLoginParams struct {
 	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
 }
 
-// AuthLogoutParams defines parameters for AuthLogout.
-type AuthLogoutParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
@@ -287,18 +279,6 @@ type ListProjectsParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
-}
-
-// CreateProjectParams defines parameters for CreateProject.
-type CreateProjectParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// DeleteProjectParams defines parameters for DeleteProject.
-type DeleteProjectParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
 // GetProjectParams defines parameters for GetProject.
@@ -309,12 +289,6 @@ type GetProjectParams struct {
 
 // GetProjectParamsInclude defines parameters for GetProject.
 type GetProjectParamsInclude string
-
-// UpdateProjectParams defines parameters for UpdateProject.
-type UpdateProjectParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
 
 // GetProjectStatsParams defines parameters for GetProjectStats.
 type GetProjectStatsParams struct {
@@ -346,18 +320,6 @@ type ListTagsParams struct {
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
-// CreateTagParams defines parameters for CreateTag.
-type CreateTagParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// DeleteTagParams defines parameters for DeleteTag.
-type DeleteTagParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
 	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
@@ -367,12 +329,6 @@ type GetTagParams struct {
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
 
-// UpdateTagParams defines parameters for UpdateTag.
-type UpdateTagParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {
 	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
@@ -380,24 +336,6 @@ type ListTimespansParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
-}
-
-// CreateTimespanParams defines parameters for CreateTimespan.
-type CreateTimespanParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// DeleteTimespanParams defines parameters for DeleteTimespan.
-type DeleteTimespanParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
-}
-
-// UpdateTimespanParams defines parameters for UpdateTimespan.
-type UpdateTimespanParams struct {
-	// XXSRFTOKEN Anti-CSRF token extracted from the XSRF-TOKEN cookie.
-	XXSRFTOKEN XSRFTokenHeader `json:"X-XSRF-TOKEN"`
 }
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
@@ -498,7 +436,7 @@ type ClientInterface interface {
 	AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AuthLogout request
-	AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCurrentUser request
 	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -507,20 +445,20 @@ type ClientInterface interface {
 	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectWithBody request with any body
-	CreateProjectWithBody(ctx context.Context, params *CreateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateProject(ctx context.Context, params *CreateProjectParams, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteProject request
-	DeleteProject(ctx context.Context, projectId ProjectIdPath, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteProject(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProject request
 	GetProject(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectWithBody request with any body
-	UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProject(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectStats request
 	GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -529,39 +467,39 @@ type ClientInterface interface {
 	ListTags(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTagWithBody request with any body
-	CreateTagWithBody(ctx context.Context, params *CreateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTagWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTag(ctx context.Context, params *CreateTagParams, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTag(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTag request
-	DeleteTag(ctx context.Context, tagId TagIdPath, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTag(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTag request
 	GetTag(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTagWithBody request with any body
-	UpdateTagWithBody(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTagWithBody(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTag(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTimespans request
 	ListTimespans(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTimespanWithBody request with any body
-	CreateTimespanWithBody(ctx context.Context, params *CreateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTimespanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTimespan(ctx context.Context, params *CreateTimespanParams, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTimespan(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTimespan request
-	DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, params *DeleteTimespanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimespan request
 	GetTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTimespanWithBody request with any body
-	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -588,8 +526,8 @@ func (c *Client) AuthLogin(ctx context.Context, params *AuthLoginParams, reqEdit
 	return c.Client.Do(req)
 }
 
-func (c *Client) AuthLogout(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLogoutRequest(c.Server, params)
+func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLogoutRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -624,8 +562,8 @@ func (c *Client) ListProjects(ctx context.Context, params *ListProjectsParams, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateProjectWithBody(ctx context.Context, params *CreateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateProjectRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -636,8 +574,8 @@ func (c *Client) CreateProjectWithBody(ctx context.Context, params *CreateProjec
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateProject(ctx context.Context, params *CreateProjectParams, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateProjectRequest(c.Server, params, body)
+func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -648,8 +586,8 @@ func (c *Client) CreateProject(ctx context.Context, params *CreateProjectParams,
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteProject(ctx context.Context, projectId ProjectIdPath, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteProjectRequest(c.Server, projectId, params)
+func (c *Client) DeleteProject(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteProjectRequest(c.Server, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -672,8 +610,8 @@ func (c *Client) GetProject(ctx context.Context, projectId ProjectIdPath, params
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateProjectRequestWithBody(c.Server, projectId, params, contentType, body)
+func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProjectRequestWithBody(c.Server, projectId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -684,8 +622,8 @@ func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId ProjectIdP
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateProject(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateProjectRequest(c.Server, projectId, params, body)
+func (c *Client) UpdateProject(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProjectRequest(c.Server, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -720,8 +658,8 @@ func (c *Client) ListTags(ctx context.Context, params *ListTagsParams, reqEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTagWithBody(ctx context.Context, params *CreateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTagRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateTagWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTagRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -732,8 +670,8 @@ func (c *Client) CreateTagWithBody(ctx context.Context, params *CreateTagParams,
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTag(ctx context.Context, params *CreateTagParams, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTagRequest(c.Server, params, body)
+func (c *Client) CreateTag(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTagRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -744,8 +682,8 @@ func (c *Client) CreateTag(ctx context.Context, params *CreateTagParams, body Cr
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTag(ctx context.Context, tagId TagIdPath, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTagRequest(c.Server, tagId, params)
+func (c *Client) DeleteTag(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTagRequest(c.Server, tagId)
 	if err != nil {
 		return nil, err
 	}
@@ -768,8 +706,8 @@ func (c *Client) GetTag(ctx context.Context, tagId TagIdPath, params *GetTagPara
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTagWithBody(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTagRequestWithBody(c.Server, tagId, params, contentType, body)
+func (c *Client) UpdateTagWithBody(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTagRequestWithBody(c.Server, tagId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -780,8 +718,8 @@ func (c *Client) UpdateTagWithBody(ctx context.Context, tagId TagIdPath, params 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTagRequest(c.Server, tagId, params, body)
+func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTagRequest(c.Server, tagId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -804,8 +742,8 @@ func (c *Client) ListTimespans(ctx context.Context, params *ListTimespansParams,
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTimespanWithBody(ctx context.Context, params *CreateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTimespanRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateTimespanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTimespanRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -816,8 +754,8 @@ func (c *Client) CreateTimespanWithBody(ctx context.Context, params *CreateTimes
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTimespan(ctx context.Context, params *CreateTimespanParams, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTimespanRequest(c.Server, params, body)
+func (c *Client) CreateTimespan(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTimespanRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -828,8 +766,8 @@ func (c *Client) CreateTimespan(ctx context.Context, params *CreateTimespanParam
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, params *DeleteTimespanParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTimespanRequest(c.Server, timespanId, params)
+func (c *Client) DeleteTimespan(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTimespanRequest(c.Server, timespanId)
 	if err != nil {
 		return nil, err
 	}
@@ -852,8 +790,8 @@ func (c *Client) GetTimespan(ctx context.Context, timespanId TimespanIdPath, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTimespanRequestWithBody(c.Server, timespanId, params, contentType, body)
+func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTimespanRequestWithBody(c.Server, timespanId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -864,8 +802,8 @@ func (c *Client) UpdateTimespanWithBody(ctx context.Context, timespanId Timespan
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateTimespanRequest(c.Server, timespanId, params, body)
+func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTimespanRequest(c.Server, timespanId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1000,7 +938,7 @@ func NewAuthLoginRequest(server string, params *AuthLoginParams) (*http.Request,
 }
 
 // NewAuthLogoutRequest generates requests for AuthLogout
-func NewAuthLogoutRequest(server string, params *AuthLogoutParams) (*http.Request, error) {
+func NewAuthLogoutRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1021,19 +959,6 @@ func NewAuthLogoutRequest(server string, params *AuthLogoutParams) (*http.Reques
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
 	}
 
 	return req, nil
@@ -1132,18 +1057,18 @@ func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Re
 }
 
 // NewCreateProjectRequest calls the generic CreateProject builder with application/json body
-func NewCreateProjectRequest(server string, params *CreateProjectParams, body CreateProjectJSONRequestBody) (*http.Request, error) {
+func NewCreateProjectRequest(server string, body CreateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateProjectRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateProjectRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateProjectRequestWithBody generates requests for CreateProject with any type of body
-func NewCreateProjectRequestWithBody(server string, params *CreateProjectParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateProjectRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1168,24 +1093,11 @@ func NewCreateProjectRequestWithBody(server string, params *CreateProjectParams,
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
-
 	return req, nil
 }
 
 // NewDeleteProjectRequest generates requests for DeleteProject
-func NewDeleteProjectRequest(server string, projectId ProjectIdPath, params *DeleteProjectParams) (*http.Request, error) {
+func NewDeleteProjectRequest(server string, projectId ProjectIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1213,19 +1125,6 @@ func NewDeleteProjectRequest(server string, projectId ProjectIdPath, params *Del
 	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
 	}
 
 	return req, nil
@@ -1288,18 +1187,18 @@ func NewGetProjectRequest(server string, projectId ProjectIdPath, params *GetPro
 }
 
 // NewUpdateProjectRequest calls the generic UpdateProject builder with application/json body
-func NewUpdateProjectRequest(server string, projectId ProjectIdPath, params *UpdateProjectParams, body UpdateProjectJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectRequest(server string, projectId ProjectIdPath, body UpdateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateProjectRequestWithBody(server, projectId, params, "application/json", bodyReader)
+	return NewUpdateProjectRequestWithBody(server, projectId, "application/json", bodyReader)
 }
 
 // NewUpdateProjectRequestWithBody generates requests for UpdateProject with any type of body
-func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, params *UpdateProjectParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1330,19 +1229,6 @@ func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, par
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
 
 	return req, nil
 }
@@ -1513,18 +1399,18 @@ func NewListTagsRequest(server string, params *ListTagsParams) (*http.Request, e
 }
 
 // NewCreateTagRequest calls the generic CreateTag builder with application/json body
-func NewCreateTagRequest(server string, params *CreateTagParams, body CreateTagJSONRequestBody) (*http.Request, error) {
+func NewCreateTagRequest(server string, body CreateTagJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTagRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateTagRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateTagRequestWithBody generates requests for CreateTag with any type of body
-func NewCreateTagRequestWithBody(server string, params *CreateTagParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTagRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1549,24 +1435,11 @@ func NewCreateTagRequestWithBody(server string, params *CreateTagParams, content
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
-
 	return req, nil
 }
 
 // NewDeleteTagRequest generates requests for DeleteTag
-func NewDeleteTagRequest(server string, tagId TagIdPath, params *DeleteTagParams) (*http.Request, error) {
+func NewDeleteTagRequest(server string, tagId TagIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1594,19 +1467,6 @@ func NewDeleteTagRequest(server string, tagId TagIdPath, params *DeleteTagParams
 	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
 	}
 
 	return req, nil
@@ -1669,18 +1529,18 @@ func NewGetTagRequest(server string, tagId TagIdPath, params *GetTagParams) (*ht
 }
 
 // NewUpdateTagRequest calls the generic UpdateTag builder with application/json body
-func NewUpdateTagRequest(server string, tagId TagIdPath, params *UpdateTagParams, body UpdateTagJSONRequestBody) (*http.Request, error) {
+func NewUpdateTagRequest(server string, tagId TagIdPath, body UpdateTagJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTagRequestWithBody(server, tagId, params, "application/json", bodyReader)
+	return NewUpdateTagRequestWithBody(server, tagId, "application/json", bodyReader)
 }
 
 // NewUpdateTagRequestWithBody generates requests for UpdateTag with any type of body
-func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, params *UpdateTagParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1711,19 +1571,6 @@ func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, params *UpdateT
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
 
 	return req, nil
 }
@@ -1794,18 +1641,18 @@ func NewListTimespansRequest(server string, params *ListTimespansParams) (*http.
 }
 
 // NewCreateTimespanRequest calls the generic CreateTimespan builder with application/json body
-func NewCreateTimespanRequest(server string, params *CreateTimespanParams, body CreateTimespanJSONRequestBody) (*http.Request, error) {
+func NewCreateTimespanRequest(server string, body CreateTimespanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTimespanRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateTimespanRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateTimespanRequestWithBody generates requests for CreateTimespan with any type of body
-func NewCreateTimespanRequestWithBody(server string, params *CreateTimespanParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTimespanRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1830,24 +1677,11 @@ func NewCreateTimespanRequestWithBody(server string, params *CreateTimespanParam
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
-
 	return req, nil
 }
 
 // NewDeleteTimespanRequest generates requests for DeleteTimespan
-func NewDeleteTimespanRequest(server string, timespanId TimespanIdPath, params *DeleteTimespanParams) (*http.Request, error) {
+func NewDeleteTimespanRequest(server string, timespanId TimespanIdPath) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1875,19 +1709,6 @@ func NewDeleteTimespanRequest(server string, timespanId TimespanIdPath, params *
 	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
 	}
 
 	return req, nil
@@ -1928,18 +1749,18 @@ func NewGetTimespanRequest(server string, timespanId TimespanIdPath) (*http.Requ
 }
 
 // NewUpdateTimespanRequest calls the generic UpdateTimespan builder with application/json body
-func NewUpdateTimespanRequest(server string, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody) (*http.Request, error) {
+func NewUpdateTimespanRequest(server string, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTimespanRequestWithBody(server, timespanId, params, "application/json", bodyReader)
+	return NewUpdateTimespanRequestWithBody(server, timespanId, "application/json", bodyReader)
 }
 
 // NewUpdateTimespanRequestWithBody generates requests for UpdateTimespan with any type of body
-func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1970,19 +1791,6 @@ func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, 
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-XSRF-TOKEN", runtime.ParamLocationHeader, params.XXSRFTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-XSRF-TOKEN", headerParam0)
-
-	}
 
 	return req, nil
 }
@@ -2037,7 +1845,7 @@ type ClientWithResponsesInterface interface {
 	AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
 
 	// AuthLogoutWithResponse request
-	AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+	AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
 
 	// GetCurrentUserWithResponse request
 	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
@@ -2046,20 +1854,20 @@ type ClientWithResponsesInterface interface {
 	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
 
 	// CreateProjectWithBodyWithResponse request with any body
-	CreateProjectWithBodyWithResponse(ctx context.Context, params *CreateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+	CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
 
-	CreateProjectWithResponse(ctx context.Context, params *CreateProjectParams, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+	CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
 
 	// DeleteProjectWithResponse request
-	DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
+	DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
 
 	// GetProjectWithResponse request
 	GetProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectParams, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
 
 	// UpdateProjectWithBodyWithResponse request with any body
-	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
-	UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
 	// GetProjectStatsWithResponse request
 	GetProjectStatsWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*GetProjectStatsResponse, error)
@@ -2068,39 +1876,39 @@ type ClientWithResponsesInterface interface {
 	ListTagsWithResponse(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
 
 	// CreateTagWithBodyWithResponse request with any body
-	CreateTagWithBodyWithResponse(ctx context.Context, params *CreateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
+	CreateTagWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
 
-	CreateTagWithResponse(ctx context.Context, params *CreateTagParams, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
+	CreateTagWithResponse(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTagResponse, error)
 
 	// DeleteTagWithResponse request
-	DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
+	DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
 
 	// GetTagWithResponse request
 	GetTagWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagParams, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
 
 	// UpdateTagWithBodyWithResponse request with any body
-	UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
+	UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
-	UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
+	UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
 	// ListTimespansWithResponse request
 	ListTimespansWithResponse(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
 
 	// CreateTimespanWithBodyWithResponse request with any body
-	CreateTimespanWithBodyWithResponse(ctx context.Context, params *CreateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
+	CreateTimespanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
 
-	CreateTimespanWithResponse(ctx context.Context, params *CreateTimespanParams, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
+	CreateTimespanWithResponse(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error)
 
 	// DeleteTimespanWithResponse request
-	DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, params *DeleteTimespanParams, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error)
+	DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error)
 
 	// GetTimespanWithResponse request
 	GetTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*GetTimespanResponse, error)
 
 	// UpdateTimespanWithBodyWithResponse request with any body
-	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
-	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 }
 
 type AuthCallbackResponse struct {
@@ -2556,8 +2364,8 @@ func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, params 
 }
 
 // AuthLogoutWithResponse request returning *AuthLogoutResponse
-func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, params *AuthLogoutParams, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
-	rsp, err := c.AuthLogout(ctx, params, reqEditors...)
+func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
+	rsp, err := c.AuthLogout(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2583,16 +2391,16 @@ func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, para
 }
 
 // CreateProjectWithBodyWithResponse request with arbitrary body returning *CreateProjectResponse
-func (c *ClientWithResponses) CreateProjectWithBodyWithResponse(ctx context.Context, params *CreateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
-	rsp, err := c.CreateProjectWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProjectWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, params *CreateProjectParams, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
-	rsp, err := c.CreateProject(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProject(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2600,8 +2408,8 @@ func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, par
 }
 
 // DeleteProjectWithResponse request returning *DeleteProjectResponse
-func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
-	rsp, err := c.DeleteProject(ctx, projectId, params, reqEditors...)
+func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId ProjectIdPath, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
+	rsp, err := c.DeleteProject(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2618,16 +2426,16 @@ func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projec
 }
 
 // UpdateProjectWithBodyWithResponse request with arbitrary body returning *UpdateProjectResponse
-func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
-	rsp, err := c.UpdateProjectWithBody(ctx, projectId, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId ProjectIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
-	rsp, err := c.UpdateProject(ctx, projectId, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId ProjectIdPath, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProject(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2653,16 +2461,16 @@ func (c *ClientWithResponses) ListTagsWithResponse(ctx context.Context, params *
 }
 
 // CreateTagWithBodyWithResponse request with arbitrary body returning *CreateTagResponse
-func (c *ClientWithResponses) CreateTagWithBodyWithResponse(ctx context.Context, params *CreateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTagResponse, error) {
-	rsp, err := c.CreateTagWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTagWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTagResponse, error) {
+	rsp, err := c.CreateTagWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTagResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTagWithResponse(ctx context.Context, params *CreateTagParams, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTagResponse, error) {
-	rsp, err := c.CreateTag(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateTagWithResponse(ctx context.Context, body CreateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTagResponse, error) {
+	rsp, err := c.CreateTag(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2670,8 +2478,8 @@ func (c *ClientWithResponses) CreateTagWithResponse(ctx context.Context, params 
 }
 
 // DeleteTagWithResponse request returning *DeleteTagResponse
-func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error) {
-	rsp, err := c.DeleteTag(ctx, tagId, params, reqEditors...)
+func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, tagId TagIdPath, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error) {
+	rsp, err := c.DeleteTag(ctx, tagId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2688,16 +2496,16 @@ func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, tagId TagI
 }
 
 // UpdateTagWithBodyWithResponse request with arbitrary body returning *UpdateTagResponse
-func (c *ClientWithResponses) UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
-	rsp, err := c.UpdateTagWithBody(ctx, tagId, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
+	rsp, err := c.UpdateTagWithBody(ctx, tagId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateTagResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, params *UpdateTagParams, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
-	rsp, err := c.UpdateTag(ctx, tagId, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error) {
+	rsp, err := c.UpdateTag(ctx, tagId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2714,16 +2522,16 @@ func (c *ClientWithResponses) ListTimespansWithResponse(ctx context.Context, par
 }
 
 // CreateTimespanWithBodyWithResponse request with arbitrary body returning *CreateTimespanResponse
-func (c *ClientWithResponses) CreateTimespanWithBodyWithResponse(ctx context.Context, params *CreateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
-	rsp, err := c.CreateTimespanWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTimespanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
+	rsp, err := c.CreateTimespanWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTimespanResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTimespanWithResponse(ctx context.Context, params *CreateTimespanParams, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
-	rsp, err := c.CreateTimespan(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateTimespanWithResponse(ctx context.Context, body CreateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimespanResponse, error) {
+	rsp, err := c.CreateTimespan(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2731,8 +2539,8 @@ func (c *ClientWithResponses) CreateTimespanWithResponse(ctx context.Context, pa
 }
 
 // DeleteTimespanWithResponse request returning *DeleteTimespanResponse
-func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, params *DeleteTimespanParams, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error) {
-	rsp, err := c.DeleteTimespan(ctx, timespanId, params, reqEditors...)
+func (c *ClientWithResponses) DeleteTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, reqEditors ...RequestEditorFn) (*DeleteTimespanResponse, error) {
+	rsp, err := c.DeleteTimespan(ctx, timespanId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2749,16 +2557,16 @@ func (c *ClientWithResponses) GetTimespanWithResponse(ctx context.Context, times
 }
 
 // UpdateTimespanWithBodyWithResponse request with arbitrary body returning *UpdateTimespanResponse
-func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
-	rsp, err := c.UpdateTimespanWithBody(ctx, timespanId, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+	rsp, err := c.UpdateTimespanWithBody(ctx, timespanId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateTimespanResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, params *UpdateTimespanParams, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
-	rsp, err := c.UpdateTimespan(ctx, timespanId, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error) {
+	rsp, err := c.UpdateTimespan(ctx, timespanId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

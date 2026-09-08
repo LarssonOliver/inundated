@@ -5,7 +5,6 @@ import {
   ProjectStatsMetricEnum,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
-import { xsrfToken } from "@/api/xsrf";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";
 import { projectStatsMapper } from "./mappers/projectStatsMapper";
 
@@ -73,7 +72,6 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
     async createProject(project: Omit<Project, "id">): Promise<Project> {
       const newProject = toApiCreateProject(project);
       const response = await api.createProject({
-        xXSRFTOKEN: xsrfToken(),
         createProject: newProject,
       });
       return projectMapper.fromApi(response);
@@ -82,7 +80,6 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
     async updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project> {
       const updateProject = toApiUpdateProject(project);
       const response = await api.updateProject({
-        xXSRFTOKEN: xsrfToken(),
         projectId: id,
         updateProject: updateProject,
       });
@@ -90,7 +87,7 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
     },
 
     async deleteProject(id: string): Promise<void> {
-      return await api.deleteProject({ xXSRFTOKEN: xsrfToken(), projectId: id });
+      return await api.deleteProject({ projectId: id });
     },
 
     async fetchProjectStats(

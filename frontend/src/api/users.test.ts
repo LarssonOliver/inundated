@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./users";
 import { AuthApi, ResponseError, UsersApi as GeneratedUsersApi } from "./generated";
 
 const { createUsersApi } = __test__;
-
-const XSRF = "test-token";
 
 function mockUsers(): Mocked<GeneratedUsersApi> {
   return {
@@ -23,11 +21,6 @@ describe("users API", () => {
   beforeEach(() => {
     users = mockUsers();
     auth = mockAuth();
-    document.cookie = `XSRF-TOKEN=${XSRF}`;
-  });
-
-  afterEach(() => {
-    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 
   it("getCurrentUser maps the authenticated user", async () => {
@@ -71,13 +64,16 @@ describe("users API", () => {
     await expect(sut.getCurrentUser()).rejects.toBeInstanceOf(ResponseError);
   });
 
-  it("logout sends the XSRF token", async () => {
+  it("logout calls the logout endpoint", async () => {
     auth.authLogout.mockResolvedValue(undefined);
 
     const sut = createUsersApi(users, auth);
     await sut.logout();
 
-    expect(auth.authLogout).toHaveBeenCalledWith({ xXSRFTOKEN: XSRF });
+    // The X-XSRF-TOKEN header is now supplied by ApiConfig's apiKey callback
+    // (the xsrfToken security scheme), not passed per call; config.test.ts
+    // covers that it reaches the wire.
+    expect(auth.authLogout).toHaveBeenCalledOnce();
   });
 
   it("logout treats a 401 as already-logged-out", async () => {

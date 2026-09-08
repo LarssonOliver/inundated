@@ -1,7 +1,6 @@
 import type { Timespan } from "@/model";
 import { TimespansApi as GeneratedTimespansApi } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
-import { xsrfToken } from "@/api/xsrf";
 import {
   mapFromApiArray,
   timespanMapper,
@@ -61,7 +60,6 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
     async createTimespan(timespan: Omit<Timespan, "id">): Promise<Timespan> {
       const newTimespan = toApiCreateTimespan(timespan);
       const response = await api.createTimespan({
-        xXSRFTOKEN: xsrfToken(),
         createTimespan: newTimespan,
       });
       return timespanMapper.fromApi(response);
@@ -70,7 +68,6 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
     async updateTimespan(id: string, timespan: Partial<Omit<Timespan, "id">>): Promise<Timespan> {
       const updateTimespan = toApiUpdateTimespan(timespan);
       const response = await api.updateTimespan({
-        xXSRFTOKEN: xsrfToken(),
         timespanId: id,
         updateTimespan: updateTimespan,
       });
@@ -78,7 +75,7 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
     },
 
     async deleteTimespan(id: string): Promise<void> {
-      return await api.deleteTimespan({ xXSRFTOKEN: xsrfToken(), timespanId: id });
+      return await api.deleteTimespan({ timespanId: id });
     },
   };
 }

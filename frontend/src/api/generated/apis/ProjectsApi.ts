@@ -40,12 +40,10 @@ import {
 } from '../models/UpdateProject';
 
 export interface CreateProjectRequest {
-    xXSRFTOKEN: string;
     createProject: CreateProject;
 }
 
 export interface DeleteProjectRequest {
-    xXSRFTOKEN: string;
     projectId: string;
 }
 
@@ -68,7 +66,6 @@ export interface ListProjectsRequest {
 }
 
 export interface UpdateProjectRequest {
-    xXSRFTOKEN: string;
     projectId: string;
     updateProject: UpdateProject;
 }
@@ -82,13 +79,6 @@ export class ProjectsApi extends runtime.BaseAPI {
      * Creates request options for createProject without sending the request
      */
     async createProjectRequestOpts(requestParameters: CreateProjectRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling createProject().'
-            );
-        }
-
         if (requestParameters['createProject'] == null) {
             throw new runtime.RequiredError(
                 'createProject',
@@ -102,8 +92,8 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
@@ -140,13 +130,6 @@ export class ProjectsApi extends runtime.BaseAPI {
      * Creates request options for deleteProject without sending the request
      */
     async deleteProjectRequestOpts(requestParameters: DeleteProjectRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling deleteProject().'
-            );
-        }
-
         if (requestParameters['projectId'] == null) {
             throw new runtime.RequiredError(
                 'projectId',
@@ -158,8 +141,8 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
@@ -359,13 +342,6 @@ export class ProjectsApi extends runtime.BaseAPI {
      * Creates request options for updateProject without sending the request
      */
     async updateProjectRequestOpts(requestParameters: UpdateProjectRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['xXSRFTOKEN'] == null) {
-            throw new runtime.RequiredError(
-                'xXSRFTOKEN',
-                'Required parameter "xXSRFTOKEN" was null or undefined when calling updateProject().'
-            );
-        }
-
         if (requestParameters['projectId'] == null) {
             throw new runtime.RequiredError(
                 'projectId',
@@ -386,8 +362,8 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (requestParameters['xXSRFTOKEN'] != null) {
-            headerParameters['X-XSRF-TOKEN'] = String(requestParameters['xXSRFTOKEN']);
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
         }
 
 
