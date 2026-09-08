@@ -66,12 +66,42 @@ func assertColumnExists(
 	}
 }
 
+func assertColumnNotExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool, table, column string) {
+	t.Helper()
+
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = 'public'
+			  AND table_name = $1
+			  AND column_name = $2
+		)
+	`, table, column).Scan(&exists)
+
+	require.NoError(t, err)
+	require.False(t, exists, "expected column %s.%s to NOT exist", table, column)
+}
+
 func assertIndexExists(
 	t *testing.T,
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	indexName string,
 ) {
+	t.Helper()
+
+	require.True(t, indexPresent(t, ctx, pool, indexName), "expected index %q to exist", indexName)
+}
+
+func assertIndexNotExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool, indexName string) {
+	t.Helper()
+
+	require.False(t, indexPresent(t, ctx, pool, indexName), "expected index %q to NOT exist", indexName)
+}
+
+func indexPresent(t *testing.T, ctx context.Context, pool *pgxpool.Pool, indexName string) bool {
 	t.Helper()
 
 	var exists bool
@@ -85,30 +115,44 @@ func assertIndexExists(
 	`, indexName).Scan(&exists)
 
 	require.NoError(t, err)
-	require.True(t, exists, "expected index %q to exist", indexName)
+	return exists
 }
 
-// func assertForeignKeyExists(
-// 	t *testing.T,
-// 	ctx context.Context,
-// 	pool *pgxpool.Pool,
-// 	table, constraint string,
-// ) {
-// 	t.Helper()
+func assertUniqueIndexExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool, indexName string) {
+	t.Helper()
 
-// 	var exists bool
-// 	err := pool.QueryRow(ctx, `
-// 		SELECT EXISTS (
-// 			SELECT 1
-// 			FROM information_schema.table_constraints
-// 			WHERE table_schema = 'public'
-// 			  AND table_name = $1
-// 			  AND constraint_name = $2
-// 			  AND constraint_type = 'FOREIGN KEY'
-// 		)
-// 	`, table, constraint).Scan(&exists)
+	var isUnique bool
+	err := pool.QueryRow(ctx, `
+		SELECT indisunique
+		FROM pg_index
+		WHERE indexrelid = $1::regclass
+	`, indexName).Scan(&isUnique)
 
-// 	require.NoError(t, err)
-// 	require.True(t, exists,
-// 		"expected foreign key %q on table %q to exist", constraint, table)
-// }
+	require.NoError(t, err, "expected index %q to exist", indexName)
+	require.True(t, isUnique, "expected index %q to be UNIQUE", indexName)
+}
+
+func assertForeignKeyExists(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	table, constraint string,
+) {
+	t.Helper()
+
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.table_constraints
+			WHERE table_schema = 'public'
+			  AND table_name = $1
+			  AND constraint_name = $2
+			  AND constraint_type = 'FOREIGN KEY'
+		)
+	`, table, constraint).Scan(&exists)
+
+	require.NoError(t, err)
+	require.True(t, exists,
+		"expected foreign key %q on table %q to exist", constraint, table)
+}
