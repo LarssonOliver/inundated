@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tagsApi } from "./tags";
+import { ApiConfig } from "./config";
 
 describe("API client wiring", () => {
+  it("keeps the base path empty so requests stay relative to the current origin", () => {
+    // openapi-generator bakes BASE_PATH = "http://localhost" into runtime.ts
+    // because it can't use the spec's relative server URL; ApiConfig must
+    // override it back to "".
+    expect(ApiConfig.basePath).toBe("");
+  });
+
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
