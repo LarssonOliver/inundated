@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import { useInfiniteScroll } from "./useInfiniteScroll";
 
 // Mock IntersectionObserver
@@ -164,5 +164,24 @@ describe("useInfiniteScroll", () => {
     cleanup();
 
     expect(disconnectSpy).toHaveBeenCalled();
+  });
+
+  it("cleanup() also stops the sentinel watcher so it does not leak", async () => {
+    const sentinelRef = ref<HTMLElement | undefined>(sentinelElement);
+
+    const { cleanup } = useInfiniteScroll(
+      mockStore as unknown as Parameters<typeof useInfiniteScroll>[0],
+      sentinelRef,
+    );
+    expect(mockObservers).toHaveLength(1);
+
+    cleanup();
+
+    // With the watcher stopped, swapping the sentinel element must not spin up
+    // another observer.
+    sentinelRef.value = document.createElement("div");
+    await nextTick();
+
+    expect(mockObservers).toHaveLength(1);
   });
 });
