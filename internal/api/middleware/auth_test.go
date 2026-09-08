@@ -82,11 +82,67 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
+			name:        "Session past the absolute lifetime cap - deletes session and clears cookie even though ExpiresAt is in the future",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+					return model.Session{
+						Id:        sessionID,
+						Sub:       "sub_123",
+						CreatedAt: time.Now().Add(-8 * 24 * time.Hour),
+						ExpiresAt: time.Now().Add(12 * time.Hour),
+					}, nil
+				}
+				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
+					assert.Equal(t, validUUID, id)
+					return nil
+				}
+				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+					t.Fatal("a session past the absolute cap must not be renewed")
+					return model.Session{}, nil
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.False(t, nextCalledWithUser)
+				cookies := res.Cookies()
+				require.Len(t, cookies, 1)
+				assert.Equal(t, model.SessionCookieName, cookies[0].Name)
+				assert.Equal(t, -1, cookies[0].MaxAge)
+			},
+		},
+		{
+			name:        "Renewal near the absolute cap is clamped and does not exceed CreatedAt + 7d",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				createdAt := time.Now().Add(-6*24*time.Hour - 20*time.Hour) // ~6d20h old
+				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+					return model.Session{
+						Id:        sessionID,
+						Sub:       "sub_123",
+						CreatedAt: createdAt,
+						ExpiresAt: time.Now().Add(1 * time.Hour), // within the 6h renewal window
+					}, nil
+				}
+				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
+					// The absolute cap is 7 days from CreatedAt.
+					assert.WithinDuration(t, createdAt.Add(7*24*time.Hour), expiresAt, 2*time.Second,
+						"renewal must be clamped to the absolute cap")
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: createdAt, ExpiresAt: expiresAt}, nil
+				}
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
+					return model.User{Id: userID}, nil
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.True(t, nextCalledWithUser)
+			},
+		},
+		{
 			name:        "Valid session - attaches context successfully",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
 					assert.Equal(t, "sub_123", sub)
@@ -108,7 +164,7 @@ func TestOIDCAuth(t *testing.T) {
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Id: sessionID, Sub: "sub_gone", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+					return model.Session{Id: sessionID, Sub: "sub_gone", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
 					assert.Equal(t, validUUID, id)
@@ -131,7 +187,7 @@ func TestOIDCAuth(t *testing.T) {
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
 					t.Fatal("a valid session must not be deleted when the user lookup fails transiently")
@@ -152,12 +208,12 @@ func TestOIDCAuth(t *testing.T) {
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				// Expiring in 2 hours triggers the (< 6 hours) condition
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Sub: "sub_123", ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
+					return model.Session{Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
 				}
 				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
 					assert.Equal(t, validUUID, id)
 					assert.WithinDuration(t, time.Now().Add(24*time.Hour), expiresAt, 2*time.Second)
-					return model.Session{Sub: "sub_123", ExpiresAt: expiresAt}, nil
+					return model.Session{Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: expiresAt}, nil
 				}
 				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
 					return model.User{Id: userID}, nil
@@ -172,7 +228,7 @@ func TestOIDCAuth(t *testing.T) {
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
 				}
 				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
 					return model.Session{}, errors.New("transient database error")

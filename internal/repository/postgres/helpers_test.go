@@ -104,6 +104,7 @@ func aSession() model.Session {
 		Id:        uuid.New(),
 		UserId:    uuid.New(),
 		Sub:       "auth0|user123",
+		CreatedAt: time.Now().Add(-time.Hour).UTC(),
 		ExpiresAt: time.Now().Add(time.Hour).UTC(),
 	}
 }

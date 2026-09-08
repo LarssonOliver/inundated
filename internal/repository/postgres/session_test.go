@@ -22,9 +22,9 @@ func TestCreateSession_Success(t *testing.T) {
 	session := aSession()
 
 	mock.ExpectQuery(`INSERT INTO sessions`).
-		WithArgs(session.Id, session.UserId, session.Sub, session.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}).
-			AddRow(session.Id, session.UserId, session.Sub, session.ExpiresAt))
+		WithArgs(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
+			AddRow(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
 	got, err := repo.CreateSession(ctx, session)
 	require.NoError(t, err)
@@ -38,9 +38,9 @@ func TestCreateSession_GeneratesIdWhenNil(t *testing.T) {
 	session.Id = uuid.Nil
 
 	mock.ExpectQuery(`INSERT INTO sessions`).
-		WithArgs(pgxmock.AnyArg(), session.UserId, session.Sub, session.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}).
-			AddRow(uuid.New(), session.UserId, session.Sub, session.ExpiresAt))
+		WithArgs(pgxmock.AnyArg(), session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
+			AddRow(uuid.New(), session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
 	got, err := repo.CreateSession(ctx, session)
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestCreateSession_DuplicateId(t *testing.T) {
 	session := aSession()
 
 	mock.ExpectQuery(`INSERT INTO sessions`).
-		WithArgs(session.Id, session.UserId, session.Sub, session.ExpiresAt).
+		WithArgs(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt).
 		WillReturnError(&pgconn.PgError{Code: "23505"})
 
 	_, err := repo.CreateSession(ctx, session)
@@ -88,10 +88,10 @@ func TestGetSession_Success(t *testing.T) {
 	repo, mock := newSessionMock(t)
 	session := aSession()
 
-	mock.ExpectQuery(`SELECT id, user_id, sub, expires_at FROM sessions WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, user_id, sub, created_at, expires_at FROM sessions WHERE id = \$1`).
 		WithArgs(session.Id).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}).
-			AddRow(session.Id, session.UserId, session.Sub, session.ExpiresAt))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
+			AddRow(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
 	got, err := repo.GetSession(ctx, session.Id)
 	require.NoError(t, err)
@@ -103,9 +103,9 @@ func TestGetSession_NotFound(t *testing.T) {
 	repo, mock := newSessionMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, user_id, sub, expires_at FROM sessions WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, user_id, sub, created_at, expires_at FROM sessions WHERE id = \$1`).
 		WithArgs(id).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}))
 
 	_, err := repo.GetSession(ctx, id)
 	require.Error(t, err)
@@ -131,8 +131,8 @@ func TestTouchSession_Success(t *testing.T) {
 
 	mock.ExpectQuery(`UPDATE sessions .+ WHERE id = \$1`).
 		WithArgs(session.Id, session.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}).
-			AddRow(session.Id, session.UserId, session.Sub, session.ExpiresAt))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
+			AddRow(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
 	got, err := repo.TouchSession(ctx, session.Id, session.ExpiresAt)
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestTouchSession_NotFound(t *testing.T) {
 
 	mock.ExpectQuery(`UPDATE sessions .+ WHERE id = \$1`).
 		WithArgs(session.Id, session.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "expires_at"}))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}))
 
 	_, err := repo.TouchSession(ctx, session.Id, session.ExpiresAt)
 	require.Error(t, err)
