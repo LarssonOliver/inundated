@@ -36,7 +36,7 @@ image-push:
 		--platform linux/amd64,linux/arm64 \
 		--build-arg VERSION=${VERSION} \
 		--file build/Dockerfile \
-		--tag larssonoliver/inundated:latest \
+		--tag git.larssonoliver.com/oliver/inundated:latest \
 		--push .
 
 # Run tests

@@ -4,6 +4,9 @@ build/
 openapi/
 test/
 
+**/node_modules/
+frontend/dist/
+
 .dockerignore
 .gitignore
 
