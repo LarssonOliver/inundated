@@ -10,6 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSecurityHeaders(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	middleware.SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rec, req)
+
+	csp := rec.Header().Get("Content-Security-Policy")
+	require.Contains(t, csp, "script-src 'self';")
+	assert.NotContains(t, csp, "script-src 'self' 'unsafe-inline'",
+		"the Vue production build ships only external module scripts; inline script must not be allowed")
+}
+
 func TestCSRF(t *testing.T) {
 	key := []byte("0123456789abcdef0123456789abcdef")
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
