@@ -17,6 +17,9 @@ type migrationTestCase struct {
 
 	before func(t *testing.T, ctx context.Context, pool *pgxpool.Pool)
 	after  func(t *testing.T, ctx context.Context, pool *pgxpool.Pool)
+	// afterDown, if set, is run after migrating back down to fromVersion, to
+	// assert the .down.sql reverses the change.
+	afterDown func(t *testing.T, ctx context.Context, pool *pgxpool.Pool)
 }
 
 func sptr(s string) *string {
@@ -130,6 +133,11 @@ func TestIndividualMigrations(t *testing.T) {
 			name:        "0006_add_user_id",
 			fromVersion: 5,
 			toVersion:   6,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "tags", "user_id")
+				assertColumnNotExists(t, ctx, pool, "projects", "user_id")
+				assertColumnNotExists(t, ctx, pool, "timespans", "user_id")
+			},
 			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 				assertColumnExists(t, ctx, pool, "tags", "user_id", sptr("uuid"))
 				assertIndexExists(t, ctx, pool, "idx_tags_user_id")
@@ -142,6 +150,56 @@ func TestIndividualMigrations(t *testing.T) {
 				assertColumnExists(t, ctx, pool, "timespans", "user_id", sptr("uuid"))
 				assertIndexExists(t, ctx, pool, "idx_timespans_user_id")
 				assertForeignKeyExists(t, ctx, pool, "timespans", "timespans_user_id_fkey")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "tags", "user_id")
+				assertColumnNotExists(t, ctx, pool, "projects", "user_id")
+				assertColumnNotExists(t, ctx, pool, "timespans", "user_id")
+			},
+		},
+		{
+			name:        "0007_login_state_nonce",
+			fromVersion: 6,
+			toVersion:   7,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "login_states", "nonce")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "login_states", "nonce", sptr("text"))
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "login_states", "nonce")
+			},
+		},
+		{
+			name:        "0008_session_created_at",
+			fromVersion: 7,
+			toVersion:   8,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "sessions", "created_at")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "sessions", "created_at", sptr("timestamp with time zone"))
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "sessions", "created_at")
+			},
+		},
+		{
+			name:        "0009_session_token_hash",
+			fromVersion: 8,
+			toVersion:   9,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "sessions", "token_hash")
+				assertIndexNotExists(t, ctx, pool, "idx_sessions_token_hash")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "sessions", "token_hash", sptr("bytea"))
+				assertUniqueIndexExists(t, ctx, pool, "idx_sessions_token_hash")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "sessions", "token_hash")
+				assertIndexNotExists(t, ctx, pool, "idx_sessions_token_hash")
 			},
 		},
 	}
@@ -167,6 +225,14 @@ func TestIndividualMigrations(t *testing.T) {
 
 			if tcase.after != nil {
 				tcase.after(t, ctx, pool)
+			}
+
+			if tcase.afterDown != nil {
+				require.NoError(t,
+					postgres.ApplyMigrationsUpTo(ctx, dsn, tcase.fromVersion),
+					"migrating back down to %d", tcase.fromVersion,
+				)
+				tcase.afterDown(t, ctx, pool)
 			}
 		})
 	}
