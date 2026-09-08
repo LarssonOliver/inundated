@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/larssonoliver/inundated/internal/model"
+	"github.com/larssonoliver/inundated/internal/utils"
 )
 
 func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
@@ -108,6 +109,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 	if timespan.Id == uuid.Nil {
 		timespan.Id = uuid.New()
 	}
+	timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 
 	var created model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
@@ -146,6 +148,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 	if !timespan.EndTime.IsZero() && !timespan.EndTime.After(timespan.StartTime) {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: end_time must be after start_time: %w", model.ErrInvalidArgument)
 	}
+	timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 
 	var updated model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
