@@ -114,6 +114,16 @@ func TestProjectService_GetProject_ErrorContract(t *testing.T) {
 		require.NotErrorIs(t, err, model.ErrNotFound)
 	})
 
+	t.Run("a malformed id from the repository surfaces as ErrNotFound, not a 500", func(t *testing.T) {
+		repo := &repository.RepoMock{
+			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+				return model.Project{}, fmt.Errorf("GetProject: id: %w", model.ErrInvalidArgument)
+			},
+		}
+		_, err := service.NewService(repo).GetProject(context.Background(), uuid.Nil, nil)
+		require.ErrorIs(t, err, model.ErrNotFound)
+	})
+
 	t.Run("an infrastructure error from the total-time include is propagated", func(t *testing.T) {
 		repo := &repository.RepoMock{
 			GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {

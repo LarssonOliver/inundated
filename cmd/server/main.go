@@ -89,8 +89,6 @@ func newRouter(
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
-	r.Use(middleware.CSRF(csrfKey, isSecure))
-	r.Use(middleware.ExposeCSRFToken(isSecure))
 
 	r.Handle("/health", handlers.HealthHandler())
 
@@ -100,6 +98,11 @@ func newRouter(
 			return r.URL.Path == "/health"
 		}))
 		r.Use(middleware.NoSniffJSON)
+		// CSRF only guards the API. The SPA reads its XSRF-TOKEN off the
+		// first (safe) /api/me probe; static assets and /health would
+		// otherwise pay the HMAC cost and carry a needless Set-Cookie.
+		r.Use(middleware.CSRF(csrfKey, isSecure))
+		r.Use(middleware.ExposeCSRFToken(isSecure))
 
 		if cfg.OIDC.Enabled() {
 			r.Use(middleware.OIDCAuth(svc, sessionRepo, isSecure))

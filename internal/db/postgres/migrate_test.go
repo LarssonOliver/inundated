@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,6 +37,28 @@ func TestMigrations_ApplyCleanly(t *testing.T) {
 	assertTableExists(t, ctx, pool, "projects")
 	assertTableExists(t, ctx, pool, "tags")
 	assertTableExists(t, ctx, pool, "timespans")
+}
+
+// 0006 adds columns and FKs to an existing deployment. If a partial apply is
+// recovered by clearing golang-migrate's dirty flag, the file gets re-run, so
+// every statement in it must be safe to apply twice.
+func TestMigration0006_ReapplyIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	pool, dsn := testutils.StartPostgresContainer(ctx, t)
+
+	require.NoError(t, postgres.ApplyMigrationsUpTo(ctx, dsn, 5))
+
+	raw, err := os.ReadFile("migrations/0006_add_user_id.up.sql")
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, string(raw))
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, string(raw))
+	require.NoError(t, err, "re-running 0006 must not fail on an already-present constraint")
+
+	assertForeignKeyExists(t, ctx, pool, "tags", "tags_user_id_fkey")
+	assertForeignKeyExists(t, ctx, pool, "projects", "projects_user_id_fkey")
+	assertForeignKeyExists(t, ctx, pool, "timespans", "timespans_user_id_fkey")
 }
 
 func TestIndividualMigrations(t *testing.T) {

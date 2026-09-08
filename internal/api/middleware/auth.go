@@ -15,11 +15,30 @@ import (
 
 var PublicAPIPaths = []string{"/api/auth/login", "/api/auth/callback"}
 
+func isPublicAPIPath(path string) bool {
+	for _, p := range PublicAPIPaths {
+		if path == p {
+			return true
+		}
+	}
+	return false
+}
+
 const maxSessionLifetime = 7 * 24 * time.Hour
 
 func OIDCAuth(userService service.UserService, sessionRepository repository.SessionRepository, secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			// Login and callback are how a user recovers a broken session, so
+			// they must stay reachable even when the session store is down or
+			// the caller still holds a stale cookie. Resolving the session here
+			// would otherwise 503 those requests. RequireAuth exempts the same
+			// paths.
+			if isPublicAPIPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
 
 			cookie, err := r.Cookie(model.SessionCookieName)
 			if err != nil {

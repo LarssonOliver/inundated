@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -89,6 +90,16 @@ func TestTagService_GetTag(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTagService_GetTag_MalformedIdIsNotFound(t *testing.T) {
+	repo := &repository.RepoMock{
+		GetTagFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
+			return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
+		},
+	}
+	_, err := service.NewService(repo).GetTag(context.Background(), uuid.Nil, nil)
+	require.ErrorIs(t, err, model.ErrNotFound)
 }
 
 func TestTagService_ListTags(t *testing.T) {

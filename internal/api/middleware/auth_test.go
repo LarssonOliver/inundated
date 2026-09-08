@@ -29,10 +29,26 @@ func TestOIDCAuth(t *testing.T) {
 
 	tests := []struct {
 		name        string
+		path        string
 		cookieValue string
 		setupMocks  func(s *repository.SessionRepoMock, u *service.UserServiceMock)
 		checkResult func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context)
 	}{
+		{
+			name:        "Public path with a stale cookie while the store is down - passes through, no 503",
+			path:        "/api/auth/login",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
+					t.Fatal("a public path must not touch the session store")
+					return model.Session{}, nil
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.Equal(t, http.StatusOK, res.StatusCode)
+				assert.False(t, nextCalledWithUser)
+			},
+		},
 		{
 			name:        "No cookie present - passes through without context",
 			cookieValue: "",
@@ -280,8 +296,13 @@ func TestOIDCAuth(t *testing.T) {
 				nextHandler.ServeHTTP(w, r)
 			})
 
+			path := tt.path
+			if path == "" {
+				path = "/"
+			}
+
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequest(http.MethodGet, path, nil)
 
 			if tt.cookieValue != "" {
 				req.AddCookie(&http.Cookie{

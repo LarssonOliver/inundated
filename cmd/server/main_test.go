@@ -36,7 +36,7 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 
 func csrfHandshake(t *testing.T, h http.Handler) (cookies []*http.Cookie, token string) {
 	t.Helper()
-	rec := get(t, h, "/health")
+	rec := get(t, h, "/api/projects")
 	for _, c := range rec.Result().Cookies() {
 		cookies = append(cookies, c)
 		if c.Name == middleware.XSRFCookieName {
@@ -69,6 +69,13 @@ func TestNewRouter_UserlessMode(t *testing.T) {
 
 	t.Run("health is public", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, get(t, r, "/health").Code)
+	})
+
+	t.Run("non-API traffic carries no CSRF cookie", func(t *testing.T) {
+		for _, c := range get(t, r, "/health").Result().Cookies() {
+			assert.NotEqual(t, middleware.XSRFCookieName, c.Name,
+				"CSRF machinery must not run outside the API group")
+		}
 	})
 
 	t.Run("OIDC routes are hidden", func(t *testing.T) {

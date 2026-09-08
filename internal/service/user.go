@@ -60,6 +60,12 @@ func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model
 		Email: identity.Email,
 		Name:  identity.Name,
 	})
+	if errors.Is(err, model.ErrAlreadyExists) {
+		// A concurrent login (two devices, a double-fired callback) created
+		// this subject between our lookup and this insert. Adopt the winner
+		// rather than failing the race loser's login with a 401.
+		return s.repository.GetUserBySub(ctx, identity.Sub)
+	}
 	if err != nil {
 		return model.User{}, err
 	}

@@ -241,3 +241,28 @@ func TestUserService_GetOrCreateUserByIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestUserService_GetOrCreateUserByIdentity_ConcurrentCreateLosesRace(t *testing.T) {
+	identity := model.UserIdentity{Sub: "auth0|racer", Email: "racer@example.com", Name: "Racer"}
+	winner := model.User{Id: uuid.New(), Sub: identity.Sub, Email: identity.Email, Name: identity.Name}
+
+	lookups := 0
+	repo := &repository.RepoMock{
+		GetUserBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+			lookups++
+			if lookups == 1 {
+				return model.User{}, model.ErrNotFound // our initial check, before the other request commits
+			}
+			return winner, nil // the re-fetch after we lose the insert race
+		},
+		CreateUserAdoptingOrphansFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+			return model.User{}, model.OrphanAdoption{}, model.ErrAlreadyExists
+		},
+	}
+
+	got, err := service.NewService(repo).GetOrCreateUserByIdentity(context.Background(), identity)
+
+	require.NoError(t, err)
+	require.Equal(t, winner, got)
+	require.Equal(t, 2, lookups)
+}
