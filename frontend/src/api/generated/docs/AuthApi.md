@@ -12,7 +12,7 @@ All URIs are relative to *http://localhost*
 
 ## authCallback
 
-> authCallback(code, state)
+> authCallback(code, state, inundatedLogin)
 
 OIDC callback
 
@@ -36,6 +36,8 @@ async function example() {
     code: code_example,
     // string
     state: state_example,
+    // string | Browser-binding token planted as an HttpOnly cookie by the login redirect. The callback only establishes a session when this matches the `state` query parameter, so an attacker cannot complete their own authorization in a victim\'s browser (login CSRF / session fixation).  (optional)
+    inundatedLogin: inundatedLogin_example,
   } satisfies AuthCallbackRequest;
 
   try {
@@ -57,6 +59,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **code** | `string` |  | [Defaults to `undefined`] |
 | **state** | `string` |  | [Defaults to `undefined`] |
+| **inundatedLogin** | `string` | Browser-binding token planted as an HttpOnly cookie by the login redirect. The callback only establishes a session when this matches the &#x60;state&#x60; query parameter, so an attacker cannot complete their own authorization in a victim\&#39;s browser (login CSRF / session fixation).  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -146,7 +149,7 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | This endpoint initiates the login flow and typically redirects the user to the identity provider. A 200 response is not expected in normal browser usage.  |  -  |
-| **302** | Redirect to the identity provider. |  * Location - Authorization endpoint. <br>  |
+| **302** | Redirect to the identity provider. |  * Location - Authorization endpoint. <br>  * Set-Cookie - HttpOnly browser-binding cookie echoed back by the callback to defeat login CSRF / session fixation.  <br>  |
 | **400** | Bad request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

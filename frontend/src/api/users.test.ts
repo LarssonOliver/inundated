@@ -9,7 +9,6 @@ const XSRF = "test-token";
 function mockUsers(): Mocked<GeneratedUsersApi> {
   return {
     getCurrentUser: vi.fn(),
-    updateCurrentUser: vi.fn(),
   } as unknown as Mocked<GeneratedUsersApi>;
 }
 

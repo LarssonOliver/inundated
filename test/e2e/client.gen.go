@@ -232,6 +232,9 @@ type Interval = string
 // Limit defines model for limit.
 type Limit = int
 
+// LoginBinding defines model for loginBinding.
+type LoginBinding = string
+
 // Offset defines model for offset.
 type Offset = int
 
@@ -260,6 +263,9 @@ type Timezone = string
 type AuthCallbackParams struct {
 	Code  Code  `form:"code" json:"code"`
 	State State `form:"state" json:"state"`
+
+	// InundatedLogin Browser-binding token planted as an HttpOnly cookie by the login redirect. The callback only establishes a session when this matches the `state` query parameter, so an attacker cannot complete their own authorization in a victim's browser (login CSRF / session fixation).
+	InundatedLogin *LoginBinding `form:"inundated_login,omitempty" json:"inundated_login,omitempty"`
 }
 
 // AuthLoginParams defines parameters for AuthLogin.
@@ -924,6 +930,23 @@ func NewAuthCallbackRequest(server string, params *AuthCallbackParams) (*http.Re
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.InundatedLogin != nil {
+			var cookieParam0 string
+
+			cookieParam0, err = runtime.StyleParamWithLocation("simple", true, "inundated_login", runtime.ParamLocationCookie, *params.InundatedLogin)
+			if err != nil {
+				return nil, err
+			}
+
+			cookie0 := &http.Cookie{
+				Name:  "inundated_login",
+				Value: cookieParam0,
+			}
+			req.AddCookie(cookie0)
+		}
+	}
 	return req, nil
 }
 
