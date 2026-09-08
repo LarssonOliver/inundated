@@ -43,7 +43,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 
 	reply, err := p.svc.CreateProject(ctx, project)
 
-	if errors.Is(err, model.ErrInvalidArgument) {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.CreateProject400Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 
 	reply, err := p.svc.UpdateProject(ctx, project)
 
-	if errors.Is(err, model.ErrInvalidArgument) {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.UpdateProject400Response{}, nil
 	} else if err != nil {
 		return nil, err

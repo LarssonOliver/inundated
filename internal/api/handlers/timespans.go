@@ -41,7 +41,7 @@ func (p *TimespanHandler) CreateTimespan(ctx context.Context, request api.Create
 
 	reply, err := p.svc.CreateTimespan(ctx, timespan)
 
-	if errors.Is(err, model.ErrInvalidArgument) {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.CreateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func (p *TimespanHandler) UpdateTimespan(ctx context.Context, request api.Update
 
 	reply, err := p.svc.UpdateTimespan(ctx, timespan)
 
-	if errors.Is(err, model.ErrInvalidArgument) {
+	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.UpdateTimespan400Response{}, nil
 	} else if err != nil {
 		return nil, err
