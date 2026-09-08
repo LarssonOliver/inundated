@@ -19,12 +19,14 @@ login:
         headers:
           Location:
             description: Authorization endpoint.
+            required: true
             schema:
               $ref: "../schemas/shared.yaml#/Location"
           Set-Cookie:
             description: >
               HttpOnly browser-binding cookie echoed back by the callback to
               defeat login CSRF / session fixation.
+            required: true
             schema:
               type: string
       "400":
@@ -53,10 +55,12 @@ callback:
         headers:
           Set-Cookie:
             description: Session cookie.
+            required: true
             schema:
               type: string
           Location:
             description: Redirect target.
+            required: true
             schema:
               $ref: "../schemas/shared.yaml#/Location"
       "400":
@@ -77,6 +81,7 @@ logout:
         headers:
           Set-Cookie:
             description: Clears the session cookie.
+            required: true
             schema:
               type: string
       "302":
