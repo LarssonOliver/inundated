@@ -465,3 +465,40 @@ func TestTimespanHandler_UpdateTimespan(t *testing.T) {
 		})
 	}
 }
+
+func TestTimespanHandler_InvalidReferenceMapsTo400(t *testing.T) {
+	// A tag id that isn't the caller's (or doesn't exist) surfaces from the
+	// repository as a wrapped model.ErrInvalidReference: bad client input, not
+	// a server fault. It must map to 400 without leaking the wrapped string.
+	invalidRef := fmt.Errorf("CreateTimespan: %w", model.ErrInvalidReference)
+	now := time.Now()
+
+	t.Run("CreateTimespan", func(t *testing.T) {
+		h := handlers.NewTimespanHandler(&service.TimespanServiceMock{
+			CreateFn: func(context.Context, model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, invalidRef
+			},
+		})
+		got, err := h.CreateTimespan(context.Background(), api.CreateTimespanRequestObject{
+			Body: &api.CreateTimespan{StartTime: now, EndTime: now.Add(time.Hour), TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.CreateTimespan400Response{}, got)
+	})
+
+	t.Run("UpdateTimespan", func(t *testing.T) {
+		existing := model.Timespan{Id: uuid.New(), Name: "t", StartTime: now, EndTime: now.Add(time.Hour)}
+		h := handlers.NewTimespanHandler(&service.TimespanServiceMock{
+			GetFn: func(context.Context, uuid.UUID) (model.Timespan, error) { return existing, nil },
+			UpdateFn: func(context.Context, model.Timespan) (model.Timespan, error) {
+				return model.Timespan{}, invalidRef
+			},
+		})
+		got, err := h.UpdateTimespan(context.Background(), api.UpdateTimespanRequestObject{
+			TimespanId: existing.Id,
+			Body:       &api.UpdateTimespan{TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.UpdateTimespan400Response{}, got)
+	})
+}

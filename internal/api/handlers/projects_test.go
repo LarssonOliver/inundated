@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -582,4 +584,43 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProjectHandler_InvalidReferenceMapsTo400(t *testing.T) {
+	// A tag id that isn't the caller's (or doesn't exist) surfaces from the
+	// repository as a wrapped model.ErrInvalidReference. That is bad client
+	// input, not a server fault: it must map to 400 and must not leak the
+	// wrapped error string to the client.
+	invalidRef := fmt.Errorf("CreateProject: %w", model.ErrInvalidReference)
+
+	t.Run("CreateProject", func(t *testing.T) {
+		h := handlers.NewProjectHandler(&service.ProjectServiceMock{
+			CreateFn: func(context.Context, model.Project) (model.Project, error) {
+				return model.Project{}, invalidRef
+			},
+		})
+		got, err := h.CreateProject(context.Background(), api.CreateProjectRequestObject{
+			Body: &api.CreateProject{Name: "p", Color: "#123456", TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.CreateProject400Response{}, got)
+	})
+
+	t.Run("UpdateProject", func(t *testing.T) {
+		existing := model.Project{Id: uuid.New(), Name: "p", Color: "#123456"}
+		h := handlers.NewProjectHandler(&service.ProjectServiceMock{
+			GetFn: func(context.Context, uuid.UUID, *service.ProjectServiceGetIncludes) (model.Project, error) {
+				return existing, nil
+			},
+			UpdateFn: func(context.Context, model.Project) (model.Project, error) {
+				return model.Project{}, invalidRef
+			},
+		})
+		got, err := h.UpdateProject(context.Background(), api.UpdateProjectRequestObject{
+			ProjectId: existing.Id,
+			Body:      &api.UpdateProject{TagIds: &[]uuid.UUID{uuid.New()}},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.UpdateProject400Response{}, got)
+	})
 }
