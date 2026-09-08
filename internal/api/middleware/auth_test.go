@@ -42,19 +42,23 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
-			name:        "Invalid UUID cookie - passes through without context",
-			cookieValue: "not-a-uuid",
-			setupMocks:  func(s *repository.SessionRepoMock, u *service.UserServiceMock) {},
+			name:        "Token matches no session - passes through without context",
+			cookieValue: "some-unknown-token",
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
+					return model.Session{}, model.ErrNotFound
+				}
+			},
 			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
 				assert.False(t, nextCalledWithUser)
 			},
 		},
 		{
-			name:        "Session not found in DB - passes through without context",
+			name:        "Session lookup errors transiently - passes through without context",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{}, errors.New("not found")
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
+					return model.Session{}, errors.New("connection reset")
 				}
 			},
 			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
@@ -65,11 +69,11 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "Session expired - deletes session and clears cookie",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{ExpiresAt: time.Now().Add(-1 * time.Hour)}, nil
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
+					return model.Session{Id: sessionID, ExpiresAt: time.Now().Add(-1 * time.Hour)}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
-					assert.Equal(t, validUUID, id)
+					assert.Equal(t, sessionID, id)
 					return nil
 				}
 			},
@@ -85,7 +89,7 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "Session past the absolute lifetime cap - deletes session and clears cookie even though ExpiresAt is in the future",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{
 						Id:        sessionID,
 						Sub:       "sub_123",
@@ -94,7 +98,7 @@ func TestOIDCAuth(t *testing.T) {
 					}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
-					assert.Equal(t, validUUID, id)
+					assert.Equal(t, sessionID, id)
 					return nil
 				}
 				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
@@ -115,7 +119,7 @@ func TestOIDCAuth(t *testing.T) {
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				createdAt := time.Now().Add(-6*24*time.Hour - 20*time.Hour) // ~6d20h old
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{
 						Id:        sessionID,
 						Sub:       "sub_123",
@@ -141,7 +145,7 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "Valid session - attaches context successfully",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
@@ -163,11 +167,11 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "Session user no longer exists - deletes session and clears cookie",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{Id: sessionID, Sub: "sub_gone", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
-					assert.Equal(t, validUUID, id)
+					assert.Equal(t, sessionID, id)
 					return nil
 				}
 				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
@@ -186,7 +190,7 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "GetUserBySub fails transiently - keeps the session and does not clear the cookie",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
 				}
 				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
@@ -207,13 +211,13 @@ func TestOIDCAuth(t *testing.T) {
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				// Expiring in 2 hours triggers the (< 6 hours) condition
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
-					return model.Session{Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
 				}
 				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {
-					assert.Equal(t, validUUID, id)
+					assert.Equal(t, sessionID, id)
 					assert.WithinDuration(t, time.Now().Add(24*time.Hour), expiresAt, 2*time.Second)
-					return model.Session{Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: expiresAt}, nil
+					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: expiresAt}, nil
 				}
 				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
 					return model.User{Id: userID}, nil
@@ -227,7 +231,7 @@ func TestOIDCAuth(t *testing.T) {
 			name:        "Session renewal fails transiently - keeps the still-valid session and authenticates",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
-				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
 					return model.Session{Id: sessionID, Sub: "sub_123", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(2 * time.Hour)}, nil
 				}
 				s.TouchSessionFn = func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error) {

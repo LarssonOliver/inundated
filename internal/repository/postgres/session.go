@@ -19,6 +19,9 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 	if session.Sub == "" {
 		return model.Session{}, fmt.Errorf("CreateSession: sub must not be empty: %w", model.ErrInvalidArgument)
 	}
+	if session.Token == "" {
+		return model.Session{}, fmt.Errorf("CreateSession: token must not be empty: %w", model.ErrInvalidArgument)
+	}
 	if session.Id == uuid.Nil {
 		session.Id = uuid.New()
 	}
@@ -27,12 +30,12 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 	}
 
 	const q = `
-		INSERT INTO sessions (id, user_id, sub, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO sessions (id, user_id, sub, token_hash, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, user_id, sub, created_at, expires_at`
 
 	var created model.Session
-	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt).
+	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, model.HashSessionToken(session.Token), session.CreatedAt, session.ExpiresAt).
 		Scan(&created.Id, &created.UserId, &created.Sub, &created.CreatedAt, &created.ExpiresAt)
 	if isUniqueViolation(err) {
 		return model.Session{}, fmt.Errorf("CreateSession %s: %w", session.Id, model.ErrAlreadyExists)
@@ -40,6 +43,7 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 	if err != nil {
 		return model.Session{}, fmt.Errorf("CreateSession: %w", err)
 	}
+	created.Token = session.Token
 	return created, nil
 }
 
@@ -61,24 +65,24 @@ func (r *PostgresStore) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// GetSession implements [repository.SessionRepository].
-func (r *PostgresStore) GetSession(ctx context.Context, id uuid.UUID) (model.Session, error) {
-	if id == uuid.Nil {
-		return model.Session{}, fmt.Errorf("GetSession: id: %w", model.ErrInvalidArgument)
+// GetSessionByToken implements [repository.SessionRepository].
+func (r *PostgresStore) GetSessionByToken(ctx context.Context, token string) (model.Session, error) {
+	if token == "" {
+		return model.Session{}, fmt.Errorf("GetSessionByToken: token: %w", model.ErrInvalidArgument)
 	}
 
 	const q = `
 		SELECT id, user_id, sub, created_at, expires_at
 		FROM sessions
-		WHERE id = $1`
+		WHERE token_hash = $1`
 
 	var s model.Session
-	err := r.db.QueryRow(ctx, q, id).Scan(&s.Id, &s.UserId, &s.Sub, &s.CreatedAt, &s.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, model.HashSessionToken(token)).Scan(&s.Id, &s.UserId, &s.Sub, &s.CreatedAt, &s.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Session{}, fmt.Errorf("GetSession %s: %w", id, model.ErrNotFound)
+		return model.Session{}, fmt.Errorf("GetSessionByToken: %w", model.ErrNotFound)
 	}
 	if err != nil {
-		return model.Session{}, fmt.Errorf("GetSession: %w", err)
+		return model.Session{}, fmt.Errorf("GetSessionByToken: %w", err)
 	}
 	return s, nil
 }

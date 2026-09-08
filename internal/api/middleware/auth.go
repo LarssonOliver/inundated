@@ -32,21 +32,18 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				return
 			}
 
-			sessionId, err := uuid.Parse(cookie.Value)
+			session, err := sessionRepository.GetSessionByToken(r.Context(), cookie.Value)
 			if err != nil {
 				next.ServeHTTP(w, r)
 				return
 			}
-
-			session, err := sessionRepository.GetSession(r.Context(), sessionId)
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
-			}
+			// GetSessionByToken never returns the token; keep the presented one
+			// so a renewal can re-issue the same cookie.
+			session.Token = cookie.Value
 
 			absoluteExpiry := session.CreatedAt.Add(maxSessionLifetime)
 			if time.Now().After(session.ExpiresAt) || time.Now().After(absoluteExpiry) {
-				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
+				_ = sessionRepository.DeleteSession(r.Context(), session.Id)
 
 				http.SetCookie(w, auth.ClearSessionCookie(secure))
 
@@ -65,7 +62,8 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				if newExpiry.After(session.ExpiresAt) {
 					// A failed renewal is not fatal: the current session is still
 					// valid, so keep using it and let the next request retry.
-					if renewed, err := sessionRepository.TouchSession(r.Context(), sessionId, newExpiry); err == nil {
+					if renewed, err := sessionRepository.TouchSession(r.Context(), session.Id, newExpiry); err == nil {
+						renewed.Token = session.Token
 						session = renewed
 						http.SetCookie(w, auth.NewSessionCookie(session, secure))
 					}
@@ -79,7 +77,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				// still-valid session alone so the next request can retry,
 				// rather than forcing a full re-login.
 				if errors.Is(err, model.ErrNotFound) {
-					_ = sessionRepository.DeleteSession(r.Context(), sessionId)
+					_ = sessionRepository.DeleteSession(r.Context(), session.Id)
 					http.SetCookie(w, auth.ClearSessionCookie(secure))
 				}
 
@@ -87,6 +85,9 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				return
 			}
 
+			// Downstream handlers only need the session's identity, not its
+			// secret; keep the raw token out of the request context.
+			session.Token = ""
 			ctx := model.SetSessionInContext(r.Context(), session)
 			ctx = model.SetUserInContext(ctx, user)
 

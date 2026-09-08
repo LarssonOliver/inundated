@@ -11,50 +11,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func memSession(sub, token string) model.Session {
+	return model.Session{
+		Id:        uuid.New(),
+		UserId:    uuid.New(),
+		Sub:       sub,
+		Token:     token,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().Add(time.Hour).UTC(),
+	}
+}
+
 func TestMemoryStore_CreateSession(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|user123",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|user123", "tok-1")
 
 		got, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 		require.Equal(t, session, got)
 	})
 
+	t.Run("EmptyToken", func(t *testing.T) {
+		store := memory.NewMemoryStore()
+		session := memSession("auth0|notoken", "")
+
+		_, err := store.CreateSession(ctx, session)
+		require.ErrorIs(t, err, model.ErrInvalidArgument)
+	})
+
 	t.Run("DuplicateID", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|dup",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|dup", "tok-dup-a")
 
 		_, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 
-		_, err = store.CreateSession(ctx, session)
+		dup := session
+		dup.Token = "tok-dup-b"
+		_, err = store.CreateSession(ctx, dup)
 		require.ErrorIs(t, err, model.ErrAlreadyExists)
 	})
 
 	t.Run("NilID", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.Nil,
-			UserId:    uuid.New(),
-			Sub:       "auth0|dup",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|nilid", "tok-nilid")
+		session.Id = uuid.Nil
 
 		got, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
@@ -62,30 +66,36 @@ func TestMemoryStore_CreateSession(t *testing.T) {
 	})
 }
 
-func TestMemoryStore_GetSession(t *testing.T) {
+func TestMemoryStore_GetSessionByToken(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|user123",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|user123", "tok-get")
 		_, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 
-		got, err := store.GetSession(ctx, session.Id)
+		got, err := store.GetSessionByToken(ctx, session.Token)
 		require.NoError(t, err)
-		require.Equal(t, session, got)
+		require.Equal(t, session.Id, got.Id)
+		require.Equal(t, session.Sub, got.Sub)
+		require.Empty(t, got.Token, "the raw token must not be handed back")
+	})
+
+	t.Run("TheIDIsNotAToken", func(t *testing.T) {
+		store := memory.NewMemoryStore()
+		session := memSession("auth0|user123", "tok-x")
+		_, err := store.CreateSession(ctx, session)
+		require.NoError(t, err)
+
+		_, err = store.GetSessionByToken(ctx, session.Id.String())
+		require.ErrorIs(t, err, model.ErrNotFound)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
 		store := memory.NewMemoryStore()
 
-		_, err := store.GetSession(ctx, uuid.New())
+		_, err := store.GetSessionByToken(ctx, "no-such-token")
 		require.ErrorIs(t, err, model.ErrNotFound)
 	})
 }
@@ -95,13 +105,7 @@ func TestMemoryStore_TouchSession(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|updatetest",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|updatetest", "tok-touch")
 		_, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 
@@ -111,60 +115,34 @@ func TestMemoryStore_TouchSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, newExpiresAt, got.ExpiresAt)
 		require.Equal(t, session.Id, got.Id)
-		require.Equal(t, session.UserId, got.UserId)
-		require.Equal(t, session.Sub, got.Sub)
 
-		got, err = store.GetSession(ctx, session.Id)
+		got, err = store.GetSessionByToken(ctx, session.Token)
 		require.NoError(t, err)
 		require.Equal(t, newExpiresAt, got.ExpiresAt)
-		require.Equal(t, session.Id, got.Id)
-		require.Equal(t, session.UserId, got.UserId)
-		require.Equal(t, session.Sub, got.Sub)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|ghost",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
 
-		_, err := store.TouchSession(ctx, session.Id, time.Now().Add(2*time.Hour).UTC())
+		_, err := store.TouchSession(ctx, uuid.New(), time.Now().Add(2*time.Hour).UTC())
 		require.ErrorIs(t, err, model.ErrNotFound)
 	})
 
 	t.Run("DoesNotAffectOtherSessions", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		sessionA := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|a",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
-		sessionB := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|b",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		sessionA := memSession("auth0|a", "tok-a")
+		sessionB := memSession("auth0|b", "tok-b")
 		_, err := store.CreateSession(ctx, sessionA)
 		require.NoError(t, err)
 		_, err = store.CreateSession(ctx, sessionB)
 		require.NoError(t, err)
 
-		updatedA := sessionA
-		updatedA.ExpiresAt = time.Now().Add(2 * time.Hour).UTC()
-		_, err = store.TouchSession(ctx, updatedA.Id, updatedA.ExpiresAt)
+		_, err = store.TouchSession(ctx, sessionA.Id, time.Now().Add(2*time.Hour).UTC())
 		require.NoError(t, err)
 
-		got, err := store.GetSession(ctx, sessionB.Id)
+		got, err := store.GetSessionByToken(ctx, sessionB.Token)
 		require.NoError(t, err)
-		require.Equal(t, sessionB, got)
+		require.WithinDuration(t, sessionB.ExpiresAt, got.ExpiresAt, time.Second)
 	})
 }
 
@@ -173,20 +151,14 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		session := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|deletetest",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		session := memSession("auth0|deletetest", "tok-del")
 		_, err := store.CreateSession(ctx, session)
 		require.NoError(t, err)
 
 		err = store.DeleteSession(ctx, session.Id)
 		require.NoError(t, err)
 
-		_, err = store.GetSession(ctx, session.Id)
+		_, err = store.GetSessionByToken(ctx, session.Token)
 		require.ErrorIs(t, err, model.ErrNotFound)
 	})
 
@@ -199,20 +171,8 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 
 	t.Run("DoesNotAffectOtherSessions", func(t *testing.T) {
 		store := memory.NewMemoryStore()
-		sessionA := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|a",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
-		sessionB := model.Session{
-			Id:        uuid.New(),
-			UserId:    uuid.New(),
-			Sub:       "auth0|b",
-			CreatedAt: time.Now().UTC(),
-			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		sessionA := memSession("auth0|a", "tok-a2")
+		sessionB := memSession("auth0|b", "tok-b2")
 		_, err := store.CreateSession(ctx, sessionA)
 		require.NoError(t, err)
 		_, err = store.CreateSession(ctx, sessionB)
@@ -221,42 +181,29 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 		err = store.DeleteSession(ctx, sessionA.Id)
 		require.NoError(t, err)
 
-		got, err := store.GetSession(ctx, sessionB.Id)
+		got, err := store.GetSessionByToken(ctx, sessionB.Token)
 		require.NoError(t, err)
-		require.Equal(t, sessionB, got)
+		require.Equal(t, sessionB.Id, got.Id)
 	})
 
 	t.Run("DeleteAllExpiredSessions", func(t *testing.T) {
 		store := memory.NewMemoryStore()
 
-		sessions := []model.Session{
-			{
-				Id:        uuid.New(),
-				UserId:    uuid.New(),
-				Sub:       "auth0|expired1",
-				CreatedAt: time.Now().UTC(),
-				ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
-			},
-			{
-				Id:        uuid.New(),
-				UserId:    uuid.New(),
-				Sub:       "auth0|expired1",
-				CreatedAt: time.Now().UTC(),
-				ExpiresAt: time.Now().Add(time.Hour).UTC(),
-			},
-		}
+		expired := memSession("auth0|expired", "tok-expired")
+		expired.ExpiresAt = time.Now().Add(-1 * time.Hour).UTC()
+		live := memSession("auth0|live", "tok-live")
 
-		_, err := store.CreateSession(ctx, sessions[0])
+		_, err := store.CreateSession(ctx, expired)
 		require.NoError(t, err)
-		_, err = store.CreateSession(ctx, sessions[1])
+		_, err = store.CreateSession(ctx, live)
 		require.NoError(t, err)
 
 		err = store.DeleteAllExpiredSessions(ctx)
 		require.NoError(t, err)
 
-		_, err = store.GetSession(ctx, sessions[0].Id)
+		_, err = store.GetSessionByToken(ctx, expired.Token)
 		require.ErrorIs(t, err, model.ErrNotFound)
-		_, err = store.GetSession(ctx, sessions[1].Id)
+		_, err = store.GetSessionByToken(ctx, live.Token)
 		require.NoError(t, err)
 	})
 }

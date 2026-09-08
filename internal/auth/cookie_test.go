@@ -11,12 +11,13 @@ import (
 )
 
 func TestNewSessionCookie(t *testing.T) {
-	session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(24 * time.Hour)}
+	session := model.Session{Id: uuid.New(), Token: "opaque-session-token", ExpiresAt: time.Now().Add(24 * time.Hour)}
 
-	t.Run("secure origin sets the Secure attribute", func(t *testing.T) {
+	t.Run("secure origin sets the Secure attribute and carries the token, not the id", func(t *testing.T) {
 		got := NewSessionCookie(session, true)
 		assert.Equal(t, model.SessionCookieName, got.Name)
-		assert.Equal(t, session.Id.String(), got.Value)
+		assert.Equal(t, session.Token, got.Value)
+		assert.NotContains(t, got.Value, session.Id.String())
 		assert.True(t, got.HttpOnly)
 		assert.True(t, got.Secure)
 	})
