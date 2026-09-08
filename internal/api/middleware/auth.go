@@ -22,6 +22,15 @@ var PublicAPIPaths = []string{"/api/auth/login", "/api/auth/callback"}
 // in which a stolen session cookie is useful.
 const maxSessionLifetime = 7 * 24 * time.Hour
 
+// respondServiceUnavailable answers a transient auth-infrastructure failure. It
+// deliberately is not a 401: the frontend treats 401 as "logged out" and starts
+// an OIDC round-trip, which is the wrong response to a momentary DB error.
+func respondServiceUnavailable(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_, _ = w.Write([]byte(`{"message":"authentication temporarily unavailable"}`))
+}
+
 func OIDCAuth(userService service.UserService, sessionRepository repository.SessionRepository, secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +42,17 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			}
 
 			session, err := sessionRepository.GetSessionByToken(r.Context(), cookie.Value)
-			if err != nil {
+			if errors.Is(err, model.ErrNotFound) || errors.Is(err, model.ErrInvalidArgument) {
+				// The cookie matches no session: carry on unauthenticated.
 				next.ServeHTTP(w, r)
+				return
+			}
+			if err != nil {
+				// A transient infrastructure failure (DB blip, timeout). Passing
+				// through unauthenticated would make RequireAuth answer 401 and
+				// the SPA bounce the browser through a full OIDC re-login for
+				// what is really a retryable server error.
+				respondServiceUnavailable(w)
 				return
 			}
 			// GetSessionByToken never returns the token; keep the presented one
@@ -71,17 +89,20 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 			}
 
 			user, err := userService.GetUserBySub(r.Context(), session.Sub)
-			if err != nil {
-				// Only tear the session down when the user is genuinely gone. A
-				// transient lookup failure (DB blip, timeout) must leave the
-				// still-valid session alone so the next request can retry,
-				// rather than forcing a full re-login.
-				if errors.Is(err, model.ErrNotFound) {
-					_ = sessionRepository.DeleteSession(r.Context(), session.Id)
-					http.SetCookie(w, auth.ClearSessionCookie(secure))
-				}
-
+			if errors.Is(err, model.ErrNotFound) {
+				// The user is genuinely gone: drop the session and let the
+				// request continue unauthenticated (RequireAuth will 401 and the
+				// SPA will start a fresh login, which is the right outcome here).
+				_ = sessionRepository.DeleteSession(r.Context(), session.Id)
+				http.SetCookie(w, auth.ClearSessionCookie(secure))
 				next.ServeHTTP(w, r)
+				return
+			}
+			if err != nil {
+				// A transient lookup failure must leave the still-valid session
+				// alone and surface as retryable, not as a 401 that triggers a
+				// full re-login.
+				respondServiceUnavailable(w)
 				return
 			}
 

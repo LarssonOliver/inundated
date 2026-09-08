@@ -54,7 +54,7 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
-			name:        "Session lookup errors transiently - passes through without context",
+			name:        "Session lookup errors transiently - 503, does not fall through to a 401",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
@@ -63,6 +63,8 @@ func TestOIDCAuth(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
 				assert.False(t, nextCalledWithUser)
+				assert.Nil(t, lastSeenCtx, "the request must not reach the next handler on a transient error")
+				assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
 			},
 		},
 		{
@@ -187,7 +189,7 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
-			name:        "GetUserBySub fails transiently - keeps the session and does not clear the cookie",
+			name:        "GetUserBySub fails transiently - 503, keeps the session, does not fall through to a 401",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
 				s.GetSessionByTokenFn = func(ctx context.Context, token string) (model.Session, error) {
@@ -203,6 +205,8 @@ func TestOIDCAuth(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
 				assert.False(t, nextCalledWithUser)
+				assert.Nil(t, lastSeenCtx, "the request must not reach the next handler on a transient error")
+				assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
 				assert.Empty(t, res.Cookies(), "the session cookie must not be cleared on a transient lookup error")
 			},
 		},
