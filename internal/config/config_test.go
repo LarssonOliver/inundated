@@ -220,6 +220,35 @@ func TestCSRFAuthKeyWrongLengthRejected(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDisableUserRegistrationDefaultsFalse(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.False(t, cfg.DisableUserRegistration)
+}
+
+func TestDisableUserRegistrationFromEnv(t *testing.T) {
+	env := map[string]string{"DISABLE_USER_REGISTRATION": "true"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.True(t, cfg.DisableUserRegistration)
+}
+
+func TestDisableUserRegistrationFromFlag(t *testing.T) {
+	cfg, err := config.Load(
+		config.WithArgs([]string{"-disable-user-registration"}),
+		config.WithEnvLookup(fakeEnv(nil)),
+	)
+	assert.NoError(t, err)
+	assert.True(t, cfg.DisableUserRegistration)
+}
+
+func TestDisableUserRegistrationInvalidEnvFallsBackToFalse(t *testing.T) {
+	env := map[string]string{"DISABLE_USER_REGISTRATION": "not-a-bool"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.False(t, cfg.DisableUserRegistration)
+}
+
 func TestOIDCInvalidTimeoutFallsBackToDefault(t *testing.T) {
 	env := map[string]string{
 		"OIDC_ISSUER_URL":    "https://issuer.example.com",

@@ -10,15 +10,30 @@ import (
 )
 
 type ServiceImpl struct {
-	repository repository.Repository
+	repository           repository.Repository
+	registrationDisabled bool
 }
 
 var _ Service = (*ServiceImpl)(nil)
 
-func NewService(repository repository.Repository) *ServiceImpl {
-	return &ServiceImpl{
+// ServiceOption tweaks a ServiceImpl at construction time.
+type ServiceOption func(*ServiceImpl)
+
+// WithRegistrationDisabled makes GetOrCreateUserByIdentity reject an OIDC
+// identity that doesn't already map to a user, instead of creating one.
+// Existing users are unaffected.
+func WithRegistrationDisabled(disabled bool) ServiceOption {
+	return func(s *ServiceImpl) { s.registrationDisabled = disabled }
+}
+
+func NewService(repository repository.Repository, opts ...ServiceOption) *ServiceImpl {
+	s := &ServiceImpl{
 		repository: repository,
 	}
+	for _, o := range opts {
+		o(s)
+	}
+	return s
 }
 
 type Service interface {
