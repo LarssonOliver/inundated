@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -257,6 +258,15 @@ func (c *OIDCConfig) validate() error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("config: oidc-issuer-url is set but these are missing: %s", strings.Join(missing, ", "))
+	}
+
+	// The app identifies users by the openid subject and creates them from the
+	// email claim; without both scopes the first login fails with no way to
+	// recover. Fail loudly at startup instead.
+	for _, required := range []string{"openid", "email"} {
+		if !slices.Contains(c.Scopes, required) {
+			return fmt.Errorf("config: oidc-scopes must include %q (got %q)", required, strings.Join(c.Scopes, ","))
+		}
 	}
 	return nil
 }

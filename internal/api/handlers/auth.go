@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -131,6 +132,10 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 
 	session, redirectUrl, err := a.svc.HandleCallback(ctx, stateId, request.Params.Code)
 	if err != nil {
+		// The browser only ever sees an opaque 401, so this log line is the
+		// one place an operator can find out why a login failed (bad nonce,
+		// token exchange failure, an identity with no email claim, ...).
+		log.Printf("OIDC callback failed: %v", err)
 		return api.AuthCallback401Response{}, nil
 	}
 

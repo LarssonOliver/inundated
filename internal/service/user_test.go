@@ -185,6 +185,18 @@ func TestUserService_GetOrCreateUserByIdentity(t *testing.T) {
 			want: model.User{Sub: newIdentity.Sub, Email: newIdentity.Email, Name: newIdentity.Name},
 		},
 		{
+			name:     "new subject with no email claim - rejected before touching the repository",
+			identity: model.UserIdentity{Sub: "auth0|no-email", Email: "", Name: "No Email"},
+			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
+				return model.User{}, model.ErrNotFound
+			},
+			createFn: func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error) {
+				t.Fatal("CreateUserAdoptingOrphans should not be called for an identity with no email")
+				return model.User{}, model.OrphanAdoption{}, nil
+			},
+			wantErr: true,
+		},
+		{
 			name:     "repository error on lookup",
 			identity: model.UserIdentity{Sub: "auth0|broken", Email: "b@example.com"},
 			getBySubFn: func(ctx context.Context, sub string) (model.User, error) {
