@@ -144,6 +144,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		}
 		sessionRepository := &repository.SessionRepoMock{
 			CreateSessionFn: func(ctx context.Context, session model.Session) (model.Session, error) {
+				require.NotEmpty(t, session.Token, "HandleCallback must mint a session token for the repository to hash")
 				session.Id = sessionID
 				return session, nil
 			},
@@ -166,6 +167,8 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, redirectUri, redUri, "Redirect URI should match the one stored in login state")
 		require.Equal(t, sessionID, session.Id, "Session ID should match the one returned by the session repository")
+		require.NotEmpty(t, session.Token, "the returned session carries the raw token for the cookie")
+		require.NotEqual(t, session.Id.String(), session.Token, "the token must be its own secret, not the id")
 		require.Equal(t, userSub, session.Sub, "Session user sub should match the one returned by the OIDC client")
 		require.Equal(t, userId, session.UserId, "Session user ID should match the one returned by the user service")
 		require.WithinDuration(t, time.Now(), session.ExpiresAt, 24*time.Hour, "Session expiration should be within 30 minutes from now")

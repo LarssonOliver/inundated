@@ -67,7 +67,9 @@ type ProjectStatsRepository interface {
 // This allows for the session repository to be implemented in a different way
 // than the other repositories, e.g. using valkey or similar.
 type SessionRepository interface {
-	GetSession(ctx context.Context, id uuid.UUID) (model.Session, error)
+	// GetSessionByToken resolves a session from the opaque token the client
+	// presented in its cookie. The returned session has an empty Token.
+	GetSessionByToken(ctx context.Context, token string) (model.Session, error)
 	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
 	TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSession(ctx context.Context, id uuid.UUID) error

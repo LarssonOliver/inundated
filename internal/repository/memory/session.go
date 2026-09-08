@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"encoding/hex"
 	"slices"
 	"time"
 
@@ -9,11 +10,25 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
+// storedSession is how the in-memory store holds a session: like Postgres, it
+// keeps only the hash of the token, never the raw value.
+type storedSession struct {
+	session   model.Session // session.Token is always ""
+	tokenHash string
+}
+
+func hashHex(token string) string {
+	return hex.EncodeToString(model.HashSessionToken(token))
+}
+
 // CreateSession implements [repository.SessionRepository].
 func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
+	if session.Token == "" {
+		return model.Session{}, model.ErrInvalidArgument
+	}
 	if session.Id == uuid.Nil {
 		session.Id = uuid.New()
 	}
@@ -21,13 +36,16 @@ func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session) 
 		session.CreatedAt = time.Now()
 	}
 
+	hash := hashHex(session.Token)
 	for _, s := range t.sessions {
-		if s.Id == session.Id {
+		if s.session.Id == session.Id || s.tokenHash == hash {
 			return model.Session{}, model.ErrAlreadyExists
 		}
 	}
 
-	t.sessions = append(t.sessions, session)
+	stored := session
+	stored.Token = ""
+	t.sessions = append(t.sessions, storedSession{session: stored, tokenHash: hash})
 	return session, nil
 }
 
@@ -37,7 +55,7 @@ func (t *MemoryStore) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	defer t.mu.Unlock()
 
 	for i, s := range t.sessions {
-		if s.Id == id {
+		if s.session.Id == id {
 			t.sessions = append(t.sessions[:i], t.sessions[i+1:]...)
 			return nil
 		}
@@ -46,14 +64,19 @@ func (t *MemoryStore) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	return model.ErrNotFound
 }
 
-// GetSession implements [repository.SessionRepository].
-func (t *MemoryStore) GetSession(ctx context.Context, id uuid.UUID) (model.Session, error) {
+// GetSessionByToken implements [repository.SessionRepository].
+func (t *MemoryStore) GetSessionByToken(ctx context.Context, token string) (model.Session, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	if token == "" {
+		return model.Session{}, model.ErrInvalidArgument
+	}
+
+	hash := hashHex(token)
 	for _, s := range t.sessions {
-		if s.Id == id {
-			return s, nil
+		if s.tokenHash == hash {
+			return s.session, nil
 		}
 	}
 
@@ -66,9 +89,9 @@ func (t *MemoryStore) TouchSession(ctx context.Context, id uuid.UUID, expiresAt 
 	defer t.mu.Unlock()
 
 	for i, s := range t.sessions {
-		if s.Id == id {
-			t.sessions[i].ExpiresAt = expiresAt
-			return t.sessions[i], nil
+		if s.session.Id == id {
+			t.sessions[i].session.ExpiresAt = expiresAt
+			return t.sessions[i].session, nil
 		}
 	}
 
@@ -81,8 +104,8 @@ func (t *MemoryStore) DeleteAllExpiredSessions(ctx context.Context) error {
 	defer t.mu.Unlock()
 
 	now := time.Now()
-	t.sessions = slices.DeleteFunc(t.sessions, func(s model.Session) bool {
-		return s.ExpiresAt.Before(now)
+	t.sessions = slices.DeleteFunc(t.sessions, func(s storedSession) bool {
+		return s.session.ExpiresAt.Before(now)
 	})
 
 	return nil
