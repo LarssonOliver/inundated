@@ -1,5 +1,5 @@
 import type { Middleware, ResponseContext } from "@/api/generated";
-import { xsrfToken } from "@/api/xsrf";
+import { xsrfToken } from "@/api/config";
 
 export const csrfRetryMiddleware: Middleware = {
   async post({ url, init, response }: ResponseContext): Promise<Response | void> {
