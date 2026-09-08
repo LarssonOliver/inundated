@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -15,6 +17,11 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 
 	project, err := s.repository.GetProject(ctx, scope, id)
 
+	if errors.Is(err, model.ErrInvalidArgument) {
+		// The only invalid argument a read-by-id raises is a malformed id
+		// (e.g. the zero UUID); it can never name a real row, so it's a miss.
+		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
+	}
 	if err != nil {
 		// Propagate as-is: a genuine miss already carries model.ErrNotFound,
 		// and an infrastructure failure must not be masked as a 404.
