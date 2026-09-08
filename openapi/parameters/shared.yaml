@@ -145,3 +145,14 @@ offset:
     default: 0
     minimum: 0
   example: 0
+
+redirect:
+  name: redirect
+  in: query
+  required: false
+  description: >
+    Optional application-relative path to return to after
+    successful authentication.
+  schema:
+    type: string
+

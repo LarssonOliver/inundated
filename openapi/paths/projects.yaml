@@ -19,6 +19,9 @@ projects:
     tags: [projects]
     summary: Create project
     operationId: createProject
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -57,6 +60,9 @@ projects-id:
     tags: [projects]
     summary: Update project
     operationId: updateProject
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -78,6 +84,9 @@ projects-id:
     tags: [projects]
     summary: Delete project
     operationId: deleteProject
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     responses:
       "204":
         description: Deleted

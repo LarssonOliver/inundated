@@ -19,6 +19,9 @@ timespans:
     tags: [timespans]
     summary: Create time span
     operationId: createTimespan
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -55,6 +58,9 @@ timespans-id:
     tags: [timespans]
     summary: Update time span
     operationId: updateTimespan
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -76,6 +82,9 @@ timespans-id:
     tags: [timespans]
     summary: Delete time span
     operationId: deleteTimespan
+    security:
+      - sessionCookie: []
+        xsrfToken: []
     responses:
       '204':
         description: Deleted

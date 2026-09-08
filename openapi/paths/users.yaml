@@ -1,0 +1,14 @@
+me:
+  get:
+    tags: [users]
+    summary: Get current user
+    operationId: getCurrentUser
+    responses:
+      "200":
+        description: Current authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/users.yaml#/User"
+      "401":
+        description: Unauthorized - missing or invalid token
