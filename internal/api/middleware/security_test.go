@@ -55,6 +55,8 @@ func TestCSRF(t *testing.T) {
 		h.ServeHTTP(rec, req)
 
 		require.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Equal(t, "1", rec.Header().Get(middleware.CSRFRejectedHeader),
+			"a CSRF rejection must be marked so the SPA can tell it apart from any other 403")
 
 		var xsrf string
 		for _, c := range rec.Result().Cookies() {

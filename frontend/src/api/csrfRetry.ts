@@ -11,12 +11,19 @@ import { xsrfToken } from "@/api/xsrf";
  * this runs a fresh token is already available; re-sending the request with it
  * succeeds without the user noticing.
  *
+ * Only a 403 that carries the `X-CSRF-Rejected` marker (set by the server's
+ * CSRF error handler) is replayed. gorilla/csrf re-masks the cookie token on
+ * every response, so `fresh !== sent` is almost always true and cannot be used
+ * to tell a CSRF rejection apart from a 403 raised by a proxy, a WAF, or a
+ * future authorization rule - replaying those would duplicate a mutation.
+ * Keep the header name in sync with the backend (internal/api/middleware/security.go).
+ *
  * The retry goes out through the bare `fetch` so it does not re-enter the
  * middleware chain; a second failure is surfaced to the caller unchanged.
  */
 export const csrfRetryMiddleware: Middleware = {
   async post({ url, init, response }: ResponseContext): Promise<Response | void> {
-    if (response.status !== 403) return;
+    if (response.status !== 403 || response.headers.get("X-CSRF-Rejected") !== "1") return;
 
     const headers = new Headers(init.headers);
     const sent = headers.get("X-XSRF-TOKEN");

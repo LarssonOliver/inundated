@@ -72,6 +72,12 @@ const XSRFCookieName = "XSRF-TOKEN"
 // XSRFHeaderName is the request header the SPA sends the token back in.
 const XSRFHeaderName = "X-XSRF-TOKEN"
 
+// CSRFRejectedHeader marks a 403 that came specifically from the CSRF check, so
+// the SPA's csrfRetry middleware only replays those and never a 403 from a
+// proxy, a WAF, or a future authorization rule. Keep in sync with the frontend
+// (frontend/src/api/csrfRetry.ts).
+const CSRFRejectedHeader = "X-CSRF-Rejected"
+
 // CSRF returns middleware that enforces CSRF protection on unsafe methods.
 // gorilla/csrf keeps an HMAC-signed token in its own HttpOnly session cookie and
 // expects a per-request masked copy of it in the X-XSRF-TOKEN header; that
@@ -97,6 +103,7 @@ func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
 			// retry with.
 			writeXSRFCookie(w, r, secure)
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(CSRFRejectedHeader, "1")
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
 		})),

@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { csrfRetryMiddleware } from "./csrfRetry";
 import type { ResponseContext } from "./generated";
 
-function context(status: number, sentToken: string | null): ResponseContext {
+function context(
+  status: number,
+  sentToken: string | null,
+  opts: { csrfMarker?: boolean } = { csrfMarker: true },
+): ResponseContext {
   return {
     fetch: globalThis.fetch,
     url: "/api/projects",
@@ -11,7 +15,10 @@ function context(status: number, sentToken: string | null): ResponseContext {
       body: '{"name":"p"}',
       headers: sentToken === null ? {} : { "X-XSRF-TOKEN": sentToken },
     },
-    response: new Response(null, { status }),
+    response: new Response(null, {
+      status,
+      headers: opts.csrfMarker ? { "X-CSRF-Rejected": "1" } : {},
+    }),
   };
 }
 
@@ -55,5 +62,14 @@ describe("csrfRetryMiddleware", () => {
     await csrfRetryMiddleware.post!(context(401, "stale-token"));
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores a 403 that is not the CSRF check (no X-CSRF-Rejected marker)", async () => {
+    // A proxy, WAF, or future authorization rule returning 403 must never
+    // trigger a silent replay of the mutation.
+    const out = await csrfRetryMiddleware.post!(context(403, "stale-token", { csrfMarker: false }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(out).toBeUndefined();
   });
 });
