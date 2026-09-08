@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -222,6 +224,37 @@ func TestNewOIDCClientWithConfig_DiscoveryFailureIsRetriedOnNextCall(t *testing.
 	require.NoError(t, err, "expected discovery to succeed after pointing at a live provider")
 }
 
+func TestReady_ConcurrentFirstLoginsShareOneDiscovery(t *testing.T) {
+	fp := newFakeProvider(t)
+	defer fp.Close()
+	fp.discoveryDelay = 100 * time.Millisecond // widen the race window
+
+	client := auth.NewOIDCClientWithConfig(fp.testConfig())
+
+	const n = 20
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = client.BeginAuthorization("state", "nonce")
+		}()
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int64(1), fp.discoveryHits.Load(),
+		"a burst of first logins must share a single discovery round-trip, not issue one each")
+
+	// A later call is served from cache without another round-trip.
+	_, err := client.BeginAuthorization("state", "nonce")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), fp.discoveryHits.Load())
+}
+
 // fakeProvider is a minimal, in-process stand-in for a real OIDC provider.
 // It serves the discovery document, a JWKS, and a token endpoint that hands
 // back a signed ID token for whatever "code" it's given, letting tests drive
@@ -250,6 +283,13 @@ type fakeProvider struct {
 
 	// badSignature corrupts the returned ID token's signature.
 	badSignature bool
+
+	// discoveryHits counts requests to the discovery endpoint.
+	discoveryHits atomic.Int64
+
+	// discoveryDelay is slept at the start of the discovery handler, to widen
+	// the window in which concurrent callers race.
+	discoveryDelay time.Duration
 }
 
 type idTokenClaims struct {
@@ -292,6 +332,10 @@ func (fp *fakeProvider) Close() {
 }
 
 func (fp *fakeProvider) handleDiscovery(w http.ResponseWriter, r *http.Request) {
+	fp.discoveryHits.Add(1)
+	if fp.discoveryDelay > 0 {
+		time.Sleep(fp.discoveryDelay)
+	}
 	doc := map[string]any{
 		"issuer":                                fp.issuer,
 		"authorization_endpoint":                fp.issuer + "/authorize",

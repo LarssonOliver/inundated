@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/singleflight"
 )
 
 type OIDCClient interface {
@@ -32,10 +33,14 @@ var _ OIDCClient = (*OIDCClientImpl)(nil)
 type OIDCClientImpl struct {
 	Cfg OIDCClientConfig
 
-	mu       sync.Mutex
-	provider *oidc.Provider
-	oauthCfg oauth2.Config
-	verifier *oidc.IDTokenVerifier
+	// discovery deduplicates concurrent first-time discovery so only one
+	// goroutine makes the blocking round-trip; mu guards the cached results and
+	// is never held across the network call.
+	discovery singleflight.Group
+	mu        sync.RWMutex
+	provider  *oidc.Provider
+	oauthCfg  oauth2.Config
+	verifier  *oidc.IDTokenVerifier
 }
 
 // NewOIDCClient returns a client with no provider configured. It is only useful
@@ -150,20 +155,49 @@ func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVeri
 // ready performs (and caches) OIDC discovery against the issuer. Safe for
 // concurrent use; discovery is retried on subsequent calls if it previously
 // failed (e.g. the provider was briefly unreachable at startup).
+//
+// The mutex is only ever held around the in-memory cache read/write, never
+// across oidc.NewProvider's blocking discovery + JWKS HTTP round-trip. When
+// several logins arrive before the first discovery completes, singleflight
+// funnels them into one call and shares its result rather than letting each
+// goroutine issue its own request (or serialize behind a held lock).
 func (o *OIDCClientImpl) ready(ctx context.Context) (oauth2.Config, *oidc.IDTokenVerifier, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	if o.provider != nil {
-		return o.oauthCfg, o.verifier, nil
+	o.mu.RLock()
+	cfg, verifier, ready := o.oauthCfg, o.verifier, o.provider != nil
+	o.mu.RUnlock()
+	if ready {
+		return cfg, verifier, nil
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, o.Cfg.HTTPTimeout)
+	if _, err, _ := o.discovery.Do("discover", func() (any, error) {
+		return nil, o.discover(ctx)
+	}); err != nil {
+		return oauth2.Config{}, nil, err
+	}
+
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.oauthCfg, o.verifier, nil
+}
+
+// discover runs OIDC discovery once and stores the result. It is only ever
+// called through the singleflight group in [ready]. The timeout context is
+// detached from the caller's request context so one cancelled login cannot
+// abort discovery for every other login sharing the same singleflight call.
+func (o *OIDCClientImpl) discover(ctx context.Context) error {
+	o.mu.RLock()
+	already := o.provider != nil
+	o.mu.RUnlock()
+	if already {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), o.Cfg.HTTPTimeout)
 	defer cancel()
 
 	provider, err := oidc.NewProvider(ctx, o.Cfg.IssuerURL)
 	if err != nil {
-		return oauth2.Config{}, nil, fmt.Errorf("discovering OIDC provider %q: %w", o.Cfg.IssuerURL, err)
+		return fmt.Errorf("discovering OIDC provider %q: %w", o.Cfg.IssuerURL, err)
 	}
 
 	oauthCfg := oauth2.Config{
@@ -175,9 +209,11 @@ func (o *OIDCClientImpl) ready(ctx context.Context) (oauth2.Config, *oidc.IDToke
 	}
 	verifier := provider.Verifier(&oidc.Config{ClientID: o.Cfg.ClientID})
 
+	o.mu.Lock()
 	o.provider = provider
 	o.oauthCfg = oauthCfg
 	o.verifier = verifier
+	o.mu.Unlock()
 
-	return oauthCfg, verifier, nil
+	return nil
 }
