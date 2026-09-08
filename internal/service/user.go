@@ -23,8 +23,6 @@ func (s *ServiceImpl) GetUserBySub(ctx context.Context, sub string) (model.User,
 	return s.repository.GetUserBySub(ctx, sub)
 }
 
-// GetOrCreateUserByIdentity reconciles the local user record with the OIDC
-// claims: unknown subjects are created, and a drifted email or name is updated.
 func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
 	user, err := s.repository.GetUserBySub(ctx, identity.Sub)
 	if err != nil {
@@ -34,9 +32,6 @@ func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity mo
 		return s.createUserFromIdentity(ctx, identity)
 	}
 
-	// Adopt drifted claims, but never let an omitted claim blank a field the
-	// user already has: email is required, so wiping it would lock the account
-	// out on the next login.
 	changed := false
 	if identity.Email != "" && identity.Email != user.Email {
 		user.Email = identity.Email

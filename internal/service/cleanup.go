@@ -46,10 +46,6 @@ func (c *CleanupServiceImpl) Run(ctx context.Context) {
 }
 
 func (c *CleanupServiceImpl) cleanup(ctx context.Context) {
-	// The sweep runs on a timer with nobody watching its return value, so a
-	// persistent failure would otherwise be invisible while the sessions /
-	// login_states tables grow without bound. Log and carry on; the next tick
-	// retries.
 	if err := c.sessionRepository.DeleteAllExpiredSessions(ctx); err != nil {
 		log.Printf("cleanup: deleting expired sessions: %v", err)
 	}

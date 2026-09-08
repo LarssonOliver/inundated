@@ -9,24 +9,11 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-// isUniqueViolation reports whether err is a Postgres unique-constraint violation.
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-// ownerPredicate appends the owner bind (if the scope is a user) to args and
-// returns a WHERE fragment referencing its placeholder, so the placeholder
-// number can never drift from the args slice. Pass the query's other binds as
-// args; the owner bind always lands at $(len(args)+1). A scoped call yields
-// `<column> = $n`, an unowned call yields `<column> IS NULL` and returns args
-// unchanged. `= $n` / `IS NULL` (rather than `IS NOT DISTINCT FROM $n`) lets the
-// btree idx_<table>_user_id index from migration 0006 apply.
-//
-// This is the single seam through which every user-scoped query filters by
-// owner: List/count/aggregate and single-row Get/Update/Delete alike. A new
-// query that forgets it is a scope leak, so route owner filtering through here
-// rather than hand-writing the predicate.
 func ownerPredicate(column string, scope model.OwnerScope, args []any) (sql string, newArgs []any) {
 	if id := scope.UserID(); id != nil {
 		return fmt.Sprintf("%s = $%d", column, len(args)+1), append(args, *id)

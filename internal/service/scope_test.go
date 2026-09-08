@@ -260,7 +260,7 @@ func TestService_ScopedMethodsFailClosedOnZeroIdUser(t *testing.T) {
 
 			err := m.invoke(ctx, s)
 
-			require.ErrorIs(t, err, service.ErrAmbiguousOwnerScope)
+			require.ErrorIs(t, err, model.ErrAmbiguousOwnerScope)
 			require.Empty(t, rec, "no repository call may run once scope resolution has failed")
 		})
 	}

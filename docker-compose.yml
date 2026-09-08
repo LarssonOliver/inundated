@@ -1,27 +1,4 @@
 # PostgreSQL + a mock OIDC provider for exercising the auth system locally
-# (PR #85).
-#
-# Run the app itself on the host, not in a container: that way the backend, the
-# browser, and the OIDC issuer URL all share the same `localhost` and token
-# validation lines up.
-#
-#   docker compose up -d
-#
-#   # terminal 1 - backend
-#   export DATABASE_URL="postgresql://inundated:inundated@localhost:5432/inundated?sslmode=disable"
-#   export OIDC_ISSUER_URL="http://localhost:9090/default"
-#   export OIDC_CLIENT_ID="inundated"
-#   export OIDC_CLIENT_SECRET="inundated-secret"
-#   export PUBLIC_BASE_URL="http://localhost:5173"
-#   make dev
-#
-#   # terminal 2 - frontend
-#   cd frontend && npm run dev
-#
-#   # then open http://localhost:5173
-#
-#   docker compose down -v      # stop and wipe the database
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -38,15 +15,11 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
-
   oidc:
     image: ghcr.io/navikt/mock-oauth2-server:2.1.11
     environment:
-      # interactiveLogin shows the debug login form on /authorize where you type
-      # the username and any extra claims.
       JSON_CONFIG: '{"interactiveLogin":true}'
     ports:
       - "9090:8080"
-
 volumes:
   postgres-data:

@@ -33,19 +33,14 @@ func NewPostgresStore(ctx context.Context, connString string) (*PostgresStore, e
 	return &PostgresStore{db: pool}, nil
 }
 
-// NewFromPool creates a Repository from an existing *pgxpool.Pool.
 func NewPostgresStoreFromPool(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{db: pool}
 }
 
-// NewWithQuerier creates a Repository from any Querier implementation.
-// Intended for use in tests with pgxmock.
 func NewPostgresStoreWithQuerier(q Querier) *PostgresStore {
 	return &PostgresStore{db: q}
 }
 
-// Querier abstracts the pgxpool.Pool methods used by the repository.
-// pgxmock satisfies this interface, making unit tests straightforward.
 type Querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
@@ -53,11 +48,9 @@ type Querier interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-// Ensure *pgxpool.Pool satisfies Querier at compile time.
 var _ Querier = (*pgxpool.Pool)(nil)
 
-// withTx runs fn inside a transaction, committing on success and rolling back
-// on any error or panic.
+// committing on success and rolling back on any error or panic.
 func (r *PostgresStore) withTx(ctx context.Context, fn func(q Querier) error) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -81,8 +74,6 @@ func (r *PostgresStore) withTx(ctx context.Context, fn func(q Querier) error) (e
 	return nil
 }
 
-// rollback aborts tx, giving the ROLLBACK its own short-lived context so it still
-// runs when the caller's ctx has already been cancelled (e.g. client disconnect).
 func rollback(ctx context.Context, tx pgx.Tx) {
 	rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()

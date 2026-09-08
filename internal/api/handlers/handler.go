@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/service"
 )
@@ -24,4 +26,20 @@ func NewHandler(authSvc service.AuthService, svc service.Service, secureCookies 
 
 		AuthHandler: *NewAuthHandler(authSvc, secureCookies),
 	}
+}
+
+func HealthHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"message":"OK"}`))
+	})
+}
+
+func NotFoundHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"not found"}`))
+	})
 }

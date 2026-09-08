@@ -7,11 +7,6 @@ import {
 import { ApiConfig } from "@/api/config";
 
 export interface UsersApi {
-  /**
-   * Returns the signed-in user, or null when there is no session. A null result
-   * is expected both when auth is enabled and the visitor is logged out and when
-   * the server runs in userless mode.
-   */
   getCurrentUser(): Promise<User | null>;
   logout(): Promise<void>;
 }
@@ -37,8 +32,6 @@ function createUsersApi(
       try {
         await auth.authLogout();
       } catch (error) {
-        // A 401 here means the session was already gone server-side; that is
-        // the outcome logout wanted, so let the caller proceed to reload.
         if (error instanceof ResponseError && error.response.status === 401) {
           return;
         }

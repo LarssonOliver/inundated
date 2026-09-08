@@ -1,23 +1,22 @@
 import { Configuration } from "./generated/runtime";
-import { authRedirectMiddleware } from "./authRedirect";
-import { csrfRetryMiddleware } from "./csrfRetry";
-import { xsrfToken } from "./xsrf";
+import { authRedirectMiddleware } from "./middleware/authRedirect";
+import { csrfRetryMiddleware } from "./middleware/csrfRetry";
 
-// The OpenAPI spec declares every path with its `/api` prefix, and the generated
-// client bakes that into each request path, so requests must go out relative to
-// the current origin (`/api/...`).
-//
-// The spec's `servers` entry is already `/`, but openapi-generator's
-// typescript-fetch generator cannot use a relative server URL and falls back to
-// `BASE_PATH = "http://localhost"` in runtime.ts. This empty `basePath` overrides
-// that fallback; the "API client wiring" tests in config.test.ts fail loudly if
-// a regeneration ever drops it.
-//
-// The `X-XSRF-TOKEN` anti-CSRF header is modelled in the spec as the `xsrfToken`
-// apiKey security scheme, so the generated client asks `apiKey` for its value on
-// every mutation instead of taking it as a per-call parameter.
+const XSRF_COOKIE = "XSRF-TOKEN";
+
 export const ApiConfig = new Configuration({
   basePath: "",
   apiKey: (name) => (name === "X-XSRF-TOKEN" ? xsrfToken() : ""),
   middleware: [csrfRetryMiddleware, authRedirectMiddleware],
 });
+
+export function xsrfToken(): string {
+  for (const pair of document.cookie.split(";")) {
+    const eq = pair.indexOf("=");
+    if (eq === -1) continue;
+    if (pair.slice(0, eq).trim() === XSRF_COOKIE) {
+      return pair.slice(eq + 1).trim();
+    }
+  }
+  return "";
+}

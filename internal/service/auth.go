@@ -120,13 +120,10 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 	return session, loginState.RedirectUri, nil
 }
 
-// newNonce returns a cryptographically random, URL-safe OIDC nonce.
 func newNonce() (string, error) {
 	return randomToken("nonce")
 }
 
-// newSessionToken returns the cryptographically random secret placed in the
-// session cookie. Only its hash is stored (see model.HashSessionToken).
 func newSessionToken() (string, error) {
 	return randomToken("session token")
 }

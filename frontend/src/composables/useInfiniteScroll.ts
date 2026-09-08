@@ -66,9 +66,6 @@ export function useInfiniteScroll(
     },
   );
 
-  // Full teardown: the observer AND the watcher. The watch callback only ever
-  // needs disconnectObserver() (stopping the watch there would kill re-observing
-  // on the next element change).
   const cleanup = () => {
     disconnectObserver();
     stopWatch();
@@ -76,8 +73,6 @@ export function useInfiniteScroll(
 
   initObserver();
 
-  // Auto-clean up when used inside a component's setup (or any effect scope);
-  // callers outside a scope, such as unit tests, use the returned cleanup().
   if (getCurrentScope()) {
     onScopeDispose(cleanup);
   }

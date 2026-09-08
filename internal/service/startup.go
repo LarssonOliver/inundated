@@ -7,10 +7,6 @@ import (
 	"github.com/larssonoliver/inundated/internal/repository"
 )
 
-// EnsureAuthConfigConsistent guards against silently dropping authentication
-// after users exist. Userless mode is only permitted while the users table is
-// empty; once someone has logged in via OIDC the server must keep OIDC
-// configured or it would expose every user's data through the unowned scope.
 func EnsureAuthConfigConsistent(ctx context.Context, users repository.UserRepository, oidcEnabled bool) error {
 	if oidcEnabled {
 		return nil

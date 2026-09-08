@@ -12,9 +12,8 @@ build: ${BINARY}
 dev:
 	go run cmd/server/main.go
 
-# Run the backend wired to the docker-compose auth stack (see docker-compose.yml):
-#   docker compose up -d && make dev-auth   (then `cd frontend && npm run dev`)
 dev-auth:
+	@echo "==> Starting server with OIDC authentication..."
 	go run cmd/server/main.go \
 		-database-url="postgresql://inundated:inundated@localhost:5432/inundated?sslmode=disable" \
 		-oidc-issuer-url="http://localhost:9090/default" \

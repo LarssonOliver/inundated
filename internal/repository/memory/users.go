@@ -26,7 +26,7 @@ func (m *MemoryStore) GetUserBySub(ctx context.Context, sub string) (model.User,
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	id, ok := m.subToID[sub]
+	id, ok := m.subToId[sub]
 	if !ok {
 		return model.User{}, model.ErrNotFound
 	}
@@ -57,12 +57,12 @@ func (m *MemoryStore) CreateUser(ctx context.Context, user model.User) (model.Us
 	defer m.mu.Unlock()
 
 	// Check for duplicate sub
-	if _, exists := m.subToID[user.Sub]; exists {
+	if _, exists := m.subToId[user.Sub]; exists {
 		return model.User{}, model.ErrAlreadyExists
 	}
 
 	m.users = append(m.users, user)
-	m.subToID[user.Sub] = user.Id
+	m.subToId[user.Sub] = user.Id
 
 	return user, nil
 }
@@ -79,14 +79,14 @@ func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.subToID[user.Sub]; exists {
+	if _, exists := m.subToId[user.Sub]; exists {
 		return model.User{}, model.OrphanAdoption{}, model.ErrAlreadyExists
 	}
 
 	isFirst := len(m.users) == 0
 
 	m.users = append(m.users, user)
-	m.subToID[user.Sub] = user.Id
+	m.subToId[user.Sub] = user.Id
 
 	var adoption model.OrphanAdoption
 	if isFirst {

@@ -33,9 +33,6 @@ var _ OIDCClient = (*OIDCClientImpl)(nil)
 type OIDCClientImpl struct {
 	Cfg OIDCClientConfig
 
-	// discovery deduplicates concurrent first-time discovery so only one
-	// goroutine makes the blocking round-trip; mu guards the cached results and
-	// is never held across the network call.
 	discovery singleflight.Group
 	mu        sync.RWMutex
 	provider  *oidc.Provider
@@ -62,19 +59,11 @@ type OIDCClientConfig struct {
 
 	// RedirectURL must exactly match a redirect URI registered with the provider.
 	RedirectURL string
-
-	Scopes []string
-
-	// HTTPTimeout bounds calls to the discovery, JWKS, and token endpoints.
+	Scopes      []string
 	HTTPTimeout time.Duration
 }
 
-// BeginAuthorization implements [OIDCClient]. It generates a fresh PKCE
-// code_verifier and returns the provider authorization URL (bound to the
-// caller-supplied state, the caller-supplied nonce, and the S256
-// code_challenge derived from the verifier). The caller is responsible for
-// persisting the returned CodeVerifier and the nonce (e.g. server-side, keyed
-// by state) and supplying them back to ExchangeCode.
+// BeginAuthorization implements [OIDCClient].
 func (o *OIDCClientImpl) BeginAuthorization(state string, nonce string) (OIDCAuthorizationRequest, error) {
 	if state == "" {
 		return OIDCAuthorizationRequest{}, errors.New("state must not be empty")
@@ -97,11 +86,7 @@ func (o *OIDCClientImpl) BeginAuthorization(state string, nonce string) (OIDCAut
 	}, nil
 }
 
-// ExchangeCode implements [OIDCClient]. It exchanges the authorization code
-// for tokens (presenting codeVerifier to satisfy PKCE), then verifies the
-// returned ID token's signature, issuer, audience, expiry and nonce before
-// extracting identity claims from it. expectedNonce must equal the nonce
-// passed to the matching BeginAuthorization call.
+// ExchangeCode implements [OIDCClient].
 func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVerifier string, expectedNonce string) (OIDCIdentity, error) {
 	if code == "" {
 		return OIDCIdentity{}, errors.New("code must not be empty")
@@ -152,15 +137,6 @@ func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVeri
 	}, nil
 }
 
-// ready performs (and caches) OIDC discovery against the issuer. Safe for
-// concurrent use; discovery is retried on subsequent calls if it previously
-// failed (e.g. the provider was briefly unreachable at startup).
-//
-// The mutex is only ever held around the in-memory cache read/write, never
-// across oidc.NewProvider's blocking discovery + JWKS HTTP round-trip. When
-// several logins arrive before the first discovery completes, singleflight
-// funnels them into one call and shares its result rather than letting each
-// goroutine issue its own request (or serialize behind a held lock).
 func (o *OIDCClientImpl) ready(ctx context.Context) (oauth2.Config, *oidc.IDTokenVerifier, error) {
 	o.mu.RLock()
 	cfg, verifier, ready := o.oauthCfg, o.verifier, o.provider != nil
@@ -180,10 +156,6 @@ func (o *OIDCClientImpl) ready(ctx context.Context) (oauth2.Config, *oidc.IDToke
 	return o.oauthCfg, o.verifier, nil
 }
 
-// discover runs OIDC discovery once and stores the result. It is only ever
-// called through the singleflight group in [ready]. The timeout context is
-// detached from the caller's request context so one cancelled login cannot
-// abort discovery for every other login sharing the same singleflight call.
 func (o *OIDCClientImpl) discover(ctx context.Context) error {
 	o.mu.RLock()
 	already := o.provider != nil

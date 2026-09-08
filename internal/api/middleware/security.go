@@ -8,8 +8,6 @@ import (
 	"github.com/larssonoliver/inundated/internal/auth"
 )
 
-// SecurityHeaders sets security-relevant HTTP response headers.
-// It should be mounted early in the chi middleware stack.
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -57,8 +55,6 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// NoSniffJSON ensures API responses are served with the correct content type
-// and won't be interpreted as something else.
 func NoSniffJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -66,18 +62,8 @@ func NoSniffJSON(next http.Handler) http.Handler {
 	})
 }
 
-// XSRFCookieName is the JS-readable cookie carrying the CSRF token the SPA must
-// echo back in the X-XSRF-TOKEN header on unsafe requests. It is distinct from
-// gorilla/csrf's own signed session cookie.
 const XSRFCookieName = "XSRF-TOKEN"
-
-// XSRFHeaderName is the request header the SPA sends the token back in.
 const XSRFHeaderName = "X-XSRF-TOKEN"
-
-// CSRFRejectedHeader marks a 403 that came specifically from the CSRF check, so
-// the SPA's csrfRetry middleware only replays those and never a 403 from a
-// proxy, a WAF, or a future authorization rule. Keep in sync with the frontend
-// (frontend/src/api/csrfRetry.ts).
 const CSRFRejectedHeader = "X-CSRF-Rejected"
 
 // CSRF returns middleware that enforces CSRF protection on unsafe methods.
@@ -122,10 +108,6 @@ func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
 	}
 }
 
-// ExposeCSRFToken publishes the current CSRF token in a JS-readable cookie so the
-// SPA can read it and send it back in the X-XSRF-TOKEN header. It must be mounted
-// inside (after) [CSRF], which populates the token. secure mirrors the flag
-// passed to CSRF.
 func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,9 +117,6 @@ func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
 	}
 }
 
-// writeXSRFCookie sets the JS-readable cookie carrying the current masked CSRF
-// token. csrf.Token(r) is populated by [CSRF] before it runs its verification,
-// so this is also valid from the CSRF error handler.
 func writeXSRFCookie(w http.ResponseWriter, r *http.Request, secure bool) {
 	c := auth.BaseCookie(XSRFCookieName, secure)
 	c.Value = csrf.Token(r)

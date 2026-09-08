@@ -10,10 +10,8 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-// storedSession is how the in-memory store holds a session: like Postgres, it
-// keeps only the hash of the token, never the raw value.
 type storedSession struct {
-	session   model.Session // session.Token is always ""
+	session   model.Session
 	tokenHash string
 }
 

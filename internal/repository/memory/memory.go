@@ -11,7 +11,7 @@ import (
 type MemoryStore struct {
 	mu          sync.RWMutex
 	users       []model.User
-	subToID     map[string]uuid.UUID // mapping from sub to user ID for efficient lookups
+	subToId     map[string]uuid.UUID // mapping from sub to user ID for efficient lookups
 	projects    []model.Project
 	tags        []model.Tag
 	timespans   []model.Timespan
@@ -27,7 +27,7 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		mu:          sync.RWMutex{},
 		users:       []model.User{},
-		subToID:     make(map[string]uuid.UUID),
+		subToId:     make(map[string]uuid.UUID),
 		projects:    []model.Project{},
 		tags:        []model.Tag{},
 		timespans:   []model.Timespan{},

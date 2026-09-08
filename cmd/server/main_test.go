@@ -34,8 +34,6 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
-// csrfHandshake performs a safe request to collect the CSRF cookies and the
-// token the SPA would read from the XSRF-TOKEN cookie.
 func csrfHandshake(t *testing.T, h http.Handler) (cookies []*http.Cookie, token string) {
 	t.Helper()
 	rec := get(t, h, "/health")
@@ -49,9 +47,6 @@ func csrfHandshake(t *testing.T, h http.Handler) (cookies []*http.Cookie, token 
 	return cookies, token
 }
 
-// The derived OIDC redirect URI must point at a route the API actually serves
-// without a session, or login breaks. config can't import middleware, so this
-// guards the two definitions against drift.
 func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(func(k string) (string, bool) {
 		return map[string]string{
@@ -69,7 +64,7 @@ func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
 
 func TestNewRouter_UserlessMode(t *testing.T) {
 	cfg := &config.Config{} // OIDC unset
-	server, svc, repo := buildTestServer(auth.NewOIDCClient(), secureCookies(cfg))
+	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
 	r := newRouter(cfg, svc, repo, server, testCSRFKey)
 
 	t.Run("health is public", func(t *testing.T) {
@@ -136,7 +131,7 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 		return auth.OIDCAuthorizationRequest{Uri: "https://issuer.example.com/authorize?state=" + state + "&nonce=" + nonce, CodeVerifier: "verifier"}, nil
 	}
 
-	server, svc, repo := buildTestServer(oidcMock, secureCookies(cfg))
+	server, svc, repo := buildTestServer(oidcMock, shouldUseSecureCookies(cfg))
 	r := newRouter(cfg, svc, repo, server, testCSRFKey)
 
 	t.Run("resource routes require a session", func(t *testing.T) {
