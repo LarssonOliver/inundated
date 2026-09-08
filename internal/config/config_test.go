@@ -171,6 +171,35 @@ func TestOIDCPartialConfigRejected(t *testing.T) {
 	}
 }
 
+func TestOIDCRequiresOpenIDAndEmailScopes(t *testing.T) {
+	base := map[string]string{
+		"OIDC_ISSUER_URL":    "https://issuer.example.com",
+		"OIDC_CLIENT_ID":     "client-abc",
+		"OIDC_CLIENT_SECRET": "secret-xyz",
+		"PUBLIC_BASE_URL":    "https://app.example.com",
+	}
+
+	for _, scopes := range []string{"openid,profile", "profile,email", "openid"} {
+		t.Run(scopes, func(t *testing.T) {
+			env := map[string]string{"OIDC_SCOPES": scopes}
+			for k, v := range base {
+				env[k] = v
+			}
+			_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+			assert.Error(t, err, "OIDC needs both openid and email scopes to identify and create users")
+		})
+	}
+
+	t.Run("openid,email accepted", func(t *testing.T) {
+		env := map[string]string{"OIDC_SCOPES": "openid,email"}
+		for k, v := range base {
+			env[k] = v
+		}
+		_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+		assert.NoError(t, err)
+	})
+}
+
 func TestCSRFAuthKeyEmptyByDefault(t *testing.T) {
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
 	assert.NoError(t, err)

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/larssonoliver/inundated/internal/model"
@@ -52,6 +53,13 @@ func (s *ServiceImpl) GetOrCreateUserByIdentity(ctx context.Context, identity mo
 }
 
 func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model.UserIdentity) (model.User, error) {
+	if identity.Email == "" {
+		return model.User{}, fmt.Errorf(
+			"OIDC identity %q has no email claim; check that the provider returns email for the configured scopes: %w",
+			identity.Sub, model.ErrInvalidArgument,
+		)
+	}
+
 	created, adoption, err := s.repository.CreateUserAdoptingOrphans(ctx, model.User{
 		Sub:   identity.Sub,
 		Email: identity.Email,
