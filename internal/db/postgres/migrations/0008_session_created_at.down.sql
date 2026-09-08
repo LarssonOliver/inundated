@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE sessions DROP COLUMN IF EXISTS created_at;
+
+COMMIT;

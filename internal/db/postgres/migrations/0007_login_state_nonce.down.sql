@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE login_states DROP COLUMN IF EXISTS nonce;
+
+COMMIT;
