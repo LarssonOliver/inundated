@@ -4,6 +4,13 @@ import type { Middleware, ResponseContext } from "@/api/generated";
 // user there just means "logged out" or "userless mode".
 const PROBE_PATH = "/api/me";
 
+// The auth routes must never trigger a login redirect: /api/auth/login and
+// /api/auth/callback are the login flow itself, and a 401 on /api/auth/logout
+// just means the session was already gone -- which is exactly what logout
+// wanted. Bouncing there would send a user who clicked "Log out" straight back
+// through the IdP (and, with SSO, silently sign them back in).
+const AUTH_PATH_PREFIX = "/api/auth/";
+
 // A page firing several requests at once can see several 401s; we only want to
 // start navigating away once.
 let redirecting = false;
@@ -18,7 +25,7 @@ export const authRedirectMiddleware: Middleware = {
     if (response.status !== 401 || redirecting) return;
 
     const path = new URL(url, window.location.origin).pathname;
-    if (path === PROBE_PATH) return;
+    if (path === PROBE_PATH || path.startsWith(AUTH_PATH_PREFIX)) return;
 
     redirecting = true;
     const target = window.location.pathname + window.location.search;

@@ -35,7 +35,16 @@ function createUsersApi(
     },
 
     async logout(): Promise<void> {
-      await auth.authLogout({ xXSRFTOKEN: xsrfToken() });
+      try {
+        await auth.authLogout({ xXSRFTOKEN: xsrfToken() });
+      } catch (error) {
+        // A 401 here means the session was already gone server-side; that is
+        // the outcome logout wanted, so let the caller proceed to reload.
+        if (error instanceof ResponseError && error.response.status === 401) {
+          return;
+        }
+        throw error;
+      }
     },
   };
 }
