@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -434,6 +435,27 @@ func TestAuthHandler_AuthLogout(t *testing.T) {
 			ctx,
 			api.AuthLogoutRequestObject{},
 		)
+
+		require.NoError(t, err)
+		got, ok := resp.(api.AuthLogout204Response)
+		require.True(t, ok, "expected AuthLogout204Response, got %T", resp)
+		assert.Equal(t, auth.ClearSessionCookie(true).String(), got.Headers.SetCookie)
+	})
+
+	t.Run("an already-deleted session still returns 204 and clears the cookie", func(t *testing.T) {
+		// Double-click logout, or the cleanup goroutine reaping the row mid
+		// request: the session is gone by the time LogoutSession runs. That is
+		// the desired end state, not a server error -- the client must still get
+		// 204 and the cookie-clearing Set-Cookie.
+		session := model.Session{Id: uuid.New()}
+		mock := &service.AuthServiceMock{
+			LogoutSessionFn: func(ctx context.Context, gotSessionID uuid.UUID) error {
+				return fmt.Errorf("LogoutSession: %w", model.ErrNotFound)
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		resp, err := h.AuthLogout(model.SetSessionInContext(context.Background(), session), api.AuthLogoutRequestObject{})
 
 		require.NoError(t, err)
 		got, ok := resp.(api.AuthLogout204Response)
