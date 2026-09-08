@@ -23,13 +23,13 @@ func (r *PostgresStore) CreateLoginState(ctx context.Context, loginState model.L
 	}
 
 	const q = `
-		INSERT INTO login_states (id, redirect_uri, code_verifier, expires_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, redirect_uri, code_verifier, expires_at`
+		INSERT INTO login_states (id, redirect_uri, code_verifier, nonce, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, redirect_uri, code_verifier, nonce, expires_at`
 
 	var created model.LoginState
-	err := r.db.QueryRow(ctx, q, loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt).
-		Scan(&created.Id, &created.RedirectUri, &created.CodeVerifier, &created.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt).
+		Scan(&created.Id, &created.RedirectUri, &created.CodeVerifier, &created.Nonce, &created.ExpiresAt)
 	if isUniqueViolation(err) {
 		return model.LoginState{}, fmt.Errorf("CreateLoginState %s: %w", loginState.Id, model.ErrAlreadyExists)
 	}
@@ -63,12 +63,12 @@ func (r *PostgresStore) GetLoginState(ctx context.Context, id uuid.UUID) (model.
 	}
 
 	const q = `
-		SELECT id, redirect_uri, code_verifier, expires_at
+		SELECT id, redirect_uri, code_verifier, nonce, expires_at
 		FROM login_states
 		WHERE id = $1`
 
 	var ls model.LoginState
-	err := r.db.QueryRow(ctx, q, id).Scan(&ls.Id, &ls.RedirectUri, &ls.CodeVerifier, &ls.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, id).Scan(&ls.Id, &ls.RedirectUri, &ls.CodeVerifier, &ls.Nonce, &ls.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.LoginState{}, fmt.Errorf("GetLoginState %s: %w", id, model.ErrNotFound)
 	}

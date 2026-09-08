@@ -21,9 +21,9 @@ func TestCreateLoginState_Success(t *testing.T) {
 	loginState := aLoginState()
 
 	mock.ExpectQuery(`INSERT INTO login_states`).
-		WithArgs(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "expires_at"}).
-			AddRow(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt))
+		WithArgs(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "nonce", "expires_at"}).
+			AddRow(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt))
 
 	got, err := repo.CreateLoginState(ctx, loginState)
 	require.NoError(t, err)
@@ -37,9 +37,9 @@ func TestCreateLoginState_GeneratesIdWhenNil(t *testing.T) {
 	loginState.Id = uuid.Nil
 
 	mock.ExpectQuery(`INSERT INTO login_states`).
-		WithArgs(pgxmock.AnyArg(), loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "expires_at"}).
-			AddRow(uuid.New(), loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt))
+		WithArgs(pgxmock.AnyArg(), loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "nonce", "expires_at"}).
+			AddRow(uuid.New(), loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt))
 
 	got, err := repo.CreateLoginState(ctx, loginState)
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestCreateLoginState_DuplicateId(t *testing.T) {
 	loginState := aLoginState()
 
 	mock.ExpectQuery(`INSERT INTO login_states`).
-		WithArgs(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt).
+		WithArgs(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt).
 		WillReturnError(&pgconn.PgError{Code: "23505"})
 
 	_, err := repo.CreateLoginState(ctx, loginState)
@@ -87,10 +87,10 @@ func TestGetLoginState_Success(t *testing.T) {
 	repo, mock := newLoginStateMock(t)
 	loginState := aLoginState()
 
-	mock.ExpectQuery(`SELECT id, redirect_uri, code_verifier, expires_at FROM login_states WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, redirect_uri, code_verifier, nonce, expires_at FROM login_states WHERE id = \$1`).
 		WithArgs(loginState.Id).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "expires_at"}).
-			AddRow(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.ExpiresAt))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "nonce", "expires_at"}).
+			AddRow(loginState.Id, loginState.RedirectUri, loginState.CodeVerifier, loginState.Nonce, loginState.ExpiresAt))
 
 	got, err := repo.GetLoginState(ctx, loginState.Id)
 	require.NoError(t, err)
@@ -102,9 +102,9 @@ func TestGetLoginState_NotFound(t *testing.T) {
 	repo, mock := newLoginStateMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, redirect_uri, code_verifier, expires_at FROM login_states WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, redirect_uri, code_verifier, nonce, expires_at FROM login_states WHERE id = \$1`).
 		WithArgs(id).
-		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "expires_at"}))
+		WillReturnRows(pgxmock.NewRows([]string{"id", "redirect_uri", "code_verifier", "nonce", "expires_at"}))
 
 	_, err := repo.GetLoginState(ctx, id)
 	require.Error(t, err)

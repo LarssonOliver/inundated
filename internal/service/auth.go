@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -40,7 +42,12 @@ func (a *AuthServiceImpl) BeginLogin(ctx context.Context, redirectURI string) (a
 
 	stateId := uuid.New()
 
-	authRequest, err := a.oidcClient.BeginAuthorization(stateId.String())
+	nonce, err := newNonce()
+	if err != nil {
+		return "", err
+	}
+
+	authRequest, err := a.oidcClient.BeginAuthorization(stateId.String(), nonce)
 	if err != nil {
 		return "", err
 	}
@@ -49,6 +56,7 @@ func (a *AuthServiceImpl) BeginLogin(ctx context.Context, redirectURI string) (a
 		Id:           stateId,
 		RedirectUri:  redirectURI,
 		CodeVerifier: authRequest.CodeVerifier,
+		Nonce:        nonce,
 		ExpiresAt:    time.Now().Add(5 * time.Minute),
 	}
 
@@ -75,7 +83,7 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		return model.Session{}, "", model.ErrLoginStateExpired
 	}
 
-	identity, err := a.oidcClient.ExchangeCode(ctx, code, loginState.CodeVerifier)
+	identity, err := a.oidcClient.ExchangeCode(ctx, code, loginState.CodeVerifier, loginState.Nonce)
 	if err != nil {
 		return model.Session{}, "", err
 	}
@@ -102,6 +110,15 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 	}
 
 	return session, loginState.RedirectUri, nil
+}
+
+// newNonce returns a cryptographically random, URL-safe OIDC nonce.
+func newNonce() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generating nonce: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // LogoutSession implements [AuthService].

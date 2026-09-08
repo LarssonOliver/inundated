@@ -26,7 +26,7 @@ func TestBeginAuthorization_BuildsAuthURLWithPKCEAndState(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	req, err := client.BeginAuthorization("my-state-value")
+	req, err := client.BeginAuthorization("my-state-value", "my-nonce-value")
 	require.NoError(t, err)
 
 	require.NotEmpty(t, req.CodeVerifier)
@@ -37,6 +37,7 @@ func TestBeginAuthorization_BuildsAuthURLWithPKCEAndState(t *testing.T) {
 
 	q := u.Query()
 	assert.Equal(t, "my-state-value", q.Get("state"))
+	assert.Equal(t, "my-nonce-value", q.Get("nonce"))
 	assert.Equal(t, "test-client-id", q.Get("client_id"))
 	assert.Equal(t, "https://app.example.com/auth/callback", q.Get("redirect_uri"))
 	assert.Equal(t, "code", q.Get("response_type"))
@@ -53,9 +54,9 @@ func TestBeginAuthorization_DifferentCallsGetDifferentVerifiers(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	req1, err := client.BeginAuthorization("state-1")
+	req1, err := client.BeginAuthorization("state-1", "nonce-1")
 	require.NoError(t, err)
-	req2, err := client.BeginAuthorization("state-2")
+	req2, err := client.BeginAuthorization("state-2", "nonce-2")
 	require.NoError(t, err)
 
 	assert.NotEqual(t, req1.CodeVerifier, req2.CodeVerifier,
@@ -68,7 +69,17 @@ func TestBeginAuthorization_RejectsEmptyState(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	_, err := client.BeginAuthorization("")
+	_, err := client.BeginAuthorization("", "some-nonce")
+	assert.Error(t, err)
+}
+
+func TestBeginAuthorization_RejectsEmptyNonce(t *testing.T) {
+	fp := newFakeProvider(t)
+	defer fp.Close()
+
+	client := auth.NewOIDCClientWithConfig(fp.testConfig())
+
+	_, err := client.BeginAuthorization("some-state", "")
 	assert.Error(t, err)
 }
 
@@ -80,11 +91,12 @@ func TestExchangeCode_Success(t *testing.T) {
 		Sub:   "user-123",
 		Email: "alice@example.com",
 		Name:  "Alice Example",
+		Nonce: "expected-nonce",
 	})
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	identity, err := client.ExchangeCode(context.Background(), "valid-code", "some-verifier")
+	identity, err := client.ExchangeCode(context.Background(), "valid-code", "some-verifier", "expected-nonce")
 	require.NoError(t, err)
 
 	assert.Equal(t, auth.OIDCIdentity{
@@ -94,13 +106,39 @@ func TestExchangeCode_Success(t *testing.T) {
 	}, identity)
 }
 
+func TestExchangeCode_RejectsNonceMismatch(t *testing.T) {
+	fp := newFakeProvider(t)
+	defer fp.Close()
+
+	fp.registerCode("replayed-code", idTokenClaims{
+		Sub:   "user-123",
+		Nonce: "nonce-from-a-different-request",
+	})
+
+	client := auth.NewOIDCClientWithConfig(fp.testConfig())
+
+	_, err := client.ExchangeCode(context.Background(), "replayed-code", "some-verifier", "nonce-for-this-request")
+	require.Error(t, err, "an id_token whose nonce does not match this request must be rejected")
+	assert.Contains(t, err.Error(), "nonce")
+}
+
+func TestExchangeCode_RejectsEmptyNonce(t *testing.T) {
+	fp := newFakeProvider(t)
+	defer fp.Close()
+
+	client := auth.NewOIDCClientWithConfig(fp.testConfig())
+
+	_, err := client.ExchangeCode(context.Background(), "code", "verifier", "")
+	assert.Error(t, err, "expected error for empty expectedNonce")
+}
+
 func TestExchangeCode_UnknownCodeFails(t *testing.T) {
 	fp := newFakeProvider(t)
 	defer fp.Close()
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	_, err := client.ExchangeCode(context.Background(), "never-registered", "some-verifier")
+	_, err := client.ExchangeCode(context.Background(), "never-registered", "some-verifier", "nonce")
 	assert.Error(t, err)
 }
 
@@ -110,10 +148,10 @@ func TestExchangeCode_RejectsEmptyArgs(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	_, err := client.ExchangeCode(context.Background(), "", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "", "verifier", "nonce")
 	assert.Error(t, err, "expected error for empty code")
 
-	_, err = client.ExchangeCode(context.Background(), "code", "")
+	_, err = client.ExchangeCode(context.Background(), "code", "", "nonce")
 	assert.Error(t, err, "expected error for empty codeVerifier")
 }
 
@@ -126,7 +164,7 @@ func TestExchangeCode_RejectsExpiredIDToken(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	_, err := client.ExchangeCode(context.Background(), "expired-code", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "expired-code", "verifier", "nonce")
 	assert.Error(t, err)
 }
 
@@ -139,7 +177,7 @@ func TestExchangeCode_RejectsBadSignature(t *testing.T) {
 
 	client := auth.NewOIDCClientWithConfig(fp.testConfig())
 
-	_, err := client.ExchangeCode(context.Background(), "tampered-code", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "tampered-code", "verifier", "nonce")
 	assert.Error(t, err)
 }
 
@@ -153,7 +191,7 @@ func TestExchangeCode_RejectsWrongClientSecret(t *testing.T) {
 	cfg.ClientSecret = "wrong-secret"
 	client := auth.NewOIDCClientWithConfig(cfg)
 
-	_, err := client.ExchangeCode(context.Background(), "some-code", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "some-code", "verifier", "nonce")
 	assert.Error(t, err)
 }
 
@@ -170,7 +208,7 @@ func TestNewOIDCClientWithConfig_DiscoveryFailureIsRetriedOnNextCall(t *testing.
 		HTTPTimeout: 500 * time.Millisecond,
 	})
 
-	_, err := client.BeginAuthorization("state")
+	_, err := client.BeginAuthorization("state", "nonce")
 	require.Error(t, err, "expected discovery against an unreachable issuer to fail")
 
 	fp := newFakeProvider(t)
@@ -180,7 +218,7 @@ func TestNewOIDCClientWithConfig_DiscoveryFailureIsRetriedOnNextCall(t *testing.
 	// recovers rather than caching the earlier failure forever.
 	client.Cfg = fp.testConfig()
 
-	_, err = client.BeginAuthorization("state")
+	_, err = client.BeginAuthorization("state", "nonce")
 	require.NoError(t, err, "expected discovery to succeed after pointing at a live provider")
 }
 
@@ -218,6 +256,7 @@ type idTokenClaims struct {
 	Sub   string
 	Email string
 	Name  string
+	Nonce string
 }
 
 func newFakeProvider(t *testing.T) *fakeProvider {
@@ -346,6 +385,7 @@ func (fp *fakeProvider) mintIDToken(claims idTokenClaims) string {
 		"iat":   now.Unix(),
 		"email": claims.Email,
 		"name":  claims.Name,
+		"nonce": claims.Nonce,
 	})
 
 	raw, err := builder.Serialize()

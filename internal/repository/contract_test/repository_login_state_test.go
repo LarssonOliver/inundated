@@ -24,6 +24,7 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 				Id:           uuid.New(),
 				RedirectUri:  "https://example.com/callback",
 				CodeVerifier: "some-code",
+				Nonce:        "some-nonce",
 				ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 			}
 
@@ -32,6 +33,7 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 			require.Equal(t, loginState.Id, got.Id)
 			require.Equal(t, loginState.RedirectUri, got.RedirectUri)
 			require.Equal(t, loginState.CodeVerifier, got.CodeVerifier)
+			require.Equal(t, loginState.Nonce, got.Nonce)
 			require.WithinDuration(t, loginState.ExpiresAt, got.ExpiresAt, time.Second)
 
 			got, err = repo.GetLoginState(ctx, loginState.Id)
@@ -39,6 +41,7 @@ func TestLoginStateRepositoryContract(t *testing.T) {
 			require.Equal(t, loginState.Id, got.Id)
 			require.Equal(t, loginState.RedirectUri, got.RedirectUri)
 			require.Equal(t, loginState.CodeVerifier, got.CodeVerifier)
+			require.Equal(t, loginState.Nonce, got.Nonce)
 			require.WithinDuration(t, loginState.ExpiresAt, got.ExpiresAt, time.Second)
 		})
 
