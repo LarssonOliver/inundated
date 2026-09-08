@@ -127,6 +127,26 @@ func TestOIDCAuth(t *testing.T) {
 			},
 		},
 		{
+			name:        "GetUserBySub fails transiently - keeps the session and does not clear the cookie",
+			cookieValue: validUUID.String(),
+			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
+				s.GetSessionFn = func(ctx context.Context, id uuid.UUID) (model.Session, error) {
+					return model.Session{Id: sessionID, Sub: "sub_123", ExpiresAt: time.Now().Add(12 * time.Hour)}, nil
+				}
+				s.DeleteSessionFn = func(ctx context.Context, id uuid.UUID) error {
+					t.Fatal("a valid session must not be deleted when the user lookup fails transiently")
+					return nil
+				}
+				u.GetUserBySubFn = func(ctx context.Context, sub string) (model.User, error) {
+					return model.User{}, errors.New("connection reset by peer")
+				}
+			},
+			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
+				assert.False(t, nextCalledWithUser)
+				assert.Empty(t, res.Cookies(), "the session cookie must not be cleared on a transient lookup error")
+			},
+		},
+		{
 			name:        "Valid session closing in on expiration - touches session",
 			cookieValue: validUUID.String(),
 			setupMocks: func(s *repository.SessionRepoMock, u *service.UserServiceMock) {
