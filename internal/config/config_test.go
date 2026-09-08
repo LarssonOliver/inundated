@@ -232,3 +232,25 @@ func TestOIDCInvalidTimeoutFallsBackToDefault(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 10*time.Second, cfg.OIDC.HTTPTimeout)
 }
+
+func TestOIDCRejectsNonPositiveTimeout(t *testing.T) {
+	base := map[string]string{
+		"OIDC_ISSUER_URL":    "https://issuer.example.com",
+		"OIDC_CLIENT_ID":     "client-abc",
+		"OIDC_CLIENT_SECRET": "secret-xyz",
+		"PUBLIC_BASE_URL":    "https://app.example.com",
+	}
+	// These parse fine as durations, so they slip past the fall-back-to-default
+	// path, but context.WithTimeout(ctx, <=0) fires immediately and wedges every
+	// discovery/token call.
+	for _, timeout := range []string{"0", "0s", "-1s"} {
+		t.Run(timeout, func(t *testing.T) {
+			env := map[string]string{"OIDC_HTTP_TIMEOUT": timeout}
+			for k, v := range base {
+				env[k] = v
+			}
+			_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+			assert.Error(t, err)
+		})
+	}
+}

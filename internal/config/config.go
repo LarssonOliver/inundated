@@ -268,6 +268,13 @@ func (c *OIDCConfig) validate() error {
 			return fmt.Errorf("config: oidc-scopes must include %q (got %q)", required, strings.Join(c.Scopes, ","))
 		}
 	}
+
+	// A zero or negative timeout makes context.WithTimeout fire immediately, so
+	// every discovery/token call would fail with "context deadline exceeded"
+	// and no hint that the timeout config is the cause.
+	if c.HTTPTimeout <= 0 {
+		return fmt.Errorf("config: oidc-http-timeout must be positive, got %s", c.HTTPTimeout)
+	}
 	return nil
 }
 
