@@ -34,6 +34,25 @@ func TestCSRF(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
+	t.Run("a 403 still refreshes the readable XSRF-TOKEN cookie so the client can retry", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
+		req.Header.Set("X-XSRF-TOKEN", "stale-bogus-token")
+		req.Header.Set("Origin", "https://example.com")
+		h.ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusForbidden, rec.Code)
+
+		var xsrf string
+		for _, c := range rec.Result().Cookies() {
+			if c.Name == "XSRF-TOKEN" {
+				xsrf = c.Value
+			}
+		}
+		require.NotEmpty(t, xsrf, "the rejection response must carry a fresh XSRF-TOKEN cookie")
+		assert.NotEqual(t, "stale-bogus-token", xsrf)
+	})
+
 	t.Run("SPA round trip: the readable XSRF-TOKEN cookie authorizes an unsafe request", func(t *testing.T) {
 		getRec := httptest.NewRecorder()
 		getReq := httptest.NewRequest(http.MethodGet, "https://example.com/api/me", nil)

@@ -85,6 +85,12 @@ func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
 		csrf.RequestHeader(XSRFHeaderName),
 
 		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// gorilla/csrf calls this instead of the next handler, so
+			// ExposeCSRFToken never runs. Publish the current (freshly minted,
+			// after a key rotation) token here too, otherwise the SPA's
+			// XSRF-TOKEN cookie stays stale and csrfRetry has nothing new to
+			// retry with.
+			writeXSRFCookie(w, r, secure)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
@@ -109,15 +115,22 @@ func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
 func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.SetCookie(w, &http.Cookie{
-				Name:     XSRFCookieName,
-				Value:    csrf.Token(r),
-				Path:     "/",
-				Secure:   secure,
-				HttpOnly: false, // the SPA must be able to read this one
-				SameSite: http.SameSiteLaxMode,
-			})
+			writeXSRFCookie(w, r, secure)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// writeXSRFCookie sets the JS-readable cookie carrying the current masked CSRF
+// token. csrf.Token(r) is populated by [CSRF] before it runs its verification,
+// so this is also valid from the CSRF error handler.
+func writeXSRFCookie(w http.ResponseWriter, r *http.Request, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     XSRFCookieName,
+		Value:    csrf.Token(r),
+		Path:     "/",
+		Secure:   secure,
+		HttpOnly: false, // the SPA must be able to read this one
+		SameSite: http.SameSiteLaxMode,
+	})
 }
