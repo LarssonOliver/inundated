@@ -49,22 +49,30 @@ export function useInfiniteScroll(
     observer.observe(sentinelElement.value);
   };
 
-  const cleanup = () => {
+  const disconnectObserver = () => {
     if (observer) {
       observer.disconnect();
       observer = null;
     }
   };
 
-  watch(
+  const stopWatch = watch(
     () => sentinelElement.value,
     (newElement) => {
-      cleanup();
+      disconnectObserver();
       if (newElement) {
         initObserver();
       }
     },
   );
+
+  // Full teardown: the observer AND the watcher. The watch callback only ever
+  // needs disconnectObserver() (stopping the watch there would kill re-observing
+  // on the next element change).
+  const cleanup = () => {
+    disconnectObserver();
+    stopWatch();
+  };
 
   initObserver();
 
