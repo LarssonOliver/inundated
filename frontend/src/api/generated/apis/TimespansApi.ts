@@ -78,8 +78,12 @@ export class TimespansApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/timespans`;
+
+        let urlPath = `/api/timespans`;
 
         return {
             path: urlPath,
@@ -123,8 +127,12 @@ export class TimespansApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/timespans/{timespanId}`;
+
+        let urlPath = `/api/timespans/{timespanId}`;
         urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
         return {
@@ -168,7 +176,7 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/timespans/{timespanId}`;
+        let urlPath = `/api/timespans/{timespanId}`;
         urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
         return {
@@ -214,7 +222,7 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/timespans`;
+        let urlPath = `/api/timespans`;
 
         return {
             path: urlPath,
@@ -266,8 +274,12 @@ export class TimespansApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/timespans/{timespanId}`;
+
+        let urlPath = `/api/timespans/{timespanId}`;
         urlPath = urlPath.replace('{timespanId}', encodeURIComponent(String(requestParameters['timespanId'])));
 
         return {
