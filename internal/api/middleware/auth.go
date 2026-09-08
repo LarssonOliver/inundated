@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -59,9 +60,14 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 
 			user, err := userService.GetUserBySub(r.Context(), session.Sub)
 			if err != nil {
-				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
-
-				http.SetCookie(w, auth.ClearSessionCookie(secure))
+				// Only tear the session down when the user is genuinely gone. A
+				// transient lookup failure (DB blip, timeout) must leave the
+				// still-valid session alone so the next request can retry,
+				// rather than forcing a full re-login.
+				if errors.Is(err, model.ErrNotFound) {
+					_ = sessionRepository.DeleteSession(r.Context(), sessionId)
+					http.SetCookie(w, auth.ClearSessionCookie(secure))
+				}
 
 				next.ServeHTTP(w, r)
 				return
