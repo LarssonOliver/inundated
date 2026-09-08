@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api"
@@ -12,6 +14,17 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
 )
+
+// loginBindingCookieName is the HttpOnly cookie planted by AuthLogin and echoed
+// back by AuthCallback. Binding the callback to a cookie the browser that
+// started the flow received means an attacker cannot get a victim's browser to
+// complete the attacker's authorization (login CSRF / session fixation): the
+// victim's browser carries no matching cookie.
+const loginBindingCookieName = "inundated_login"
+
+// loginBindingTTL bounds how long a started login may sit before its callback;
+// it matches the server-side login-state expiry.
+const loginBindingTTL = 5 * time.Minute
 
 type AuthHandler struct {
 	svc service.AuthService
@@ -61,11 +74,41 @@ func (a *AuthHandler) AuthLogin(ctx context.Context, request api.AuthLoginReques
 		return nil, errors.New("failed to initiate login")
 	}
 
+	state, err := stateFromAuthURL(authUrl)
+	if err != nil {
+		return nil, errors.New("failed to initiate login")
+	}
+
+	binding := &http.Cookie{
+		Name:     loginBindingCookieName,
+		Value:    state,
+		Path:     "/",
+		MaxAge:   int(loginBindingTTL.Seconds()),
+		HttpOnly: true,
+		Secure:   a.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	}
+
 	return api.AuthLogin302Response{
 		Headers: api.AuthLogin302ResponseHeaders{
-			Location: authUrl,
+			Location:  authUrl,
+			SetCookie: binding.String(),
 		},
 	}, nil
+}
+
+// stateFromAuthURL pulls the OAuth state parameter out of the provider
+// authorization URL so it can be planted as the browser-binding cookie.
+func stateFromAuthURL(authURL string) (string, error) {
+	u, err := url.Parse(authURL)
+	if err != nil {
+		return "", err
+	}
+	state := u.Query().Get("state")
+	if state == "" {
+		return "", errors.New("authorization URL carries no state")
+	}
+	return state, nil
 }
 
 // AuthCallback implements [api.AuthHandler].
@@ -77,6 +120,13 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 	stateId, err := uuid.Parse(request.Params.State)
 	if err != nil {
 		return api.AuthCallback400Response{}, nil
+	}
+
+	// The callback must come from the same browser that started the login: its
+	// binding cookie has to echo the state. A missing or mismatched cookie means
+	// this is a cross-browser/forged callback (login CSRF / session fixation).
+	if request.Params.InundatedLogin == nil || *request.Params.InundatedLogin != request.Params.State {
+		return api.AuthCallback401Response{}, nil
 	}
 
 	session, redirectUrl, err := a.svc.HandleCallback(ctx, stateId, request.Params.Code)

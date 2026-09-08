@@ -10,6 +10,17 @@ state:
   required: true
   schema:
     type: string
+loginBinding:
+  name: inundated_login
+  in: cookie
+  required: false
+  description: >
+    Browser-binding token planted as an HttpOnly cookie by the login redirect.
+    The callback only establishes a session when this matches the `state` query
+    parameter, so an attacker cannot complete their own authorization in a
+    victim's browser (login CSRF / session fixation).
+  schema:
+    type: string
 XSRFTokenHeader:
   name: X-XSRF-TOKEN
   in: header

@@ -249,6 +249,21 @@ func (siw *ServerInterfaceWrapper) AuthCallback(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	{
+		var cookie *http.Cookie
+
+		if cookie, err = r.Cookie("inundated_login"); err == nil {
+			var value LoginBinding
+			err = runtime.BindStyledParameterWithOptions("simple", "inundated_login", cookie.Value, &value, runtime.BindStyledParameterOptions{Explode: true, Required: false})
+			if err != nil {
+				siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "inundated_login", Err: err})
+				return
+			}
+			params.InundatedLogin = &value
+
+		}
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthCallback(w, r, params)
 	}))
@@ -1414,7 +1429,8 @@ func (response AuthLogin200Response) VisitAuthLoginResponse(w http.ResponseWrite
 }
 
 type AuthLogin302ResponseHeaders struct {
-	Location Location
+	Location  Location
+	SetCookie string
 }
 
 type AuthLogin302Response struct {
@@ -1423,6 +1439,7 @@ type AuthLogin302Response struct {
 
 func (response AuthLogin302Response) VisitAuthLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(302)
 	return nil
 }
