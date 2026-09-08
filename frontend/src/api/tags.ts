@@ -65,7 +65,10 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
 
     async updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag> {
       const updateTag = toApiUpdateTag(tag);
-      const response = await api.updateTag({ tagId: id, updateTag: updateTag });
+      const response = await api.updateTag({
+        tagId: id,
+        updateTag: updateTag,
+      });
       return tagMapper.fromApi(response);
     },
 

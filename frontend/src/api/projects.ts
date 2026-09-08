@@ -71,13 +71,18 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
 
     async createProject(project: Omit<Project, "id">): Promise<Project> {
       const newProject = toApiCreateProject(project);
-      const response = await api.createProject({ createProject: newProject });
+      const response = await api.createProject({
+        createProject: newProject,
+      });
       return projectMapper.fromApi(response);
     },
 
     async updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project> {
       const updateProject = toApiUpdateProject(project);
-      const response = await api.updateProject({ projectId: id, updateProject: updateProject });
+      const response = await api.updateProject({
+        projectId: id,
+        updateProject: updateProject,
+      });
       return projectMapper.fromApi(response);
     },
 
