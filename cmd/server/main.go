@@ -73,9 +73,6 @@ func shouldUseSecureCookies(cfg *config.Config) bool {
 	return strings.HasPrefix(cfg.PublicBaseURL, "https://")
 }
 
-// newHTTPServer wraps the router in a server with timeouts set, so a slow or
-// idle client can't pin a connection open indefinitely (Go's zero-value
-// http.Server has no read/write deadline at all).
 func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
@@ -111,18 +108,10 @@ func newRouter(
 		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
 			return r.URL.Path == "/health"
 		}))
-		// Rate limiting sits ahead of the CSRF HMAC and the session lookup so a
-		// flood is shed cheaply. The auth routes get a tighter budget because
-		// each callback fans out to the IdP. Both key on the RealIP-resolved
-		// address, so they are only as sound as the proxy in front.
 		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
-		r.Use(middleware.RateLimitByIPForPrefixes(
-			middleware.AuthRateLimitRequests, middleware.AuthRateLimitWindow, "/api/auth/"))
+		r.Use(middleware.RateLimitByIPForPrefixes(middleware.AuthRateLimitRequests, middleware.AuthRateLimitWindow, "/api/auth/"))
 		r.Use(middleware.MaxBodyBytes(middleware.MaxAPIBodyBytes))
 		r.Use(middleware.NoSniffJSON)
-		// CSRF only guards the API. The SPA reads its XSRF-TOKEN off the
-		// first (safe) /api/me probe; static assets and /health would
-		// otherwise pay the HMAC cost and carry a needless Set-Cookie.
 		r.Use(middleware.CSRF(csrfKey, isSecure))
 		r.Use(middleware.ExposeCSRFToken(isSecure))
 
