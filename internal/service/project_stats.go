@@ -18,7 +18,10 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		return model.ProjectStats{}, model.ErrInvalidArgument
 	}
 
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.ProjectStats{}, err
+	}
 
 	project, err := s.repository.GetProject(ctx, scope, input.ProjectID)
 	if err != nil {

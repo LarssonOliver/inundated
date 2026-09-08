@@ -8,7 +8,10 @@ import (
 )
 
 func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *ProjectServiceGetIncludes) (model.Project, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Project{}, err
+	}
 
 	project, err := s.repository.GetProject(ctx, scope, id)
 
@@ -32,22 +35,34 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 }
 
 func (s *ServiceImpl) ListProjects(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Page[model.Project]{}, err
+	}
 	return s.repository.ListProjects(ctx, scope, params)
 }
 
 func (s *ServiceImpl) CreateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Project{}, err
+	}
 	project.Id = uuid.New()
 	return s.repository.CreateProject(ctx, scope, project)
 }
 
 func (s *ServiceImpl) UpdateProject(ctx context.Context, project model.Project) (model.Project, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Project{}, err
+	}
 	return s.repository.UpdateProject(ctx, scope, project)
 }
 
 func (s *ServiceImpl) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return err
+	}
 	return s.repository.DeleteProject(ctx, scope, id)
 }

@@ -8,7 +8,10 @@ import (
 )
 
 func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
 
 	tag, err := s.repository.GetTag(ctx, scope, id)
 
@@ -32,22 +35,34 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 }
 
 func (s *ServiceImpl) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Page[model.Tag]{}, err
+	}
 	return s.repository.ListTags(ctx, scope, params)
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
 	tag.Id = uuid.New()
 	return s.repository.CreateTag(ctx, scope, tag)
 }
 
 func (s *ServiceImpl) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
 	return s.repository.UpdateTag(ctx, scope, tag)
 }
 
 func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	scope := ownerScope(ctx)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return err
+	}
 	return s.repository.DeleteTag(ctx, scope, id)
 }
