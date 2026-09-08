@@ -26,6 +26,8 @@ func TestAuthServiceImpl_BeginLogin(t *testing.T) {
 		authorizationUrl := "http://auth.example.com/authorize?state=some-state"
 		stateId := uuid.New()
 
+		var nonceInAuthRequest string
+
 		loginStateRepository := &repository.LoginStateRepoMock{
 			CreateLoginStateFn: func(ctx context.Context, state model.LoginState) (model.LoginState, error) {
 				require.False(t, createLoginStateCalled, "CreateLoginState should only be called once")
@@ -34,6 +36,8 @@ func TestAuthServiceImpl_BeginLogin(t *testing.T) {
 				require.NotEqual(t, uuid.Nil, state.Id, "LoginState ID should not be nil")
 				require.Equal(t, redirectUri, state.RedirectUri, "LoginState RedirectURI should match the provided redirectURI")
 				require.WithinDuration(t, state.ExpiresAt, time.Now(), 30*time.Minute, "LoginState ExpiresAt should be within 5 minutes from now")
+				require.NotEmpty(t, state.Nonce, "LoginState Nonce should be generated")
+				require.Equal(t, nonceInAuthRequest, state.Nonce, "the stored nonce must be the one sent in the authorization request")
 
 				state.Id = stateId // Set the ID to a known value for testing
 
@@ -42,7 +46,9 @@ func TestAuthServiceImpl_BeginLogin(t *testing.T) {
 			},
 		}
 		oidcClient := &auth.OIDCClientMock{
-			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+			BeginAuthorizationFn: func(state string, nonce string) (auth.OIDCAuthorizationRequest, error) {
+				require.NotEmpty(t, nonce, "BeginAuthorization must receive a nonce")
+				nonceInAuthRequest = nonce
 				return auth.OIDCAuthorizationRequest{
 					Uri:          authorizationUrl,
 					CodeVerifier: "some-code-verifier",
@@ -62,7 +68,7 @@ func TestAuthServiceImpl_BeginLogin(t *testing.T) {
 	t.Run("ReturnsErrorWhenOIDCClientFails", func(t *testing.T) {
 		loginStateRepository := &repository.LoginStateRepoMock{}
 		oidcClient := &auth.OIDCClientMock{
-			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+			BeginAuthorizationFn: func(state string, nonce string) (auth.OIDCAuthorizationRequest, error) {
 				return auth.OIDCAuthorizationRequest{}, errors.New("OIDC client error")
 			},
 		}
@@ -79,7 +85,7 @@ func TestAuthServiceImpl_BeginLogin(t *testing.T) {
 			},
 		}
 		oidcClient := &auth.OIDCClientMock{
-			BeginAuthorizationFn: func(state string) (auth.OIDCAuthorizationRequest, error) {
+			BeginAuthorizationFn: func(state string, nonce string) (auth.OIDCAuthorizationRequest, error) {
 				return auth.OIDCAuthorizationRequest{
 					Uri:          "http://auth.example.com/authorize?state=some-state",
 					CodeVerifier: "some-code-verifier",
@@ -114,6 +120,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 					Id:           loginStateID,
 					RedirectUri:  redirectUri,
 					CodeVerifier: "some-code-verifier",
+					Nonce:        "stored-nonce",
 					ExpiresAt:    time.Now().Add(5 * time.Minute),
 				}, nil
 			},
@@ -142,9 +149,10 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		oidcClient := &auth.OIDCClientMock{
-			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string) (auth.OIDCIdentity, error) {
+			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string, expectedNonce string) (auth.OIDCIdentity, error) {
 				require.Equal(t, verifier, codeVerifier, "Code verifier should match the one stored in login state")
 				require.Equal(t, codeVal, code, "Code should match the one provided in the callback")
+				require.Equal(t, "stored-nonce", expectedNonce, "the stored nonce must be handed to ExchangeCode for verification")
 				return auth.OIDCIdentity{
 					Sub:   userSub,
 					Name:  userName,
@@ -225,7 +233,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		}
 		sessionRepository := &repository.SessionRepoMock{}
 		oidcClient := &auth.OIDCClientMock{
-			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string) (auth.OIDCIdentity, error) {
+			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string, expectedNonce string) (auth.OIDCIdentity, error) {
 				return auth.OIDCIdentity{}, errors.New("OIDC client error")
 			},
 		}
@@ -255,7 +263,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		oidcClient := &auth.OIDCClientMock{
-			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string) (auth.OIDCIdentity, error) {
+			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string, expectedNonce string) (auth.OIDCIdentity, error) {
 				return auth.OIDCIdentity{
 					Sub:   "user-sub-123",
 					Name:  "user",
@@ -294,7 +302,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		oidcClient := &auth.OIDCClientMock{
-			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string) (auth.OIDCIdentity, error) {
+			ExchangeCodeFn: func(ctx context.Context, code string, codeVerifier string, expectedNonce string) (auth.OIDCIdentity, error) {
 				return auth.OIDCIdentity{
 					Sub:   "user-sub-123",
 					Name:  "user",

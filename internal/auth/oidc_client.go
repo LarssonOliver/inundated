@@ -12,8 +12,8 @@ import (
 )
 
 type OIDCClient interface {
-	BeginAuthorization(state string) (OIDCAuthorizationRequest, error)
-	ExchangeCode(ctx context.Context, code string, codeVerifier string) (OIDCIdentity, error)
+	BeginAuthorization(state string, nonce string) (OIDCAuthorizationRequest, error)
+	ExchangeCode(ctx context.Context, code string, codeVerifier string, expectedNonce string) (OIDCIdentity, error)
 }
 
 type OIDCIdentity struct {
@@ -66,13 +66,16 @@ type OIDCClientConfig struct {
 
 // BeginAuthorization implements [OIDCClient]. It generates a fresh PKCE
 // code_verifier and returns the provider authorization URL (bound to the
-// caller-supplied state and the S256 code_challenge derived from the
-// verifier). The caller is responsible for persisting the returned
-// CodeVerifier (e.g. server-side, keyed by state) and supplying it back to
-// ExchangeCode.
-func (o *OIDCClientImpl) BeginAuthorization(state string) (OIDCAuthorizationRequest, error) {
+// caller-supplied state, the caller-supplied nonce, and the S256
+// code_challenge derived from the verifier). The caller is responsible for
+// persisting the returned CodeVerifier and the nonce (e.g. server-side, keyed
+// by state) and supplying them back to ExchangeCode.
+func (o *OIDCClientImpl) BeginAuthorization(state string, nonce string) (OIDCAuthorizationRequest, error) {
 	if state == "" {
 		return OIDCAuthorizationRequest{}, errors.New("state must not be empty")
+	}
+	if nonce == "" {
+		return OIDCAuthorizationRequest{}, errors.New("nonce must not be empty")
 	}
 
 	oauthCfg, _, err := o.ready(context.Background())
@@ -81,7 +84,7 @@ func (o *OIDCClientImpl) BeginAuthorization(state string) (OIDCAuthorizationRequ
 	}
 
 	verifier := oauth2.GenerateVerifier()
-	authURL := oauthCfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	authURL := oauthCfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(nonce))
 
 	return OIDCAuthorizationRequest{
 		Uri:          authURL,
@@ -91,14 +94,18 @@ func (o *OIDCClientImpl) BeginAuthorization(state string) (OIDCAuthorizationRequ
 
 // ExchangeCode implements [OIDCClient]. It exchanges the authorization code
 // for tokens (presenting codeVerifier to satisfy PKCE), then verifies the
-// returned ID token's signature, issuer, audience and expiry before
-// extracting identity claims from it.
-func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVerifier string) (OIDCIdentity, error) {
+// returned ID token's signature, issuer, audience, expiry and nonce before
+// extracting identity claims from it. expectedNonce must equal the nonce
+// passed to the matching BeginAuthorization call.
+func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVerifier string, expectedNonce string) (OIDCIdentity, error) {
 	if code == "" {
 		return OIDCIdentity{}, errors.New("code must not be empty")
 	}
 	if codeVerifier == "" {
 		return OIDCIdentity{}, errors.New("codeVerifier must not be empty")
+	}
+	if expectedNonce == "" {
+		return OIDCIdentity{}, errors.New("expectedNonce must not be empty")
 	}
 
 	oauthCfg, verifier, err := o.ready(ctx)
@@ -119,6 +126,10 @@ func (o *OIDCClientImpl) ExchangeCode(ctx context.Context, code string, codeVeri
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return OIDCIdentity{}, fmt.Errorf("verifying id_token: %w", err)
+	}
+
+	if idToken.Nonce != expectedNonce {
+		return OIDCIdentity{}, errors.New("id_token nonce does not match the authentication request")
 	}
 
 	var claims struct {

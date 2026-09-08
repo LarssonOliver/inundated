@@ -113,6 +113,7 @@ func aLoginState() model.LoginState {
 		Id:           uuid.New(),
 		RedirectUri:  "https://example.com/callback",
 		CodeVerifier: "s3cr3t",
+		Nonce:        "n0nce",
 		ExpiresAt:    time.Now().Add(time.Hour).UTC(),
 	}
 }

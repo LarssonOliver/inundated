@@ -125,8 +125,8 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 	}
 
 	oidcMock := auth.NewOIDCClientMock()
-	oidcMock.BeginAuthorizationFn = func(state string) (auth.OIDCAuthorizationRequest, error) {
-		return auth.OIDCAuthorizationRequest{Uri: "https://issuer.example.com/authorize?state=" + state, CodeVerifier: "verifier"}, nil
+	oidcMock.BeginAuthorizationFn = func(state string, nonce string) (auth.OIDCAuthorizationRequest, error) {
+		return auth.OIDCAuthorizationRequest{Uri: "https://issuer.example.com/authorize?state=" + state + "&nonce=" + nonce, CodeVerifier: "verifier"}, nil
 	}
 
 	server, svc, repo := buildTestServer(oidcMock, secureCookies(cfg))
