@@ -16,9 +16,9 @@ import (
 // the request context and forward it to every repository call it makes.
 type scopedMethod struct {
 	name string
-	// invoke calls the method; return values and errors are ignored — the test
-	// only inspects the scopes the recording repo captured.
-	invoke func(ctx context.Context, s *service.ServiceImpl)
+	// invoke calls the method and returns its error; the test inspects both
+	// that error and the scopes the recording repo captured.
+	invoke func(ctx context.Context, s *service.ServiceImpl) error
 	// repoCalls is the exact number of scoped repository calls the method makes.
 	repoCalls int
 }
@@ -39,58 +39,70 @@ func scopedMethods() []scopedMethod {
 	timezoneRaw := "UTC"
 
 	return []scopedMethod{
-		{"GetTag", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.GetTag(ctx, uuid.New(), nil)
+		{"GetTag", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetTag(ctx, uuid.New(), nil)
+			return err
 		}, 1},
-		{"ListTags", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.ListTags(ctx, model.DefaultPaginationParams())
+		{"ListTags", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.ListTags(ctx, model.DefaultPaginationParams())
+			return err
 		}, 1},
-		{"CreateTag", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.CreateTag(ctx, model.Tag{Name: "t", Color: "#abcdef"})
+		{"CreateTag", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.CreateTag(ctx, model.Tag{Name: "t", Color: "#abcdef"})
+			return err
 		}, 1},
-		{"UpdateTag", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.UpdateTag(ctx, model.Tag{Id: uuid.New(), Name: "t", Color: "#abcdef"})
+		{"UpdateTag", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.UpdateTag(ctx, model.Tag{Id: uuid.New(), Name: "t", Color: "#abcdef"})
+			return err
 		}, 1},
-		{"DeleteTag", func(ctx context.Context, s *service.ServiceImpl) {
-			_ = s.DeleteTag(ctx, uuid.New())
-		}, 1},
-
-		{"GetProject", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.GetProject(ctx, uuid.New(), nil)
-		}, 1},
-		{"ListProjects", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.ListProjects(ctx, model.DefaultPaginationParams())
-		}, 1},
-		{"CreateProject", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.CreateProject(ctx, model.Project{Name: "p", Color: "#abcdef"})
-		}, 1},
-		{"UpdateProject", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.UpdateProject(ctx, model.Project{Id: uuid.New(), Name: "p", Color: "#abcdef"})
-		}, 1},
-		{"DeleteProject", func(ctx context.Context, s *service.ServiceImpl) {
-			_ = s.DeleteProject(ctx, uuid.New())
+		{"DeleteTag", func(ctx context.Context, s *service.ServiceImpl) error {
+			return s.DeleteTag(ctx, uuid.New())
 		}, 1},
 
-		{"GetTimespan", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.GetTimespan(ctx, uuid.New())
+		{"GetProject", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetProject(ctx, uuid.New(), nil)
+			return err
 		}, 1},
-		{"ListTimespans", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.ListTimespans(ctx, model.DefaultPaginationParams())
+		{"ListProjects", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.ListProjects(ctx, model.DefaultPaginationParams())
+			return err
 		}, 1},
-		{"CreateTimespan", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.CreateTimespan(ctx, validTimespan())
+		{"CreateProject", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.CreateProject(ctx, model.Project{Name: "p", Color: "#abcdef"})
+			return err
 		}, 1},
-		{"UpdateTimespan", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.UpdateTimespan(ctx, validTimespan())
+		{"UpdateProject", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.UpdateProject(ctx, model.Project{Id: uuid.New(), Name: "p", Color: "#abcdef"})
+			return err
 		}, 1},
-		{"DeleteTimespan", func(ctx context.Context, s *service.ServiceImpl) {
-			_ = s.DeleteTimespan(ctx, uuid.New())
+		{"DeleteProject", func(ctx context.Context, s *service.ServiceImpl) error {
+			return s.DeleteProject(ctx, uuid.New())
+		}, 1},
+
+		{"GetTimespan", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetTimespan(ctx, uuid.New())
+			return err
+		}, 1},
+		{"ListTimespans", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.ListTimespans(ctx, model.DefaultPaginationParams())
+			return err
+		}, 1},
+		{"CreateTimespan", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.CreateTimespan(ctx, validTimespan())
+			return err
+		}, 1},
+		{"UpdateTimespan", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.UpdateTimespan(ctx, validTimespan())
+			return err
+		}, 1},
+		{"DeleteTimespan", func(ctx context.Context, s *service.ServiceImpl) error {
+			return s.DeleteTimespan(ctx, uuid.New())
 		}, 1},
 
 		// GetProjectStats must pass the SAME scope to both GetProject and
 		// AggregateTimeSpentByTagsAndBuckets (spec Testing section).
-		{"GetProjectStats", func(ctx context.Context, s *service.ServiceImpl) {
-			_, _ = s.GetProjectStats(ctx, service.GetProjectStatsInput{
+		{"GetProjectStats", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetProjectStats(ctx, service.GetProjectStatsInput{
 				ProjectID:      uuid.New(),
 				Metric:         model.ProjectStatsMetricTimeSpent,
 				IntervalRaw:    &intervalRaw,
@@ -98,6 +110,7 @@ func scopedMethods() []scopedMethod {
 				TimezoneRaw:    &timezoneRaw,
 				Now:            time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
 			})
+			return err
 		}, 2},
 	}
 }
@@ -221,7 +234,7 @@ func TestService_ScopedMethodsThreadContextScope(t *testing.T) {
 				var rec []model.OwnerScope
 				s := service.NewService(recordingRepo(&rec))
 
-				m.invoke(sc.ctx(), s)
+				_ = m.invoke(sc.ctx(), s)
 
 				require.Len(t, rec, m.repoCalls, "unexpected number of scoped repository calls")
 				for i, scope := range rec {
@@ -230,5 +243,25 @@ func TestService_ScopedMethodsThreadContextScope(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestService_ScopedMethodsFailClosedOnZeroIdUser proves that a request whose
+// context carries a user with the zero UUID is rejected outright, not silently
+// served from the unowned pool. Scope resolution is the one gate on data
+// visibility, so a malformed authenticated request must fail closed.
+func TestService_ScopedMethodsFailClosedOnZeroIdUser(t *testing.T) {
+	ctx := model.SetUserInContext(context.Background(), model.User{Id: uuid.Nil})
+
+	for _, m := range scopedMethods() {
+		t.Run(m.name, func(t *testing.T) {
+			var rec []model.OwnerScope
+			s := service.NewService(recordingRepo(&rec))
+
+			err := m.invoke(ctx, s)
+
+			require.ErrorIs(t, err, service.ErrAmbiguousOwnerScope)
+			require.Empty(t, rec, "no repository call may run once scope resolution has failed")
+		})
 	}
 }
