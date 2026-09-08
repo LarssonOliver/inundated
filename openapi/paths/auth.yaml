@@ -21,6 +21,12 @@ login:
             description: Authorization endpoint.
             schema:
               $ref: "../schemas/shared.yaml#/Location"
+          Set-Cookie:
+            description: >
+              HttpOnly browser-binding cookie echoed back by the callback to
+              defeat login CSRF / session fixation.
+            schema:
+              type: string
       "400":
         description: Bad request
 callback:
@@ -36,6 +42,7 @@ callback:
     parameters:
       - $ref: "../parameters/auth.yaml#/code"
       - $ref: "../parameters/auth.yaml#/state"
+      - $ref: "../parameters/auth.yaml#/loginBinding"
     responses:
       "200":
         description: >

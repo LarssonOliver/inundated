@@ -50,7 +50,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 		mock := &service.AuthServiceMock{
 			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
 				gotRedirect = redirectURI
-				return "https://provider.example/authorize", nil
+				return "https://provider.example/authorize?state=xyz", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -69,7 +69,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 		mock := &service.AuthServiceMock{
 			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
 				gotRedirect = redirectURI
-				return "https://provider.example/authorize", nil
+				return "https://provider.example/authorize?state=xyz", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -101,7 +101,7 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 				mock := &service.AuthServiceMock{
 					BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
 						got = redirectURI
-						return "https://provider.example/authorize", nil
+						return "https://provider.example/authorize?state=xyz", nil
 					},
 				}
 				h := handlers.NewAuthHandler(mock, true)
@@ -182,6 +182,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 	t.Run("service error returns 401", func(t *testing.T) {
 		state := uuid.New()
+		binding := state.String()
 		mock := &service.AuthServiceMock{
 			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
 				assert.Equal(t, state, stateID)
@@ -192,7 +193,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
-			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String(), InundatedLogin: &binding},
 		})
 
 		require.NoError(t, err)
@@ -201,6 +202,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 	t.Run("success returns 302 with redirect location and session cookie", func(t *testing.T) {
 		state := uuid.New()
+		binding := state.String()
 		sessionID := uuid.New()
 		expiresAt := time.Now().Add(24 * time.Hour).UTC()
 		const wantRedirect = "/dashboard"
@@ -220,7 +222,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		h := handlers.NewAuthHandler(mock, true)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
-			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String(), InundatedLogin: &binding},
 		})
 
 		require.NoError(t, err)
@@ -243,6 +245,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 	t.Run("plain-HTTP origin issues the session cookie without the Secure attribute", func(t *testing.T) {
 		state := uuid.New()
+		binding := state.String()
 		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
 		mock := &service.AuthServiceMock{
 			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
@@ -252,12 +255,115 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		h := handlers.NewAuthHandler(mock, false)
 
 		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
-			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String(), InundatedLogin: &binding},
 		})
 
 		require.NoError(t, err)
 		got := resp.(api.AuthCallback302Response)
 		assert.NotContains(t, got.Headers.SetCookie, "Secure")
+	})
+}
+
+// --- login-binding cookie (login CSRF / session fixation defense) ----------
+
+// parseSetCookie extracts the single cookie encoded in a Set-Cookie header value.
+func parseSetCookie(t *testing.T, value string) *http.Cookie {
+	t.Helper()
+	header := http.Header{}
+	header.Add("Set-Cookie", value)
+	cookies := (&http.Response{Header: header}).Cookies()
+	require.Len(t, cookies, 1, "expected exactly one Set-Cookie")
+	return cookies[0]
+}
+
+func TestAuthHandler_LoginBinding(t *testing.T) {
+	authURL := "https://provider.example/authorize?client_id=x&state=abc123&code_challenge=y"
+
+	t.Run("AuthLogin plants an HttpOnly binding cookie carrying the state", func(t *testing.T) {
+		mock := &service.AuthServiceMock{
+			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
+				return authURL, nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		resp, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{})
+		require.NoError(t, err)
+		got := resp.(api.AuthLogin302Response)
+
+		cookie := parseSetCookie(t, got.Headers.SetCookie)
+		assert.Equal(t, "inundated_login", cookie.Name)
+		assert.Equal(t, "abc123", cookie.Value)
+		assert.True(t, cookie.HttpOnly)
+		assert.True(t, cookie.Secure)
+		assert.Equal(t, http.SameSiteLaxMode, cookie.SameSite)
+	})
+
+	t.Run("plain-HTTP origin plants the binding cookie without Secure", func(t *testing.T) {
+		mock := &service.AuthServiceMock{
+			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
+				return authURL, nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, false)
+
+		resp, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{})
+		require.NoError(t, err)
+		got := resp.(api.AuthLogin302Response)
+		assert.NotContains(t, got.Headers.SetCookie, "Secure")
+	})
+
+	t.Run("AuthCallback with no binding cookie is rejected with 401", func(t *testing.T) {
+		state := uuid.New()
+		mock := &service.AuthServiceMock{
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+				t.Fatal("HandleCallback must not run without a matching binding cookie")
+				return model.Session{}, "", nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String()},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.AuthCallback401Response{}, resp)
+	})
+
+	t.Run("AuthCallback with a binding cookie that does not match state is rejected with 401", func(t *testing.T) {
+		state := uuid.New()
+		other := uuid.NewString()
+		mock := &service.AuthServiceMock{
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+				t.Fatal("HandleCallback must not run for a mismatched binding cookie")
+				return model.Session{}, "", nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
+			Params: api.AuthCallbackParams{Code: "authcode", State: state.String(), InundatedLogin: &other},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.AuthCallback401Response{}, resp)
+	})
+
+	t.Run("AuthCallback proceeds when the binding cookie matches state", func(t *testing.T) {
+		state := uuid.New()
+		binding := state.String()
+		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(time.Hour)}
+		mock := &service.AuthServiceMock{
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+				return session, "/", nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		resp, err := h.AuthCallback(context.Background(), api.AuthCallbackRequestObject{
+			Params: api.AuthCallbackParams{Code: "authcode", State: binding, InundatedLogin: &binding},
+		})
+		require.NoError(t, err)
+		assert.IsType(t, api.AuthCallback302Response{}, resp)
 	})
 }
 
