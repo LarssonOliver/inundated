@@ -16,13 +16,14 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 		return model.Timespan{}, fmt.Errorf("GetTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
 		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
-		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var ts model.Timespan
-	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
 	}
@@ -156,11 +157,12 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 			return fmt.Errorf("UpdateTimespan: %w", model.ErrInvalidReference)
 		}
 
-		const update = `
+		ownerSQL, args := ownerPredicate("user_id", scope, []any{timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime})
+		update := `
 			UPDATE timespans SET name = $2, start_time = $3, end_time = $4
-			WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $5
+			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
 			RETURNING id, name, start_time, end_time, user_id`
-		err = q.QueryRow(ctx, update, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
+		err = q.QueryRow(ctx, update, args...).
 			Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime, &updated.UserId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
@@ -182,12 +184,13 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerSco
 		return fmt.Errorf("DeleteTimespan: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
 		UPDATE timespans
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
-	res, err := r.db.Exec(ctx, q, id, scope.UserID())
+	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("DeleteTimespan: %w", err)
 	}
