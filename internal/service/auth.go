@@ -97,11 +97,17 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		return model.Session{}, "", err
 	}
 
+	token, err := newSessionToken()
+	if err != nil {
+		return model.Session{}, "", err
+	}
+
 	now := time.Now()
 	session = model.Session{
 		Id:        uuid.New(),
 		UserId:    user.Id,
 		Sub:       identity.Sub,
+		Token:     token,
 		CreatedAt: now,
 		ExpiresAt: now.Add(8 * time.Hour),
 	}
@@ -116,9 +122,19 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 
 // newNonce returns a cryptographically random, URL-safe OIDC nonce.
 func newNonce() (string, error) {
+	return randomToken("nonce")
+}
+
+// newSessionToken returns the cryptographically random secret placed in the
+// session cookie. Only its hash is stored (see model.HashSessionToken).
+func newSessionToken() (string, error) {
+	return randomToken("session token")
+}
+
+func randomToken(label string) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("generating nonce: %w", err)
+		return "", fmt.Errorf("generating %s: %w", label, err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }

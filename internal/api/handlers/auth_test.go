@@ -209,6 +209,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 		session := model.Session{
 			Id:        sessionID,
+			Token:     "the-opaque-session-token",
 			ExpiresAt: expiresAt,
 		}
 
@@ -233,7 +234,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 		wantCookie := http.Cookie{
 			Name:     model.SessionCookieName,
-			Value:    sessionID.String(),
+			Value:    session.Token,
 			Path:     "/",
 			HttpOnly: true,
 			Secure:   true,
@@ -241,12 +242,13 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 			Expires:  expiresAt,
 		}
 		assert.Equal(t, wantCookie.String(), got.Headers.SetCookie)
+		assert.NotContains(t, got.Headers.SetCookie, sessionID.String(), "the cookie must carry the token, not the session id")
 	})
 
 	t.Run("plain-HTTP origin issues the session cookie without the Secure attribute", func(t *testing.T) {
 		state := uuid.New()
 		binding := state.String()
-		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
+		session := model.Session{Id: uuid.New(), Token: "tok", ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
 		mock := &service.AuthServiceMock{
 			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
 				return session, "/", nil

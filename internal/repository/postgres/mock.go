@@ -144,9 +144,9 @@ func (m *MockRepository) DeleteSession(ctx context.Context, id uuid.UUID) error 
 	return args.Error(0)
 }
 
-// GetSession implements [repository.SessionRepository].
-func (m *MockRepository) GetSession(ctx context.Context, id uuid.UUID) (model.Session, error) {
-	args := m.Called(ctx, id)
+// GetSessionByToken implements [repository.SessionRepository].
+func (m *MockRepository) GetSessionByToken(ctx context.Context, token string) (model.Session, error) {
+	args := m.Called(ctx, token)
 	return args.Get(0).(model.Session), args.Error(1)
 }
 
