@@ -18,6 +18,11 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	SessionCookieScopes = "sessionCookie.Scopes"
+	XsrfTokenScopes     = "xsrfToken.Scopes"
+)
+
 // Defines values for ProjectStatsMetric.
 const (
 	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
@@ -67,6 +72,9 @@ type CreateTimespan struct {
 
 // HexColor defines model for HexColor.
 type HexColor = string
+
+// Location defines model for Location.
+type Location = string
 
 // PaginatedProjects defines model for PaginatedProjects.
 type PaginatedProjects struct {
@@ -192,6 +200,24 @@ type UpdateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// User defines model for User.
+type User struct {
+	// Email Email from OIDC token
+	Email openapi_types.Email `json:"email"`
+
+	// Id Internal unique identifier for this user
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Display name from OIDC token
+	Name *string `json:"name,omitempty"`
+
+	// Sub OIDC subject claim (unique per provider, immutable identifier)
+	Sub string `json:"sub"`
+}
+
+// Code defines model for code.
+type Code = string
+
 // Granularity defines model for granularity.
 type Granularity = string
 
@@ -204,6 +230,9 @@ type Interval = string
 // Limit defines model for limit.
 type Limit = int
 
+// LoginBinding defines model for loginBinding.
+type LoginBinding = string
+
 // Offset defines model for offset.
 type Offset = int
 
@@ -213,6 +242,12 @@ type ProjectIdPath = openapi_types.UUID
 // ProjectStatsMetrics defines model for projectStatsMetrics.
 type ProjectStatsMetrics string
 
+// Redirect defines model for redirect.
+type Redirect = string
+
+// State defines model for state.
+type State = string
+
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
 
@@ -221,6 +256,21 @@ type TimespanIdPath = openapi_types.UUID
 
 // Timezone defines model for timezone.
 type Timezone = string
+
+// AuthCallbackParams defines parameters for AuthCallback.
+type AuthCallbackParams struct {
+	Code  Code  `form:"code" json:"code"`
+	State State `form:"state" json:"state"`
+
+	// InundatedLogin Browser-binding token planted as an HttpOnly cookie by the login redirect. The callback only establishes a session when this matches the `state` query parameter, so an attacker cannot complete their own authorization in a victim's browser (login CSRF / session fixation).
+	InundatedLogin *LoginBinding `form:"inundated_login,omitempty" json:"inundated_login,omitempty"`
+}
+
+// AuthLoginParams defines parameters for AuthLogin.
+type AuthLoginParams struct {
+	// Redirect Optional application-relative path to return to after successful authentication.
+	Redirect *Redirect `form:"redirect,omitempty" json:"redirect,omitempty"`
+}
 
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
@@ -379,6 +429,18 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// AuthCallback request
+	AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthLogin request
+	AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthLogout request
+	AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCurrentUser request
+	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListProjects request
 	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -438,6 +500,54 @@ type ClientInterface interface {
 	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AuthLogin(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLoginRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLogoutRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCurrentUserRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -704,6 +814,183 @@ func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, 
 	return c.Client.Do(req)
 }
 
+// NewAuthCallbackRequest generates requests for AuthCallback
+func NewAuthCallbackRequest(server string, params *AuthCallbackParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "code", runtime.ParamLocationQuery, params.Code); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "state", runtime.ParamLocationQuery, params.State); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.InundatedLogin != nil {
+			var cookieParam0 string
+
+			cookieParam0, err = runtime.StyleParamWithLocation("simple", true, "inundated_login", runtime.ParamLocationCookie, *params.InundatedLogin)
+			if err != nil {
+				return nil, err
+			}
+
+			cookie0 := &http.Cookie{
+				Name:  "inundated_login",
+				Value: cookieParam0,
+			}
+			req.AddCookie(cookie0)
+		}
+	}
+	return req, nil
+}
+
+// NewAuthLoginRequest generates requests for AuthLogin
+func NewAuthLoginRequest(server string, params *AuthLoginParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Redirect != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "redirect", runtime.ParamLocationQuery, *params.Redirect); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthLogoutRequest generates requests for AuthLogout
+func NewAuthLogoutRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCurrentUserRequest generates requests for GetCurrentUser
+func NewGetCurrentUserRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListProjectsRequest generates requests for ListProjects
 func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Request, error) {
 	var err error
@@ -713,7 +1000,7 @@ func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects")
+	operationPath := fmt.Sprintf("/api/projects")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -789,7 +1076,7 @@ func NewCreateProjectRequestWithBody(server string, contentType string, body io.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects")
+	operationPath := fmt.Sprintf("/api/projects")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -825,7 +1112,7 @@ func NewDeleteProjectRequest(server string, projectId ProjectIdPath) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/projects/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -859,7 +1146,7 @@ func NewGetProjectRequest(server string, projectId ProjectIdPath, params *GetPro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/projects/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -926,7 +1213,7 @@ func NewUpdateProjectRequestWithBody(server string, projectId ProjectIdPath, con
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/projects/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -962,7 +1249,7 @@ func NewGetProjectStatsRequest(server string, projectId ProjectIdPath, params *G
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s/stats", pathParam0)
+	operationPath := fmt.Sprintf("/api/projects/%s/stats", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1055,7 +1342,7 @@ func NewListTagsRequest(server string, params *ListTagsParams) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tags")
+	operationPath := fmt.Sprintf("/api/tags")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1131,7 +1418,7 @@ func NewCreateTagRequestWithBody(server string, contentType string, body io.Read
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tags")
+	operationPath := fmt.Sprintf("/api/tags")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1167,7 +1454,7 @@ func NewDeleteTagRequest(server string, tagId TagIdPath) (*http.Request, error) 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tags/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/tags/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1201,7 +1488,7 @@ func NewGetTagRequest(server string, tagId TagIdPath, params *GetTagParams) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tags/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/tags/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1268,7 +1555,7 @@ func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, contentType str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tags/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/tags/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1297,7 +1584,7 @@ func NewListTimespansRequest(server string, params *ListTimespansParams) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/timespans")
+	operationPath := fmt.Sprintf("/api/timespans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1373,7 +1660,7 @@ func NewCreateTimespanRequestWithBody(server string, contentType string, body io
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/timespans")
+	operationPath := fmt.Sprintf("/api/timespans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1409,7 +1696,7 @@ func NewDeleteTimespanRequest(server string, timespanId TimespanIdPath) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1443,7 +1730,7 @@ func NewGetTimespanRequest(server string, timespanId TimespanIdPath) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1488,7 +1775,7 @@ func NewUpdateTimespanRequestWithBody(server string, timespanId TimespanIdPath, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/timespans/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/timespans/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1551,6 +1838,18 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// AuthCallbackWithResponse request
+	AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error)
+
+	// AuthLoginWithResponse request
+	AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+
+	// AuthLogoutWithResponse request
+	AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+
+	// GetCurrentUserWithResponse request
+	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
+
 	// ListProjectsWithResponse request
 	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
 
@@ -1610,6 +1909,91 @@ type ClientWithResponsesInterface interface {
 	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
 	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+}
+
+type AuthCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AuthLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AuthLogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetCurrentUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *User
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCurrentUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCurrentUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type ListProjectsResponse struct {
@@ -1961,6 +2345,42 @@ func (r UpdateTimespanResponse) StatusCode() int {
 	return 0
 }
 
+// AuthCallbackWithResponse request returning *AuthCallbackResponse
+func (c *ClientWithResponses) AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error) {
+	rsp, err := c.AuthCallback(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthCallbackResponse(rsp)
+}
+
+// AuthLoginWithResponse request returning *AuthLoginResponse
+func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, params *AuthLoginParams, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
+	rsp, err := c.AuthLogin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthLoginResponse(rsp)
+}
+
+// AuthLogoutWithResponse request returning *AuthLogoutResponse
+func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
+	rsp, err := c.AuthLogout(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthLogoutResponse(rsp)
+}
+
+// GetCurrentUserWithResponse request returning *GetCurrentUserResponse
+func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error) {
+	rsp, err := c.GetCurrentUser(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCurrentUserResponse(rsp)
+}
+
 // ListProjectsWithResponse request returning *ListProjectsResponse
 func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
 	rsp, err := c.ListProjects(ctx, params, reqEditors...)
@@ -2151,6 +2571,80 @@ func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, ti
 		return nil, err
 	}
 	return ParseUpdateTimespanResponse(rsp)
+}
+
+// ParseAuthCallbackResponse parses an HTTP response from a AuthCallbackWithResponse call
+func ParseAuthCallbackResponse(rsp *http.Response) (*AuthCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
+func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseAuthLogoutResponse parses an HTTP response from a AuthLogoutWithResponse call
+func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthLogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetCurrentUserResponse parses an HTTP response from a GetCurrentUserWithResponse call
+func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCurrentUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call

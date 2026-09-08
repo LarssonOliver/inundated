@@ -1,15 +1,15 @@
 # ProjectsApi
 
-All URIs are relative to */api*
+All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createProject**](ProjectsApi.md#createproject) | **POST** /projects | Create project |
-| [**deleteProject**](ProjectsApi.md#deleteproject) | **DELETE** /projects/{projectId} | Delete project |
-| [**getProject**](ProjectsApi.md#getproject) | **GET** /projects/{projectId} | Get project |
-| [**getProjectStats**](ProjectsApi.md#getprojectstats) | **GET** /projects/{projectId}/stats | Get timeseries stats for a project |
-| [**listProjects**](ProjectsApi.md#listprojects) | **GET** /projects | List projects |
-| [**updateProject**](ProjectsApi.md#updateproject) | **PATCH** /projects/{projectId} | Update project |
+| [**createProject**](ProjectsApi.md#createproject) | **POST** /api/projects | Create project |
+| [**deleteProject**](ProjectsApi.md#deleteproject) | **DELETE** /api/projects/{projectId} | Delete project |
+| [**getProject**](ProjectsApi.md#getproject) | **GET** /api/projects/{projectId} | Get project |
+| [**getProjectStats**](ProjectsApi.md#getprojectstats) | **GET** /api/projects/{projectId}/stats | Get timeseries stats for a project |
+| [**listProjects**](ProjectsApi.md#listprojects) | **GET** /api/projects | List projects |
+| [**updateProject**](ProjectsApi.md#updateproject) | **PATCH** /api/projects/{projectId} | Update project |
 
 
 
@@ -30,7 +30,13 @@ import type { CreateProjectRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // CreateProject
@@ -62,7 +68,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -96,7 +102,13 @@ import type { DeleteProjectRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // string
@@ -128,7 +140,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -162,7 +174,11 @@ import type { GetProjectRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // string
@@ -197,7 +213,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -233,7 +249,11 @@ import type { GetProjectStatsRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // string
@@ -277,7 +297,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -313,7 +333,11 @@ import type { ListProjectsRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
@@ -348,7 +372,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -382,7 +406,13 @@ import type { UpdateProjectRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new ProjectsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new ProjectsApi(config);
 
   const body = {
     // string
@@ -417,7 +447,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 

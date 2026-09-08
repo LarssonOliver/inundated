@@ -79,8 +79,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/tags`;
+
+        let urlPath = `/api/tags`;
 
         return {
             path: urlPath,
@@ -124,8 +128,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/tags/{tagId}`;
+
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {
@@ -173,7 +181,7 @@ export class TagsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/tags/{tagId}`;
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {
@@ -219,7 +227,7 @@ export class TagsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/tags`;
+        let urlPath = `/api/tags`;
 
         return {
             path: urlPath,
@@ -271,8 +279,12 @@ export class TagsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/tags/{tagId}`;
+
+        let urlPath = `/api/tags/{tagId}`;
         urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
 
         return {

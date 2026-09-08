@@ -92,8 +92,12 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/projects`;
+
+        let urlPath = `/api/projects`;
 
         return {
             path: urlPath,
@@ -137,8 +141,12 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/projects/{projectId}`;
+
+        let urlPath = `/api/projects/{projectId}`;
         urlPath = urlPath.replace('{projectId}', encodeURIComponent(String(requestParameters['projectId'])));
 
         return {
@@ -186,7 +194,7 @@ export class ProjectsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/projects/{projectId}`;
+        let urlPath = `/api/projects/{projectId}`;
         urlPath = urlPath.replace('{projectId}', encodeURIComponent(String(requestParameters['projectId'])));
 
         return {
@@ -254,7 +262,7 @@ export class ProjectsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/projects/{projectId}/stats`;
+        let urlPath = `/api/projects/{projectId}/stats`;
         urlPath = urlPath.replace('{projectId}', encodeURIComponent(String(requestParameters['projectId'])));
 
         return {
@@ -302,7 +310,7 @@ export class ProjectsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/projects`;
+        let urlPath = `/api/projects`;
 
         return {
             path: urlPath,
@@ -354,8 +362,12 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
+        }
 
-        let urlPath = `/projects/{projectId}`;
+
+        let urlPath = `/api/projects/{projectId}`;
         urlPath = urlPath.replace('{projectId}', encodeURIComponent(String(requestParameters['projectId'])));
 
         return {

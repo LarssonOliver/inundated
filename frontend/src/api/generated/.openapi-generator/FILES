@@ -1,7 +1,10 @@
+apis/AuthApi.ts
 apis/ProjectsApi.ts
 apis/TagsApi.ts
 apis/TimespansApi.ts
+apis/UsersApi.ts
 apis/index.ts
+docs/AuthApi.md
 docs/CreateProject.md
 docs/CreateTag.md
 docs/CreateTimespan.md
@@ -20,6 +23,8 @@ docs/TimespansApi.md
 docs/UpdateProject.md
 docs/UpdateTag.md
 docs/UpdateTimespan.md
+docs/User.md
+docs/UsersApi.md
 index.ts
 models/CreateProject.ts
 models/CreateTag.ts
@@ -36,5 +41,6 @@ models/Timespan.ts
 models/UpdateProject.ts
 models/UpdateTag.ts
 models/UpdateTimespan.ts
+models/User.ts
 models/index.ts
 runtime.ts

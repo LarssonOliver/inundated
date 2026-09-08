@@ -1,14 +1,14 @@
 # TagsApi
 
-All URIs are relative to */api*
+All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTag**](TagsApi.md#createtag) | **POST** /tags | Create tag |
-| [**deleteTag**](TagsApi.md#deletetag) | **DELETE** /tags/{tagId} | Delete tag |
-| [**getTag**](TagsApi.md#gettag) | **GET** /tags/{tagId} | Get tag |
-| [**listTags**](TagsApi.md#listtags) | **GET** /tags | List tags |
-| [**updateTag**](TagsApi.md#updatetag) | **PATCH** /tags/{tagId} | Update tag |
+| [**createTag**](TagsApi.md#createtag) | **POST** /api/tags | Create tag |
+| [**deleteTag**](TagsApi.md#deletetag) | **DELETE** /api/tags/{tagId} | Delete tag |
+| [**getTag**](TagsApi.md#gettag) | **GET** /api/tags/{tagId} | Get tag |
+| [**listTags**](TagsApi.md#listtags) | **GET** /api/tags | List tags |
+| [**updateTag**](TagsApi.md#updatetag) | **PATCH** /api/tags/{tagId} | Update tag |
 
 
 
@@ -29,7 +29,13 @@ import type { CreateTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // CreateTag
@@ -61,7 +67,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -95,7 +101,13 @@ import type { DeleteTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // string
@@ -127,7 +139,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -161,7 +173,11 @@ import type { GetTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // string
@@ -196,7 +212,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -230,7 +246,11 @@ import type { ListTagsRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
@@ -265,7 +285,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -299,7 +319,13 @@ import type { UpdateTagRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TagsApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TagsApi(config);
 
   const body = {
     // string
@@ -334,7 +360,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 

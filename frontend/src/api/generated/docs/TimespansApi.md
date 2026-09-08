@@ -1,14 +1,14 @@
 # TimespansApi
 
-All URIs are relative to */api*
+All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /timespans | Create time span |
-| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /timespans/{timespanId} | Delete time span |
-| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /timespans/{timespanId} | Get time span |
-| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /timespans | List time spans |
-| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /timespans/{timespanId} | Update time span |
+| [**createTimespan**](TimespansApi.md#createtimespan) | **POST** /api/timespans | Create time span |
+| [**deleteTimespan**](TimespansApi.md#deletetimespan) | **DELETE** /api/timespans/{timespanId} | Delete time span |
+| [**getTimespan**](TimespansApi.md#gettimespan) | **GET** /api/timespans/{timespanId} | Get time span |
+| [**listTimespans**](TimespansApi.md#listtimespans) | **GET** /api/timespans | List time spans |
+| [**updateTimespan**](TimespansApi.md#updatetimespan) | **PATCH** /api/timespans/{timespanId} | Update time span |
 
 
 
@@ -29,7 +29,13 @@ import type { CreateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // CreateTimespan
@@ -61,7 +67,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -95,7 +101,13 @@ import type { DeleteTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // string
@@ -127,7 +139,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
@@ -161,7 +173,11 @@ import type { GetTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // string
@@ -193,7 +209,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -227,7 +243,11 @@ import type { ListTimespansRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // number | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  (optional)
@@ -262,7 +282,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -296,7 +316,13 @@ import type { UpdateTimespanRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new TimespansApi();
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // To configure API key authorization: xsrfToken
+    apiKey: "YOUR API KEY",
+  });
+  const api = new TimespansApi(config);
 
   const body = {
     // string
@@ -331,7 +357,7 @@ example().catch(console.error);
 
 ### Authorization
 
-No authorization required
+[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
 
 ### HTTP request headers
 
