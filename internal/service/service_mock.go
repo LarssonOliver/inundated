@@ -146,7 +146,7 @@ func (u *UserServiceMock) GetOrCreateUserByIdentity(ctx context.Context, identit
 
 type AuthServiceMock struct {
 	BeginLoginFn     func(ctx context.Context, redirectURI string) (authorizationURL string, err error)
-	HandleCallbackFn func(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error)
+	HandleCallbackFn func(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, token string, redirectURI string, err error)
 	LogoutSessionFn  func(ctx context.Context, sessionId uuid.UUID) error
 }
 
@@ -158,7 +158,7 @@ func (a *AuthServiceMock) BeginLogin(ctx context.Context, redirectURI string) (a
 }
 
 // HandleCallback implements [AuthService].
-func (a *AuthServiceMock) HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error) {
+func (a *AuthServiceMock) HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, token string, redirectURI string, err error) {
 	return a.HandleCallbackFn(ctx, stateID, code)
 }
 

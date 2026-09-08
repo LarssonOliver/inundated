@@ -12,14 +12,14 @@ import (
 )
 
 // CreateSession implements [repository.SessionRepository].
-func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
+func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
 	if session.UserId == uuid.Nil {
 		return model.Session{}, fmt.Errorf("CreateSession: user_id: %w", model.ErrInvalidArgument)
 	}
 	if session.Sub == "" {
 		return model.Session{}, fmt.Errorf("CreateSession: sub must not be empty: %w", model.ErrInvalidArgument)
 	}
-	if session.Token == "" {
+	if token == "" {
 		return model.Session{}, fmt.Errorf("CreateSession: token must not be empty: %w", model.ErrInvalidArgument)
 	}
 	if session.Id == uuid.Nil {
@@ -35,7 +35,7 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 		RETURNING id, user_id, sub, created_at, expires_at`
 
 	var created model.Session
-	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, model.HashSessionToken(session.Token), session.CreatedAt, session.ExpiresAt).
+	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, model.HashSessionToken(token), session.CreatedAt, session.ExpiresAt).
 		Scan(&created.Id, &created.UserId, &created.Sub, &created.CreatedAt, &created.ExpiresAt)
 	if isUniqueViolation(err) {
 		return model.Session{}, fmt.Errorf("CreateSession %s: %w", session.Id, model.ErrAlreadyExists)
@@ -43,7 +43,6 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 	if err != nil {
 		return model.Session{}, fmt.Errorf("CreateSession: %w", err)
 	}
-	created.Token = session.Token
 	return created, nil
 }
 

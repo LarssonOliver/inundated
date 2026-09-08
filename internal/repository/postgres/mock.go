@@ -133,8 +133,8 @@ func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context,
 }
 
 // CreateSession implements [repository.SessionRepository].
-func (m *MockRepository) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
-	args := m.Called(ctx, session)
+func (m *MockRepository) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
+	args := m.Called(ctx, session, token)
 	return args.Get(0).(model.Session), args.Error(1)
 }
 

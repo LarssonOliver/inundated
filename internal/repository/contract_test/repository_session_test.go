@@ -17,23 +17,22 @@ import (
 func TestSessionRepositoryContract(t *testing.T) {
 	ctx := context.Background()
 
-	aSession := func(sub, token string) model.Session {
+	aSession := func(sub, token string) (model.Session, string) {
 		return model.Session{
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       sub,
-			Token:     token,
 			CreatedAt: time.Now().Add(-time.Minute).UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
-		}
+		}, token
 	}
 
 	run := func(t *testing.T, repoName string, newRepo func(t *testing.T) repository.SessionRepository) {
 		t.Run(repoName+"CreateAndGetByToken", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|user123", "tok-user123")
+			session, token := aSession("auth0|user123", "tok-user123")
 
-			got, err := repo.CreateSession(ctx, session)
+			got, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 			require.Equal(t, session.Id, got.Id)
 			require.Equal(t, session.UserId, got.UserId)
@@ -41,20 +40,19 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.WithinDuration(t, session.CreatedAt, got.CreatedAt, time.Second)
 			require.WithinDuration(t, session.ExpiresAt, got.ExpiresAt, time.Second)
 
-			got, err = repo.GetSessionByToken(ctx, session.Token)
+			got, err = repo.GetSessionByToken(ctx, token)
 			require.NoError(t, err)
 			require.Equal(t, session.Id, got.Id)
 			require.Equal(t, session.UserId, got.UserId)
 			require.Equal(t, session.Sub, got.Sub)
-			require.Empty(t, got.Token, "a looked-up session must not carry the raw token back")
 			require.WithinDuration(t, session.CreatedAt, got.CreatedAt, time.Second)
 			require.WithinDuration(t, session.ExpiresAt, got.ExpiresAt, time.Second)
 		})
 
 		t.Run(repoName+"TokenIsNotTheID", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|opaque", "tok-opaque")
-			_, err := repo.CreateSession(ctx, session)
+			session, token := aSession("auth0|opaque", "tok-opaque")
+			_, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 
 			// The internal id is not a credential: presenting it must not
@@ -72,40 +70,38 @@ func TestSessionRepositoryContract(t *testing.T) {
 
 		t.Run(repoName+"CreateEmptyToken", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|notoken", "")
+			session, token := aSession("auth0|notoken", "")
 
-			_, err := repo.CreateSession(ctx, session)
+			_, err := repo.CreateSession(ctx, session, token)
 			require.ErrorIs(t, err, model.ErrInvalidArgument)
 		})
 
 		t.Run(repoName+"CreateDuplicateID", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|dup", "tok-dup-a")
+			session, token := aSession("auth0|dup", "tok-dup-a")
 
-			_, err := repo.CreateSession(ctx, session)
+			_, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 
-			dup := session
-			dup.Token = "tok-dup-b"
-			_, err = repo.CreateSession(ctx, dup)
+			_, err = repo.CreateSession(ctx, session, "tok-dup-b")
 			require.ErrorIs(t, err, model.ErrAlreadyExists)
 		})
 
 		t.Run(repoName+"CreateNilID", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|nilid", "tok-nilid")
+			session, token := aSession("auth0|nilid", "tok-nilid")
 			session.Id = uuid.Nil
 
-			got, err := repo.CreateSession(ctx, session)
+			got, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 
 		t.Run(repoName+"Touch", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|updatetest", "tok-touch")
+			session, token := aSession("auth0|updatetest", "tok-touch")
 
-			_, err := repo.CreateSession(ctx, session)
+			_, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 
 			newExpiresAt := time.Now().Add(2 * time.Hour).UTC()
@@ -113,7 +109,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.WithinDuration(t, newExpiresAt, updated.ExpiresAt, time.Second)
 
-			got, err := repo.GetSessionByToken(ctx, session.Token)
+			got, err := repo.GetSessionByToken(ctx, token)
 			require.NoError(t, err)
 			require.WithinDuration(t, newExpiresAt, got.ExpiresAt, time.Second)
 		})
@@ -127,15 +123,15 @@ func TestSessionRepositoryContract(t *testing.T) {
 
 		t.Run(repoName+"Delete", func(t *testing.T) {
 			repo := newRepo(t)
-			session := aSession("auth0|deletetest", "tok-delete")
+			session, token := aSession("auth0|deletetest", "tok-delete")
 
-			_, err := repo.CreateSession(ctx, session)
+			_, err := repo.CreateSession(ctx, session, token)
 			require.NoError(t, err)
 
 			err = repo.DeleteSession(ctx, session.Id)
 			require.NoError(t, err)
 
-			_, err = repo.GetSessionByToken(ctx, session.Token)
+			_, err = repo.GetSessionByToken(ctx, token)
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
@@ -151,25 +147,30 @@ func TestSessionRepositoryContract(t *testing.T) {
 
 			// Several consecutive expired entries plus a live one: every
 			// expired session must go, regardless of ordering.
-			expired := make([]model.Session, 3)
-			for i := range expired {
-				expired[i] = aSession("auth0|expired", "tok-expired-"+uuid.NewString())
-				expired[i].ExpiresAt = time.Now().Add(-1 * time.Hour).UTC()
-				_, err := repo.CreateSession(ctx, expired[i])
-				require.NoError(t, err)
+			type entry struct {
+				session model.Session
+				token   string
 			}
-			live := aSession("auth0|live", "tok-live")
-			_, err := repo.CreateSession(ctx, live)
+			expired := make([]entry, 3)
+			for i := range expired {
+				s, tok := aSession("auth0|expired", "tok-expired-"+uuid.NewString())
+				s.ExpiresAt = time.Now().Add(-1 * time.Hour).UTC()
+				_, err := repo.CreateSession(ctx, s, tok)
+				require.NoError(t, err)
+				expired[i] = entry{s, tok}
+			}
+			live, liveToken := aSession("auth0|live", "tok-live")
+			_, err := repo.CreateSession(ctx, live, liveToken)
 			require.NoError(t, err)
 
 			err = repo.DeleteAllExpiredSessions(ctx)
 			require.NoError(t, err)
 
-			for _, s := range expired {
-				_, err = repo.GetSessionByToken(ctx, s.Token)
+			for _, e := range expired {
+				_, err = repo.GetSessionByToken(ctx, e.token)
 				require.ErrorIs(t, err, model.ErrNotFound)
 			}
-			_, err = repo.GetSessionByToken(ctx, live.Token)
+			_, err = repo.GetSessionByToken(ctx, liveToken)
 			require.NoError(t, err)
 		})
 	}

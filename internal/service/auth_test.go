@@ -143,8 +143,8 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		sessionRepository := &repository.SessionRepoMock{
-			CreateSessionFn: func(ctx context.Context, session model.Session) (model.Session, error) {
-				require.NotEmpty(t, session.Token, "HandleCallback must mint a session token for the repository to hash")
+			CreateSessionFn: func(ctx context.Context, session model.Session, token string) (model.Session, error) {
+				require.NotEmpty(t, token, "HandleCallback must mint a session token for the repository to hash")
 				session.Id = sessionID
 				return session, nil
 			},
@@ -163,12 +163,12 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		}
 
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redUri, err := authService.HandleCallback(t.Context(), loginStateID, codeVal)
+		session, token, redUri, err := authService.HandleCallback(t.Context(), loginStateID, codeVal)
 		require.NoError(t, err)
 		require.Equal(t, redirectUri, redUri, "Redirect URI should match the one stored in login state")
 		require.Equal(t, sessionID, session.Id, "Session ID should match the one returned by the session repository")
-		require.NotEmpty(t, session.Token, "the returned session carries the raw token for the cookie")
-		require.NotEqual(t, session.Id.String(), session.Token, "the token must be its own secret, not the id")
+		require.NotEmpty(t, token, "HandleCallback returns the raw token for the cookie")
+		require.NotEqual(t, session.Id.String(), token, "the token must be its own secret, not the id")
 		require.Equal(t, userSub, session.Sub, "Session user sub should match the one returned by the OIDC client")
 		require.Equal(t, userId, session.UserId, "Session user ID should match the one returned by the user service")
 		require.WithinDuration(t, time.Now(), session.ExpiresAt, 24*time.Hour, "Session expiration should be within 30 minutes from now")
@@ -184,7 +184,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		userService := &service.UserServiceMock{}
 		oidcClient := &auth.OIDCClientMock{}
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
+		session, _, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
 		require.Error(t, err)
 		require.Empty(t, session, "Session should be empty when there is an error")
 		require.Empty(t, redirectUri, "Redirect URI should be empty when there is an error")
@@ -210,7 +210,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		userService := &service.UserServiceMock{}
 		oidcClient := &auth.OIDCClientMock{}
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
+		session, _, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
 		require.Error(t, err)
 		require.Equal(t, model.ErrLoginStateExpired, err, "Error should indicate that the login state has expired")
 		require.Empty(t, session, "Session should be empty when there is an error")
@@ -242,7 +242,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		}
 		userService := &service.UserServiceMock{}
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
+		session, _, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
 		require.Error(t, err)
 		require.Empty(t, session, "Session should be empty when there is an error")
 		require.Empty(t, redirectUri, "Redirect URI should be empty when there is an error")
@@ -281,7 +281,7 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 		}
 		sessionRepository := &repository.SessionRepoMock{}
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
+		session, _, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
 		require.Error(t, err)
 		require.Empty(t, session, "Session should be empty when there is an error")
 		require.Empty(t, redirectUri, "Redirect URI should be empty when there is an error")
@@ -324,12 +324,12 @@ func TestAuthServiceImpl_HandleCallback(t *testing.T) {
 			},
 		}
 		sessionRepository := &repository.SessionRepoMock{
-			CreateSessionFn: func(ctx context.Context, session model.Session) (model.Session, error) {
+			CreateSessionFn: func(ctx context.Context, session model.Session, token string) (model.Session, error) {
 				return model.Session{}, errors.New("session creation error")
 			},
 		}
 		authService := service.NewAuthService(userService, sessionRepository, loginStateRepository, oidcClient)
-		session, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
+		session, _, redirectUri, err := authService.HandleCallback(t.Context(), uuid.New(), "some-code")
 		require.Error(t, err)
 		require.Empty(t, session, "Session should be empty when there is an error")
 		require.Empty(t, redirectUri, "Redirect URI should be empty when there is an error")

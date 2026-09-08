@@ -20,22 +20,24 @@ func TestBaseCookie(t *testing.T) {
 }
 
 func TestNewSessionCookie(t *testing.T) {
-	session := model.Session{Id: uuid.New(), Token: "opaque-session-token", ExpiresAt: time.Now().Add(24 * time.Hour)}
+	id := uuid.New()
+	token := "opaque-session-token"
+	expiresAt := time.Now().Add(24 * time.Hour)
 
 	t.Run("secure origin sets the Secure attribute and carries the token, not the id", func(t *testing.T) {
-		got := NewSessionCookie(session, true)
+		got := NewSessionCookie(token, expiresAt, true)
 		assert.Equal(t, model.SessionCookieName, got.Name)
-		assert.Equal(t, session.Token, got.Value)
-		assert.NotContains(t, got.Value, session.Id.String())
+		assert.Equal(t, token, got.Value)
+		assert.NotContains(t, got.Value, id.String())
 		assert.True(t, got.HttpOnly)
 		assert.True(t, got.Secure)
 		assert.Equal(t, "/", got.Path)
 		assert.Equal(t, http.SameSiteLaxMode, got.SameSite)
-		assert.Equal(t, session.ExpiresAt, got.Expires)
+		assert.Equal(t, expiresAt, got.Expires)
 	})
 
 	t.Run("insecure origin omits the Secure attribute so the browser keeps the cookie", func(t *testing.T) {
-		got := NewSessionCookie(session, false)
+		got := NewSessionCookie(token, expiresAt, false)
 		assert.False(t, got.Secure)
 	})
 }

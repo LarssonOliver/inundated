@@ -166,9 +166,9 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 	t.Run("state that is not a valid UUID returns 400", func(t *testing.T) {
 		mock := &service.AuthServiceMock{
 			// Should never be called since parsing fails first.
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
 				t.Fatal("HandleCallback should not be called for an invalid state")
-				return model.Session{}, "", nil
+				return model.Session{}, "", "", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -185,10 +185,10 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		state := uuid.New()
 		binding := state.String()
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
 				assert.Equal(t, state, stateID)
 				assert.Equal(t, "authcode", code)
-				return model.Session{}, "", errors.New("invalid code")
+				return model.Session{}, "", "", errors.New("invalid code")
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -207,18 +207,18 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 		sessionID := uuid.New()
 		expiresAt := time.Now().Add(24 * time.Hour).UTC()
 		const wantRedirect = "/dashboard"
+		const wantToken = "the-opaque-session-token"
 
 		session := model.Session{
 			Id:        sessionID,
-			Token:     "the-opaque-session-token",
 			ExpiresAt: expiresAt,
 		}
 
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
 				assert.Equal(t, state, stateID)
 				assert.Equal(t, "authcode", code)
-				return session, wantRedirect, nil
+				return session, wantToken, wantRedirect, nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -235,7 +235,7 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 
 		wantCookie := http.Cookie{
 			Name:     model.SessionCookieName,
-			Value:    session.Token,
+			Value:    wantToken,
 			Path:     "/",
 			HttpOnly: true,
 			Secure:   true,
@@ -249,10 +249,10 @@ func TestAuthHandler_AuthCallback(t *testing.T) {
 	t.Run("plain-HTTP origin issues the session cookie without the Secure attribute", func(t *testing.T) {
 		state := uuid.New()
 		binding := state.String()
-		session := model.Session{Id: uuid.New(), Token: "tok", ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
+		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(24 * time.Hour).UTC()}
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
-				return session, "/", nil
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
+				return session, "tok", "/", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, false)
@@ -319,9 +319,9 @@ func TestAuthHandler_LoginBinding(t *testing.T) {
 	t.Run("AuthCallback with no binding cookie is rejected with 401", func(t *testing.T) {
 		state := uuid.New()
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
 				t.Fatal("HandleCallback must not run without a matching binding cookie")
-				return model.Session{}, "", nil
+				return model.Session{}, "", "", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -337,9 +337,9 @@ func TestAuthHandler_LoginBinding(t *testing.T) {
 		state := uuid.New()
 		other := uuid.NewString()
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
 				t.Fatal("HandleCallback must not run for a mismatched binding cookie")
-				return model.Session{}, "", nil
+				return model.Session{}, "", "", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)
@@ -356,8 +356,8 @@ func TestAuthHandler_LoginBinding(t *testing.T) {
 		binding := state.String()
 		session := model.Session{Id: uuid.New(), ExpiresAt: time.Now().Add(time.Hour)}
 		mock := &service.AuthServiceMock{
-			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, error) {
-				return session, "/", nil
+			HandleCallbackFn: func(ctx context.Context, stateID uuid.UUID, code string) (model.Session, string, string, error) {
+				return session, "tok", "/", nil
 			},
 		}
 		h := handlers.NewAuthHandler(mock, true)

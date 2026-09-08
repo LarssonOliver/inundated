@@ -36,9 +36,6 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				respondServiceUnavailable(w)
 				return
 			}
-			// GetSessionByToken never returns the token; keep the presented one
-			// so a renewal can re-issue the same cookie.
-			session.Token = cookie.Value
 
 			absoluteExpiry := session.CreatedAt.Add(maxSessionLifetime)
 			if time.Now().After(session.ExpiresAt) || time.Now().After(absoluteExpiry) {
@@ -57,9 +54,10 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				}
 				if newExpiry.After(session.ExpiresAt) {
 					if renewed, err := sessionRepository.TouchSession(r.Context(), session.Id, newExpiry); err == nil {
-						renewed.Token = session.Token
 						session = renewed
-						http.SetCookie(w, auth.NewSessionCookie(session, secure))
+						// Re-issue the token the client presented, with the
+						// extended expiry.
+						http.SetCookie(w, auth.NewSessionCookie(cookie.Value, session.ExpiresAt, secure))
 					}
 				}
 			}
@@ -76,9 +74,6 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				return
 			}
 
-			// Downstream handlers only need the session's identity, not its
-			// secret; keep the raw token out of the request context.
-			session.Token = ""
 			ctx := model.SetSessionInContext(r.Context(), session)
 			ctx = model.SetUserInContext(ctx, user)
 

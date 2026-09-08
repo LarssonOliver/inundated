@@ -44,7 +44,7 @@ var _ SessionRepository = (*SessionRepoMock)(nil)
 
 type SessionRepoMock struct {
 	GetSessionByTokenFn        func(ctx context.Context, token string) (model.Session, error)
-	CreateSessionFn            func(ctx context.Context, session model.Session) (model.Session, error)
+	CreateSessionFn            func(ctx context.Context, session model.Session, token string) (model.Session, error)
 	TouchSessionFn             func(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSessionFn            func(ctx context.Context, id uuid.UUID) error
 	DeleteAllExpiredSessionsFn func(ctx context.Context) error
@@ -175,8 +175,8 @@ func (t *RepoMock) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope
 }
 
 // CreateSession implements [SessionRepository].
-func (s *SessionRepoMock) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
-	return s.CreateSessionFn(ctx, session)
+func (s *SessionRepoMock) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
+	return s.CreateSessionFn(ctx, session, token)
 }
 
 // DeleteSession implements [SessionRepository].

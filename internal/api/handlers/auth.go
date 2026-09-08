@@ -103,7 +103,7 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 		return api.AuthCallback401Response{}, nil
 	}
 
-	session, redirectUrl, err := a.svc.HandleCallback(ctx, stateId, request.Params.Code)
+	session, token, redirectUrl, err := a.svc.HandleCallback(ctx, stateId, request.Params.Code)
 	if err != nil {
 		log.Printf("OIDC callback failed: %v", err)
 		return api.AuthCallback401Response{}, nil
@@ -112,7 +112,7 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 	return api.AuthCallback302Response{
 		Headers: api.AuthCallback302ResponseHeaders{
 			Location:  safeRedirectPath(redirectUrl),
-			SetCookie: auth.NewSessionCookie(session, a.secureCookies).String(),
+			SetCookie: auth.NewSessionCookie(token, session.ExpiresAt, a.secureCookies).String(),
 		},
 	}, nil
 }

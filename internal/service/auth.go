@@ -15,7 +15,7 @@ import (
 
 type AuthService interface {
 	BeginLogin(ctx context.Context, redirectURI string) (authorizationURL string, err error)
-	HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, redirectURI string, err error)
+	HandleCallback(ctx context.Context, stateID uuid.UUID, code string) (session model.Session, token string, redirectURI string, err error)
 	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
 }
 
@@ -69,10 +69,10 @@ func (a *AuthServiceImpl) BeginLogin(ctx context.Context, redirectURI string) (a
 }
 
 // HandleCallback implements [AuthService].
-func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID, code string) (session model.Session, redirectURI string, err error) {
+func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID, code string) (session model.Session, token string, redirectURI string, err error) {
 	loginState, err := a.loginStateRepository.GetLoginState(ctx, stateId)
 	if err != nil {
-		return model.Session{}, "", err
+		return model.Session{}, "", "", err
 	}
 
 	defer func() {
@@ -80,12 +80,12 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 	}()
 
 	if time.Now().After(loginState.ExpiresAt) {
-		return model.Session{}, "", model.ErrLoginStateExpired
+		return model.Session{}, "", "", model.ErrLoginStateExpired
 	}
 
 	identity, err := a.oidcClient.ExchangeCode(ctx, code, loginState.CodeVerifier, loginState.Nonce)
 	if err != nil {
-		return model.Session{}, "", err
+		return model.Session{}, "", "", err
 	}
 
 	user, err := a.userService.GetOrCreateUserByIdentity(ctx, model.UserIdentity{
@@ -94,12 +94,12 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		Name:  identity.Name,
 	})
 	if err != nil {
-		return model.Session{}, "", err
+		return model.Session{}, "", "", err
 	}
 
-	token, err := newSessionToken()
+	token, err = newSessionToken()
 	if err != nil {
-		return model.Session{}, "", err
+		return model.Session{}, "", "", err
 	}
 
 	now := time.Now()
@@ -107,17 +107,16 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		Id:        uuid.New(),
 		UserId:    user.Id,
 		Sub:       identity.Sub,
-		Token:     token,
 		CreatedAt: now,
 		ExpiresAt: now.Add(8 * time.Hour),
 	}
 
-	session, err = a.sessionRepository.CreateSession(ctx, session)
+	session, err = a.sessionRepository.CreateSession(ctx, session, token)
 	if err != nil {
-		return model.Session{}, "", err
+		return model.Session{}, "", "", err
 	}
 
-	return session, loginState.RedirectUri, nil
+	return session, token, loginState.RedirectUri, nil
 }
 
 func newNonce() (string, error) {

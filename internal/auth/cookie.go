@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/larssonoliver/inundated/internal/model"
 )
@@ -15,11 +16,11 @@ func BaseCookie(name string, secure bool) *http.Cookie {
 	}
 }
 
-func NewSessionCookie(session model.Session, secure bool) *http.Cookie {
+func NewSessionCookie(token string, expiresAt time.Time, secure bool) *http.Cookie {
 	c := BaseCookie(model.SessionCookieName, secure)
-	c.Value = session.Token
+	c.Value = token
 	c.HttpOnly = true
-	c.Expires = session.ExpiresAt
+	c.Expires = expiresAt
 	return c
 }
 

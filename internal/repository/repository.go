@@ -59,9 +59,13 @@ type ProjectStatsRepository interface {
 // than the other repositories, e.g. using valkey or similar.
 type SessionRepository interface {
 	// GetSessionByToken resolves a session from the opaque token the client
-	// presented in its cookie. The returned session has an empty Token.
+	// presented in its cookie. The store keeps only a hash of the token, so
+	// it is matched by hash and never handed back.
 	GetSessionByToken(ctx context.Context, token string) (model.Session, error)
-	CreateSession(ctx context.Context, session model.Session) (model.Session, error)
+	// CreateSession persists session, keyed by the hash of the given raw
+	// token. The token is not stored in the clear and is not part of the
+	// returned session.
+	CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error)
 	TouchSession(ctx context.Context, id uuid.UUID, expiresAt time.Time) (model.Session, error)
 	DeleteSession(ctx context.Context, id uuid.UUID) error
 	DeleteAllExpiredSessions(ctx context.Context) error

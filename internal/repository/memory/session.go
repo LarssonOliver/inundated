@@ -20,11 +20,11 @@ func hashHex(token string) string {
 }
 
 // CreateSession implements [repository.SessionRepository].
-func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session) (model.Session, error) {
+func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if session.Token == "" {
+	if token == "" {
 		return model.Session{}, model.ErrInvalidArgument
 	}
 	if session.Id == uuid.Nil {
@@ -34,16 +34,14 @@ func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session) 
 		session.CreatedAt = time.Now()
 	}
 
-	hash := hashHex(session.Token)
+	hash := hashHex(token)
 	for _, s := range t.sessions {
 		if s.session.Id == session.Id || s.tokenHash == hash {
 			return model.Session{}, model.ErrAlreadyExists
 		}
 	}
 
-	stored := session
-	stored.Token = ""
-	t.sessions = append(t.sessions, storedSession{session: stored, tokenHash: hash})
+	t.sessions = append(t.sessions, storedSession{session: session, tokenHash: hash})
 	return session, nil
 }
 

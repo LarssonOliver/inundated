@@ -22,13 +22,13 @@ func TestCreateSession_Success(t *testing.T) {
 	session := aSession()
 
 	mock.ExpectQuery(`INSERT INTO sessions \(id, user_id, sub, token_hash, created_at, expires_at\)`).
-		WithArgs(session.Id, session.UserId, session.Sub, model.HashSessionToken(session.Token), session.CreatedAt, session.ExpiresAt).
+		WithArgs(session.Id, session.UserId, session.Sub, model.HashSessionToken(testSessionToken), session.CreatedAt, session.ExpiresAt).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
 			AddRow(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
-	got, err := repo.CreateSession(ctx, session)
+	got, err := repo.CreateSession(ctx, session, testSessionToken)
 	require.NoError(t, err)
-	assert.Equal(t, session, got, "CreateSession echoes the raw token back for the caller's cookie")
+	assert.Equal(t, session, got)
 }
 
 func TestCreateSession_GeneratesIdWhenNil(t *testing.T) {
@@ -38,11 +38,11 @@ func TestCreateSession_GeneratesIdWhenNil(t *testing.T) {
 	session.Id = uuid.Nil
 
 	mock.ExpectQuery(`INSERT INTO sessions`).
-		WithArgs(pgxmock.AnyArg(), session.UserId, session.Sub, model.HashSessionToken(session.Token), session.CreatedAt, session.ExpiresAt).
+		WithArgs(pgxmock.AnyArg(), session.UserId, session.Sub, model.HashSessionToken(testSessionToken), session.CreatedAt, session.ExpiresAt).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
 			AddRow(uuid.New(), session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
-	got, err := repo.CreateSession(ctx, session)
+	got, err := repo.CreateSession(ctx, session, testSessionToken)
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, got.Id)
 }
@@ -53,10 +53,10 @@ func TestCreateSession_DuplicateId(t *testing.T) {
 	session := aSession()
 
 	mock.ExpectQuery(`INSERT INTO sessions`).
-		WithArgs(session.Id, session.UserId, session.Sub, model.HashSessionToken(session.Token), session.CreatedAt, session.ExpiresAt).
+		WithArgs(session.Id, session.UserId, session.Sub, model.HashSessionToken(testSessionToken), session.CreatedAt, session.ExpiresAt).
 		WillReturnError(&pgconn.PgError{Code: "23505"})
 
-	_, err := repo.CreateSession(ctx, session)
+	_, err := repo.CreateSession(ctx, session, testSessionToken)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrAlreadyExists))
 }
@@ -64,9 +64,8 @@ func TestCreateSession_DuplicateId(t *testing.T) {
 func TestCreateSession_EmptyToken(t *testing.T) {
 	repo, _ := newSessionMock(t)
 	session := aSession()
-	session.Token = ""
 
-	_, err := repo.CreateSession(context.Background(), session)
+	_, err := repo.CreateSession(context.Background(), session, "")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -76,7 +75,7 @@ func TestCreateSession_NilUserId(t *testing.T) {
 	session := aSession()
 	session.UserId = uuid.Nil
 
-	_, err := repo.CreateSession(context.Background(), session)
+	_, err := repo.CreateSession(context.Background(), session, testSessionToken)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -86,7 +85,7 @@ func TestCreateSession_EmptySub(t *testing.T) {
 	session := aSession()
 	session.Sub = ""
 
-	_, err := repo.CreateSession(context.Background(), session)
+	_, err := repo.CreateSession(context.Background(), session, testSessionToken)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
 }
@@ -99,15 +98,13 @@ func TestGetSessionByToken_Success(t *testing.T) {
 	session := aSession()
 
 	mock.ExpectQuery(`SELECT id, user_id, sub, created_at, expires_at FROM sessions WHERE token_hash = \$1`).
-		WithArgs(model.HashSessionToken(session.Token)).
+		WithArgs(model.HashSessionToken(testSessionToken)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "sub", "created_at", "expires_at"}).
 			AddRow(session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt))
 
-	got, err := repo.GetSessionByToken(ctx, session.Token)
+	got, err := repo.GetSessionByToken(ctx, testSessionToken)
 	require.NoError(t, err)
-	want := session
-	want.Token = "" // never read back from storage
-	assert.Equal(t, want, got)
+	assert.Equal(t, session, got)
 }
 
 func TestGetSessionByToken_NotFound(t *testing.T) {
@@ -147,9 +144,7 @@ func TestTouchSession_Success(t *testing.T) {
 
 	got, err := repo.TouchSession(ctx, session.Id, session.ExpiresAt)
 	require.NoError(t, err)
-	want := session
-	want.Token = "" // TouchSession's RETURNING clause has no token
-	assert.Equal(t, want, got)
+	assert.Equal(t, session, got)
 }
 
 func TestTouchSession_NotFound(t *testing.T) {

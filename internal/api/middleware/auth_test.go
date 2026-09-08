@@ -229,6 +229,10 @@ func TestOIDCAuth(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, res *http.Response, nextCalledWithUser bool, lastSeenCtx context.Context) {
 				assert.True(t, nextCalledWithUser)
+				cookies := res.Cookies()
+				require.Len(t, cookies, 1, "a renewed session must re-issue the cookie")
+				assert.Equal(t, validUUID.String(), cookies[0].Value,
+					"renewal must re-issue the token the client presented, not lose it")
 			},
 		},
 		{

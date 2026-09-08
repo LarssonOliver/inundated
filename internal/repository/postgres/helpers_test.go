@@ -99,12 +99,13 @@ func aUser() model.User {
 	}
 }
 
+const testSessionToken = "s3ss10n-t0k3n"
+
 func aSession() model.Session {
 	return model.Session{
 		Id:        uuid.New(),
 		UserId:    uuid.New(),
 		Sub:       "auth0|user123",
-		Token:     "s3ss10n-t0k3n",
 		CreatedAt: time.Now().Add(-time.Hour).UTC(),
 		ExpiresAt: time.Now().Add(time.Hour).UTC(),
 	}
