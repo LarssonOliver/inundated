@@ -1,5 +1,5 @@
 import type { Ref } from "vue";
-import { onBeforeUnmount, watch } from "vue";
+import { getCurrentScope, onScopeDispose, watch } from "vue";
 
 interface PaginatedStore {
   isLoading: boolean;
@@ -49,25 +49,33 @@ export function useInfiniteScroll(
     observer.observe(sentinelElement.value);
   };
 
-  const cleanup = () => {
+  const disconnectObserver = () => {
     if (observer) {
       observer.disconnect();
       observer = null;
     }
   };
 
-  watch(
+  const stopWatch = watch(
     () => sentinelElement.value,
     (newElement) => {
-      cleanup();
+      disconnectObserver();
       if (newElement) {
         initObserver();
       }
     },
   );
 
+  const cleanup = () => {
+    disconnectObserver();
+    stopWatch();
+  };
+
   initObserver();
-  onBeforeUnmount(cleanup);
+
+  if (getCurrentScope()) {
+    onScopeDispose(cleanup);
+  }
 
   return { cleanup };
 }
