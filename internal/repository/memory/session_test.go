@@ -20,6 +20,7 @@ func TestMemoryStore_CreateSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|user123",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 
@@ -34,6 +35,7 @@ func TestMemoryStore_CreateSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|dup",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 
@@ -50,6 +52,7 @@ func TestMemoryStore_CreateSession(t *testing.T) {
 			Id:        uuid.Nil,
 			UserId:    uuid.New(),
 			Sub:       "auth0|dup",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 
@@ -68,6 +71,7 @@ func TestMemoryStore_GetSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|user123",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		_, err := store.CreateSession(ctx, session)
@@ -95,6 +99,7 @@ func TestMemoryStore_TouchSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|updatetest",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		_, err := store.CreateSession(ctx, session)
@@ -123,6 +128,7 @@ func TestMemoryStore_TouchSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|ghost",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 
@@ -136,12 +142,14 @@ func TestMemoryStore_TouchSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|a",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		sessionB := model.Session{
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|b",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		_, err := store.CreateSession(ctx, sessionA)
@@ -169,6 +177,7 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|deletetest",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		_, err := store.CreateSession(ctx, session)
@@ -194,12 +203,14 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|a",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		sessionB := model.Session{
 			Id:        uuid.New(),
 			UserId:    uuid.New(),
 			Sub:       "auth0|b",
+			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().Add(time.Hour).UTC(),
 		}
 		_, err := store.CreateSession(ctx, sessionA)
@@ -223,12 +234,14 @@ func TestMemoryStore_DeleteSession(t *testing.T) {
 				Id:        uuid.New(),
 				UserId:    uuid.New(),
 				Sub:       "auth0|expired1",
+				CreatedAt: time.Now().UTC(),
 				ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
 			},
 			{
 				Id:        uuid.New(),
 				UserId:    uuid.New(),
 				Sub:       "auth0|expired1",
+				CreatedAt: time.Now().UTC(),
 				ExpiresAt: time.Now().Add(time.Hour).UTC(),
 			},
 		}

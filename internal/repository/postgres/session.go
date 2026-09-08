@@ -22,15 +22,18 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 	if session.Id == uuid.Nil {
 		session.Id = uuid.New()
 	}
+	if session.CreatedAt.IsZero() {
+		session.CreatedAt = time.Now()
+	}
 
 	const q = `
-		INSERT INTO sessions (id, user_id, sub, expires_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, user_id, sub, expires_at`
+		INSERT INTO sessions (id, user_id, sub, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, user_id, sub, created_at, expires_at`
 
 	var created model.Session
-	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, session.ExpiresAt).
-		Scan(&created.Id, &created.UserId, &created.Sub, &created.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, session.CreatedAt, session.ExpiresAt).
+		Scan(&created.Id, &created.UserId, &created.Sub, &created.CreatedAt, &created.ExpiresAt)
 	if isUniqueViolation(err) {
 		return model.Session{}, fmt.Errorf("CreateSession %s: %w", session.Id, model.ErrAlreadyExists)
 	}
@@ -65,12 +68,12 @@ func (r *PostgresStore) GetSession(ctx context.Context, id uuid.UUID) (model.Ses
 	}
 
 	const q = `
-		SELECT id, user_id, sub, expires_at
+		SELECT id, user_id, sub, created_at, expires_at
 		FROM sessions
 		WHERE id = $1`
 
 	var s model.Session
-	err := r.db.QueryRow(ctx, q, id).Scan(&s.Id, &s.UserId, &s.Sub, &s.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, id).Scan(&s.Id, &s.UserId, &s.Sub, &s.CreatedAt, &s.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Session{}, fmt.Errorf("GetSession %s: %w", id, model.ErrNotFound)
 	}
@@ -90,11 +93,11 @@ func (r *PostgresStore) TouchSession(ctx context.Context, id uuid.UUID, expiresA
 		UPDATE sessions
 		SET expires_at = $2
 		WHERE id = $1
-		RETURNING id, user_id, sub, expires_at`
+		RETURNING id, user_id, sub, created_at, expires_at`
 
 	var updated model.Session
 	err := r.db.QueryRow(ctx, q, id, expiresAt).
-		Scan(&updated.Id, &updated.UserId, &updated.Sub, &updated.ExpiresAt)
+		Scan(&updated.Id, &updated.UserId, &updated.Sub, &updated.CreatedAt, &updated.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Session{}, fmt.Errorf("TouchSession %s: %w", id, model.ErrNotFound)
 	}

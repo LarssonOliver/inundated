@@ -97,11 +97,13 @@ func (a *AuthServiceImpl) HandleCallback(ctx context.Context, stateId uuid.UUID,
 		return model.Session{}, "", err
 	}
 
+	now := time.Now()
 	session = model.Session{
 		Id:        uuid.New(),
 		UserId:    user.Id,
 		Sub:       identity.Sub,
-		ExpiresAt: time.Now().Add(8 * time.Hour),
+		CreatedAt: now,
+		ExpiresAt: now.Add(8 * time.Hour),
 	}
 
 	session, err = a.sessionRepository.CreateSession(ctx, session)

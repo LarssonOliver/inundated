@@ -24,6 +24,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 				Id:        uuid.New(),
 				UserId:    uuid.New(),
 				Sub:       "auth0|user123",
+				CreatedAt: time.Now().Add(-time.Minute).UTC(),
 				ExpiresAt: time.Now().Add(time.Hour).UTC(),
 			}
 
@@ -32,6 +33,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.Equal(t, session.Id, got.Id)
 			require.Equal(t, session.UserId, got.UserId)
 			require.Equal(t, session.Sub, got.Sub)
+			require.WithinDuration(t, session.CreatedAt, got.CreatedAt, time.Second)
 			require.WithinDuration(t, session.ExpiresAt, got.ExpiresAt, time.Second)
 
 			got, err = repo.GetSession(ctx, session.Id)
@@ -39,6 +41,7 @@ func TestSessionRepositoryContract(t *testing.T) {
 			require.Equal(t, session.Id, got.Id)
 			require.Equal(t, session.UserId, got.UserId)
 			require.Equal(t, session.Sub, got.Sub)
+			require.WithinDuration(t, session.CreatedAt, got.CreatedAt, time.Second)
 			require.WithinDuration(t, session.ExpiresAt, got.ExpiresAt, time.Second)
 		})
 

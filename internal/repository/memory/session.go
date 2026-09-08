@@ -17,6 +17,9 @@ func (t *MemoryStore) CreateSession(ctx context.Context, session model.Session) 
 	if session.Id == uuid.Nil {
 		session.Id = uuid.New()
 	}
+	if session.CreatedAt.IsZero() {
+		session.CreatedAt = time.Now()
+	}
 
 	for _, s := range t.sessions {
 		if s.Id == session.Id {

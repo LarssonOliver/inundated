@@ -17,6 +17,11 @@ import (
 // the endpoints that begin and complete the OIDC login flow.
 var PublicAPIPaths = []string{"/api/auth/login", "/api/auth/callback"}
 
+// maxSessionLifetime is the absolute age past which a session must be
+// re-established, regardless of how recently it was used. It bounds the window
+// in which a stolen session cookie is useful.
+const maxSessionLifetime = 7 * 24 * time.Hour
+
 func OIDCAuth(userService service.UserService, sessionRepository repository.SessionRepository, secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +44,8 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 				return
 			}
 
-			if time.Now().After(session.ExpiresAt) {
+			absoluteExpiry := session.CreatedAt.Add(maxSessionLifetime)
+			if time.Now().After(session.ExpiresAt) || time.Now().After(absoluteExpiry) {
 				_ = sessionRepository.DeleteSession(r.Context(), sessionId)
 
 				http.SetCookie(w, auth.ClearSessionCookie(secure))
@@ -50,11 +56,19 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 
 			if session.ExpiresAt.Before(time.Now().Add(6 * time.Hour)) {
 				newExpiry := time.Now().Add(24 * time.Hour)
-				// A failed renewal is not fatal: the current session is still
-				// valid, so keep using it and let the next request retry.
-				if renewed, err := sessionRepository.TouchSession(r.Context(), sessionId, newExpiry); err == nil {
-					session = renewed
-					http.SetCookie(w, auth.NewSessionCookie(session, secure))
+				// Never slide past the absolute cap.
+				if newExpiry.After(absoluteExpiry) {
+					newExpiry = absoluteExpiry
+				}
+				// Skip a renewal that would not actually extend the session
+				// (near the cap) to avoid a pointless write and cookie rewrite.
+				if newExpiry.After(session.ExpiresAt) {
+					// A failed renewal is not fatal: the current session is still
+					// valid, so keep using it and let the next request retry.
+					if renewed, err := sessionRepository.TouchSession(r.Context(), sessionId, newExpiry); err == nil {
+						session = renewed
+						http.SetCookie(w, auth.NewSessionCookie(session, secure))
+					}
 				}
 			}
 
