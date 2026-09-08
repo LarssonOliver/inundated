@@ -47,8 +47,8 @@ func TestGetTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(ts.Id, testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(ts.Id, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()))
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
@@ -67,8 +67,8 @@ func TestGetTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(id, testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(id, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols))
 
 	_, err := repo.GetTimespan(ctx, testScope, id)
@@ -303,8 +303,8 @@ func TestCreateTimespan_ForeignTagRejected(t *testing.T) {
 	mock.ExpectBegin()
 	// tagsInScope finds fewer live, in-scope tags than requested; the parent
 	// INSERT never runs and the transaction rolls back.
-	mock.ExpectQuery(`SELECT count\(\*\) FROM tags`).
-		WithArgs(ts.TagIds, testScope.UserID()).
+	mock.ExpectQuery(`SELECT count\(\*\) FROM tags WHERE id = ANY\(\$1\) AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(ts.TagIds, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(ts.TagIds) - 1))
 	mock.ExpectRollback()
 
@@ -322,8 +322,8 @@ func TestUpdateTimespan_Success(t *testing.T) {
 
 	mock.ExpectBegin()
 	expectTagsInScope(mock, ts.TagIds)
-	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5 RETURNING id, name, start_time, end_time, user_id`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
 			AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()))
 	expectSetTimespanTags(mock, ts.Id, ts.TagIds)
@@ -342,8 +342,8 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 
 	mock.ExpectBegin()
 	expectTagsInScope(mock, ts.TagIds)
-	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$5 RETURNING id, name, start_time, end_time, user_id`).
-		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
+	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).
+		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, *testScope.UserID()).
 		WillReturnError(pgx.ErrNoRows)
 	mock.ExpectRollback()
 
@@ -386,8 +386,8 @@ func TestDeleteTimespan_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(id, testScope.UserID()).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	require.NoError(t, repo.DeleteTimespan(ctx, testScope, id))
@@ -398,8 +398,8 @@ func TestDeleteTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM \$2`).
-		WithArgs(id, testScope.UserID()).
+	mock.ExpectExec(`UPDATE timespans SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 
 	err := repo.DeleteTimespan(ctx, testScope, id)

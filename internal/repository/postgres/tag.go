@@ -16,13 +16,14 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 		return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
 		SELECT id, name, color, user_id
 		FROM tags
-		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var t model.Tag
-	err := r.db.QueryRow(ctx, q, id, scope.UserID()).Scan(&t.Id, &t.Name, &t.Color, &t.UserId)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&t.Id, &t.Name, &t.Color, &t.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
 	}
@@ -110,14 +111,15 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		return model.Tag{}, fmt.Errorf("UpdateTag: name must not be empty: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{tag.Id, tag.Name, tag.Color})
+	q := `
 		UPDATE tags
 		SET name = $2, color = $3
-		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $4
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
 		RETURNING id, name, color, user_id`
 
 	var updated model.Tag
-	err := r.db.QueryRow(ctx, q, tag.Id, tag.Name, tag.Color, scope.UserID()).
+	err := r.db.QueryRow(ctx, q, args...).
 		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.UserId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, model.ErrNotFound)
@@ -133,12 +135,13 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 		return fmt.Errorf("DeleteTag: id: %w", model.ErrInvalidArgument)
 	}
 
-	const q = `
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	q := `
 		UPDATE tags
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL AND user_id IS NOT DISTINCT FROM $2`
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
-	res, err := r.db.Exec(ctx, q, id, scope.UserID())
+	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("DeleteTag: %w", err)
 	}
