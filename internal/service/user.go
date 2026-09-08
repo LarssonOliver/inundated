@@ -11,7 +11,7 @@ import (
 
 // GetCurrentUser implements [Service].
 func (s *ServiceImpl) GetCurrentUser(ctx context.Context) (model.User, error) {
-	user, ok := ctx.Value(model.UserContextKey).(model.User)
+	user, ok := model.GetCurrentUserFromContext(ctx)
 	if !ok {
 		return model.User{}, model.ErrNotFound
 	}

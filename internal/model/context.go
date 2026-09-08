@@ -4,7 +4,7 @@ import "context"
 
 type ContextKey string
 
-var (
+const (
 	UserContextKey    ContextKey = "user"
 	SessionContextKey ContextKey = "session"
 )
