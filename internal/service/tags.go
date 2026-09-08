@@ -8,17 +8,24 @@ import (
 )
 
 func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error) {
-	tag, err := s.repository.GetTag(ctx, id)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
+
+	tag, err := s.repository.GetTag(ctx, scope, id)
 
 	if err != nil {
-		return model.Tag{}, model.ErrNotFound
+		// Propagate as-is: a genuine miss already carries model.ErrNotFound,
+		// and an infrastructure failure must not be masked as a 404.
+		return model.Tag{}, err
 	}
 
 	if includes != nil {
 		if includes.TotalTime {
-			totalTime, err := s.repository.GetTotalDurationByTags(ctx, []uuid.UUID{tag.Id})
+			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, []uuid.UUID{tag.Id})
 			if err != nil {
-				return model.Tag{}, model.ErrNotFound
+				return model.Tag{}, err
 			}
 			tag.TotalTime = &totalTime
 		}
@@ -28,18 +35,34 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 }
 
 func (s *ServiceImpl) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
-	return s.repository.ListTags(ctx, params)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Page[model.Tag]{}, err
+	}
+	return s.repository.ListTags(ctx, scope, params)
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
 	tag.Id = uuid.New()
-	return s.repository.CreateTag(ctx, tag)
+	return s.repository.CreateTag(ctx, scope, tag)
 }
 
 func (s *ServiceImpl) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
-	return s.repository.UpdateTag(ctx, tag)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Tag{}, err
+	}
+	return s.repository.UpdateTag(ctx, scope, tag)
 }
 
 func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return s.repository.DeleteTag(ctx, id)
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return err
+	}
+	return s.repository.DeleteTag(ctx, scope, id)
 }
