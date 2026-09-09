@@ -81,6 +81,8 @@ export LOG_FORMAT="json"      # text|json (default: text)
 - **`LOG_LEVEL`** (`debug|info|warn|error`, default `info`) — Controls which log records are emitted. Set to `debug` for detailed diagnostics, `warn` to see only warnings and errors, or `error` for errors only.
 - **`LOG_FORMAT`** (`text|json`, default `text`) — Output format. `text` produces human-readable logs for local development; `json` outputs structured JSON lines suitable for production log aggregators. All logs are written to stdout.
 
+All log output — startup messages and per-request lines alike — now goes to **stdout**. (Previously, startup diagnostics were written to stderr.)
+
 ### Enabling authentication (OIDC)
 
 By default inundated runs in **userless mode**: no login, and every resource is

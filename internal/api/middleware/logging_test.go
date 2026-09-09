@@ -67,6 +67,23 @@ func TestRequestLoggerLogsServerErrorsAtErrorLevel(t *testing.T) {
 	assert.Equal(t, "ERROR", lastRecord(t, buf)["level"])
 }
 
+func TestRequestLoggerObservesPanicRecoveredAsServerError(t *testing.T) {
+	buf := captureDefaultLogger(t)
+
+	// RequestLogger must wrap Recoverer so a recovered panic is still logged
+	// as a 500. Registration order: RequestLogger first (outer), Recoverer second.
+	panicky := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
+	})
+	h := middleware.RequestLogger(nil)(chimiddleware.Recoverer(panicky))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/projects", nil))
+
+	rec := lastRecord(t, buf)
+	assert.Equal(t, "http request", rec["msg"])
+	assert.Equal(t, "ERROR", rec["level"])
+	assert.Equal(t, float64(http.StatusInternalServerError), rec["status"])
+}
+
 func TestRequestLoggerRespectsSkipFn(t *testing.T) {
 	buf := captureDefaultLogger(t)
 

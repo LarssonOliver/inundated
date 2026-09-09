@@ -77,7 +77,7 @@ func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model
 	}
 	if adoption.Total() > 0 {
 		slog.InfoContext(ctx, "first user adopted orphaned resources",
-			"user_id", created.Id,
+			"user_id", created.Id.String(),
 			"projects", adoption.Projects,
 			"tags", adoption.Tags,
 			"timespans", adoption.Timespans,

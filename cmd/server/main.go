@@ -69,8 +69,10 @@ func shouldUseSecureCookies(cfg *config.Config) bool {
 
 func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:              addr,
-		Handler:           handler,
+		Addr:    addr,
+		Handler: handler,
+		// Built after slog.SetDefault (see main) so it binds the configured
+		// handler, not the bootstrap default.
 		ErrorLog:          slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
@@ -93,15 +95,15 @@ func newRouter(
 	r.Use(chimiddleware.RequestID)
 	r.Use(middleware.RequestLogContext)
 	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
+	r.Use(middleware.RequestLogger(func(r *http.Request) bool {
+		return r.URL.Path == "/health" || !strings.HasPrefix(r.URL.Path, "/api/")
+	}))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
 
 	r.Handle("/health", handlers.HealthHandler())
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequestLogger(func(r *http.Request) bool {
-			return r.URL.Path == "/health"
-		}))
 		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
 		r.Use(middleware.RateLimitByIPForPrefixes(middleware.AuthRateLimitRequests, middleware.AuthRateLimitWindow, "/api/auth/"))
 		r.Use(middleware.MaxBodyBytes(middleware.MaxAPIBodyBytes))
