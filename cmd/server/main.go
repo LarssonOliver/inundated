@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -20,6 +20,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/config"
 	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
+	"github.com/larssonoliver/inundated/internal/logging"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/repository/postgres"
@@ -28,31 +29,37 @@ import (
 
 var Version = "dev"
 
+// fatal logs msg at error level with the given key/value args, then exits 1.
+func fatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
+
 func setupRepositories(ctx context.Context, databaseUrl string) (
 	repository.Repository,
 	repository.LoginStateRepository,
 	repository.SessionRepository,
 ) {
 	if databaseUrl == "in-memory" {
-		log.Println("Using in-memory repository (not recommended for production)")
+		slog.Warn("using in-memory repository", "note", "not recommended for production")
 		memoryStore := memory.NewMemoryStore()
 		return memoryStore, memoryStore, memoryStore
 	}
 	if strings.HasPrefix(databaseUrl, "postgresql://") {
-		log.Printf("Using postgres repository")
-		log.Printf("Applying database migrations...")
+		slog.Info("using postgres repository")
+		slog.Info("applying database migrations")
 		err := postgresdb.ApplyMigrations(ctx, databaseUrl)
 		if err != nil {
-			log.Fatalf("failed to apply database migrations: %v", err)
+			fatal("failed to apply database migrations", "error", err)
 		}
 
 		repository, err := postgres.NewPostgresStore(ctx, databaseUrl)
 		if err != nil {
-			log.Fatalf("failed to connect to PostgreSQL: %v", err)
+			fatal("failed to connect to postgresql", "error", err)
 		}
 		return repository, repository, repository
 	}
-	log.Fatalf("unsupported database URL: %s", databaseUrl)
+	fatal("unsupported database url", "url", databaseUrl)
 	return nil, nil, nil
 }
 
@@ -64,6 +71,7 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
+		ErrorLog:          slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -129,19 +137,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger, err := logging.New(logging.Options{
+		Level:  cfg.LogLevel,
+		Format: cfg.LogFormat,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "logging setup: %v\n", err)
+		os.Exit(1)
+	}
+	slog.SetDefault(logger)
+
 	ctx := context.Background()
 
 	repo, loginStateRepo, sessionRepo := setupRepositories(ctx, cfg.DatabaseURL)
 	svc := service.NewService(repo, service.WithRegistrationDisabled(cfg.DisableUserRegistration))
 
 	if err := service.EnsureAuthConfigConsistent(ctx, repo, cfg.OIDC.Enabled()); err != nil {
-		log.Fatalf("auth configuration: %v", err)
+		fatal("auth configuration", "error", err)
 	}
 
 	if cfg.DisableUserRegistration {
-		log.Printf("user registration disabled; only OIDC identities with an existing account can log in")
+		slog.Info("user registration disabled; only OIDC identities with an existing account can log in")
 		if hasUsers, err := repo.HasUsers(ctx); err == nil && !hasUsers {
-			log.Printf("warning: registration is disabled and no users exist yet -- nobody can log in until you enable it once")
+			slog.Warn("registration is disabled and no users exist yet -- nobody can log in until you enable it once")
 		}
 	}
 
@@ -168,23 +186,23 @@ func main() {
 	s := newHTTPServer(addrStr, r)
 
 	if cfg.OIDC.Enabled() {
-		log.Printf("OIDC authentication enabled (issuer: %s)", cfg.OIDC.IssuerURL)
+		slog.Info("OIDC authentication enabled", "issuer", cfg.OIDC.IssuerURL)
 	} else {
-		log.Printf("OIDC not configured; running in userless mode")
+		slog.Info("OIDC not configured; running in userless mode")
 	}
 
 	if !shouldUseSecureCookies(cfg) {
-		log.Printf("warning: insecure cookies (Secure attribute off); set " +
-			"PUBLIC_BASE_URL to an https:// origin in production")
+		slog.Warn("insecure cookies (Secure attribute off); set PUBLIC_BASE_URL to an https:// origin in production")
 	}
 
 	if len(cfg.TrustedProxies) == 0 {
-		log.Printf("warning: TRUSTED_PROXIES not set; forwarded-for headers are " +
-			"ignored and rate limiting keys off the direct connection address. " +
-			"Behind a reverse proxy that means every client shares one bucket -- " +
-			"set TRUSTED_PROXIES to the proxy's address(es)")
+		slog.Warn("TRUSTED_PROXIES not set; forwarded-for headers are ignored and rate " +
+			"limiting keys off the direct connection address. Behind a reverse proxy that " +
+			"means every client shares one bucket -- set TRUSTED_PROXIES to the proxy's address(es)")
 	}
 
-	log.Printf("Starting inundated %s on %s", Version, addrStr)
-	log.Fatal(s.ListenAndServe())
+	slog.Info("starting inundated", "version", Version, "addr", addrStr)
+	if err := s.ListenAndServe(); err != nil {
+		fatal("http server stopped", "error", err)
+	}
 }
