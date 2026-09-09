@@ -83,7 +83,7 @@ func newRouter(
 	isSecure := shouldUseSecureCookies(cfg)
 
 	r.Use(chimiddleware.RequestID)
-	r.Use(middleware.RealIP(cfg.TrustedProxies))
+	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
 
@@ -179,8 +179,10 @@ func main() {
 	}
 
 	if len(cfg.TrustedProxies) == 0 {
-		log.Printf("TRUSTED_PROXIES not set; ignoring X-Forwarded-For/X-Real-IP " +
-			"and rate-limiting by the direct connection address")
+		log.Printf("warning: TRUSTED_PROXIES not set; forwarded-for headers are " +
+			"ignored and rate limiting keys off the direct connection address. " +
+			"Behind a reverse proxy that means every client shares one bucket -- " +
+			"set TRUSTED_PROXIES to the proxy's address(es)")
 	}
 
 	log.Printf("Starting inundated %s on %s", Version, addrStr)

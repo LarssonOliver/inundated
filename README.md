@@ -116,17 +116,26 @@ inundated does not terminate TLS or emit HSTS itself. Run it behind a proxy
 (Caddy, nginx, Traefik, …) that:
 
 - terminates HTTPS and sets `Strict-Transport-Security`;
-- sets `X-Forwarded-For` / `X-Real-IP` to the real client address **and strips
-  any client-supplied copies** — the built-in per-IP rate limits (100 req/min
+- sets `X-Forwarded-For` to the real client address **and strips any
+  client-supplied copies** — the built-in per-IP rate limits (100 req/min
   general, 10 req/min on `/api/auth/*`) key off that value;
 - forwards to the app's `HOST:PORT`.
 
-Set `TRUSTED_PROXIES` to the proxy's address(es) — a comma-separated list of
-CIDRs or bare IPs (e.g. `10.0.0.0/8,192.168.1.10`). inundated only reads
-`X-Forwarded-For` / `X-Real-IP` when the request's direct TCP peer matches this
-list; otherwise it rate-limits by the connection address, so a client that is
-reachable directly (or through a pod network) can't spoof its IP with a forged
-header. Leave it unset and those headers are ignored entirely.
+**Client-IP resolution.** Set `TRUSTED_PROXIES` to the proxy's address(es) — a
+comma-separated list of CIDRs or bare IPs (e.g. `10.0.0.0/8,192.168.1.10`).
+inundated reads the forwarded header only when the request's direct TCP peer is
+in that list; otherwise it rate-limits by the raw connection address, so a
+client reachable directly (or over a pod network) can't spoof its IP with a
+forged header. Leave `TRUSTED_PROXIES` unset and the header is ignored
+entirely — **including on an existing deployment, where every request then
+shares one rate-limit bucket until you set it.**
+
+By default only `X-Forwarded-For` is trusted (walked right-to-left, skipping
+trusted hops). If your proxy publishes the client address under a different
+header, set `TRUSTED_PROXY_HEADERS` (priority-ordered; e.g.
+`X-Real-IP,X-Forwarded-For`). Only `X-Forwarded-For`, `X-Real-IP` and
+`True-Client-IP` are accepted; whichever you list, the proxy must set it and
+strip inbound copies.
 
 Also set `PUBLIC_BASE_URL` to the external `https://` origin: it is registered
 as a trusted origin so the cross-origin request check keeps working for older

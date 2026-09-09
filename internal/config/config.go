@@ -22,10 +22,16 @@ type Config struct {
 	DisableUserRegistration bool
 
 	// TrustedProxies lists the networks a reverse proxy connects from. Only
-	// when the direct TCP peer falls inside one of these are the
-	// X-Forwarded-For / X-Real-IP headers honored for client-IP resolution.
-	// Empty (the default) means those headers are ignored entirely.
+	// when the direct TCP peer falls inside one of these are the forwarded
+	// client-IP headers honored. Empty (the default) means those headers are
+	// ignored entirely.
 	TrustedProxies []netip.Prefix
+
+	// TrustedProxyHeaders names the forwarded-for headers to consult, in
+	// priority order, when the peer is trusted. Defaults to
+	// ["X-Forwarded-For"]. Only X-Forwarded-For, X-Real-IP and True-Client-IP
+	// are accepted.
+	TrustedProxyHeaders []string
 }
 
 type OIDCConfig struct {
@@ -153,7 +159,10 @@ func (l *loader) load() (*Config, error) {
 		"Reject logins from OIDC identities without an existing account (env: DISABLE_USER_REGISTRATION)")
 
 	trustedProxies := fs.String("trusted-proxies", l.envOr("TRUSTED_PROXIES", ""),
-		"Comma-separated CIDRs/IPs of reverse proxies whose X-Forwarded-For / X-Real-IP headers to trust; empty ignores them (env: TRUSTED_PROXIES)")
+		"Comma-separated CIDRs/IPs of reverse proxies whose forwarded client-IP headers to trust; empty ignores them (env: TRUSTED_PROXIES)")
+
+	trustedProxyHeaders := fs.String("trusted-proxy-headers", l.envOr("TRUSTED_PROXY_HEADERS", ""),
+		"Comma-separated forwarded-for headers to trust from a proxy, in priority order: X-Forwarded-For (default), X-Real-IP, True-Client-IP (env: TRUSTED_PROXY_HEADERS)")
 
 	// ------------------------------------------------------------------ //
 
@@ -168,6 +177,11 @@ func (l *loader) load() (*Config, error) {
 	baseURL := strings.TrimRight(*publicBaseURL, "/")
 
 	parsedProxies, err := parseTrustedProxies(*trustedProxies)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedProxyHeaders, err := parseTrustedProxyHeaders(*trustedProxyHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -188,6 +202,7 @@ func (l *loader) load() (*Config, error) {
 		},
 		DisableUserRegistration: *disableUserRegistration,
 		TrustedProxies:          parsedProxies,
+		TrustedProxyHeaders:     parsedProxyHeaders,
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -295,7 +310,45 @@ func parseTrustedProxies(raw string) ([]netip.Prefix, error) {
 		addr = addr.Unmap()
 		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
 	}
+	for _, p := range prefixes {
+		if p.Bits() == 0 {
+			return nil, fmt.Errorf("config: trusted-proxies: %q trusts every address, which disables forwarded-header filtering", p)
+		}
+	}
 	return prefixes, nil
+}
+
+var knownForwardHeaders = []string{"X-Forwarded-For", "X-Real-IP", "True-Client-IP"}
+
+// parseTrustedProxyHeaders validates a comma-separated list of forwarded-for
+// header names against the supported set, returning them in canonical form.
+// Empty input defaults to X-Forwarded-For.
+func parseTrustedProxyHeaders(raw string) ([]string, error) {
+	entries := splitAndTrim(raw)
+	if len(entries) == 0 {
+		return []string{"X-Forwarded-For"}, nil
+	}
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		canonical, ok := canonicalForwardHeader(entry)
+		if !ok {
+			return nil, fmt.Errorf(
+				"config: trusted-proxy-headers: %q is not supported (want one of %s)",
+				entry, strings.Join(knownForwardHeaders, ", "),
+			)
+		}
+		out = append(out, canonical)
+	}
+	return out, nil
+}
+
+func canonicalForwardHeader(s string) (string, bool) {
+	for _, h := range knownForwardHeaders {
+		if strings.EqualFold(h, s) {
+			return h, true
+		}
+	}
+	return "", false
 }
 
 func splitAndTrim(s string) []string {
