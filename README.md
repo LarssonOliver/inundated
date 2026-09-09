@@ -69,6 +69,18 @@ export DATABASE_URL="postgresql://user:password@localhost/inundated"
 make dev
 ```
 
+### Logging Configuration
+
+Control logging output with two environment variables:
+
+```bash
+export LOG_LEVEL="debug"      # debug|info|warn|error (default: info)
+export LOG_FORMAT="json"      # text|json (default: text)
+```
+
+- **`LOG_LEVEL`** (`debug|info|warn|error`, default `info`) — Controls which log records are emitted. Set to `debug` for detailed diagnostics, `warn` to see only warnings and errors, or `error` for errors only.
+- **`LOG_FORMAT`** (`text|json`, default `text`) — Output format. `text` produces human-readable logs for local development; `json` outputs structured JSON lines suitable for production log aggregators. All logs are written to stdout.
+
 ### Enabling authentication (OIDC)
 
 By default inundated runs in **userless mode**: no login, and every resource is
