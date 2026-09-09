@@ -149,14 +149,15 @@ func TestRealIP_XRealIPHonoredWhenConfigured(t *testing.T) {
 	assert.Equal(t, "203.0.113.7", got)
 }
 
-func TestRealIP_EmptyHeaderListDefaultsToXForwardedFor(t *testing.T) {
+func TestRealIP_EmptyHeaderListConsultsNoHeader(t *testing.T) {
+	// The default lives in config; the middleware trusts nothing it is not told to.
 	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
 	req.RemoteAddr = "10.1.2.3:5000"
 	req.Header.Set("X-Forwarded-For", "203.0.113.7")
 
 	got := seenRemoteAddr(middleware.RealIP(mustPrefixes(t, "10.0.0.0/8"), nil), req)
 
-	assert.Equal(t, "203.0.113.7", got)
+	assert.Equal(t, "10.1.2.3:5000", got)
 }
 
 func TestRealIP_HeaderListIsPriorityOrdered(t *testing.T) {

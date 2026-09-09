@@ -21,8 +21,8 @@ import (
 // fields are joined, walked right-to-left, and the first hop that is not itself
 // a trusted proxy is taken as the client (falling back to the left-most entry
 // if every hop is trusted). Any other configured header is a single value taken
-// as-is. Callers pass a validated list; unrecognised names are treated as
-// single-value headers.
+// as-is. Callers pass a validated, non-empty list (see
+// config.parseTrustedProxyHeaders); an empty list consults no header at all.
 func RealIP(trustedProxies []netip.Prefix, forwardHeaders []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,10 +42,6 @@ func realIP(r *http.Request, trusted []netip.Prefix, headers []string) string {
 	peer := parseAddr(r.RemoteAddr)
 	if !peer.IsValid() || !isTrusted(peer, trusted) {
 		return ""
-	}
-
-	if len(headers) == 0 {
-		headers = []string{"X-Forwarded-For"}
 	}
 
 	for _, h := range headers {
