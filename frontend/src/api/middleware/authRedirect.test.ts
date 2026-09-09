@@ -52,6 +52,15 @@ describe("authRedirectMiddleware", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it("flags the app as redirecting so the loading screen stays up", async () => {
+    const { useStartup } = await import("@/composables/useStartup");
+    expect(useStartup().redirecting.value).toBe(false);
+
+    await authRedirectMiddleware.post!(responseContext("/api/projects", 401));
+
+    expect(useStartup().redirecting.value).toBe(true);
+  });
+
   it("does nothing on a successful response", async () => {
     await authRedirectMiddleware.post!(responseContext("/api/projects", 200));
 

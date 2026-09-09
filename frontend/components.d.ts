@@ -10,6 +10,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ColorInput: typeof import('./src/components/inputs/ColorInput.vue')['default']
     ConfirmationPopup: typeof import('./src/components/inputs/ConfirmationPopup.vue')['default']
+    LoadingScreen: typeof import('./src/components/LoadingScreen.vue')['default']
     MaterialIcon: typeof import('./src/components/icons/MaterialIcon.vue')['default']
     ProjectEdit: typeof import('./src/components/project/ProjectEdit.vue')['default']
     ProjectStats: typeof import('./src/components/project/ProjectStats.vue')['default']

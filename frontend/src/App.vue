@@ -2,27 +2,37 @@
 import { onMounted } from "vue";
 import { RouterView } from "vue-router";
 import TheMenu from "./components/TheMenu.vue";
+import LoadingScreen from "./components/LoadingScreen.vue";
 import { useUserStore } from "@/stores/user";
+import { useStartup } from "@/composables/useStartup";
 
 const userStore = useUserStore();
+const { isStarting, finishProbe } = useStartup();
 
-onMounted(() => {
-  void userStore.fetchCurrentUser();
+onMounted(async () => {
+  try {
+    await userStore.fetchCurrentUser();
+  } finally {
+    finishProbe();
+  }
 });
 </script>
 
 <template>
-  <header></header>
+  <LoadingScreen v-if="isStarting" />
+  <template v-else>
+    <header></header>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <TheMenu />
-    </aside>
+    <div class="layout">
+      <aside class="sidebar">
+        <TheMenu />
+      </aside>
 
-    <main class="content">
-      <RouterView />
-    </main>
-  </div>
+      <main class="content">
+        <RouterView />
+      </main>
+    </div>
+  </template>
 </template>
 
 <style>
