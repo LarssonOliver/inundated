@@ -334,3 +334,27 @@ func TestOIDCRejectsNonPositiveTimeout(t *testing.T) {
 		})
 	}
 }
+
+func TestLogFormatDefaultsToText(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.Equal(t, "text", cfg.LogFormat)
+}
+
+func TestLogFormatFromEnv(t *testing.T) {
+	env := map[string]string{"LOG_FORMAT": "json"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.Equal(t, "json", cfg.LogFormat)
+}
+
+func TestLogFormatFromFlag(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs([]string{"-log-format=json"}), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.Equal(t, "json", cfg.LogFormat)
+}
+
+func TestValidationRejectsInvalidLogFormat(t *testing.T) {
+	_, err := config.Load(config.WithArgs([]string{"-log-format=yaml"}), config.WithEnvLookup(fakeEnv(nil)))
+	assert.Error(t, err)
+}
