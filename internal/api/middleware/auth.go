@@ -2,12 +2,14 @@ package middleware
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/auth"
+	"github.com/larssonoliver/inundated/internal/logging"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
@@ -95,6 +97,7 @@ func OIDCAuth(userService service.UserService, sessionRepository repository.Sess
 
 			ctx := model.SetSessionInContext(r.Context(), session)
 			ctx = model.SetUserInContext(ctx, user)
+			ctx = logging.ContextWith(ctx, slog.String("user_id", user.Id.String()))
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
+	"github.com/larssonoliver/inundated/internal/logging"
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/service"
@@ -179,6 +181,12 @@ func TestOIDCAuth(t *testing.T) {
 				session, ok := model.GetSessionFromContext(lastSeenCtx)
 				require.True(t, ok)
 				assert.Equal(t, sessionID, session.Id)
+				var buf bytes.Buffer
+				lg, err := logging.New(logging.Options{Format: "json", Writer: &buf})
+				require.NoError(t, err)
+				lg.InfoContext(lastSeenCtx, "probe")
+				assert.Contains(t, buf.String(), userID.String(),
+					"an authenticated request's context must carry user_id for logging")
 			},
 		},
 		{
