@@ -33,8 +33,6 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
-    // To configure API key authorization: xsrfToken
-    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
@@ -68,7 +66,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -105,8 +103,6 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
-    // To configure API key authorization: xsrfToken
-    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
@@ -140,7 +136,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 
@@ -409,8 +405,6 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
-    // To configure API key authorization: xsrfToken
-    apiKey: "YOUR API KEY",
   });
   const api = new ProjectsApi(config);
 
@@ -447,7 +441,7 @@ example().catch(console.error);
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 

@@ -1,11 +1,8 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
-
-	"github.com/gorilla/csrf"
-
-	"github.com/larssonoliver/inundated/internal/auth"
 )
 
 func SecurityHeaders(next http.Handler) http.Handler {
@@ -28,10 +25,9 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		// - default-src 'self': only load resources from the same origin by default
 		// - script-src 'self': no inline scripts, no eval. The Vite/Vue
 		//   production build emits only external module scripts (verified: the
-		//   built index.html has a single <script type="module" src=...>), so no
-		//   'unsafe-inline' is needed -- and leaving it out is what keeps an HTML
-		//   injection from running script that reads the JS-readable XSRF-TOKEN
-		//   cookie and forging CSRF-valid requests.
+		//   built index.html has a single <script type="module" src=...>), so
+		//   'unsafe-inline' is not needed -- keeping it out blocks injected
+		//   inline script, the main lever an HTML injection has on this SPA.
 		// - style-src 'self' 'unsafe-inline': allow inline styles (common with Vue; tighten if possible)
 		// - img-src 'self' data:: allow same-origin images and data URIs (e.g. base64 icons)
 		// - connect-src 'self': XHR/fetch only to same origin
@@ -62,64 +58,36 @@ func NoSniffJSON(next http.Handler) http.Handler {
 	})
 }
 
-const XSRFCookieName = "XSRF-TOKEN"
-const XSRFHeaderName = "X-XSRF-TOKEN"
-const CSRFRejectedHeader = "X-CSRF-Rejected"
-
-// CSRF returns middleware that enforces CSRF protection on unsafe methods.
-// gorilla/csrf keeps an HMAC-signed token in its own HttpOnly session cookie and
-// expects a per-request masked copy of it in the X-XSRF-TOKEN header; that
-// masked token is published to the SPA by [ExposeCSRFToken]. authKey signs the
-// token and must be 32 bytes.
+// CrossOriginProtection returns middleware that rejects state-changing
+// cross-origin requests. It wraps [http.CrossOriginProtection] (Go 1.25+), which
+// consults the browser's Sec-Fetch-Site header and falls back to comparing the
+// Origin header against Host. No tokens, no cookies: same-origin SPA fetches
+// pass untouched, cross-origin (and cross-site, e.g. a sibling subdomain) unsafe
+// requests are denied, and safe methods (GET/HEAD/OPTIONS) always pass.
 //
-// secure should be false only for plain-HTTP local development: a Secure cookie
-// would never reach the browser, and gorilla/csrf's default HTTPS assumption
-// makes it reject the http:// Origin the browser sends.
-func CSRF(authKey []byte, secure bool) func(http.Handler) http.Handler {
-	protect := csrf.Protect(
-		authKey,
-		csrf.Path("/"),
-		csrf.Secure(secure),
-		csrf.SameSite(csrf.SameSiteLaxMode),
-		csrf.RequestHeader(XSRFHeaderName),
+// Requests that carry neither Sec-Fetch-Site nor Origin are treated as
+// non-browser clients and allowed through -- CSRF is a browser-only attack, and
+// a raw HTTP client is not a confused deputy.
+//
+// trustedOrigin, when non-empty, is added as an explicitly allowed origin
+// ("scheme://host[:port]"). Pass the app's public base URL so the Origin/Host
+// fallback still works for pre-2023 browsers when a reverse proxy rewrites Host.
+// An unparseable origin panics at construction; the caller passes a
+// config-validated value.
+func CrossOriginProtection(trustedOrigin string) func(http.Handler) http.Handler {
+	c := http.NewCrossOriginProtection()
 
-		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// gorilla/csrf calls this instead of the next handler, so
-			// ExposeCSRFToken never runs. Publish the current (freshly minted,
-			// after a key rotation) token here too, otherwise the SPA's
-			// XSRF-TOKEN cookie stays stale and csrfRetry has nothing new to
-			// retry with.
-			writeXSRFCookie(w, r, secure)
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set(CSRFRejectedHeader, "1")
-			w.WriteHeader(http.StatusForbidden)
-			_, _ = w.Write([]byte(`{"message": "CSRF token mismatch or missing"}`))
-		})),
-	)
-
-	return func(next http.Handler) http.Handler {
-		guarded := protect(next)
-		if secure {
-			return guarded
+	if trustedOrigin != "" {
+		if err := c.AddTrustedOrigin(trustedOrigin); err != nil {
+			panic(fmt.Sprintf("middleware: invalid trusted origin %q: %v", trustedOrigin, err))
 		}
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			guarded.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
-		})
 	}
-}
 
-func ExposeCSRFToken(secure bool) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			writeXSRFCookie(w, r, secure)
-			next.ServeHTTP(w, r)
-		})
-	}
-}
+	c.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"cross-origin request blocked"}`))
+	}))
 
-func writeXSRFCookie(w http.ResponseWriter, r *http.Request, secure bool) {
-	c := auth.BaseCookie(XSRFCookieName, secure)
-	c.Value = csrf.Token(r)
-	c.HttpOnly = false // the SPA must be able to read this one
-	http.SetCookie(w, c)
+	return c.Handler
 }

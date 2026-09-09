@@ -18,11 +18,8 @@ type Config struct {
 	LogLevel                string
 	PublicBaseURL           string
 	OIDC                    OIDCConfig
-	CSRFAuthKey             string
 	DisableUserRegistration bool
 }
-
-const csrfAuthKeyLen = 32
 
 type OIDCConfig struct {
 	IssuerURL    string
@@ -145,9 +142,6 @@ func (l *loader) load() (*Config, error) {
 	oidcHTTPTimeout := fs.Duration("oidc-http-timeout", l.envOrDuration("OIDC_HTTP_TIMEOUT", defaultOIDCHTTPTimeout),
 		"Timeout for OIDC discovery, JWKS, and token requests (env: OIDC_HTTP_TIMEOUT)")
 
-	csrfAuthKey := fs.String("csrf-auth-key", l.envOr("CSRF_AUTH_KEY", ""),
-		fmt.Sprintf("%d-byte key for signing CSRF tokens; generated ephemerally if unset (env: CSRF_AUTH_KEY)", csrfAuthKeyLen))
-
 	disableUserRegistration := fs.Bool("disable-user-registration", l.envOrBool("DISABLE_USER_REGISTRATION", false),
 		"Reject logins from OIDC identities without an existing account (env: DISABLE_USER_REGISTRATION)")
 
@@ -177,7 +171,6 @@ func (l *loader) load() (*Config, error) {
 			Scopes:       splitAndTrim(*oidcScopes),
 			HTTPTimeout:  *oidcHTTPTimeout,
 		},
-		CSRFAuthKey:             *csrfAuthKey,
 		DisableUserRegistration: *disableUserRegistration,
 	}
 
@@ -209,9 +202,6 @@ func (c *Config) validate() error {
 	}
 	if c.OIDC.Enabled() && c.PublicBaseURL == "" {
 		return fmt.Errorf("config: public-base-url is required when oidc-issuer-url is set")
-	}
-	if c.CSRFAuthKey != "" && len(c.CSRFAuthKey) != csrfAuthKeyLen {
-		return fmt.Errorf("config: csrf-auth-key must be exactly %d bytes, got %d", csrfAuthKeyLen, len(c.CSRFAuthKey))
 	}
 	return nil
 }

@@ -21,7 +21,6 @@ projects:
     operationId: createProject
     security:
       - sessionCookie: []
-        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -62,7 +61,6 @@ projects-id:
     operationId: updateProject
     security:
       - sessionCookie: []
-        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -86,7 +84,6 @@ projects-id:
     operationId: deleteProject
     security:
       - sessionCookie: []
-        xsrfToken: []
     responses:
       "204":
         description: Deleted

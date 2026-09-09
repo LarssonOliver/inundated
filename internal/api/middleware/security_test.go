@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,86 +24,88 @@ func TestSecurityHeaders(t *testing.T) {
 		"the Vue production build ships only external module scripts; inline script must not be allowed")
 }
 
-func TestCSRF(t *testing.T) {
-	key := []byte("0123456789abcdef0123456789abcdef")
+func TestCrossOriginProtection(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	h := middleware.CSRF(key, true)(middleware.ExposeCSRFToken(true)(next))
+	h := middleware.CrossOriginProtection("")(next)
 
-	t.Run("safe method passes and receives a token cookie", func(t *testing.T) {
+	t.Run("a safe method passes regardless of origin", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "https://example.com/api/me", nil)
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 		h.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		require.NotEmpty(t, rec.Result().Cookies(), "expected a CSRF cookie to be set")
 	})
 
-	t.Run("unsafe method without a token is rejected with 403", func(t *testing.T) {
+	t.Run("a same-origin unsafe request passes", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
+		req.Header.Set("Sec-Fetch-Site", "same-origin")
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("a cross-site unsafe request is rejected with a JSON 403", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		h.ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Contains(t, rec.Header().Get("Content-Type"), "json")
+
+		var body struct {
+			Message string `json:"message"`
+		}
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
+		assert.NotEmpty(t, body.Message, "the deny response must carry a JSON message the SPA can surface")
+	})
+
+	t.Run("a same-site (sibling subdomain) unsafe request is rejected", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
+		req.Header.Set("Sec-Fetch-Site", "same-site")
 		h.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("a 403 still refreshes the readable XSRF-TOKEN cookie so the client can retry", func(t *testing.T) {
+	t.Run("a non-browser request that sends neither Sec-Fetch-Site nor Origin passes", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
-		req.Header.Set("X-XSRF-TOKEN", "stale-bogus-token")
-		req.Header.Set("Origin", "https://example.com")
 		h.ServeHTTP(rec, req)
 
-		require.Equal(t, http.StatusForbidden, rec.Code)
-		assert.Equal(t, "1", rec.Header().Get(middleware.CSRFRejectedHeader),
-			"a CSRF rejection must be marked so the SPA can tell it apart from any other 403")
-
-		var xsrf string
-		for _, c := range rec.Result().Cookies() {
-			if c.Name == "XSRF-TOKEN" {
-				xsrf = c.Value
-			}
-		}
-		require.NotEmpty(t, xsrf, "the rejection response must carry a fresh XSRF-TOKEN cookie")
-		assert.NotEqual(t, "stale-bogus-token", xsrf)
+		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("SPA round trip: the readable XSRF-TOKEN cookie authorizes an unsafe request", func(t *testing.T) {
-		getRec := httptest.NewRecorder()
-		getReq := httptest.NewRequest(http.MethodGet, "https://example.com/api/me", nil)
-		h.ServeHTTP(getRec, getReq)
+	t.Run("a cross-origin Origin header without Sec-Fetch-Site is rejected", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
+		req.Host = "example.com"
+		req.Header.Set("Origin", "https://evil.example")
+		h.ServeHTTP(rec, req)
 
-		cookies := getRec.Result().Cookies()
-		var token string
-		for _, c := range cookies {
-			if c.Name == "XSRF-TOKEN" {
-				token = c.Value
-			}
-		}
-		require.NotEmpty(t, token, "expected a JS-readable XSRF-TOKEN cookie on a safe response")
-
-		postRec := httptest.NewRecorder()
-		postReq := httptest.NewRequest(http.MethodPost, "https://example.com/api/projects", nil)
-		for _, c := range cookies {
-			postReq.AddCookie(c)
-		}
-		postReq.Header.Set("X-XSRF-TOKEN", token)
-		postReq.Header.Set("Origin", "https://example.com")
-		h.ServeHTTP(postRec, postReq)
-
-		assert.Equal(t, http.StatusOK, postRec.Code)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("insecure mode omits the Secure attribute so the cookie survives plain HTTP", func(t *testing.T) {
-		insecure := middleware.CSRF(key, false)(middleware.ExposeCSRFToken(false)(next))
+	t.Run("a configured trusted origin is allowed through the Origin fallback", func(t *testing.T) {
+		trusted := middleware.CrossOriginProtection("https://app.example.com")(next)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "http://localhost:8080/api/me", nil)
-		insecure.ServeHTTP(rec, req)
+		req := httptest.NewRequest(http.MethodPost, "https://api.example.com/api/projects", nil)
+		req.Host = "api.example.com"
+		req.Header.Set("Origin", "https://app.example.com")
+		trusted.ServeHTTP(rec, req)
 
-		for _, c := range rec.Result().Cookies() {
-			assert.False(t, c.Secure, "cookie %q must not be Secure in insecure mode", c.Name)
-		}
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("an invalid trusted origin panics at construction", func(t *testing.T) {
+		assert.Panics(t, func() {
+			middleware.CrossOriginProtection("not-a-valid-origin")
+		})
 	})
 }
