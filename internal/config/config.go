@@ -20,18 +20,8 @@ type Config struct {
 	PublicBaseURL           string
 	OIDC                    OIDCConfig
 	DisableUserRegistration bool
-
-	// TrustedProxies lists the networks a reverse proxy connects from. Only
-	// when the direct TCP peer falls inside one of these are the forwarded
-	// client-IP headers honored. Empty (the default) means those headers are
-	// ignored entirely.
-	TrustedProxies []netip.Prefix
-
-	// TrustedProxyHeaders names the forwarded-for headers to consult, in
-	// priority order, when the peer is trusted. Defaults to
-	// ["X-Forwarded-For"]. Only X-Forwarded-For, X-Real-IP and True-Client-IP
-	// are accepted.
-	TrustedProxyHeaders []string
+	TrustedProxies          []netip.Prefix
+	TrustedProxyHeaders     []string
 }
 
 type OIDCConfig struct {
