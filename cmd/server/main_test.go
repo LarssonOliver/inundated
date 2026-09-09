@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -137,6 +138,22 @@ func TestNewRouter_RateLimiting(t *testing.T) {
 
 	t.Run("another IP is unaffected", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, callFrom("/api/projects", "203.0.113.99"))
+	})
+
+	t.Run("a spoofed X-Forwarded-For does not let one peer dodge the limit", func(t *testing.T) {
+		got429 := false
+		for i := 0; i < middleware.APIRateLimitRequests+5; i++ {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+			req.RemoteAddr = "203.0.113.55:40000"
+			req.Header.Set("X-Forwarded-For", fmt.Sprintf("10.0.0.%d", i%250))
+			r.ServeHTTP(rec, req)
+			if rec.Code == http.StatusTooManyRequests {
+				got429 = true
+				break
+			}
+		}
+		assert.True(t, got429, "no trusted proxies configured: the client-supplied X-Forwarded-For must be ignored")
 	})
 }
 

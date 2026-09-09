@@ -121,6 +121,13 @@ inundated does not terminate TLS or emit HSTS itself. Run it behind a proxy
   general, 10 req/min on `/api/auth/*`) key off that value;
 - forwards to the app's `HOST:PORT`.
 
+Set `TRUSTED_PROXIES` to the proxy's address(es) — a comma-separated list of
+CIDRs or bare IPs (e.g. `10.0.0.0/8,192.168.1.10`). inundated only reads
+`X-Forwarded-For` / `X-Real-IP` when the request's direct TCP peer matches this
+list; otherwise it rate-limits by the connection address, so a client that is
+reachable directly (or through a pod network) can't spoof its IP with a forged
+header. Leave it unset and those headers are ignored entirely.
+
 Also set `PUBLIC_BASE_URL` to the external `https://` origin: it is registered
 as a trusted origin so the cross-origin request check keeps working for older
 browsers when the proxy rewrites the `Host` header. API request bodies are

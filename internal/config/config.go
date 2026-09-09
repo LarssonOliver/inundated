@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"os"
 	"slices"
@@ -19,6 +20,12 @@ type Config struct {
 	PublicBaseURL           string
 	OIDC                    OIDCConfig
 	DisableUserRegistration bool
+
+	// TrustedProxies lists the networks a reverse proxy connects from. Only
+	// when the direct TCP peer falls inside one of these are the
+	// X-Forwarded-For / X-Real-IP headers honored for client-IP resolution.
+	// Empty (the default) means those headers are ignored entirely.
+	TrustedProxies []netip.Prefix
 }
 
 type OIDCConfig struct {
@@ -145,6 +152,9 @@ func (l *loader) load() (*Config, error) {
 	disableUserRegistration := fs.Bool("disable-user-registration", l.envOrBool("DISABLE_USER_REGISTRATION", false),
 		"Reject logins from OIDC identities without an existing account (env: DISABLE_USER_REGISTRATION)")
 
+	trustedProxies := fs.String("trusted-proxies", l.envOr("TRUSTED_PROXIES", ""),
+		"Comma-separated CIDRs/IPs of reverse proxies whose X-Forwarded-For / X-Real-IP headers to trust; empty ignores them (env: TRUSTED_PROXIES)")
+
 	// ------------------------------------------------------------------ //
 
 	fs.Usage = func() { printHelp(fs) }
@@ -156,6 +166,11 @@ func (l *loader) load() (*Config, error) {
 	}
 
 	baseURL := strings.TrimRight(*publicBaseURL, "/")
+
+	parsedProxies, err := parseTrustedProxies(*trustedProxies)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Host:          *host,
@@ -172,6 +187,7 @@ func (l *loader) load() (*Config, error) {
 			HTTPTimeout:  *oidcHTTPTimeout,
 		},
 		DisableUserRegistration: *disableUserRegistration,
+		TrustedProxies:          parsedProxies,
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -253,6 +269,33 @@ func validatePublicBaseURL(raw string) error {
 		return fmt.Errorf("config: public-base-url must be a bare origin (scheme + host), e.g. https://inundated.example.com")
 	}
 	return nil
+}
+
+// parseTrustedProxies parses a comma-separated list of CIDRs and bare IPs into
+// prefixes. A bare IP becomes a host prefix (/32 or /128).
+func parseTrustedProxies(raw string) ([]netip.Prefix, error) {
+	entries := splitAndTrim(raw)
+	if len(entries) == 0 {
+		return nil, nil
+	}
+	prefixes := make([]netip.Prefix, 0, len(entries))
+	for _, entry := range entries {
+		if strings.Contains(entry, "/") {
+			p, err := netip.ParsePrefix(entry)
+			if err != nil {
+				return nil, fmt.Errorf("config: trusted-proxies: %q is not a valid CIDR: %w", entry, err)
+			}
+			prefixes = append(prefixes, p.Masked())
+			continue
+		}
+		addr, err := netip.ParseAddr(entry)
+		if err != nil {
+			return nil, fmt.Errorf("config: trusted-proxies: %q is not a valid IP or CIDR: %w", entry, err)
+		}
+		addr = addr.Unmap()
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+	return prefixes, nil
 }
 
 func splitAndTrim(s string) []string {
