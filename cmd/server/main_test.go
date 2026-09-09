@@ -111,6 +111,11 @@ func TestNewHTTPServer_HasTimeouts(t *testing.T) {
 	assert.Positive(t, s.IdleTimeout)
 }
 
+func TestNewHTTPServer_RoutesErrorsThroughSlog(t *testing.T) {
+	s := newHTTPServer("127.0.0.1:0", http.NotFoundHandler())
+	assert.NotNil(t, s.ErrorLog, "the stdlib server's internal errors must be routed through slog")
+}
+
 func TestNewRouter_RateLimiting(t *testing.T) {
 	cfg := &config.Config{}
 	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
