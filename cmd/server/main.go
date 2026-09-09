@@ -83,7 +83,7 @@ func newRouter(
 	isSecure := shouldUseSecureCookies(cfg)
 
 	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
+	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
 
@@ -176,6 +176,13 @@ func main() {
 	if !shouldUseSecureCookies(cfg) {
 		log.Printf("warning: insecure cookies (Secure attribute off); set " +
 			"PUBLIC_BASE_URL to an https:// origin in production")
+	}
+
+	if len(cfg.TrustedProxies) == 0 {
+		log.Printf("warning: TRUSTED_PROXIES not set; forwarded-for headers are " +
+			"ignored and rate limiting keys off the direct connection address. " +
+			"Behind a reverse proxy that means every client shares one bucket -- " +
+			"set TRUSTED_PROXIES to the proxy's address(es)")
 	}
 
 	log.Printf("Starting inundated %s on %s", Version, addrStr)

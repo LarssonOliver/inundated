@@ -222,6 +222,77 @@ func TestDisableUserRegistrationFromFlag(t *testing.T) {
 	assert.True(t, cfg.DisableUserRegistration)
 }
 
+func TestTrustedProxiesEmptyByDefault(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.Empty(t, cfg.TrustedProxies)
+}
+
+func TestTrustedProxiesParsesCIDRList(t *testing.T) {
+	env := map[string]string{"TRUSTED_PROXIES": "10.0.0.0/8, 192.168.0.0/16"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	got := make([]string, len(cfg.TrustedProxies))
+	for i, p := range cfg.TrustedProxies {
+		got[i] = p.String()
+	}
+	assert.Equal(t, []string{"10.0.0.0/8", "192.168.0.0/16"}, got)
+}
+
+func TestTrustedProxiesNormalizesBareIP(t *testing.T) {
+	env := map[string]string{"TRUSTED_PROXIES": "192.168.1.5, ::1"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	got := make([]string, len(cfg.TrustedProxies))
+	for i, p := range cfg.TrustedProxies {
+		got[i] = p.String()
+	}
+	assert.Equal(t, []string{"192.168.1.5/32", "::1/128"}, got)
+}
+
+func TestTrustedProxiesRejectsInvalidEntry(t *testing.T) {
+	env := map[string]string{"TRUSTED_PROXIES": "10.0.0.0/8, not-an-ip"}
+	_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.Error(t, err)
+}
+
+func TestTrustedProxiesFromFlag(t *testing.T) {
+	cfg, err := config.Load(
+		config.WithArgs([]string{"-trusted-proxies=172.16.0.0/12"}),
+		config.WithEnvLookup(fakeEnv(nil)),
+	)
+	assert.NoError(t, err)
+	assert.Len(t, cfg.TrustedProxies, 1)
+	assert.Equal(t, "172.16.0.0/12", cfg.TrustedProxies[0].String())
+}
+
+func TestTrustedProxiesRejectsCatchAllPrefix(t *testing.T) {
+	for _, entry := range []string{"0.0.0.0/0", "::/0"} {
+		env := map[string]string{"TRUSTED_PROXIES": entry}
+		_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+		assert.Errorf(t, err, "%q trusts every address and should be rejected", entry)
+	}
+}
+
+func TestTrustedProxyHeadersDefaultsToXForwardedFor(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"X-Forwarded-For"}, cfg.TrustedProxyHeaders)
+}
+
+func TestTrustedProxyHeadersParsesAndNormalizesList(t *testing.T) {
+	env := map[string]string{"TRUSTED_PROXY_HEADERS": "x-real-ip, X-Forwarded-For"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"X-Real-IP", "X-Forwarded-For"}, cfg.TrustedProxyHeaders)
+}
+
+func TestTrustedProxyHeadersRejectsUnknownHeader(t *testing.T) {
+	env := map[string]string{"TRUSTED_PROXY_HEADERS": "X-Forwarded-For, X-Evil"}
+	_, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.Error(t, err)
+}
+
 func TestDisableUserRegistrationInvalidEnvFallsBackToFalse(t *testing.T) {
 	env := map[string]string{"DISABLE_USER_REGISTRATION": "not-a-bool"}
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
