@@ -83,6 +83,7 @@ func newRouter(
 	isSecure := shouldUseSecureCookies(cfg)
 
 	r.Use(chimiddleware.RequestID)
+	r.Use(middleware.RequestLogContext)
 	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
@@ -90,8 +91,7 @@ func newRouter(
 	r.Handle("/health", handlers.HealthHandler())
 
 	r.Group(func(r chi.Router) {
-		logger := log.New(os.Stdout, "[http] ", log.LstdFlags)
-		r.Use(middleware.RequestLogger(logger, func(r *http.Request) bool {
+		r.Use(middleware.RequestLogger(func(r *http.Request) bool {
 			return r.URL.Path == "/health"
 		}))
 		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
