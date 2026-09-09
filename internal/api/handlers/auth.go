@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -105,7 +105,7 @@ func (a *AuthHandler) AuthCallback(ctx context.Context, request api.AuthCallback
 
 	session, token, redirectUrl, err := a.svc.HandleCallback(ctx, stateId, request.Params.Code)
 	if err != nil {
-		log.Printf("OIDC callback failed: %v", err)
+		slog.WarnContext(ctx, "OIDC callback failed", "error", err)
 		return api.AuthCallback401Response{}, nil
 	}
 

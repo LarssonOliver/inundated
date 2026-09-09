@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/larssonoliver/inundated/internal/model"
 )
@@ -76,9 +76,11 @@ func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model
 		return model.User{}, err
 	}
 	if adoption.Total() > 0 {
-		log.Printf(
-			"first user %s adopted %d orphaned resources (%d projects, %d tags, %d timespans)",
-			created.Id, adoption.Total(), adoption.Projects, adoption.Tags, adoption.Timespans,
+		slog.InfoContext(ctx, "first user adopted orphaned resources",
+			"user_id", created.Id,
+			"projects", adoption.Projects,
+			"tags", adoption.Tags,
+			"timespans", adoption.Timespans,
 		)
 	}
 	return created, nil
