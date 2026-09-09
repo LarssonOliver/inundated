@@ -78,10 +78,6 @@ export class TimespansApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
-
 
         let urlPath = `/api/timespans`;
 
@@ -126,10 +122,6 @@ export class TimespansApi extends runtime.BaseAPI {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
 
 
         let urlPath = `/api/timespans/{timespanId}`;
@@ -273,10 +265,6 @@ export class TimespansApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         headerParameters['Content-Type'] = 'application/json';
-
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
 
 
         let urlPath = `/api/timespans/{timespanId}`;

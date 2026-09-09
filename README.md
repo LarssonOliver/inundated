@@ -89,10 +89,9 @@ The redirect URI is derived as `$PUBLIC_BASE_URL/api/auth/callback` — register
 exactly that with your provider.
 
 `PUBLIC_BASE_URL` also controls cookie security: when it is an `https://` origin
-the session and CSRF cookies are marked `Secure` and CSRF enforces HTTPS-origin
-checks. Set it to your real `https://` origin in any deployment reachable over
-HTTPS, including userless ones — otherwise the browser accepts the cookies over
-plain HTTP too.
+the session cookie is marked `Secure`. Set it to your real `https://` origin in
+any deployment reachable over HTTPS, including userless ones — otherwise the
+browser accepts the cookie over plain HTTP too.
 
 The first user to log in adopts all pre-existing resources. Once any user
 exists the server refuses to start without OIDC configured, so authentication
@@ -122,10 +121,10 @@ inundated does not terminate TLS or emit HSTS itself. Run it behind a proxy
   general, 10 req/min on `/api/auth/*`) key off that value;
 - forwards to the app's `HOST:PORT`.
 
-Also set `PUBLIC_BASE_URL` to the external `https://` origin and
-`CSRF_AUTH_KEY` to a persistent 32-byte value (an unset key is regenerated on
-every restart, invalidating in-flight logins and ruling out more than one
-instance). API request bodies are capped at 1 MiB.
+Also set `PUBLIC_BASE_URL` to the external `https://` origin: it is registered
+as a trusted origin so the cross-origin request check keeps working for older
+browsers when the proxy rewrites the `Host` header. API request bodies are
+capped at 1 MiB.
 
 ### Trying the auth flow locally with Docker Compose
 
@@ -148,9 +147,6 @@ Open <http://localhost:5173> and follow a login link. The mock provider shows a
 form where you enter any username and, optionally, a `claims` JSON blob such as
 `{"email":"alice@example.com","name":"Alice"}` to mint the ID token. The first
 account to log in adopts the existing resources.
-
-`CSRF_AUTH_KEY` is left unset here, so the server generates an ephemeral one and
-in-flight logins don't survive a backend restart — fine for testing.
 
 ```bash
 docker compose down -v   # stop and wipe the database

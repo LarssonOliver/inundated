@@ -175,8 +175,6 @@ async function example() {
   const config = new Configuration({ 
     // To configure API key authorization: sessionCookie
     apiKey: "YOUR API KEY",
-    // To configure API key authorization: xsrfToken
-    apiKey: "YOUR API KEY",
   });
   const api = new AuthApi(config);
 
@@ -202,7 +200,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-[sessionCookie](../README.md#sessionCookie), [xsrfToken](../README.md#xsrfToken)
+[sessionCookie](../README.md#sessionCookie)
 
 ### HTTP request headers
 

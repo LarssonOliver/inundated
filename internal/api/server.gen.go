@@ -313,8 +313,6 @@ func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Req
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
-
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -407,8 +405,6 @@ func (siw *ServerInterfaceWrapper) CreateProject(w http.ResponseWriter, r *http.
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
-
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -440,8 +436,6 @@ func (siw *ServerInterfaceWrapper) DeleteProject(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -522,8 +516,6 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -684,8 +676,6 @@ func (siw *ServerInterfaceWrapper) CreateTag(w http.ResponseWriter, r *http.Requ
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
-
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -717,8 +707,6 @@ func (siw *ServerInterfaceWrapper) DeleteTag(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -800,8 +788,6 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
-
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -874,8 +860,6 @@ func (siw *ServerInterfaceWrapper) CreateTimespan(w http.ResponseWriter, r *http
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
 
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
-
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -907,8 +891,6 @@ func (siw *ServerInterfaceWrapper) DeleteTimespan(w http.ResponseWriter, r *http
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -973,8 +955,6 @@ func (siw *ServerInterfaceWrapper) UpdateTimespan(w http.ResponseWriter, r *http
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
-
-	ctx = context.WithValue(ctx, XsrfTokenScopes, []string{})
 
 	r = r.WithContext(ctx)
 

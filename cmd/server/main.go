@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -57,18 +56,6 @@ func setupRepositories(ctx context.Context, databaseUrl string) (
 	return nil, nil, nil
 }
 
-func resolveCSRFKey(configured string) []byte {
-	if configured != "" {
-		return []byte(configured)
-	}
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		log.Fatalf("failed to generate ephemeral CSRF key: %v", err)
-	}
-	log.Printf("warning: CSRF_AUTH_KEY not set; generated an ephemeral key")
-	return key
-}
-
 func shouldUseSecureCookies(cfg *config.Config) bool {
 	return strings.HasPrefix(cfg.PublicBaseURL, "https://")
 }
@@ -89,7 +76,6 @@ func newRouter(
 	svc service.Service,
 	sessionRepo repository.SessionRepository,
 	server api.StrictServerInterface,
-	csrfKey []byte,
 ) http.Handler {
 
 	r := chi.NewMux()
@@ -112,8 +98,7 @@ func newRouter(
 		r.Use(middleware.RateLimitByIPForPrefixes(middleware.AuthRateLimitRequests, middleware.AuthRateLimitWindow, "/api/auth/"))
 		r.Use(middleware.MaxBodyBytes(middleware.MaxAPIBodyBytes))
 		r.Use(middleware.NoSniffJSON)
-		r.Use(middleware.CSRF(csrfKey, isSecure))
-		r.Use(middleware.ExposeCSRFToken(isSecure))
+		r.Use(middleware.CrossOriginProtection(cfg.PublicBaseURL))
 
 		if cfg.OIDC.Enabled() {
 			r.Use(middleware.OIDCAuth(svc, sessionRepo, isSecure))
@@ -176,7 +161,7 @@ func main() {
 	handler := handlers.NewHandler(authSvc, svc, shouldUseSecureCookies(cfg))
 	server := api.NewServer(handler)
 
-	r := newRouter(cfg, svc, sessionRepo, server, resolveCSRFKey(cfg.CSRFAuthKey))
+	r := newRouter(cfg, svc, sessionRepo, server)
 
 	addrStr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 
@@ -189,9 +174,8 @@ func main() {
 	}
 
 	if !shouldUseSecureCookies(cfg) {
-		log.Printf("warning: insecure cookies (Secure attribute off, CSRF " +
-			"HTTPS-origin checks relaxed); set PUBLIC_BASE_URL to an https://" +
-			"origin in production")
+		log.Printf("warning: insecure cookies (Secure attribute off); set " +
+			"PUBLIC_BASE_URL to an https:// origin in production")
 	}
 
 	log.Printf("Starting inundated %s on %s", Version, addrStr)

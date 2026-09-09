@@ -11,7 +11,6 @@ import (
 
 const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
-	XsrfTokenScopes     xsrfTokenContextKey     = "xsrfToken.Scopes"
 )
 
 // Defines values for ProjectStatsMetric.
@@ -300,9 +299,6 @@ type Timezone = string
 
 // sessionCookieContextKey is the context key for sessionCookie security scheme
 type sessionCookieContextKey string
-
-// xsrfTokenContextKey is the context key for xsrfToken security scheme
-type xsrfTokenContextKey string
 
 // AuthCallbackParams defines parameters for AuthCallback.
 type AuthCallbackParams struct {

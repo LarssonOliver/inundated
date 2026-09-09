@@ -92,10 +92,6 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
-
 
         let urlPath = `/api/projects`;
 
@@ -140,10 +136,6 @@ export class ProjectsApi extends runtime.BaseAPI {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
 
 
         let urlPath = `/api/projects/{projectId}`;
@@ -361,10 +353,6 @@ export class ProjectsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         headerParameters['Content-Type'] = 'application/json';
-
-        if (this.configuration && this.configuration.apiKey) {
-            headerParameters["X-XSRF-TOKEN"] = await this.configuration.apiKey("X-XSRF-TOKEN"); // xsrfToken authentication
-        }
 
 
         let urlPath = `/api/projects/{projectId}`;

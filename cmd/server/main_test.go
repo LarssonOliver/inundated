@@ -18,8 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testCSRFKey = []byte("0123456789abcdef0123456789abcdef")
-
 func buildTestServer(oidc auth.OIDCClient, secureCookies bool) (api.StrictServerInterface, service.Service, *memory.MemoryStore) {
 	repo := memory.NewMemoryStore()
 	svc := service.NewService(repo)
@@ -34,17 +32,14 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
-func csrfHandshake(t *testing.T, h http.Handler) (cookies []*http.Cookie, token string) {
-	t.Helper()
-	rec := get(t, h, "/api/projects")
-	for _, c := range rec.Result().Cookies() {
-		cookies = append(cookies, c)
-		if c.Name == middleware.XSRFCookieName {
-			token = c.Value
-		}
-	}
-	require.NotEmpty(t, token, "expected an %s cookie", middleware.XSRFCookieName)
-	return cookies, token
+// sameOriginPost builds the browser-style same-origin mutation the SPA sends.
+// CrossOriginProtection lets Sec-Fetch-Site: same-origin through; a cross-site
+// page never gets the browser to send that value.
+func sameOriginPost(method, path, body string) *http.Request {
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	return req
 }
 
 func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
@@ -65,17 +60,10 @@ func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
 func TestNewRouter_UserlessMode(t *testing.T) {
 	cfg := &config.Config{} // OIDC unset
 	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
-	r := newRouter(cfg, svc, repo, server, testCSRFKey)
+	r := newRouter(cfg, svc, repo, server)
 
 	t.Run("health is public", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, get(t, r, "/health").Code)
-	})
-
-	t.Run("non-API traffic carries no CSRF cookie", func(t *testing.T) {
-		for _, c := range get(t, r, "/health").Result().Cookies() {
-			assert.NotEqual(t, middleware.XSRFCookieName, c.Name,
-				"CSRF machinery must not run outside the API group")
-		}
 	})
 
 	t.Run("OIDC routes are hidden", func(t *testing.T) {
@@ -94,29 +82,20 @@ func TestNewRouter_UserlessMode(t *testing.T) {
 		assert.NotContains(t, rec.Body.String(), "<!DOCTYPE html>")
 	})
 
-	t.Run("a mutation without a CSRF token is rejected", func(t *testing.T) {
+	t.Run("a cross-site mutation is rejected", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/projects",
 			strings.NewReader(`{"name":"p","color":"#00ff00"}`))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 		r.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("a mutation carrying the exposed CSRF token succeeds", func(t *testing.T) {
-		cookies, token := csrfHandshake(t, r)
-
+	t.Run("a same-origin mutation succeeds", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/projects",
-			strings.NewReader(`{"name":"p","color":"#00ff00"}`))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Origin", "http://example.com")
-		req.Header.Set(middleware.XSRFHeaderName, token)
-		for _, c := range cookies {
-			req.AddCookie(c)
-		}
-		r.ServeHTTP(rec, req)
+		r.ServeHTTP(rec, sameOriginPost(http.MethodPost, "/api/projects", `{"name":"p","color":"#00ff00"}`))
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
 	})
@@ -134,7 +113,7 @@ func TestNewHTTPServer_HasTimeouts(t *testing.T) {
 func TestNewRouter_RateLimiting(t *testing.T) {
 	cfg := &config.Config{}
 	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
-	r := newRouter(cfg, svc, repo, server, testCSRFKey)
+	r := newRouter(cfg, svc, repo, server)
 
 	callFrom := func(path, ip string) int {
 		rec := httptest.NewRecorder()
@@ -164,20 +143,12 @@ func TestNewRouter_RateLimiting(t *testing.T) {
 func TestNewRouter_BodyLimit(t *testing.T) {
 	cfg := &config.Config{}
 	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
-	r := newRouter(cfg, svc, repo, server, testCSRFKey)
-
-	cookies, token := csrfHandshake(t, r)
+	r := newRouter(cfg, svc, repo, server)
 
 	oversized := `{"name":"` + strings.Repeat("x", int(middleware.MaxAPIBodyBytes)+1) + `"}`
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/projects", strings.NewReader(oversized))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "http://example.com")
-	req.Header.Set(middleware.XSRFHeaderName, token)
+	req := sameOriginPost(http.MethodPost, "/api/projects", oversized)
 	req.RemoteAddr = "198.51.100.5:40000"
-	for _, c := range cookies {
-		req.AddCookie(c)
-	}
 	r.ServeHTTP(rec, req)
 
 	assert.NotEqual(t, http.StatusCreated, rec.Code, "an oversized body must never reach the handler")
@@ -201,7 +172,7 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 	}
 
 	server, svc, repo := buildTestServer(oidcMock, shouldUseSecureCookies(cfg))
-	r := newRouter(cfg, svc, repo, server, testCSRFKey)
+	r := newRouter(cfg, svc, repo, server)
 
 	t.Run("resource routes require a session", func(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, get(t, r, "/api/projects").Code)

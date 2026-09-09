@@ -21,7 +21,6 @@ tags:
     operationId: createTag
     security:
       - sessionCookie: []
-        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -62,7 +61,6 @@ tags-id:
     operationId: updateTag
     security:
       - sessionCookie: []
-        xsrfToken: []
     requestBody:
       required: true
       content:
@@ -86,7 +84,6 @@ tags-id:
     operationId: deleteTag
     security:
       - sessionCookie: []
-        xsrfToken: []
     responses:
       '204':
         description: Deleted

@@ -70,9 +70,6 @@ describe("users API", () => {
     const sut = createUsersApi(users, auth);
     await sut.logout();
 
-    // The X-XSRF-TOKEN header is now supplied by ApiConfig's apiKey callback
-    // (the xsrfToken security scheme), not passed per call; config.test.ts
-    // covers that it reaches the wire.
     expect(auth.authLogout).toHaveBeenCalledOnce();
   });
 
