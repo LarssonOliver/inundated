@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/larssonoliver/inundated/internal/repository"
@@ -47,9 +47,10 @@ func (c *CleanupServiceImpl) Run(ctx context.Context) {
 
 func (c *CleanupServiceImpl) cleanup(ctx context.Context) {
 	if err := c.sessionRepository.DeleteAllExpiredSessions(ctx); err != nil {
-		log.Printf("cleanup: deleting expired sessions: %v", err)
+		slog.ErrorContext(ctx, "cleanup: deleting expired sessions failed", "error", err)
 	}
 	if err := c.loginStateRepository.DeleteAllExpiredLoginStates(ctx); err != nil {
-		log.Printf("cleanup: deleting expired login states: %v", err)
+		slog.ErrorContext(ctx, "cleanup: deleting expired login states failed", "error", err)
 	}
+	slog.DebugContext(ctx, "cleanup run complete")
 }
