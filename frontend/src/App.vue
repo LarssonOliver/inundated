@@ -4,17 +4,13 @@ import { RouterView } from "vue-router";
 import TheMenu from "./components/TheMenu.vue";
 import LoadingScreen from "./components/LoadingScreen.vue";
 import { useUserStore } from "@/stores/user";
-import { useStartup } from "@/composables/useStartup";
+import { useStartup, runStartupProbe } from "@/composables/useStartup";
 
 const userStore = useUserStore();
-const { isStarting, finishProbe } = useStartup();
+const { isStarting } = useStartup();
 
-onMounted(async () => {
-  try {
-    await userStore.fetchCurrentUser();
-  } finally {
-    finishProbe();
-  }
+onMounted(() => {
+  void runStartupProbe(userStore.fetchCurrentUser());
 });
 </script>
 
