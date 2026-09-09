@@ -28,6 +28,10 @@ func attrsFromContext(ctx context.Context) []slog.Attr {
 
 // ContextHandler wraps a base slog.Handler and, on each record, appends the
 // attributes accumulated on the record's context by ContextWith.
+//
+// Attributes are added via Record.AddAttrs, so if a caller has opened a group
+// on the logger (logger.WithGroup(...)), the injected attributes land inside
+// that group rather than at the record root. The app does not use groups today.
 type ContextHandler struct {
 	slog.Handler
 }

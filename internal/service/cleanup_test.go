@@ -41,6 +41,7 @@ func TestCleanupService_LogsSweepErrorsAndKeepsGoing(t *testing.T) {
 		},
 	}
 
+	// A cancelled context makes Run do exactly one sweep pass, then return.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	service.NewCleanupService(sessions, loginStates, time.Hour).Run(ctx)
@@ -64,6 +65,7 @@ func TestCleanupService_QuietWhenSweepsSucceed(t *testing.T) {
 		DeleteAllExpiredLoginStatesFn: func(context.Context) error { return nil },
 	}
 
+	// A cancelled context makes Run do exactly one sweep pass, then return.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	service.NewCleanupService(sessions, loginStates, time.Hour).Run(ctx)
@@ -84,6 +86,7 @@ func TestCleanupService_EmitsDebugOnCompletedPass(t *testing.T) {
 		DeleteAllExpiredLoginStatesFn: func(context.Context) error { return nil },
 	}
 
+	// A cancelled context makes Run do exactly one sweep pass, then return.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	service.NewCleanupService(sessions, loginStates, time.Hour).Run(ctx)
