@@ -17,6 +17,7 @@ type Config struct {
 	Port                    int
 	DatabaseURL             string
 	LogLevel                string
+	LogFormat               string
 	PublicBaseURL           string
 	OIDC                    OIDCConfig
 	DisableUserRegistration bool
@@ -127,6 +128,9 @@ func (l *loader) load() (*Config, error) {
 	logLevel := fs.String("log-level", l.envOr("LOG_LEVEL", "info"),
 		"Log level: debug|info|warn|error (env: LOG_LEVEL)")
 
+	logFormat := fs.String("log-format", l.envOr("LOG_FORMAT", "text"),
+		"Log format: text|json (env: LOG_FORMAT)")
+
 	oidcIssuerURL := fs.String("oidc-issuer-url", l.envOr("OIDC_ISSUER_URL", ""),
 		"OIDC provider issuer URL; enables authentication when set (env: OIDC_ISSUER_URL)")
 
@@ -181,6 +185,7 @@ func (l *loader) load() (*Config, error) {
 		Port:          *port,
 		DatabaseURL:   *databaseURL,
 		LogLevel:      *logLevel,
+		LogFormat:     *logFormat,
 		PublicBaseURL: baseURL,
 		OIDC: OIDCConfig{
 			IssuerURL:    *oidcIssuerURL,
@@ -209,6 +214,10 @@ func (c *Config) validate() error {
 	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 	if !validLevels[c.LogLevel] {
 		return fmt.Errorf("config: log-level %q is not one of debug|info|warn|error", c.LogLevel)
+	}
+	validFormats := map[string]bool{"text": true, "json": true}
+	if !validFormats[c.LogFormat] {
+		return fmt.Errorf("config: log-format %q is not one of text|json", c.LogFormat)
 	}
 	if c.DatabaseURL == "" {
 		return fmt.Errorf("config: database-url must not be empty")
