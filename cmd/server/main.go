@@ -29,9 +29,14 @@ import (
 
 var Version = "dev"
 
+// flushLogs drains the async log writer. Set once the logger is built; called
+// before any os.Exit so a final error line is not lost in the buffer.
+var flushLogs = func() {}
+
 // fatal logs msg at error level with the given key/value args, then exits 1.
 func fatal(msg string, args ...any) {
 	slog.Error(msg, args...)
+	flushLogs()
 	os.Exit(1)
 }
 
@@ -139,7 +144,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, err := logging.New(logging.Options{
+	logger, flush, err := logging.New(logging.Options{
 		Level:  cfg.LogLevel,
 		Format: cfg.LogFormat,
 	})
@@ -147,6 +152,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "logging setup: %v\n", err)
 		os.Exit(1)
 	}
+	flushLogs = flush
+	defer flushLogs()
 	slog.SetDefault(logger)
 
 	ctx := context.Background()
