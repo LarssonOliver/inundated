@@ -1,9 +1,12 @@
 package handlers_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -18,6 +21,26 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/service"
 )
+
+// captureDefaultLogger swaps slog's default logger for a debug-level JSON logger
+// writing to the returned buffer, restoring the previous default on cleanup.
+func captureDefaultLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+func lastLogRecord(t *testing.T, buf *bytes.Buffer) map[string]any {
+	t.Helper()
+	lines := bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n"))
+	require.NotEmpty(t, lines, "expected at least one log record")
+	var rec map[string]any
+	require.NoError(t, json.Unmarshal(lines[len(lines)-1], &rec))
+	return rec
+}
 
 // --- AuthLogin -------------------------------------------------------------
 
@@ -133,6 +156,45 @@ func TestAuthHandler_AuthLogin(t *testing.T) {
 		require.Error(t, err)
 		assert.EqualError(t, err, "failed to initiate login")
 		assert.Nil(t, resp)
+	})
+
+	t.Run("service error is logged with the underlying cause", func(t *testing.T) {
+		buf := captureDefaultLogger(t)
+		mock := &service.AuthServiceMock{
+			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
+				return "", errors.New(`discovering OIDC provider "https://idp.example": context deadline exceeded`)
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		_, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
+			Params: api.AuthLoginParams{Redirect: nil},
+		})
+		require.Error(t, err)
+
+		rec := lastLogRecord(t, buf)
+		assert.Equal(t, "login initiation failed", rec["msg"])
+		assert.Equal(t, slog.LevelWarn.String(), rec["level"])
+		assert.Contains(t, rec["error"], "context deadline exceeded")
+	})
+
+	t.Run("a state-less authorization URL is logged", func(t *testing.T) {
+		buf := captureDefaultLogger(t)
+		mock := &service.AuthServiceMock{
+			BeginLoginFn: func(ctx context.Context, redirectURI string) (string, error) {
+				return "https://idp.example/authorize", nil
+			},
+		}
+		h := handlers.NewAuthHandler(mock, true)
+
+		_, err := h.AuthLogin(context.Background(), api.AuthLoginRequestObject{
+			Params: api.AuthLoginParams{Redirect: nil},
+		})
+		require.Error(t, err)
+
+		rec := lastLogRecord(t, buf)
+		assert.Equal(t, "login initiation failed", rec["msg"])
+		assert.Equal(t, slog.LevelWarn.String(), rec["level"])
 	})
 }
 

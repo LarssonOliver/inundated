@@ -41,11 +41,13 @@ func (a *AuthHandler) AuthLogin(ctx context.Context, request api.AuthLoginReques
 	authUrl, err := a.svc.BeginLogin(ctx, redirectUrl)
 
 	if err != nil {
+		slog.WarnContext(ctx, "login initiation failed", "error", err)
 		return nil, errors.New("failed to initiate login")
 	}
 
 	state, err := stateFromAuthURL(authUrl)
 	if err != nil {
+		slog.WarnContext(ctx, "login initiation failed", "error", err)
 		return nil, errors.New("failed to initiate login")
 	}
 
