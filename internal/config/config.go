@@ -285,8 +285,6 @@ func validatePublicBaseURL(raw string) error {
 	return nil
 }
 
-// parseTrustedProxies parses a comma-separated list of CIDRs and bare IPs into
-// prefixes. A bare IP becomes a host prefix (/32 or /128).
 func parseTrustedProxies(raw string) ([]netip.Prefix, error) {
 	entries := splitAndTrim(raw)
 	if len(entries) == 0 {
@@ -319,9 +317,6 @@ func parseTrustedProxies(raw string) ([]netip.Prefix, error) {
 
 var knownForwardHeaders = []string{"X-Forwarded-For", "X-Real-IP", "True-Client-IP"}
 
-// parseTrustedProxyHeaders validates a comma-separated list of forwarded-for
-// header names against the supported set, returning them in canonical form.
-// Empty input defaults to X-Forwarded-For.
 func parseTrustedProxyHeaders(raw string) ([]string, error) {
 	entries := splitAndTrim(raw)
 	if len(entries) == 0 {

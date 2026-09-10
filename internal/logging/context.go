@@ -7,9 +7,6 @@ import (
 
 type ctxKey struct{}
 
-// ContextWith returns a context carrying attrs that ContextHandler adds to every
-// record subsequently logged with a derived context. Repeated calls accumulate;
-// a later attr with the same key shadows an earlier one per slog's last-wins rule.
 func ContextWith(ctx context.Context, attrs ...slog.Attr) context.Context {
 	if len(attrs) == 0 {
 		return ctx
@@ -26,12 +23,6 @@ func attrsFromContext(ctx context.Context) []slog.Attr {
 	return attrs
 }
 
-// ContextHandler wraps a base slog.Handler and, on each record, appends the
-// attributes accumulated on the record's context by ContextWith.
-//
-// Attributes are added via Record.AddAttrs, so if a caller has opened a group
-// on the logger (logger.WithGroup(...)), the injected attributes land inside
-// that group rather than at the record root. The app does not use groups today.
 type ContextHandler struct {
 	slog.Handler
 }
