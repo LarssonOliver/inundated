@@ -182,8 +182,9 @@ func TestOIDCAuth(t *testing.T) {
 				require.True(t, ok)
 				assert.Equal(t, sessionID, session.Id)
 				var buf bytes.Buffer
-				lg, err := logging.New(logging.Options{Format: "json", Writer: &buf})
+				lg, cleanup, err := logging.New(logging.Options{Format: "json", Writer: &buf})
 				require.NoError(t, err)
+				defer cleanup()
 				lg.InfoContext(lastSeenCtx, "probe")
 				assert.Contains(t, buf.String(), userID.String(),
 					"an authenticated request's context must carry user_id for logging")

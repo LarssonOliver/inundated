@@ -11,18 +11,21 @@ import (
 type Options struct {
 	Level  string    // "debug"|"info"|"warn"|"error"; "" means "info"
 	Format string    // "text"|"json"; "" means "text"
-	Writer io.Writer // nil means os.Stdout
+	Writer io.Writer // nil means os.Stdout, fronted by a non-blocking AsyncWriter
 }
 
-func New(opts Options) (*slog.Logger, error) {
+func New(opts Options) (*slog.Logger, func(), error) {
 	level, err := parseLevel(opts.Level)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	w := opts.Writer
+	cleanup := func() {}
 	if w == nil {
-		w = os.Stdout
+		async := NewAsyncWriter(os.Stdout)
+		w = async
+		cleanup = func() { _ = async.Close() }
 	}
 
 	handlerOpts := &slog.HandlerOptions{Level: level}
@@ -34,10 +37,11 @@ func New(opts Options) (*slog.Logger, error) {
 	case "json":
 		base = slog.NewJSONHandler(w, handlerOpts)
 	default:
-		return nil, fmt.Errorf("logging: unknown format %q (want text or json)", opts.Format)
+		cleanup()
+		return nil, nil, fmt.Errorf("logging: unknown format %q (want text or json)", opts.Format)
 	}
 
-	return slog.New(&ContextHandler{Handler: base}), nil
+	return slog.New(&ContextHandler{Handler: base}), cleanup, nil
 }
 
 func parseLevel(name string) (slog.Level, error) {

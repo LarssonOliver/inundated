@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
@@ -124,4 +126,46 @@ func TestRequestLogContextIsANoOpWithoutARequestID(t *testing.T) {
 
 	_, hasRequestID := lastRecord(t, buf)["request_id"]
 	assert.False(t, hasRequestID)
+}
+
+func TestRequestLoggerDoesNotStallWhenStdoutStopsDraining(t *testing.T) {
+	// The regression: the access-log write sits on the request goroutine behind
+	// slog's single handler mutex. When stdout is a pipe to a log collector that
+	// stalls, a synchronous write wedges there and every concurrent request
+	// wedges behind the mutex. Wire logging exactly as main does (default
+	// writer = os.Stdout) and point stdout at an unread pipe.
+	pr, pw, err := os.Pipe()
+	require.NoError(t, err)
+
+	realStdout := os.Stdout
+	os.Stdout = pw
+	lg, flush, err := logging.New(logging.Options{})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = pr.Close() // unblock the drainer so flush can finish
+		flush()
+		os.Stdout = realStdout
+		_ = pw.Close()
+	})
+
+	prev := slog.Default()
+	slog.SetDefault(lg)
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	h := middleware.RequestLogger(nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for i := 0; i < 3000; i++ {
+		done := make(chan struct{})
+		go func() {
+			h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/projects", nil))
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("request %d stalled with stdout blocked -- logging is back on the request path", i)
+		}
+	}
 }

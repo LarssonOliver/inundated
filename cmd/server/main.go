@@ -29,9 +29,11 @@ import (
 
 var Version = "dev"
 
-// fatal logs msg at error level with the given key/value args, then exits 1.
+var flushLogs = func() {}
+
 func fatal(msg string, args ...any) {
 	slog.Error(msg, args...)
+	flushLogs()
 	os.Exit(1)
 }
 
@@ -139,7 +141,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, err := logging.New(logging.Options{
+	logger, flush, err := logging.New(logging.Options{
 		Level:  cfg.LogLevel,
 		Format: cfg.LogFormat,
 	})
@@ -147,6 +149,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "logging setup: %v\n", err)
 		os.Exit(1)
 	}
+	flushLogs = flush
+	defer flushLogs()
 	slog.SetDefault(logger)
 
 	ctx := context.Background()

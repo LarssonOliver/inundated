@@ -83,6 +83,12 @@ export LOG_FORMAT="json"      # text|json (default: text)
 
 All log output — startup messages and per-request lines alike — now goes to **stdout**. (Previously, startup diagnostics were written to stderr.)
 
+Logging is asynchronous: records are handed to a background writer so a slow or
+stalled log destination (a blocking container log driver, a paused `docker
+logs`) can never add latency to request handling. If the destination stops
+draining for long enough to fill the in-memory buffer, records are dropped and a
+`logging: dropped N records` line is emitted once it recovers.
+
 ### Enabling authentication (OIDC)
 
 By default inundated runs in **userless mode**: no login, and every resource is
