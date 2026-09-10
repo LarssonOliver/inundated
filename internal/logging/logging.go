@@ -14,10 +14,6 @@ type Options struct {
 	Writer io.Writer // nil means os.Stdout, fronted by a non-blocking AsyncWriter
 }
 
-// New builds the application logger. When Writer is nil it logs to os.Stdout
-// through an [AsyncWriter], so a stalled log destination can never block the
-// goroutines that log (every request handler among them). The returned function
-// flushes and stops that background writer; it is a no-op when Writer is set.
 func New(opts Options) (*slog.Logger, func(), error) {
 	level, err := parseLevel(opts.Level)
 	if err != nil {

@@ -29,11 +29,8 @@ import (
 
 var Version = "dev"
 
-// flushLogs drains the async log writer. Set once the logger is built; called
-// before any os.Exit so a final error line is not lost in the buffer.
 var flushLogs = func() {}
 
-// fatal logs msg at error level with the given key/value args, then exits 1.
 func fatal(msg string, args ...any) {
 	slog.Error(msg, args...)
 	flushLogs()
