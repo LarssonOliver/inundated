@@ -1,6 +1,8 @@
 package middleware_test
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,6 +44,33 @@ func TestRateLimitByIP(t *testing.T) {
 	t.Run("a different IP has its own budget", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, call("10.0.0.2:2222"))
 	})
+}
+
+func TestRateLimitByIPLogsDroppedRequests(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	h := middleware.RateLimitByIP(1, time.Minute)(ok)
+
+	call := func() {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+		req.RemoteAddr = "10.9.0.1:1111"
+		h.ServeHTTP(rec, req)
+	}
+
+	call()
+	assert.Empty(t, buf.String(), "a request within budget must not log")
+
+	call()
+	out := buf.String()
+	assert.Contains(t, out, "rate limit exceeded; dropping request")
+	assert.Contains(t, out, "client_ip=10.9.0.1")
+	assert.Contains(t, out, "method=GET")
+	assert.Contains(t, out, "path=/api/projects")
 }
 
 func TestRateLimitByIPForPrefixes(t *testing.T) {

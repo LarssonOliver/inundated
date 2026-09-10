@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -26,6 +27,12 @@ func clientIPKey(r *http.Request) (string, error) {
 }
 
 func limitJSON429(w http.ResponseWriter, r *http.Request) {
+	key, _ := clientIPKey(r)
+	slog.WarnContext(r.Context(), "rate limit exceeded; dropping request",
+		slog.String("client_ip", key),
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+	)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
 	_, _ = w.Write([]byte(`{"message":"rate limit exceeded"}`))
