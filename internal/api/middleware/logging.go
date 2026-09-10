@@ -9,9 +9,6 @@ import (
 	"github.com/larssonoliver/inundated/internal/logging"
 )
 
-// RequestLogContext seeds the request's chi RequestID onto the logging context
-// so every record emitted while handling the request carries request_id.
-// Place it immediately after chimiddleware.RequestID.
 func RequestLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if id := middleware.GetReqID(r.Context()); id != "" {
@@ -21,8 +18,6 @@ func RequestLogContext(next http.Handler) http.Handler {
 	})
 }
 
-// RequestLogger emits one structured record per request via slog's default
-// logger. skipFn, when non-nil and true for a request, suppresses the record.
 func RequestLogger(skipFn func(r *http.Request) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

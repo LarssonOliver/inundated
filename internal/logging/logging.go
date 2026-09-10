@@ -8,17 +8,12 @@ import (
 	"strings"
 )
 
-// Options configures the process logger. The zero value is valid: it produces a
-// text logger at info level writing to stdout.
 type Options struct {
 	Level  string    // "debug"|"info"|"warn"|"error"; "" means "info"
 	Format string    // "text"|"json"; "" means "text"
 	Writer io.Writer // nil means os.Stdout
 }
 
-// New builds a *slog.Logger whose handler filters at the configured level,
-// formats as text or JSON, and adds context attributes recorded by ContextWith.
-// It returns an error for an unrecognized Level or Format.
 func New(opts Options) (*slog.Logger, error) {
 	level, err := parseLevel(opts.Level)
 	if err != nil {
