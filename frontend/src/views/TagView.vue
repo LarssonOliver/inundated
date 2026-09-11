@@ -3,13 +3,15 @@
   <div v-else class="tag-page">
     <h2 v-if="!isNewTag">Tag Details</h2>
     <h2 v-else>New Tag</h2>
-    <TagEdit
-      v-model="tag"
-      :is-new-tag="isNewTag"
-      @save="saveTag"
-      @create="createTag"
-      @delete="deleteTag"
-    />
+    <div class="card">
+      <TagEdit
+        v-model="tag"
+        :is-new-tag="isNewTag"
+        @save="saveTag"
+        @create="createTag"
+        @delete="deleteTag"
+      />
+    </div>
   </div>
 </template>
 
@@ -84,9 +86,17 @@ async function deleteTag() {
 
 <style scoped>
 .tag-page {
-  margin: 1em 1em;
   display: flex;
   flex-direction: column;
+  gap: 1.25em;
+}
+
+.card {
+  background-color: var(--nord0);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5em;
+  max-width: 400px;
 }
 
 .title-bar {

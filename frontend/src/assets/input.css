@@ -4,18 +4,21 @@ input {
   max-width: 400px;
   padding: 0.5em 0.75em;
   color: inherit;
-  border: 1px solid var(--nord0);
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
   background-color: var(--nord0);
   transition:
-    background 240ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 240ms cubic-bezier(0.4, 0, 0.2, 1),
-    filter 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    background var(--transition-base),
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    filter var(--transition-base),
     transform 80ms ease;
 }
 
 input:focus {
-  border: 1px solid var(--nord3);
+  border-color: var(--nord8);
   outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 input::placeholder {
@@ -27,7 +30,7 @@ input:disabled {
 }
 
 input:invalid {
-  border: 1px solid var(--nord11);
+  border-color: var(--nord11);
 }
 
 button:hover,
@@ -36,6 +39,7 @@ input[type="reset"]:hover,
 input[type="button"]:hover {
   cursor: pointer;
   background-color: var(--nord1);
+  border-color: var(--nord2);
 }
 
 button:active,
@@ -49,8 +53,8 @@ button:focus-visible,
 input[type="submit"]:focus-visible,
 input[type="reset"]:focus-visible,
 input[type="button"]:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 input[type="text"] {
@@ -85,6 +89,29 @@ input[type="checkbox"] {
 }
 
 /* ── Button Variants ──────────────────────────────────────────────────────── */
+button.btn-error,
+button.btn-danger,
+button.btn-warning,
+button.btn-success,
+button.btn-info,
+input[type="submit"].btn-error,
+input[type="submit"].btn-danger,
+input[type="submit"].btn-warning,
+input[type="submit"].btn-success,
+input[type="submit"].btn-info,
+input[type="reset"].btn-error,
+input[type="reset"].btn-danger,
+input[type="reset"].btn-warning,
+input[type="reset"].btn-success,
+input[type="reset"].btn-info,
+input[type="button"].btn-error,
+input[type="button"].btn-danger,
+input[type="button"].btn-warning,
+input[type="button"].btn-success,
+input[type="button"].btn-info {
+  border-color: transparent;
+}
+
 button.btn-error,
 input[type="submit"].btn-error,
 input[type="reset"].btn-error,
@@ -122,10 +149,10 @@ input[type="button"].btn-warning {
   color: var(--nord-c0);
 }
 
-button.btn-wawrning:hover,
-input[type="submit"].btn-wawrning:hover,
-input[type="reset"].btn-wawrning:hover,
-input[type="button"].btn-wawrning:hover {
+button.btn-warning:hover,
+input[type="submit"].btn-warning:hover,
+input[type="reset"].btn-warning:hover,
+input[type="button"].btn-warning:hover {
   filter: brightness(0.8);
 }
 

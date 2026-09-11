@@ -168,8 +168,9 @@ watch(showDropdown, () => {
 .search-dropdown {
   position: absolute;
   background-color: var(--nord0);
-  border: 1px solid var(--nord1);
-  padding: 0.25em 0.5em;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.35em;
   z-index: 1;
   display: block;
   width: 100%;
@@ -180,6 +181,11 @@ ul {
   list-style-type: none;
   padding: 0;
   margin: 0;
+}
+
+li {
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.3em;
 }
 
 .highlight-item {

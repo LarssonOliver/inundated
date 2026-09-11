@@ -252,6 +252,9 @@ function formatRange(interval: string, granularity: string): string {
 <style scoped>
 .chart-title-container {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75em;
 }
 
 .date-picker {
@@ -300,8 +303,8 @@ function formatRange(interval: string, granularity: string): string {
   --dp-range-between-border-color: var(--nord1);
 
   --dp-font-family: inherit;
-  --dp-border-radius: 0;
-  --dp-cell-border-radius: 0;
+  --dp-border-radius: 8px;
+  --dp-cell-border-radius: 6px;
   --dp-common-transition: all 0.1s ease-in;
 
   --dp-button-height: 35px;

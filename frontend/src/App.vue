@@ -56,7 +56,7 @@ onMounted(() => {
 
 .content {
   flex: 1;
-  padding: 0.25em 0.5em;
+  padding: 1.5em 2em;
   overflow-y: scroll;
 }
 </style>
