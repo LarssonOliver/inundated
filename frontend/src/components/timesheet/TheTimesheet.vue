@@ -139,7 +139,7 @@ async function createTimespan() {
 
 .date-divider {
   text-align: center;
-  margin: 1em 0 0.5em;
+  margin: 0.5em 0;
   color: var(--nord3);
   font-weight: 600;
   font-size: 0.9em;
