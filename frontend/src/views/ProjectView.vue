@@ -1,9 +1,11 @@
 <template>
   <div v-if="!notFound" class="project-page">
-    <h2 v-if="!isNewProject">Project Details</h2>
-    <h2 v-else>New Project</h2>
+    <div class="title-bar">
+      <h2 v-if="!isNewProject">Project Details</h2>
+      <h2 v-else>New Project</h2>
+    </div>
     <div class="content">
-      <div class="project-edit">
+      <div class="project-edit card">
         <ProjectEdit
           v-model="project"
           :is-new-project="isNewProject"
@@ -12,7 +14,9 @@
           @delete="deleteProject"
         />
       </div>
-      <ProjectStats v-if="!isNewProject" :project-id="project.id" />
+      <div v-if="!isNewProject" class="card">
+        <ProjectStats :project-id="project.id" />
+      </div>
     </div>
   </div>
   <NotFoundView v-else />
@@ -92,20 +96,40 @@ async function deleteProject() {
 
 <style scoped>
 .project-page {
-  margin: 0 1em;
   display: flex;
   flex-direction: column;
+}
+
+.title-bar {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 1.25em;
+}
+
+.title-bar h2 {
+  flex: 1;
+  margin: 0;
+  align-content: center;
+  padding: 0.25em 0;
 }
 
 .content {
   display: flex;
   flex-direction: column;
+  gap: 1.5em;
+}
+
+.card {
+  background-color: var(--nord0);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5em;
+  padding-top: 0.5em;
 }
 
 .project-edit {
   flex: 1;
   max-width: 400px;
-  margin-bottom: 2em;
 }
 
 h2 {

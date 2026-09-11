@@ -54,6 +54,13 @@ function deleteThisTimespan() {
 <style scoped>
 .timesheet-row {
   display: flex;
+  padding: 0.4em 0.5em;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.timesheet-row:hover {
+  background-color: var(--nord1);
 }
 
 .right-side {
@@ -70,11 +77,21 @@ function deleteThisTimespan() {
   min-width: 1em;
 }
 
-.delete-icon,
-.more-icon {
-  cursor: pointer;
+.icon-button {
+  width: auto;
+  max-width: none;
+  padding: 0.35em;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-left: 0.25em;
-  margin-right: 0.25em;
+}
+
+.icon-button:hover {
+  background-color: var(--nord2);
 }
 
 .delete-icon {
@@ -86,16 +103,20 @@ input[type="date"] {
   margin-left: 1em;
 }
 
-.context-menu {
-  border: 1px solid red;
-  position: absolute;
+.delete-button {
+  width: auto;
+  max-width: none;
+  padding: 0.35em 0.5em;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
 }
 
-.delete-button {
-  padding: 0.25em 0.5em;
+.delete-button:hover {
+  background-color: var(--nord2);
 }
 
 .menu-row {
-  margin: 0.25em;
+  margin: 0.25em 0.5em;
 }
 </style>

@@ -141,10 +141,8 @@ watch(
 /* ── Popup card ─────────────────────────────────────────────────────────────── */
 .popup {
   background: var(--nord-c0);
-  border-radius: 4px;
-  box-shadow:
-    0 20px 60px -10px rgba(0, 0, 0, 0.18),
-    0 4px 16px -4px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   border: 1px solid var(--nord0);
   width: 100%;
   max-width: 400px;

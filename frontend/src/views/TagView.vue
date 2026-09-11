@@ -1,15 +1,19 @@
 <template>
   <NotFoundView v-if="notFound" />
   <div v-else class="tag-page">
-    <h2 v-if="!isNewTag">Tag Details</h2>
-    <h2 v-else>New Tag</h2>
-    <TagEdit
-      v-model="tag"
-      :is-new-tag="isNewTag"
-      @save="saveTag"
-      @create="createTag"
-      @delete="deleteTag"
-    />
+    <div class="title-bar">
+      <h2 v-if="!isNewTag">Tag Details</h2>
+      <h2 v-else>New Tag</h2>
+    </div>
+    <div class="card">
+      <TagEdit
+        v-model="tag"
+        :is-new-tag="isNewTag"
+        @save="saveTag"
+        @create="createTag"
+        @delete="deleteTag"
+      />
+    </div>
   </div>
 </template>
 
@@ -84,14 +88,30 @@ async function deleteTag() {
 
 <style scoped>
 .tag-page {
-  margin: 1em 1em;
   display: flex;
   flex-direction: column;
 }
 
 .title-bar {
-  flex-direction: row;
   display: flex;
+  flex-direction: row;
+  margin-bottom: 1.25em;
+}
+
+.title-bar h2 {
+  flex: 1;
+  margin: 0;
+  align-content: center;
+  padding: 0.25em 0;
+}
+
+.card {
+  background-color: var(--nord0);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5em;
+  padding-top: 0.5em;
+  max-width: 400px;
 }
 
 h2 {

@@ -114,10 +114,11 @@ async function createTimespan() {
 }
 
 .new-timespan-container {
-  padding: 0.25em;
-  padding-left: 0;
-  margin-bottom: 0.5em;
-  border: 1px solid var(--nord1);
+  padding: 0.75em;
+  margin-bottom: 1em;
+  background-color: var(--nord0);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   display: flex;
 }
 
@@ -138,8 +139,9 @@ async function createTimespan() {
 
 .date-divider {
   text-align: center;
-  margin: 0.5em;
+  margin: 0.5em 0;
   color: var(--nord3);
-  background-color: var(--nord0);
+  font-weight: 600;
+  font-size: 0.9em;
 }
 </style>

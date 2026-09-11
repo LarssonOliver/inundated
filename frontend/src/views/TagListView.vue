@@ -56,14 +56,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.tag-list {
-  margin: 0 1em;
-}
-
 .title-bar {
   display: flex;
   flex-direction: row;
-  margin: 1em 0;
+  margin-bottom: 1.25em;
 }
 
 .title-bar h2 {
@@ -76,37 +72,42 @@ input[type="button"] {
   margin-left: 1em;
   width: 6em;
   background-color: var(--nord8);
-  filter: brightness(100%);
-  -webkit-filter: brightness(100%);
+  border-color: transparent;
   color: var(--nord0);
 }
 
 input[type="button"]:hover {
-  filter: brightness(80%);
-  -webkit-filter: brightness(80%);
-  transition: all 0.3s ease;
+  filter: brightness(85%);
 }
 
 .tag-card {
-  padding-bottom: 0.5em;
+  padding-bottom: 0.75em;
 }
 
 .tag-item {
   background-color: var(--nord0);
   padding: 0.5em 1em;
-  border-radius: 4px;
-  border: 1px solid var(--nord1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   display: flex;
+  transition:
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
+}
+
+.tag-card:hover .tag-item {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .color-bar {
   padding-left: 0.5em;
   background-color: red;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
 }
 
 .tag-name {
-  font-weight: bold;
+  font-weight: 600;
   margin: 0 2em 0 1em;
   font-size: 1.1em;
   align-content: center;
