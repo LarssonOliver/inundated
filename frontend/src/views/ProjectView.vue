@@ -1,7 +1,9 @@
 <template>
   <div v-if="!notFound" class="project-page">
-    <h2 v-if="!isNewProject">Project Details</h2>
-    <h2 v-else>New Project</h2>
+    <div class="title-bar">
+      <h2 v-if="!isNewProject">Project Details</h2>
+      <h2 v-else>New Project</h2>
+    </div>
     <div class="content">
       <div class="project-edit card">
         <ProjectEdit
@@ -98,6 +100,19 @@ async function deleteProject() {
   flex-direction: column;
 }
 
+.title-bar {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 1.25em;
+}
+
+.title-bar h2 {
+  flex: 1;
+  margin: 0;
+  align-content: center;
+  padding: 0.25em 0;
+}
+
 .content {
   display: flex;
   flex-direction: column;
@@ -109,6 +124,7 @@ async function deleteProject() {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: 1.5em;
+  padding-top: 0.5em;
 }
 
 .project-edit {

@@ -4,14 +4,6 @@
       <div class="title">
         <h2 v-if="isExpanded">INUNDATED</h2>
         <h2 v-else class="title-mark">I</h2>
-        <button
-          class="icon-button toggle-button"
-          @click="toggleSidebar"
-          :aria-expanded="isExpanded"
-          :title="isExpanded ? 'Collapse sidebar' : 'Expand sidebar'"
-        >
-          <MaterialIcon :icon="isExpanded ? 'chevron_left' : 'chevron_right'" size="1.2em" />
-        </button>
       </div>
       <nav>
         <ul class="link-list">
@@ -38,7 +30,17 @@
             <span v-else>Log out</span>
           </button>
         </div>
-        <strong v-if="isExpanded"> Inundated {{ version }} </strong>
+        <div class="bottom">
+          <strong v-if="isExpanded"> Inundated {{ version }} </strong>
+          <button
+            class="icon-button toggle-button"
+            @click="toggleSidebar"
+            :aria-expanded="isExpanded"
+            :title="isExpanded ? 'Collapse sidebar' : 'Expand sidebar'"
+          >
+            <MaterialIcon :icon="isExpanded ? 'chevron_left' : 'chevron_right'" size="1.2em" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -64,7 +66,7 @@ const links = [
 ];
 
 const sidebarStyle = computed(() => ({
-  width: isExpanded.value ? "220px" : "76px",
+  width: isExpanded.value ? "220px" : "65px",
 }));
 </script>
 
@@ -141,6 +143,12 @@ const sidebarStyle = computed(() => ({
 
 .title-mark {
   color: var(--nord8);
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .icon-button {

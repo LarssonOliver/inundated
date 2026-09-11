@@ -41,7 +41,7 @@ const containerClasses = reactive({
   margin: 0.25em 0.25em 0.25em 0;
   padding: 0.25em 0.6em;
   width: fit-content;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;

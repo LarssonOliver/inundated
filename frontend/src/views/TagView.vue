@@ -1,8 +1,10 @@
 <template>
   <NotFoundView v-if="notFound" />
   <div v-else class="tag-page">
-    <h2 v-if="!isNewTag">Tag Details</h2>
-    <h2 v-else>New Tag</h2>
+    <div class="title-bar">
+      <h2 v-if="!isNewTag">Tag Details</h2>
+      <h2 v-else>New Tag</h2>
+    </div>
     <div class="card">
       <TagEdit
         v-model="tag"
@@ -88,7 +90,19 @@ async function deleteTag() {
 .tag-page {
   display: flex;
   flex-direction: column;
-  gap: 1.25em;
+}
+
+.title-bar {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 1.25em;
+}
+
+.title-bar h2 {
+  flex: 1;
+  margin: 0;
+  align-content: center;
+  padding: 0.25em 0;
 }
 
 .card {
@@ -96,12 +110,8 @@ async function deleteTag() {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: 1.5em;
+  padding-top: 0.5em;
   max-width: 400px;
-}
-
-.title-bar {
-  flex-direction: row;
-  display: flex;
 }
 
 h2 {

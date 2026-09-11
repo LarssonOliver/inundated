@@ -84,7 +84,7 @@ input[type="button"]:hover {
 
 .project-item {
   background-color: var(--nord0);
-  padding: 1em;
+  padding: 0.5em 1em;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -106,7 +106,7 @@ input[type="button"]:hover {
 
 .project-name {
   font-weight: 600;
-  margin: 0 4em 0 1em;
+  margin: 0 2em 0 1em;
   font-size: 1.1em;
   align-content: center;
   padding: 0 0.5em;

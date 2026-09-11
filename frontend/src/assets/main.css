@@ -3,6 +3,25 @@
 :root {
   font-family: Roboto, sans-serif;
   color: var(--nord4);
+
+  /* ── Elevation & shape ─────────────────────────────────────────────────── */
+  --radius-xs: 4px; /* chips, tags, small inline accents */
+  --radius-sm: 6px; /* buttons, inputs */
+  --radius-md: 10px; /* cards, panels */
+  --radius-lg: 14px; /* popups, dropdowns, the sidebar's outer edge */
+
+  --shadow-color: 46, 52, 64; /* nord0 as rgb, used as the shadow tint */
+  --shadow-sm: 0 1px 2px rgba(var(--shadow-color), 0.45);
+  --shadow-md:
+    0 6px 16px -4px rgba(var(--shadow-color), 0.55), 0 2px 6px -2px rgba(var(--shadow-color), 0.4);
+  --shadow-lg:
+    0 16px 40px -12px rgba(var(--shadow-color), 0.65),
+    0 6px 16px -4px rgba(var(--shadow-color), 0.5);
+
+  --focus-ring: 0 0 0 3px rgba(136, 192, 208, 0.35); /* nord8 at low opacity */
+
+  --transition-fast: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 240ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html {
