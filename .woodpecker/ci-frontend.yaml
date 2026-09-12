@@ -42,7 +42,7 @@ steps:
     image: node:24-alpine
     directory: frontend
     commands:
-      - npm run test -- --maxWorkers=2
+      - npm run test -- --maxWorkers=1
     backend_options: *backend_options
     depends_on: 
       - install
