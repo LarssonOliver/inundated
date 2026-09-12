@@ -1,6 +1,42 @@
 <template>
   <div>
-    <h2>Project Statistics</h2>
+    <div class="chart-title-container">
+      <h2>Project Statistics</h2>
+      <div class="date-pick-btns">
+        <button
+          class="date-pick-btn"
+          @click="
+            pickedRange = [
+              startOfMonth(subMonths(new Date(), 1)),
+              endOfMonth(subMonths(new Date(), 1)),
+            ]
+          "
+        >
+          Last Month
+        </button>
+        <button
+          class="date-pick-btn"
+          @click="pickedRange = [startOfMonth(new Date()), endOfMonth(new Date())]"
+        >
+          This Month
+        </button>
+        <div class="date-picker">
+          <VueDatePicker
+            v-model="pickedRange"
+            dark
+            range
+            multi-calendars
+            :input-attrs="{
+              clearable: false,
+            }"
+            :time-config="{
+              enableTimePicker: false,
+            }"
+            :preset-dates="presetDates"
+          />
+        </div>
+      </div>
+    </div>
 
     <div class="stats-summary">
       <div class="stat-tile">
@@ -35,23 +71,6 @@
       </div>
     </div>
 
-    <div class="chart-title-container">
-      <div class="date-picker">
-        <VueDatePicker
-          v-model="pickedRange"
-          dark
-          range
-          multi-calendars
-          :input-attrs="{
-            clearable: false,
-          }"
-          :time-config="{
-            enableTimePicker: false,
-          }"
-          :preset-dates="presetDates"
-        />
-      </div>
-    </div>
     <div class="chart-container">
       <Bar
         v-if="projectStats"
@@ -421,7 +440,13 @@ function formatRange(interval: string, granularity: string): string {
 }
 
 .date-picker {
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
+}
+
+.date-pick-btns {
   margin-left: auto;
+  display: flex;
 }
 
 .chart-container {
@@ -432,6 +457,11 @@ function formatRange(interval: string, granularity: string): string {
 .chart {
   height: 40vh;
   max-height: 400px;
+}
+
+.date-pick-btn {
+  width: auto;
+  margin-right: 1em;
 }
 </style>
 
