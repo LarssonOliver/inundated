@@ -15,7 +15,7 @@
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectStats :project-id="project.id" />
+        <ProjectStats :project="project" />
       </div>
     </div>
   </div>
