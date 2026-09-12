@@ -1,24 +1,76 @@
 <template>
   <div>
-    <h2>Project Statistics</h2>
     <div class="chart-title-container">
-      <p>Total time spent during period: {{ periodTotalHours.toFixed(2) }} hours</p>
-      <div class="date-picker">
-        <VueDatePicker
-          v-model="pickedRange"
-          dark
-          range
-          multi-calendars
-          :input-attrs="{
-            clearable: false,
-          }"
-          :time-config="{
-            enableTimePicker: false,
-          }"
-          :preset-dates="presetDates"
-        />
+      <h2>Project Statistics</h2>
+      <div class="date-pick-btns">
+        <button
+          class="date-pick-btn"
+          @click="
+            pickedRange = [
+              startOfMonth(subMonths(new Date(), 1)),
+              endOfMonth(subMonths(new Date(), 1)),
+            ]
+          "
+        >
+          Last Month
+        </button>
+        <button
+          class="date-pick-btn"
+          @click="pickedRange = [startOfMonth(new Date()), endOfMonth(new Date())]"
+        >
+          This Month
+        </button>
+        <div class="date-picker">
+          <VueDatePicker
+            v-model="pickedRange"
+            dark
+            range
+            multi-calendars
+            :input-attrs="{
+              clearable: false,
+            }"
+            :time-config="{
+              enableTimePicker: false,
+            }"
+            :preset-dates="presetDates"
+          />
+        </div>
       </div>
     </div>
+
+    <div class="stats-summary">
+      <div class="stat-tile">
+        <p class="stat-tile-value">
+          {{ periodTotalHours.toFixed(1) }}<span class="stat-tile-unit">h</span>
+        </p>
+        <p class="stat-tile-label">Total this period</p>
+      </div>
+
+      <div v-if="hasBudget" class="budget-meter">
+        <div class="budget-meter-header">
+          <span class="budget-meter-label">Time budget</span>
+          <span class="budget-meter-reading" :class="budgetSeverityClass">
+            <MaterialIcon
+              v-if="budgetSeverityClass === 'severity-critical'"
+              icon="warning"
+              size="16px"
+              class="budget-meter-icon"
+            />
+            {{ totalHoursAllTime.toFixed(1) }} / {{ project.timeBudgetHours!.toFixed(1) }}h ({{
+              budgetPercentLabel
+            }})
+          </span>
+        </div>
+        <div class="budget-meter-track">
+          <div
+            class="budget-meter-fill"
+            :class="budgetSeverityClass"
+            :style="{ width: budgetFillPercent + '%' }"
+          />
+        </div>
+      </div>
+    </div>
+
     <div class="chart-container">
       <Bar
         v-if="projectStats"
@@ -57,7 +109,8 @@
 
 <script setup lang="ts">
 import { Bar } from "vue-chartjs";
-import type { ProjectStats } from "@/model";
+import type { Project, ProjectStats } from "@/model";
+import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { useProjectsStore } from "@/stores/projects";
 import {
   Chart as ChartJS,
@@ -90,7 +143,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 const projectsStore = useProjectsStore();
 
 const props = defineProps<{
-  projectId: string;
+  project: Project;
 }>();
 
 const now = new Date();
@@ -155,6 +208,33 @@ const periodTotalHours = computed(() => {
   );
 });
 
+const hasBudget = computed(
+  () => !!props.project.timeBudgetHours && props.project.timeBudgetHours > 0,
+);
+
+const totalHoursAllTime = computed(() => (props.project.totalTimeMs ?? 0) / (1000 * 60 * 60));
+
+const budgetRatio = computed(() => {
+  if (!hasBudget.value) {
+    return 0;
+  }
+  return totalHoursAllTime.value / (props.project.timeBudgetHours as number);
+});
+
+const budgetFillPercent = computed(() => Math.min(budgetRatio.value * 100, 100));
+
+const budgetPercentLabel = computed(() => `${Math.round(budgetRatio.value * 100)}%`);
+
+const budgetSeverityClass = computed(() => {
+  if (budgetRatio.value > 1) {
+    return "severity-critical";
+  }
+  if (budgetRatio.value >= 0.8) {
+    return "severity-warning";
+  }
+  return "severity-good";
+});
+
 const iso8601Range = computed(() => {
   if (pickedRange.value.length !== 2) {
     return "";
@@ -182,7 +262,7 @@ const granularityFromPickedRange = computed(() => {
 async function updateProjectStats(range: string) {
   try {
     const result = await projectsStore.fetchProjectStats(
-      props.projectId,
+      props.project.id,
       "time_spent",
       range,
       granularityFromPickedRange.value,
@@ -195,7 +275,7 @@ async function updateProjectStats(range: string) {
 }
 
 watch(
-  () => [props.projectId, iso8601Range.value],
+  () => [props.project.id, iso8601Range.value],
   async ([newId, newRange], old) => {
     const [oldId, oldRange] = old ?? [];
     if (!newId || !newRange || (newId === oldId && newRange === oldRange)) {
@@ -250,6 +330,108 @@ function formatRange(interval: string, granularity: string): string {
 </script>
 
 <style scoped>
+.stats-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 1em;
+  margin-bottom: 1.25em;
+}
+
+.stat-tile {
+  background-color: var(--nord1);
+  border-radius: var(--radius-md);
+  padding: 0.85em 1.25em;
+  min-width: 9em;
+}
+
+.stat-tile-value {
+  margin: 0;
+  font-size: 2em;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--nord6);
+}
+
+.stat-tile-unit {
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--nord4);
+  margin-left: 0.2em;
+}
+
+.stat-tile-label {
+  margin: 0.3em 0 0;
+  font-size: 0.85em;
+  color: var(--nord4);
+}
+
+.budget-meter {
+  flex: 1;
+  min-width: 16em;
+  background-color: var(--nord1);
+  border-radius: var(--radius-md);
+  padding: 0.85em 1.25em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5em;
+}
+
+.budget-meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  font-size: 0.85em;
+}
+
+.budget-meter-label {
+  color: var(--nord4);
+}
+
+.budget-meter-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  font-weight: 600;
+  color: var(--nord4);
+}
+
+.budget-meter-reading.severity-critical {
+  color: var(--nord11);
+}
+
+.budget-meter-icon {
+  color: var(--nord11);
+}
+
+.budget-meter-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background-color: var(--nord3);
+  overflow: hidden;
+}
+
+.budget-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--transition-base, 0.2s ease);
+}
+
+.budget-meter-fill.severity-good {
+  background-color: var(--nord14);
+}
+
+.budget-meter-fill.severity-warning {
+  background-color: var(--nord13);
+}
+
+.budget-meter-fill.severity-critical {
+  background-color: var(--nord11);
+}
+
 .chart-title-container {
   display: flex;
   align-items: center;
@@ -258,7 +440,13 @@ function formatRange(interval: string, granularity: string): string {
 }
 
 .date-picker {
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
+}
+
+.date-pick-btns {
   margin-left: auto;
+  display: flex;
 }
 
 .chart-container {
@@ -269,6 +457,11 @@ function formatRange(interval: string, granularity: string): string {
 .chart {
   height: 40vh;
   max-height: 400px;
+}
+
+.date-pick-btn {
+  width: auto;
+  margin-right: 1em;
 }
 </style>
 
