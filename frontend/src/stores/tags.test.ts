@@ -122,6 +122,54 @@ describe("tags store", () => {
     expect(result.map((t) => t.name)).toContain("work");
   });
 
+  it("includes an exact match in the search results", async () => {
+    const tags = [makeTag({ name: "work" }), makeTag({ name: "home" })];
+
+    api.listTagsPaginated.mockResolvedValue({
+      data: tags,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    const store = useStore();
+    await store.fetchTags();
+
+    const result = store.searchTags("work");
+
+    expect(result.map((t) => t.name)).toEqual(["work"]);
+  });
+
+  it("excludes tags that are unrelated to the search query", async () => {
+    const tags = [makeTag({ name: "work" }), makeTag({ name: "banana" })];
+
+    api.listTagsPaginated.mockResolvedValue({
+      data: tags,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    const store = useStore();
+    await store.fetchTags();
+
+    const result = store.searchTags("work");
+
+    expect(result.map((t) => t.name)).not.toContain("banana");
+  });
+
+  it("ranks a substring match above an unrelated fuzzy candidate", async () => {
+    const tags = [makeTag({ name: "homework" }), makeTag({ name: "wrok" })];
+
+    api.listTagsPaginated.mockResolvedValue({
+      data: tags,
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    const store = useStore();
+    await store.fetchTags();
+
+    const result = store.searchTags("work");
+
+    expect(result.map((t) => t.name)).toEqual(["homework", "wrok"]);
+  });
+
   it("updates a tag and replaces it in the store", async () => {
     const original = makeTag({ id: "1", name: "old" });
     const updated = { ...original, name: "new" };

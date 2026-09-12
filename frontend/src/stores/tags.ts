@@ -1,6 +1,6 @@
 import { tagsApi, type TagsApi } from "@/api";
 import { stringToHexColor } from "@/helpers/colors";
-import { levenshteinDistance } from "@/helpers/search";
+import { scoreMatch } from "@/helpers/search";
 import type { Tag } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -186,25 +186,24 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
     /**
      * Searches for tags based on a query string. The search is
-     * case-insensitive and matches the beginning of the tag name.
+     * case-insensitive. Exact matches rank first, followed by prefix
+     * matches, substring matches, and finally typo-tolerant fuzzy matches;
+     * tags too dissimilar to the query are excluded entirely.
      *
      * @param query - The search query string.
      *
-     * @returns A promise that resolves to an array of matching tags.
+     * @returns An array of matching tags, best match first.
      */
     function searchTags(query: string): Tag[] {
-      const q = query.trim().toLowerCase();
+      const q = query.trim();
       if (!q) {
         return Array.from(tags.value.values()).map(copyTag);
       }
 
       return Array.from(tags.value.values())
-        .map((tag) => ({
-          tag,
-          distance: levenshteinDistance(tag.name.toLowerCase(), q),
-        }))
-        .filter(({ distance }) => distance)
-        .sort((a, b) => a.distance - b.distance)
+        .map((tag) => ({ tag, score: scoreMatch(tag.name, q) }))
+        .filter((entry): entry is { tag: Tag; score: number } => entry.score !== null)
+        .sort((a, b) => a.score - b.score)
         .map(({ tag }) => copyTag(tag));
     }
 
