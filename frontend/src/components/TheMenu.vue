@@ -33,7 +33,8 @@
         <div class="bottom">
           <strong v-if="isExpanded"> Inundated {{ version }} </strong>
           <button
-            class="icon-button toggle-button"
+            class="icon-button"
+            :class="{ 'toggle-button-compact': !isExpanded }"
             @click="toggleSidebar"
             :aria-expanded="isExpanded"
             :title="isExpanded ? 'Collapse sidebar' : 'Expand sidebar'"
@@ -119,7 +120,6 @@ const sidebarStyle = computed(() => ({
 }
 
 .logout-compact {
-  width: 44px;
   padding: 0.5em;
   display: flex;
   align-items: center;
@@ -211,5 +211,9 @@ const sidebarStyle = computed(() => ({
   background-color: var(--nord1);
   border-left-color: var(--nord8);
   color: var(--nord6);
+}
+
+.toggle-button-compact {
+  width: 100%;
 }
 </style>
