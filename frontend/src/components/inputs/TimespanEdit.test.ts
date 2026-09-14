@@ -62,3 +62,39 @@ test("a duration in the end time field that crosses midnight rolls over to the n
   expect(getTimeString(updated.endTime)).toBe("01:00");
   expect(updated.endTime.getDate()).toBe(timespan.startTime.getDate() + 1);
 });
+
+test("rejects a duration of 24 hours or more in the end time field instead of truncating it", async () => {
+  const timespan = baseTimespan();
+  const wrapper = mount(TimespanEdit, { props: { modelValue: timespan } });
+
+  await enterTimeField(wrapper, 2, "30h");
+
+  expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+});
+
+test("rejects a negative duration in the end time field instead of rolling it over", async () => {
+  const timespan = baseTimespan();
+  const wrapper = mount(TimespanEdit, { props: { modelValue: timespan } });
+
+  await enterTimeField(wrapper, 2, "-2h");
+
+  expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+});
+
+test("rejects a duration of 24 hours or more in the start time field instead of truncating it", async () => {
+  const timespan = baseTimespan();
+  const wrapper = mount(TimespanEdit, { props: { modelValue: timespan } });
+
+  await enterTimeField(wrapper, 1, "30h");
+
+  expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+});
+
+test("rejects a negative duration in the start time field instead of rolling it over", async () => {
+  const timespan = baseTimespan();
+  const wrapper = mount(TimespanEdit, { props: { modelValue: timespan } });
+
+  await enterTimeField(wrapper, 1, "-2h");
+
+  expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+});

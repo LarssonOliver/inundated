@@ -4,16 +4,18 @@ const DURATION_UNIT_MS: Record<string, number> = {
   s: 1000,
 };
 
+const DURATION_UNIT_PATTERN = /(\d+(?:\.\d+)?)(h|m|s)/g;
+
 export function parseGoDuration(input: string): number | null {
   const negative = input.startsWith("-");
   const unsigned = negative || input.startsWith("+") ? input.slice(1) : input;
 
-  const unitPattern = /(\d+(?:\.\d+)?)(h|m|s)/g;
+  DURATION_UNIT_PATTERN.lastIndex = 0;
   let match;
   let matchedLength = 0;
   let totalMs = 0;
 
-  while ((match = unitPattern.exec(unsigned)) !== null) {
+  while ((match = DURATION_UNIT_PATTERN.exec(unsigned)) !== null) {
     matchedLength += match[0].length;
     totalMs += parseFloat(match[1]) * DURATION_UNIT_MS[match[2]];
   }

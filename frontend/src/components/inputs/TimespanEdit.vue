@@ -75,11 +75,15 @@ const startDateString = computed({
   },
 });
 
-function resolveEndFromDuration(durationMs: number): string {
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function resolveEndFromDuration(durationMs: number): string | null {
+  if (durationMs <= 0 || durationMs >= ONE_DAY_MS) return null;
   return getTimeString(new Date(model.value.startTime.getTime() + durationMs));
 }
 
-function resolveStartFromDuration(durationMs: number): string {
+function resolveStartFromDuration(durationMs: number): string | null {
+  if (durationMs <= 0 || durationMs >= ONE_DAY_MS) return null;
   return getTimeString(new Date(model.value.endTime.getTime() - durationMs));
 }
 
