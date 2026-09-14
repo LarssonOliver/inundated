@@ -321,6 +321,20 @@ func TestProjectHandler_ListProjects(t *testing.T) {
 			initParams: func() *api.ListProjectsParams { return nil },
 			wantErr:    true,
 		},
+		{
+			name: "includeArchived forwarded to service",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Project], error) {
+				require.True(t, params.IncludeArchived)
+				return model.Page[model.Project]{Data: []model.Project{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListProjectsParams {
+				include := true
+				return &api.ListProjectsParams{IncludeArchived: &include}
+			},
+			wantData:  []api.Project{},
+			wantLimit: 25,
+			wantTotal: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -428,6 +442,26 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 				Color: "#000000",
 			},
 		},
+		{
+			name:      "archives a project",
+			requestId: existingID,
+			request: api.UpdateProject{
+				Archived: boolPtr(true),
+			},
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.ProjectServiceGetIncludes) (model.Project, error) {
+				return model.Project{Id: id, Name: name, Color: color}, nil
+			},
+			updateFn: func(ctx context.Context, project model.Project) (model.Project, error) {
+				require.True(t, project.Archived)
+				return project, nil
+			},
+			want: api.Project{
+				Id:       existingID,
+				Name:     name,
+				Color:    color,
+				Archived: true,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -452,7 +486,7 @@ func TestProjectHandler_UpdateProject(t *testing.T) {
 				t.Fatal("UpdateProject() succeeded unexpectedly")
 			}
 			res := got.(api.UpdateProject200JSONResponse)
-			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color {
+			if res.Id == uuid.Nil || res.Name != tt.want.Name || res.Color != tt.want.Color || res.Archived != tt.want.Archived {
 				t.Errorf("UpdateProject() = %v, want %v", got, tt.want)
 			}
 			if tt.want.TagIds == nil && res.TagIds != nil && len(*res.TagIds) != 0 {

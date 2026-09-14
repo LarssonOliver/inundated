@@ -14,4 +14,5 @@ type Project struct {
 	TagIds     []uuid.UUID
 	TotalTime  *time.Duration
 	UserId     *uuid.UUID
+	Archived   bool
 }

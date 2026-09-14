@@ -314,7 +314,7 @@ example().catch(console.error);
 
 ## listProjects
 
-> PaginatedProjects listProjects(limit, offset)
+> PaginatedProjects listProjects(limit, offset, includeArchived)
 
 List projects
 
@@ -340,6 +340,8 @@ async function example() {
     limit: 50,
     // number | Number of items to skip from the beginning (zero-indexed). (optional)
     offset: 0,
+    // boolean | Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.  (optional)
+    includeArchived: true,
   } satisfies ListProjectsRequest;
 
   try {
@@ -361,6 +363,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **limit** | `number` | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  | [Optional] [Defaults to `25`] |
 | **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
+| **includeArchived** | `boolean` | Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.  | [Optional] [Defaults to `false`] |
 
 ### Return type
 

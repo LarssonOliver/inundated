@@ -12,6 +12,7 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       name: apiModel.name,
       color: apiModel.color,
       totalTimeMs: apiModel.totalTimeMs,
+      archived: apiModel.archived,
     };
   },
   toApi(domainModel: Tag): Api.Tag {
@@ -19,6 +20,7 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       id: domainModel.id,
       name: domainModel.name,
       color: domainModel.color,
+      archived: domainModel.archived,
     };
   },
 };
@@ -40,5 +42,6 @@ export function toApiUpdateTag(patch: Partial<Omit<Tag, "id">>): Api.UpdateTag {
   return {
     ...(patch.name !== undefined && { name: patch.name }),
     ...(patch.color !== undefined && { color: patch.color }),
+    ...(patch.archived !== undefined && { archived: patch.archived }),
   };
 }

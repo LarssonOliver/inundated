@@ -62,7 +62,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 
 	all := make([]model.Tag, 0, len(t.tags))
 	for _, tag := range t.tags {
-		if matchesScope(tag.UserId, scope) {
+		if matchesScope(tag.UserId, scope) && (params.IncludeArchived || !tag.Archived) {
 			all = append(all, tag)
 		}
 	}

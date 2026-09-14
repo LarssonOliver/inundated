@@ -5,6 +5,7 @@ export interface Tag {
   name: string;
   color: string;
   totalTimeMs?: number;
+  archived: boolean;
 }
 
 export interface TagStats {

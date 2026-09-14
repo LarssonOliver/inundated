@@ -24,6 +24,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
+    const includeArchived = ref(false);
     const TTL = 60_000; // 1 minute
 
     const readOnlyProjects = computed<readonly Project[]>(() =>
@@ -41,7 +42,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const result = await api.listProjectsPaginated(50, 0);
+        const result = await api.listProjectsPaginated(50, 0, includeArchived.value);
         projects.value = new Map(result.data.map((project) => [project.id, project]));
         paginationState.value = result.pagination;
       })();
@@ -51,6 +52,22 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       } finally {
         _pending.value = null;
       }
+    }
+
+    /**
+     * Sets whether archived projects should be included in future fetches,
+     * clearing the cache and reloading the first page if the value changes.
+     *
+     * @param value - Whether archived projects should be included.
+     */
+    async function setIncludeArchived(value: boolean): Promise<void> {
+      if (includeArchived.value === value) return;
+
+      includeArchived.value = value;
+      projects.value = new Map();
+      paginationState.value = null;
+      lastFetched.value = null;
+      await fetchPage(50, 0);
     }
 
     /**
@@ -79,7 +96,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const result = await api.listProjectsPaginated(limit, offset);
+        const result = await api.listProjectsPaginated(limit, offset, includeArchived.value);
         // Accumulate items in the map instead of replacing
         for (const project of result.data) {
           projects.value.set(project.id, project);
@@ -194,6 +211,8 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     return {
       projects: readOnlyProjects,
       isLoading,
+      includeArchived,
+      setIncludeArchived,
       fetchProjects,
       fetchPage,
       getPaginationState,

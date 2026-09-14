@@ -2,10 +2,14 @@
   <div class="tag-list">
     <div class="title-bar">
       <h2>Tags</h2>
+      <label class="show-archived">
+        <input type="checkbox" v-model="showArchived" @change="onShowArchivedChange" />
+        Show archived
+      </label>
       <input type="button" value="Add" @click="router.push({ name: 'New Tag' })" />
     </div>
     <div v-for="tag in tagsStore.tags" :key="tag.id">
-      <div class="tag-card">
+      <div class="tag-card" :class="{ archived: tag.archived }">
         <div class="color-bar" :style="{ backgroundColor: tag.color }">
           <div class="tag-item">
             <router-link class="tag-name" :to="`/tags/${tag.id}`">
@@ -45,6 +49,7 @@ import SkeletonLoader from "@/components/SkeletonLoader.vue";
 const tagsStore = useTagsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
+const showArchived = ref(false);
 
 const pageSize = 50;
 
@@ -53,6 +58,10 @@ useInfiniteScroll(tagsStore, sentinelElement, pageSize);
 onMounted(async () => {
   await tagsStore.fetchPage(pageSize, 0);
 });
+
+async function onShowArchivedChange() {
+  await tagsStore.setIncludeArchived(showArchived.value);
+}
 </script>
 
 <style scoped>
@@ -66,6 +75,26 @@ onMounted(async () => {
   flex: 1;
   margin: 0;
   align-content: center;
+}
+
+.show-archived {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--nord3);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.show-archived input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.tag-card.archived .tag-item {
+  opacity: 0.5;
 }
 
 input[type="button"] {

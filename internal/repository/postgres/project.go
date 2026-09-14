@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,18 +19,20 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
 	q := `
-		SELECT id, name, color, time_budget, user_id
+		SELECT id, name, color, time_budget, user_id, archived_at
 		FROM projects
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var p model.Project
-	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId)
+	var archivedAt *time.Time
+	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
 	}
 	if err != nil {
 		return model.Project{}, fmt.Errorf("GetProject: %w", err)
 	}
+	p.Archived = archivedAt != nil
 
 	p.TagIds, err = r.projectTagIds(ctx, id)
 	if err != nil {
@@ -39,22 +42,22 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 }
 
 func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, []any{params.IncludeArchived})
 	countQ := `
 		SELECT COUNT(*)
 		FROM projects
-		WHERE deleted_at IS NULL AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $1) AND ` + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects count: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset, params.IncludeArchived})
 	dataQ := `
-		SELECT id, name, color, time_budget, user_id
+		SELECT id, name, color, time_budget, user_id, archived_at
 		FROM projects
-		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $3) AND ` + dataOwnerSQL + `
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
@@ -68,9 +71,11 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 
 	for rows.Next() {
 		var p model.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId); err != nil {
+		var archivedAt *time.Time
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt); err != nil {
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
+		p.Archived = archivedAt != nil
 		projects = append(projects, p)
 	}
 
@@ -153,19 +158,22 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", model.ErrInvalidReference)
 		}
 
-		ownerSQL, args := ownerPredicate("user_id", scope, []any{project.Id, project.Name, project.Color, project.TimeBudget})
+		ownerSQL, args := ownerPredicate("user_id", scope, []any{project.Id, project.Name, project.Color, project.TimeBudget, project.Archived})
 		update := `
-			UPDATE projects SET name = $2, color = $3, time_budget = $4
+			UPDATE projects SET name = $2, color = $3, time_budget = $4,
+				archived_at = CASE WHEN $5 THEN COALESCE(archived_at, now()) ELSE NULL END
 			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-			RETURNING id, name, color, time_budget, user_id`
+			RETURNING id, name, color, time_budget, user_id, archived_at`
+		var archivedAt *time.Time
 		err = q.QueryRow(ctx, update, args...).
-			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId)
+			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId, &archivedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("UpdateProject %s: %w", project.Id, model.ErrNotFound)
 		}
 		if err != nil {
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
+		updated.Archived = archivedAt != nil
 		return r.setProjectTags(ctx, q, updated.Id, project.TagIds)
 	})
 	if err != nil {

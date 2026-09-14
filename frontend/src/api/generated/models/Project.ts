@@ -55,6 +55,12 @@ export interface Project {
      * @memberof Project
      */
     totalTimeMs?: number;
+    /**
+     * Whether this project is archived. Archived projects are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
+     * @type {boolean}
+     * @memberof Project
+     */
+    archived: boolean;
 }
 
 /**
@@ -64,6 +70,7 @@ export function instanceOfProject(value: object): value is Project {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('color' in value) || value['color'] === undefined) return false;
+    if (!('archived' in value) || value['archived'] === undefined) return false;
     return true;
 }
 
@@ -83,6 +90,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
+        'archived': json['archived'],
     };
 }
 
@@ -103,6 +111,7 @@ export function ProjectToJSONTyped(value?: Project | null, ignoreDiscriminator: 
         'timeBudgetHours': value['timeBudgetHours'],
         'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
         'totalTimeMs': value['totalTimeMs'],
+        'archived': value['archived'],
     };
 }
 

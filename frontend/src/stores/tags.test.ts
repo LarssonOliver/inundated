@@ -9,6 +9,7 @@ function makeTag(overrides?: Partial<Tag>): Tag {
     id: crypto.randomUUID(),
     name: "test",
     color: "#ff0000",
+    archived: false,
     ...overrides,
   };
 }
@@ -57,6 +58,7 @@ describe("tags store", () => {
     const result = await store.createTag({
       name: created.name,
       color: created.color,
+      archived: false,
     });
 
     expect(api.createTag).toHaveBeenCalledOnce();
@@ -189,6 +191,7 @@ describe("tags store", () => {
     expect(api.updateTag).toHaveBeenCalledWith("1", {
       name: "new",
       color: original.color,
+      archived: original.archived,
     });
     expect(result).toEqual(updated);
     expect(store.getTagById("1")!.name).toBe("new");
@@ -344,5 +347,48 @@ describe("tags store", () => {
     await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
+  });
+
+  it("fetchPage forwards includeArchived to the API", async () => {
+    api.listTagsPaginated.mockResolvedValue({
+      data: [makeTag()],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+
+    expect(api.listTagsPaginated).toHaveBeenCalledWith(50, 0, false);
+  });
+
+  it("setIncludeArchived clears the cache and reloads with the new flag", async () => {
+    const active = makeTag({ name: "active" });
+    const archived = makeTag({ name: "archived", archived: true });
+
+    api.listTagsPaginated.mockResolvedValueOnce({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+    expect(store.tags).toHaveLength(1);
+
+    api.listTagsPaginated.mockResolvedValueOnce({
+      data: [active, archived],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    await store.setIncludeArchived(true);
+
+    expect(api.listTagsPaginated).toHaveBeenLastCalledWith(50, 0, true);
+    expect(store.tags).toHaveLength(2);
+  });
+
+  it("setIncludeArchived is a no-op when the value is unchanged", async () => {
+    const store = useStore();
+    await store.setIncludeArchived(false);
+
+    expect(api.listTagsPaginated).not.toHaveBeenCalled();
   });
 });

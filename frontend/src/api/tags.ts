@@ -17,7 +17,11 @@ export interface PaginatedTagsResponse {
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
-  listTagsPaginated(limit?: number, offset?: number): Promise<PaginatedTagsResponse>;
+  listTagsPaginated(
+    limit?: number,
+    offset?: number,
+    includeArchived?: boolean,
+  ): Promise<PaginatedTagsResponse>;
   getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
@@ -43,8 +47,9 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
     async listTagsPaginated(
       limit: number = 50,
       offset: number = 0,
+      includeArchived: boolean = false,
     ): Promise<PaginatedTagsResponse> {
-      const response = await api.listTags({ limit, offset });
+      const response = await api.listTags({ limit, offset, includeArchived });
       return {
         data: mapFromApiArray(tagMapper, response.data),
         pagination: {

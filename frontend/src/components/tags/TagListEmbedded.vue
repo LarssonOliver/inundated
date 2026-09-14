@@ -43,7 +43,7 @@ const tagSearchResult = computed(() => {
   if (!tagSearchQuery.value) return [];
   return tagsStore
     .searchTags(tagSearchQuery.value)
-    .filter((tag) => !model.value.has(tag.id))
+    .filter((tag) => !tag.archived && !model.value.has(tag.id))
     .slice(0, 5);
 });
 

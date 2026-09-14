@@ -8,6 +8,7 @@ describe("tagMapper", () => {
       name: "Test",
       color: "#ff0000",
       totalTimeMs: 12345,
+      archived: false,
     };
 
     const domain = tagMapper.fromApi(apiTag);
@@ -19,6 +20,7 @@ describe("tagMapper", () => {
       id: "550e8400-e29b-41d4-a716-446655440000",
       name: "Hello",
       color: "#00ff00",
+      archived: false,
     };
 
     const api = tagMapper.toApi({ totalTimeMs: 12345, ...domainTag });
@@ -30,6 +32,7 @@ describe("tagMapper", () => {
     const create = toApiCreateTag({
       name: "New",
       color: "#123456",
+      archived: false,
     });
 
     expect(create).toEqual({
@@ -45,6 +48,16 @@ describe("tagMapper", () => {
 
     expect(update).toEqual({
       color: "#abcdef",
+    });
+  });
+
+  it("maps archived in UpdateTag when provided", () => {
+    const update = toApiUpdateTag({
+      archived: true,
+    });
+
+    expect(update).toEqual({
+      archived: true,
     });
   });
 

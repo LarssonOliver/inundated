@@ -9,6 +9,9 @@
       <ColorInput v-model="model.color" />
       <div class="button-container" v-if="!props.isNewTag">
         <button class="btn-info" @click="$emit('save', model)">Save</button>
+        <button class="btn-warning" @click="toggleArchived">
+          {{ model.archived ? "Unarchive" : "Archive" }}
+        </button>
         <button class="btn-error" @click="showDeletionConfirmation = true">Delete</button>
       </div>
       <div class="button-container" v-else>
@@ -41,13 +44,18 @@ const props = defineProps<{
   isNewTag?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: "create", tag: Tag): void;
   (e: "save", tag: Tag): void;
   (e: "delete", tag: Tag): void;
 }>();
 
 const showDeletionConfirmation = ref(false);
+
+function toggleArchived() {
+  model.value.archived = !model.value.archived;
+  emit("save", model.value);
+}
 </script>
 
 <style scoped>

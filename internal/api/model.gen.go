@@ -127,6 +127,8 @@ type PaginationDetails struct {
 
 // Project defines model for Project.
 type Project struct {
+	// Archived Whether this project is archived. Archived projects are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
+	Archived        bool               `json:"archived"`
 	Color           HexColor           `json:"color"`
 	Id              openapi_types.UUID `json:"id"`
 	Name            string             `json:"name"`
@@ -170,6 +172,8 @@ type StatsMetric string
 
 // Tag defines model for Tag.
 type Tag struct {
+	// Archived Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
+	Archived    bool               `json:"archived"`
 	Color       HexColor           `json:"color"`
 	Id          openapi_types.UUID `json:"id"`
 	Name        string             `json:"name"`
@@ -211,6 +215,7 @@ type Timespan struct {
 
 // UpdateProject defines model for UpdateProject.
 type UpdateProject struct {
+	Archived        *bool      `json:"archived,omitempty"`
 	Color           *HexColor  `json:"color,omitempty"`
 	Name            *string    `json:"name,omitempty"`
 	TagIds          *TagIdList `json:"tagIds,omitempty"`
@@ -219,8 +224,9 @@ type UpdateProject struct {
 
 // UpdateTag defines model for UpdateTag.
 type UpdateTag struct {
-	Color *HexColor `json:"color,omitempty"`
-	Name  *string   `json:"name,omitempty"`
+	Archived *bool     `json:"archived,omitempty"`
+	Color    *HexColor `json:"color,omitempty"`
+	Name     *string   `json:"name,omitempty"`
 }
 
 // UpdateTimespan defines model for UpdateTimespan.
@@ -251,6 +257,9 @@ type Code = string
 
 // Granularity defines model for granularity.
 type Granularity = string
+
+// IncludeArchivedQuery defines model for includeArchivedQuery.
+type IncludeArchivedQuery = bool
 
 // IncludeQuery defines model for includeQuery.
 type IncludeQuery = []string
@@ -310,6 +319,9 @@ type ListProjectsParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// IncludeArchived Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.
+	IncludeArchived *IncludeArchivedQuery `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
 }
 
 // GetProjectParams defines parameters for GetProject.
@@ -346,6 +358,9 @@ type ListTagsParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// IncludeArchived Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.
+	IncludeArchived *IncludeArchivedQuery `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
 }
 
 // GetTagParams defines parameters for GetTag.

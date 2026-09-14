@@ -12,6 +12,7 @@ Name | Type
 `timeBudgetHours` | number
 `tagIds` | Set&lt;string&gt;
 `totalTimeMs` | number
+`archived` | boolean
 
 ## Example
 
@@ -26,6 +27,7 @@ const example = {
   "timeBudgetHours": null,
   "tagIds": null,
   "totalTimeMs": null,
+  "archived": null,
 } satisfies Project
 
 console.log(example)

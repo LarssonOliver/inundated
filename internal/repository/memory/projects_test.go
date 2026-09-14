@@ -329,6 +329,35 @@ func TestProjectStore_ListProjects(t *testing.T) {
 	}
 }
 
+func TestProjectStore_ListProjects_ArchivedFiltering(t *testing.T) {
+	ta := memory.NewMemoryStore()
+	ctx := context.Background()
+
+	active, _ := ta.CreateProject(ctx, testScope, model.Project{Name: "Active", Color: "#FF0000"})
+	toArchive, _ := ta.CreateProject(ctx, testScope, model.Project{Name: "Archived", Color: "#00FF00"})
+
+	archived, err := ta.UpdateProject(ctx, testScope, model.Project{
+		Id: toArchive.Id, Name: toArchive.Name, Color: toArchive.Color, Archived: true,
+	})
+	require.NoError(t, err)
+	require.True(t, archived.Archived)
+
+	t.Run("excludes archived by default", func(t *testing.T) {
+		page, err := ta.ListProjects(ctx, testScope, model.DefaultPaginationParams())
+		require.NoError(t, err)
+		require.Len(t, page.Data, 1)
+		require.Equal(t, active.Id, page.Data[0].Id)
+	})
+
+	t.Run("includes archived when requested", func(t *testing.T) {
+		params := model.DefaultPaginationParams()
+		params.IncludeArchived = true
+		page, err := ta.ListProjects(ctx, testScope, params)
+		require.NoError(t, err)
+		require.Len(t, page.Data, 2)
+	})
+}
+
 func TestProjectStore_UpdateProject(t *testing.T) {
 	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -415,6 +444,26 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			want:    model.Project{Name: "Project6Updated", Color: "#ABC123", TagIds: []uuid.UUID{}},
 			wantErr: false,
 		},
+		{
+			name:        "Test UpdateProject can archive a project",
+			project:     model.Project{Name: "Project7", Color: "#111111"},
+			editProject: model.Project{Name: "Project7", Color: "#111111", Archived: true},
+			editProjectId: func(createdProject *model.Project) uuid.UUID {
+				return createdProject.Id
+			},
+			want:    model.Project{Name: "Project7", Color: "#111111", Archived: true},
+			wantErr: false,
+		},
+		{
+			name:        "Test UpdateProject can unarchive a project",
+			project:     model.Project{Name: "Project8", Color: "#222222"},
+			editProject: model.Project{Name: "Project8", Color: "#222222", Archived: false},
+			editProjectId: func(createdProject *model.Project) uuid.UUID {
+				return createdProject.Id
+			},
+			want:    model.Project{Name: "Project8", Color: "#222222", Archived: false},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -446,6 +495,7 @@ func TestProjectStore_UpdateProject(t *testing.T) {
 			require.NotEqual(t, uuid.Nil, got.Id)
 			require.Equal(t, tt.want.Name, got.Name)
 			require.Equal(t, tt.want.Color, got.Color)
+			require.Equal(t, tt.want.Archived, got.Archived)
 			require.ElementsMatch(t, tt.want.TagIds, got.TagIds)
 
 			if tt.want.TimeBudget == nil {

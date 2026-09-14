@@ -23,6 +23,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
+    const includeArchived = ref(false);
     const TTL = 60_000; // 1 minute
 
     const readOnlyTags = computed<readonly Tag[]>(() =>
@@ -40,7 +41,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const result = await api.listTagsPaginated(50, 0);
+        const result = await api.listTagsPaginated(50, 0, includeArchived.value);
         tags.value = new Map(result.data.map((tag) => [tag.id, tag]));
         paginationState.value = result.pagination;
       })();
@@ -50,6 +51,22 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       } finally {
         _pending.value = null;
       }
+    }
+
+    /**
+     * Sets whether archived tags should be included in future fetches,
+     * clearing the cache and reloading the first page if the value changes.
+     *
+     * @param value - Whether archived tags should be included.
+     */
+    async function setIncludeArchived(value: boolean): Promise<void> {
+      if (includeArchived.value === value) return;
+
+      includeArchived.value = value;
+      tags.value = new Map();
+      paginationState.value = null;
+      lastFetched.value = null;
+      await fetchPage(50, 0);
     }
 
     /**
@@ -78,7 +95,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       if (_pending.value) return _pending.value;
 
       _pending.value = (async () => {
-        const result = await api.listTagsPaginated(limit, offset);
+        const result = await api.listTagsPaginated(limit, offset, includeArchived.value);
         // Accumulate items in the map instead of replacing
         for (const tag of result.data) {
           tags.value.set(tag.id, tag);
@@ -153,6 +170,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const newTag = await createTag({
         name: normalizedName,
         color: color ?? stringToHexColor(normalizedName),
+        archived: false,
       });
       return newTag;
     }
@@ -257,6 +275,8 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     return {
       tags: readOnlyTags,
       isLoading,
+      includeArchived,
+      setIncludeArchived,
       fetchTags,
       fetchPage,
       getPaginationState,

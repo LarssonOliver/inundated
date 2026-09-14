@@ -66,7 +66,7 @@ func (t *MemoryStore) ListProjects(ctx context.Context, scope model.OwnerScope, 
 
 	all := make([]model.Project, 0, len(t.projects))
 	for _, p := range t.projects {
-		if matchesScope(p.UserId, scope) {
+		if matchesScope(p.UserId, scope) && (params.IncludeArchived || !p.Archived) {
 			all = append(all, p)
 		}
 	}

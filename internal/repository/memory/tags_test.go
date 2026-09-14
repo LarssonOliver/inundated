@@ -280,6 +280,35 @@ func TestTagStore_ListTags(t *testing.T) {
 	}
 }
 
+func TestTagStore_ListTags_ArchivedFiltering(t *testing.T) {
+	ta := memory.NewMemoryStore()
+	ctx := context.Background()
+
+	active, _ := ta.CreateTag(ctx, testScope, model.Tag{Name: "Active", Color: "#FF0000"})
+	toArchive, _ := ta.CreateTag(ctx, testScope, model.Tag{Name: "Archived", Color: "#00FF00"})
+
+	archived, err := ta.UpdateTag(ctx, testScope, model.Tag{
+		Id: toArchive.Id, Name: toArchive.Name, Color: toArchive.Color, Archived: true,
+	})
+	require.NoError(t, err)
+	require.True(t, archived.Archived)
+
+	t.Run("excludes archived by default", func(t *testing.T) {
+		page, err := ta.ListTags(ctx, testScope, model.DefaultPaginationParams())
+		require.NoError(t, err)
+		require.Len(t, page.Data, 1)
+		require.Equal(t, active.Id, page.Data[0].Id)
+	})
+
+	t.Run("includes archived when requested", func(t *testing.T) {
+		params := model.DefaultPaginationParams()
+		params.IncludeArchived = true
+		page, err := ta.ListTags(ctx, testScope, params)
+		require.NoError(t, err)
+		require.Len(t, page.Data, 2)
+	})
+}
+
 func TestTagStore_UpdateTag(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -354,6 +383,16 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			want:    model.Tag{Name: "Tag5", Color: "#ABCDEF"},
 			wantErr: false,
 		},
+		{
+			name:    "Test UpdateTag can archive a tag",
+			tag:     model.Tag{Name: "Tag6", Color: "#111111"},
+			editTag: model.Tag{Name: "Tag6", Color: "#111111", Archived: true},
+			editTagId: func(createdTag *model.Tag) uuid.UUID {
+				return createdTag.Id
+			},
+			want:    model.Tag{Name: "Tag6", Color: "#111111", Archived: true},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -377,6 +416,7 @@ func TestTagStore_UpdateTag(t *testing.T) {
 			require.NoError(t, gotErr)
 			require.Equal(t, tt.want.Name, got.Name)
 			require.Equal(t, tt.want.Color, got.Color)
+			require.Equal(t, tt.want.Archived, got.Archived)
 			require.NotEqual(t, uuid.Nil, got.Id)
 		})
 	}

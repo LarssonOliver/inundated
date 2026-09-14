@@ -39,9 +39,10 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 	}
 
 	apiTag := api.Tag{
-		Id:    reply.Id,
-		Name:  reply.Name,
-		Color: reply.Color,
+		Id:       reply.Id,
+		Name:     reply.Name,
+		Color:    reply.Color,
+		Archived: reply.Archived,
 	}
 
 	return api.CreateTag201JSONResponse(apiTag), nil
@@ -77,9 +78,10 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 	}
 
 	apiTag := api.Tag{
-		Id:    reply.Id,
-		Name:  reply.Name,
-		Color: reply.Color,
+		Id:       reply.Id,
+		Name:     reply.Name,
+		Color:    reply.Color,
+		Archived: reply.Archived,
 	}
 
 	if includes.TotalTime {
@@ -108,6 +110,10 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 		paginationParams.Offset = *request.Params.Offset
 	}
 
+	if request.Params.IncludeArchived != nil {
+		paginationParams.IncludeArchived = *request.Params.IncludeArchived
+	}
+
 	page, err := t.svc.ListTags(ctx, paginationParams)
 
 	if err != nil {
@@ -117,9 +123,10 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 	apiTags := make([]api.Tag, 0, len(page.Data))
 	for _, tag := range page.Data {
 		apiTag := api.Tag{
-			Id:    tag.Id,
-			Name:  tag.Name,
-			Color: tag.Color,
+			Id:       tag.Id,
+			Name:     tag.Name,
+			Color:    tag.Color,
+			Archived: tag.Archived,
 		}
 		apiTags = append(apiTags, apiTag)
 	}
@@ -151,6 +158,9 @@ func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequest
 	if request.Body.Color != nil {
 		tag.Color = *request.Body.Color
 	}
+	if request.Body.Archived != nil {
+		tag.Archived = *request.Body.Archived
+	}
 
 	reply, err := t.svc.UpdateTag(ctx, tag)
 
@@ -161,9 +171,10 @@ func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequest
 	}
 
 	apiTag := api.Tag{
-		Id:    reply.Id,
-		Name:  reply.Name,
-		Color: reply.Color,
+		Id:       reply.Id,
+		Name:     reply.Name,
+		Color:    reply.Color,
+		Archived: reply.Archived,
 	}
 
 	return api.UpdateTag200JSONResponse(apiTag), nil

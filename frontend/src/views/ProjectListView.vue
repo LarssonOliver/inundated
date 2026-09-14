@@ -2,10 +2,14 @@
   <div class="project-list">
     <div class="title-bar">
       <h2>Projects</h2>
+      <label class="show-archived">
+        <input type="checkbox" v-model="showArchived" @change="onShowArchivedChange" />
+        Show archived
+      </label>
       <input type="button" value="Add" @click="router.push({ name: 'New Project' })" />
     </div>
     <div v-for="project in projectsStore.projects" :key="project.id">
-      <div class="project-card">
+      <div class="project-card" :class="{ archived: project.archived }">
         <div class="color-bar" :style="{ backgroundColor: project.color }">
           <div class="project-item">
             <router-link class="project-name" :to="`/projects/${project.id}`">
@@ -45,12 +49,17 @@ import SkeletonLoader from "@/components/SkeletonLoader.vue";
 const projectsStore = useProjectsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
+const showArchived = ref(false);
 
 const pageSize = 50;
 
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
+
+async function onShowArchivedChange() {
+  await projectsStore.setIncludeArchived(showArchived.value);
+}
 </script>
 
 <style scoped>
@@ -64,6 +73,26 @@ onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
   flex: 1;
   margin: 0;
   align-content: center;
+}
+
+.show-archived {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--nord3);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.show-archived input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.project-card.archived .project-item {
+  opacity: 0.5;
 }
 
 input[type="button"] {

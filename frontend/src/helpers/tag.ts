@@ -7,5 +7,6 @@ export function newTagWithDefaults(): Tag {
     id: "",
     name: "",
     color: stringToHexColor(randomColorString),
+    archived: false,
   };
 }

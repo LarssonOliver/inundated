@@ -27,8 +27,8 @@ describe("tags API", () => {
   it("listTags maps paginated API response to domain tags", async () => {
     api.listTags.mockResolvedValue({
       data: [
-        { id: "1", name: "A", color: "#111" },
-        { id: "2", name: "B", color: "#222" },
+        { id: "1", name: "A", color: "#111", archived: false },
+        { id: "2", name: "B", color: "#222", archived: false },
       ],
       pagination: { limit: 50, offset: 0, total: 2 },
     });
@@ -37,8 +37,8 @@ describe("tags API", () => {
     const result = await sut.listTags();
 
     expect(result).toEqual([
-      { id: "1", name: "A", color: "#111" },
-      { id: "2", name: "B", color: "#222" },
+      { id: "1", name: "A", color: "#111", archived: false },
+      { id: "2", name: "B", color: "#222", archived: false },
     ]);
 
     expect(api.listTags).toHaveBeenCalledOnce();
@@ -46,17 +46,29 @@ describe("tags API", () => {
 
   it("listTagsPaginated returns mapped tags with pagination info", async () => {
     api.listTags.mockResolvedValue({
-      data: [{ id: "1", name: "A", color: "#111" }],
+      data: [{ id: "1", name: "A", color: "#111", archived: false }],
       pagination: { limit: 50, offset: 50, total: 100 },
     });
 
     const sut = createTagsApi(api);
     const result = await sut.listTagsPaginated(50, 50);
 
-    expect(result.data).toEqual([{ id: "1", name: "A", color: "#111" }]);
+    expect(result.data).toEqual([{ id: "1", name: "A", color: "#111", archived: false }]);
     expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
 
-    expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 50 });
+    expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 50, includeArchived: false });
+  });
+
+  it("listTagsPaginated forwards includeArchived", async () => {
+    api.listTags.mockResolvedValue({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+
+    const sut = createTagsApi(api);
+    await sut.listTagsPaginated(50, 0, true);
+
+    expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 0, includeArchived: true });
   });
 
   it("getTag returns mapped tag when found", async () => {
@@ -64,6 +76,7 @@ describe("tags API", () => {
       id: "abc",
       name: "Test",
       color: "#fff",
+      archived: false,
     });
 
     const sut = createTagsApi(api);
@@ -73,6 +86,7 @@ describe("tags API", () => {
       id: "abc",
       name: "Test",
       color: "#fff",
+      archived: false,
     });
 
     expect(api.getTag).toHaveBeenCalledWith({ tagId: "abc", include: new Set() });
@@ -89,12 +103,14 @@ describe("tags API", () => {
       id: "new-id",
       name: "New",
       color: "#000",
+      archived: false,
     });
 
     const sut = createTagsApi(api);
     const result = await sut.createTag({
       name: "New",
       color: "#000",
+      archived: false,
     });
 
     expect(api.createTag).toHaveBeenCalledWith({
@@ -105,6 +121,7 @@ describe("tags API", () => {
       id: "new-id",
       name: "New",
       color: "#000",
+      archived: false,
     });
   });
 
@@ -113,6 +130,7 @@ describe("tags API", () => {
       id: "1",
       name: "Updated",
       color: "#123",
+      archived: false,
     });
 
     const sut = createTagsApi(api);
@@ -129,7 +147,26 @@ describe("tags API", () => {
       id: "1",
       name: "Updated",
       color: "#123",
+      archived: false,
     });
+  });
+
+  it("updateTag can toggle archived", async () => {
+    api.updateTag.mockResolvedValue({
+      id: "1",
+      name: "Updated",
+      color: "#123",
+      archived: true,
+    });
+
+    const sut = createTagsApi(api);
+    const result = await sut.updateTag("1", { archived: true });
+
+    expect(api.updateTag).toHaveBeenCalledWith({
+      tagId: "1",
+      updateTag: { archived: true },
+    });
+    expect(result.archived).toBe(true);
   });
 
   it("deleteTag calls API with correct id", async () => {

@@ -31,6 +31,12 @@ export interface UpdateTag {
      * @memberof UpdateTag
      */
     color?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateTag
+     */
+    archived?: boolean;
 }
 
 /**
@@ -52,6 +58,7 @@ export function UpdateTagFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         
         'name': json['name'] == null ? undefined : json['name'],
         'color': json['color'] == null ? undefined : json['color'],
+        'archived': json['archived'] == null ? undefined : json['archived'],
     };
 }
 
@@ -68,6 +75,7 @@ export function UpdateTagToJSONTyped(value?: UpdateTag | null, ignoreDiscriminat
         
         'name': value['name'],
         'color': value['color'],
+        'archived': value['archived'],
     };
 }
 

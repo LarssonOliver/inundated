@@ -10,6 +10,7 @@ Name | Type
 `color` | string
 `timeBudgetHours` | number
 `tagIds` | Set&lt;string&gt;
+`archived` | boolean
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "color": null,
   "timeBudgetHours": null,
   "tagIds": null,
+  "archived": null,
 } satisfies UpdateProject
 
 console.log(example)

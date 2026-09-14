@@ -14,6 +14,9 @@
 
     <div class="button-container" v-if="!props.isNewProject">
       <button class="btn-info" @click="$emit('save', model)">Save</button>
+      <button class="btn-warning" @click="toggleArchived">
+        {{ model.archived ? "Unarchive" : "Archive" }}
+      </button>
       <button class="btn-error" @click="showDeletionConfirmation = true">Delete</button>
     </div>
     <div class="button-container" v-else>
@@ -45,13 +48,18 @@ const props = defineProps<{
   isNewProject?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: "create", tag: Project): void;
   (e: "save", tag: Project): void;
   (e: "delete", tag: Project): void;
 }>();
 
 const showDeletionConfirmation = ref(false);
+
+function toggleArchived() {
+  model.value.archived = !model.value.archived;
+  emit("save", model.value);
+}
 </script>
 
 <style scoped>

@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE tags DROP COLUMN IF EXISTS archived_at;
+ALTER TABLE projects DROP COLUMN IF EXISTS archived_at;
+
+COMMIT;
