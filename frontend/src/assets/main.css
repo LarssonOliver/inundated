@@ -105,7 +105,11 @@ a:focus {
 }
 
 /* Todo: create own style to match nord theme */
-.dp__theme_dark {
+/* Higher specificity than the bare `.dp__theme_dark` the library ships, so
+   this override wins regardless of whether the library's own stylesheet
+   (imported lazily by whichever route chunk uses the date picker) happens
+   to be inserted into the page before or after this global stylesheet. */
+html .dp__theme_dark {
   --dp-background-color: var(--nord0);
   --dp-text-color: var(--nord4);
   --dp-hover-color: var(--nord2);
