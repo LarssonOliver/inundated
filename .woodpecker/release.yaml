@@ -2,6 +2,16 @@ when:
   - event: tag
     ref: refs/tags/v*
 
+variables:
+  backend_options: &backend_options
+    kubernetes:
+      tolerations:
+        - key: amd64
+          value: "true"
+          effect: PreferNoSchedule
+      nodeSelector:
+        kubernetes.io/arch: amd64
+
 steps:
   - name: build-and-push
     image: woodpeckerci/plugin-docker-buildx:6.0.4
@@ -19,13 +29,14 @@ steps:
         from_secret: registry_user
       password:
         from_secret: registry_password
-    backend_options:
-      kubernetes:
-        tolerations:
-          - key: amd64
-            value: "true"
-            effect: PreferNoSchedule
-        nodeSelector:
-          kubernetes.io/arch: amd64
+    backend_options: *backend_options
+
+  - name: github-release
+    image: woodpeckerci/plugin-release:0.3.1
+    settings:
+      api-key:
+        from_secret: github_release_token
+      title: "${CI_COMMIT_TAG}"
+      generate-release-notes: true
 
 
