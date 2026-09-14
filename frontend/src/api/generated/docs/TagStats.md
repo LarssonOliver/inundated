@@ -1,12 +1,12 @@
 
-# ProjectStats
+# TagStats
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`projectId` | string
+`tagId` | string
 `metric` | [StatsMetric](StatsMetric.md)
 `interval` | string
 `granularity` | string
@@ -16,17 +16,17 @@ Name | Type
 ## Example
 
 ```typescript
-import type { ProjectStats } from ''
+import type { TagStats } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "projectId": null,
+  "tagId": null,
   "metric": null,
   "interval": 2024-01-01T00:00:00Z/2024-03-31T23:59:59Z,
   "granularity": P1W,
   "unit": seconds,
   "series": null,
-} satisfies ProjectStats
+} satisfies TagStats
 
 console.log(example)
 
@@ -35,7 +35,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as ProjectStats
+const exampleParsed = JSON.parse(exampleJSON) as TagStats
 console.log(exampleParsed)
 ```
 

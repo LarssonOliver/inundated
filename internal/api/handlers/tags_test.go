@@ -421,3 +421,122 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 		})
 	}
 }
+
+func TestTagHandler_GetTagStats(t *testing.T) {
+	tagID := uuid.New()
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	intervalRaw := api.Interval("2024-01-01T00:00:00Z/2024-01-01T02:00:00Z")
+	granularityRaw := api.Granularity("PT1H")
+	timezoneRaw := api.Timezone("UTC")
+
+	tests := []struct {
+		name       string
+		getStatsFn func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error)
+		wantStatus int
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "success",
+			getStatsFn: func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error) {
+				require.Equal(t, tagID, input.TagID)
+				require.Equal(t, model.StatsMetricTimeSpent, input.Metric)
+				require.NotNil(t, input.IntervalRaw)
+				require.Equal(t, string(intervalRaw), *input.IntervalRaw)
+				return model.TagStats{
+					TagID:       tagID,
+					Metric:      model.StatsMetricTimeSpent,
+					Interval:    model.BucketRange{Start: base, End: base.Add(2 * time.Hour)},
+					Granularity: "PT1H",
+					Unit:        "seconds",
+					Series: []model.BucketValue{
+						{Bucket: model.BucketRange{Start: base, End: base.Add(1 * time.Hour)}, Value: 1800},
+						{Bucket: model.BucketRange{Start: base.Add(1 * time.Hour), End: base.Add(2 * time.Hour)}, Value: 3600},
+					},
+				}, nil
+			},
+			wantStatus: 200,
+		},
+		{
+			name: "invalid argument",
+			getStatsFn: func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error) {
+				return model.TagStats{}, model.ErrInvalidArgument
+			},
+			wantStatus: 400,
+		},
+		{
+			name: "not found",
+			getStatsFn: func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error) {
+				return model.TagStats{}, model.ErrNotFound
+			},
+			wantStatus: 404,
+		},
+		{
+			name: "unprocessable",
+			getStatsFn: func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error) {
+				return model.TagStats{}, model.ErrUnprocessable
+			},
+			wantStatus: 422,
+		},
+		{
+			name: "service error",
+			getStatsFn: func(ctx context.Context, input service.GetTagStatsInput) (model.TagStats, error) {
+				return model.TagStats{}, errors.New("service error")
+			},
+			wantErr:    true,
+			wantErrMsg: "internal server error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &service.TagServiceMock{
+				GetStatsFn: tt.getStatsFn,
+			}
+
+			h := handlers.NewTagHandler(svc)
+			request := api.GetTagStatsRequestObject{
+				TagId: tagID,
+				Params: api.GetTagStatsParams{
+					Metric:      api.TimeSpent,
+					Interval:    &intervalRaw,
+					Granularity: &granularityRaw,
+					Timezone:    &timezoneRaw,
+				},
+			}
+
+			got, err := h.GetTagStats(context.Background(), request)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.wantErrMsg != "" {
+					require.EqualError(t, err, tt.wantErrMsg)
+				}
+				return
+			}
+			require.NoError(t, err)
+
+			switch tt.wantStatus {
+			case 200:
+				res, ok := got.(api.GetTagStats200JSONResponse)
+				require.True(t, ok)
+				require.Equal(t, tagID, res.TagId)
+				require.Equal(t, api.TimeSpent, res.Metric)
+				require.Equal(t, "2024-01-01T00:00:00Z/2024-01-01T02:00:00Z", res.Interval)
+				require.Equal(t, "PT1H", res.Granularity)
+				require.Equal(t, "seconds", res.Unit)
+				require.Len(t, res.Series, 2)
+			case 400:
+				_, ok := got.(api.GetTagStats400Response)
+				require.True(t, ok)
+			case 404:
+				_, ok := got.(api.GetTagStats404Response)
+				require.True(t, ok)
+			case 422:
+				_, ok := got.(api.GetTagStats422Response)
+				require.True(t, ok)
+			default:
+				t.Fatalf("unexpected status expectation: %d", tt.wantStatus)
+			}
+		})
+	}
+}

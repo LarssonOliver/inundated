@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -166,4 +167,71 @@ func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequest
 	}
 
 	return api.UpdateTag200JSONResponse(apiTag), nil
+}
+
+// GetTagStats implements [api.TagHandler].
+func (t *TagHandler) GetTagStats(ctx context.Context, request api.GetTagStatsRequestObject) (api.GetTagStatsResponseObject, error) {
+	input := mapGetTagStatsRequestToServiceInput(request, time.Now().UTC())
+
+	reply, err := t.svc.GetTagStats(ctx, input)
+
+	if errors.Is(err, model.ErrInvalidArgument) {
+		return api.GetTagStats400Response{}, nil
+	} else if errors.Is(err, model.ErrUnprocessable) {
+		return api.GetTagStats422Response{}, nil
+	} else if errors.Is(err, model.ErrNotFound) {
+		return api.GetTagStats404Response{}, nil
+	} else if err != nil {
+		return nil, errInternalServer
+	}
+
+	return mapTagStatsToAPIResponse(reply), nil
+}
+
+func mapGetTagStatsRequestToServiceInput(request api.GetTagStatsRequestObject, now time.Time) service.GetTagStatsInput {
+	var intervalRaw *string
+	if request.Params.Interval != nil {
+		value := string(*request.Params.Interval)
+		intervalRaw = &value
+	}
+
+	var granularityRaw *string
+	if request.Params.Granularity != nil {
+		value := string(*request.Params.Granularity)
+		granularityRaw = &value
+	}
+
+	var timezoneRaw *string
+	if request.Params.Timezone != nil {
+		value := string(*request.Params.Timezone)
+		timezoneRaw = &value
+	}
+
+	return service.GetTagStatsInput{
+		TagID:          request.TagId,
+		Metric:         model.StatsMetric(request.Params.Metric),
+		IntervalRaw:    intervalRaw,
+		GranularityRaw: granularityRaw,
+		TimezoneRaw:    timezoneRaw,
+		Now:            now,
+	}
+}
+
+func mapTagStatsToAPIResponse(stats model.TagStats) api.GetTagStatsResponseObject {
+	series := make([]api.SeriesPoint, 0, len(stats.Series))
+	for _, point := range stats.Series {
+		series = append(series, api.SeriesPoint{
+			Interval: formatInterval(point.Bucket),
+			Value:    float32(point.Value),
+		})
+	}
+
+	return api.GetTagStats200JSONResponse(api.TagStats{
+		TagId:       stats.TagID,
+		Metric:      api.StatsMetric(stats.Metric),
+		Interval:    formatInterval(stats.Interval),
+		Granularity: stats.Granularity,
+		Unit:        stats.Unit,
+		Series:      series,
+	})
 }

@@ -62,6 +62,9 @@ type ServerInterface interface {
 	// Update tag
 	// (PATCH /api/tags/{tagId})
 	UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath)
+	// Get timeseries stats for a tag
+	// (GET /api/tags/{tagId}/stats)
+	GetTagStats(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagStatsParams)
 	// List time spans
 	// (GET /api/timespans)
 	ListTimespans(w http.ResponseWriter, r *http.Request, params ListTimespansParams)
@@ -170,6 +173,12 @@ func (_ Unimplemented) GetTag(w http.ResponseWriter, r *http.Request, tagId TagI
 // Update tag
 // (PATCH /api/tags/{tagId})
 func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId TagIdPath) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get timeseries stats for a tag
+// (GET /api/tags/{tagId}/stats)
+func (_ Unimplemented) GetTagStats(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagStatsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -801,6 +810,93 @@ func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// GetTagStats operation middleware
+func (siw *ServerInterfaceWrapper) GetTagStats(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tagId" -------------
+	var tagId TagIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tagId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTagStatsParams
+
+	// ------------- Required query parameter "metric" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "metric", r.URL.Query(), &params.Metric, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "metric"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "metric", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "interval" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "interval", r.URL.Query(), &params.Interval, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "interval"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "interval", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", r.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "granularity"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "granularity", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "timezone" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "timezone", r.URL.Query(), &params.Timezone, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "timezone"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timezone", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTagStats(w, r, tagId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListTimespans operation middleware
 func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.Request) {
 
@@ -1126,6 +1222,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/api/tags/{tagId}", wrapper.UpdateTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/tags/{tagId}/stats", wrapper.GetTagStats)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/timespans", wrapper.ListTimespans)
@@ -1655,6 +1754,53 @@ func (response UpdateTag404Response) VisitUpdateTagResponse(w http.ResponseWrite
 	return nil
 }
 
+type GetTagStatsRequestObject struct {
+	TagId  TagIdPath `json:"tagId"`
+	Params GetTagStatsParams
+}
+
+type GetTagStatsResponseObject interface {
+	VisitGetTagStatsResponse(w http.ResponseWriter) error
+}
+
+type GetTagStats200JSONResponse TagStats
+
+func (response GetTagStats200JSONResponse) VisitGetTagStatsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTagStats400Response struct {
+}
+
+func (response GetTagStats400Response) VisitGetTagStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetTagStats404Response struct {
+}
+
+func (response GetTagStats404Response) VisitGetTagStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetTagStats422Response struct {
+}
+
+func (response GetTagStats422Response) VisitGetTagStatsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(422)
+	return nil
+}
+
 type ListTimespansRequestObject struct {
 	Params ListTimespansParams
 }
@@ -1855,6 +2001,9 @@ type StrictServerInterface interface {
 	// Update tag
 	// (PATCH /api/tags/{tagId})
 	UpdateTag(ctx context.Context, request UpdateTagRequestObject) (UpdateTagResponseObject, error)
+	// Get timeseries stats for a tag
+	// (GET /api/tags/{tagId}/stats)
+	GetTagStats(ctx context.Context, request GetTagStatsRequestObject) (GetTagStatsResponseObject, error)
 	// List time spans
 	// (GET /api/timespans)
 	ListTimespans(ctx context.Context, request ListTimespansRequestObject) (ListTimespansResponseObject, error)
@@ -2307,6 +2456,33 @@ func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateTagResponseObject); ok {
 		if err := validResponse.VisitUpdateTagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetTagStats operation middleware
+func (sh *strictHandler) GetTagStats(w http.ResponseWriter, r *http.Request, tagId TagIdPath, params GetTagStatsParams) {
+	var request GetTagStatsRequestObject
+
+	request.TagId = tagId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTagStats(ctx, request.(GetTagStatsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTagStats")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetTagStatsResponseObject); ok {
+		if err := validResponse.VisitGetTagStatsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -1,7 +1,7 @@
 import { tagsApi, type TagsApi } from "@/api";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
-import type { Tag } from "@/model";
+import type { Tag, TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -233,6 +233,27 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       tags.value.delete(id);
     }
 
+    /**
+     * Fetches aggregated timeseries stats for a tag.
+     *
+     * @param tagId - The ID of the tag to fetch stats for.
+     * @param metric - The metric to aggregate.
+     * @param interval - The ISO 8601 interval to query.
+     * @param granularity - The ISO 8601 duration to bucket by.
+     * @param timezone - The IANA timezone used for bucketing.
+     *
+     * @returns A promise that resolves to the aggregated stats.
+     */
+    async function fetchTagStats(
+      tagId: string,
+      metric: string,
+      interval: string,
+      granularity: string,
+      timezone: string,
+    ): Promise<TagStats> {
+      return await api.fetchTagStats(tagId, metric, interval, granularity, timezone);
+    }
+
     return {
       tags: readOnlyTags,
       isLoading,
@@ -247,6 +268,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       searchTags,
       updateTag,
       deleteTag,
+      fetchTagStats,
     };
   });
 }

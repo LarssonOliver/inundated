@@ -1,7 +1,8 @@
-import type { Tag } from "@/model";
-import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum } from "@/api/generated";
+import type { Tag, TagStats } from "@/model";
+import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum, type StatsMetric } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
+import { tagStatsMapper } from "./mappers/tagStatsMapper";
 
 export interface PaginationMetadata {
   limit: number;
@@ -21,6 +22,13 @@ export interface TagsApi {
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
   deleteTag(id: string): Promise<void>;
+  fetchTagStats(
+    tagId: string,
+    metric: string,
+    interval: string,
+    granularity: string,
+    timezone: string,
+  ): Promise<TagStats>;
 }
 
 const defaultGeneratedApi = new GeneratedTagsApi(ApiConfig);
@@ -74,6 +82,23 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
 
     async deleteTag(id: string): Promise<void> {
       return await api.deleteTag({ tagId: id });
+    },
+
+    async fetchTagStats(
+      tagId: string,
+      metric: string,
+      interval: string,
+      granularity: string,
+      timezone: string,
+    ): Promise<TagStats> {
+      const response = await api.getTagStats({
+        tagId,
+        metric: metric as StatsMetric,
+        interval,
+        granularity,
+        timezone,
+      });
+      return tagStatsMapper.fromApi(response);
     },
   };
 }

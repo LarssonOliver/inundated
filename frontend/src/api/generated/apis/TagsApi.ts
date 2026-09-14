@@ -24,10 +24,20 @@ import {
     PaginatedTagsToJSON,
 } from '../models/PaginatedTags';
 import {
+    type StatsMetric,
+    StatsMetricFromJSON,
+    StatsMetricToJSON,
+} from '../models/StatsMetric';
+import {
     type Tag,
     TagFromJSON,
     TagToJSON,
 } from '../models/Tag';
+import {
+    type TagStats,
+    TagStatsFromJSON,
+    TagStatsToJSON,
+} from '../models/TagStats';
 import {
     type UpdateTag,
     UpdateTagFromJSON,
@@ -45,6 +55,14 @@ export interface DeleteTagRequest {
 export interface GetTagRequest {
     tagId: string;
     include?: Set<GetTagIncludeEnum>;
+}
+
+export interface GetTagStatsRequest {
+    tagId: string;
+    metric: StatsMetric;
+    interval?: string;
+    granularity?: string;
+    timezone?: string;
 }
 
 export interface ListTagsRequest {
@@ -199,6 +217,76 @@ export class TagsApi extends runtime.BaseAPI {
      */
     async getTag(requestParameters: GetTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Tag> {
         const response = await this.getTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTagStats without sending the request
+     */
+    async getTagStatsRequestOpts(requestParameters: GetTagStatsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tagId'] == null) {
+            throw new runtime.RequiredError(
+                'tagId',
+                'Required parameter "tagId" was null or undefined when calling getTagStats().'
+            );
+        }
+
+        if (requestParameters['metric'] == null) {
+            throw new runtime.RequiredError(
+                'metric',
+                'Required parameter "metric" was null or undefined when calling getTagStats().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['metric'] != null) {
+            queryParameters['metric'] = requestParameters['metric'];
+        }
+
+        if (requestParameters['interval'] != null) {
+            queryParameters['interval'] = requestParameters['interval'];
+        }
+
+        if (requestParameters['granularity'] != null) {
+            queryParameters['granularity'] = requestParameters['granularity'];
+        }
+
+        if (requestParameters['timezone'] != null) {
+            queryParameters['timezone'] = requestParameters['timezone'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/tags/{tagId}/stats`;
+        urlPath = urlPath.replace('{tagId}', encodeURIComponent(String(requestParameters['tagId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Get timeseries stats for a tag
+     */
+    async getTagStatsRaw(requestParameters: GetTagStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TagStats>> {
+        const requestOptions = await this.getTagStatsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TagStatsFromJSON(jsonValue));
+    }
+
+    /**
+     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Get timeseries stats for a tag
+     */
+    async getTagStats(requestParameters: GetTagStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TagStats> {
+        const response = await this.getTagStatsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

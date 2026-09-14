@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./tags";
-import { GetTagIncludeEnum, type TagsApi } from "./generated";
+import { GetTagIncludeEnum, type StatsMetric, type TagsApi } from "./generated";
 
 const { createTagsApi } = __test__;
 
@@ -12,6 +12,7 @@ function mockGeneratedApi(): Mocked<TagsApi> {
     createTag: vi.fn(),
     updateTag: vi.fn(),
     deleteTag: vi.fn(),
+    getTagStats: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -139,6 +140,28 @@ describe("tags API", () => {
 
     expect(api.deleteTag).toHaveBeenCalledWith({
       tagId: "dead-id",
+    });
+  });
+
+  it("getTagStats calls API with correct parameters", async () => {
+    api.getTagStats.mockResolvedValue({
+      tagId: "tag1",
+      metric: "time_spent",
+      interval: "2023-01-01/2023-01-31",
+      granularity: "daily",
+      unit: "milliseconds",
+      series: [],
+    });
+
+    const sut = createTagsApi(api);
+    await sut.fetchTagStats("tag1", "timeSpent", "2023-01-01/2023-01-31", "daily", "UTC");
+
+    expect(api.getTagStats).toHaveBeenCalledWith({
+      tagId: "tag1",
+      metric: "timeSpent" as StatsMetric,
+      interval: "2023-01-01/2023-01-31",
+      granularity: "daily",
+      timezone: "UTC",
     });
   });
 });

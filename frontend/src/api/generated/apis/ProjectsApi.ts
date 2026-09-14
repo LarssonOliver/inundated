@@ -34,6 +34,11 @@ import {
     ProjectStatsToJSON,
 } from '../models/ProjectStats';
 import {
+    type StatsMetric,
+    StatsMetricFromJSON,
+    StatsMetricToJSON,
+} from '../models/StatsMetric';
+import {
     type UpdateProject,
     UpdateProjectFromJSON,
     UpdateProjectToJSON,
@@ -54,7 +59,7 @@ export interface GetProjectRequest {
 
 export interface GetProjectStatsRequest {
     projectId: string;
-    metric: GetProjectStatsMetricEnum;
+    metric: StatsMetric;
     interval?: string;
     granularity?: string;
     timezone?: string;
@@ -394,10 +399,3 @@ export const GetProjectIncludeEnum = {
     TotalTimeMs: 'totalTimeMs'
 } as const;
 export type GetProjectIncludeEnum = typeof GetProjectIncludeEnum[keyof typeof GetProjectIncludeEnum];
-/**
- * @export
- */
-export const GetProjectStatsMetricEnum = {
-    TimeSpent: 'time_spent'
-} as const;
-export type GetProjectStatsMetricEnum = typeof GetProjectStatsMetricEnum[keyof typeof GetProjectStatsMetricEnum];

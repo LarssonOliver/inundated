@@ -11,6 +11,12 @@ TagIdList:
     type: string
     format: uuid
 
+StatsMetric:
+  type: string
+  description: A metric that can be aggregated over time for a project or tag.
+  enum:
+    - time_spent
+
 SeriesPoint:
   type: object
   required:

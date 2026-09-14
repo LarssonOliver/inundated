@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="chart-title-container">
-      <h2>Project Statistics</h2>
+      <h2>Tag Statistics</h2>
       <div class="date-pick-btns">
         <button
           class="date-pick-btn"
@@ -45,44 +45,20 @@
         </p>
         <p class="stat-tile-label">Total this period</p>
       </div>
-
-      <div v-if="hasBudget" class="budget-meter">
-        <div class="budget-meter-header">
-          <span class="budget-meter-label">Time budget</span>
-          <span class="budget-meter-reading" :class="budgetSeverityClass">
-            <MaterialIcon
-              v-if="budgetSeverityClass === 'severity-critical'"
-              icon="warning"
-              size="16px"
-              class="budget-meter-icon"
-            />
-            {{ totalHoursAllTime.toFixed(1) }} / {{ project.timeBudgetHours!.toFixed(1) }}h ({{
-              budgetPercentLabel
-            }})
-          </span>
-        </div>
-        <div class="budget-meter-track">
-          <div
-            class="budget-meter-fill"
-            :class="budgetSeverityClass"
-            :style="{ width: budgetFillPercent + '%' }"
-          />
-        </div>
-      </div>
     </div>
 
     <div class="chart-container">
       <Bar
-        v-if="projectStats"
+        v-if="tagStats"
         class="chart"
         :data="{
-          labels: projectStats.series.map((point) =>
-            formatRange(point.interval, projectStats?.granularity || 'P1D'),
+          labels: tagStats.series.map((point) =>
+            formatRange(point.interval, tagStats?.granularity || 'P1D'),
           ),
           datasets: [
             {
               label: 'Time Spent',
-              data: projectStats.series.map((point) => point.value * convertToHoursFactor),
+              data: tagStats.series.map((point) => point.value * convertToHoursFactor),
               backgroundColor: nord.nord14,
             },
           ],
@@ -109,9 +85,8 @@
 
 <script setup lang="ts">
 import { Bar } from "vue-chartjs";
-import type { Project, ProjectStats } from "@/model";
-import MaterialIcon from "@/components/icons/MaterialIcon.vue";
-import { useProjectsStore } from "@/stores/projects";
+import type { Tag, TagStats } from "@/model";
+import { useTagsStore } from "@/stores/tags";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -137,10 +112,10 @@ import "@/assets/stats-panel.css";
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
-const projectsStore = useProjectsStore();
+const tagsStore = useTagsStore();
 
 const props = defineProps<{
-  project: Project;
+  tag: Tag;
 }>();
 
 const now = new Date();
@@ -148,49 +123,22 @@ const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()
 const rangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
 const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
 
-const projectStats = ref<ProjectStats | undefined>();
+const tagStats = ref<TagStats | undefined>();
 
 const presetDates = ref(statsDateRangePresets());
 
 const convertToHoursFactor = computed(() =>
-  projectStats.value ? unitToHoursFactor(projectStats.value.unit) : 1,
+  tagStats.value ? unitToHoursFactor(tagStats.value.unit) : 1,
 );
 
 const periodTotalHours = computed(() => {
-  if (!projectStats.value) {
+  if (!tagStats.value) {
     return 0;
   }
   return (
-    projectStats.value.series.reduce((total, point) => total + point.value, 0) *
+    tagStats.value.series.reduce((total, point) => total + point.value, 0) *
     convertToHoursFactor.value
   );
-});
-
-const hasBudget = computed(
-  () => !!props.project.timeBudgetHours && props.project.timeBudgetHours > 0,
-);
-
-const totalHoursAllTime = computed(() => (props.project.totalTimeMs ?? 0) / (1000 * 60 * 60));
-
-const budgetRatio = computed(() => {
-  if (!hasBudget.value) {
-    return 0;
-  }
-  return totalHoursAllTime.value / (props.project.timeBudgetHours as number);
-});
-
-const budgetFillPercent = computed(() => Math.min(budgetRatio.value * 100, 100));
-
-const budgetPercentLabel = computed(() => `${Math.round(budgetRatio.value * 100)}%`);
-
-const budgetSeverityClass = computed(() => {
-  if (budgetRatio.value > 1) {
-    return "severity-critical";
-  }
-  if (budgetRatio.value >= 0.8) {
-    return "severity-warning";
-  }
-  return "severity-good";
 });
 
 const iso8601Range = computed(() => {
@@ -209,23 +157,23 @@ const granularityFromPickedRange = computed(() => {
   return granularityForRange(start, end);
 });
 
-async function updateProjectStats(range: string) {
+async function updateTagStats(range: string) {
   try {
-    const result = await projectsStore.fetchProjectStats(
-      props.project.id,
+    const result = await tagsStore.fetchTagStats(
+      props.tag.id,
       "time_spent",
       range,
       granularityFromPickedRange.value,
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     );
     if (result) {
-      projectStats.value = result;
+      tagStats.value = result;
     }
   } catch {}
 }
 
 watch(
-  () => [props.project.id, iso8601Range.value],
+  () => [props.tag.id, iso8601Range.value],
   async ([newId, newRange], old) => {
     const [oldId, oldRange] = old ?? [];
     if (!newId || !newRange || (newId === oldId && newRange === oldRange)) {
@@ -233,78 +181,10 @@ watch(
       return;
     }
 
-    updateProjectStats(newRange || "");
+    updateTagStats(newRange || "");
   },
   { immediate: true },
 );
 
 const formatRange = formatBucketLabel;
 </script>
-
-<style scoped>
-.budget-meter {
-  flex: 1;
-  min-width: 16em;
-  background-color: var(--nord1);
-  border-radius: var(--radius-md);
-  padding: 0.85em 1.25em;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5em;
-}
-
-.budget-meter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75em;
-  font-size: 0.85em;
-}
-
-.budget-meter-label {
-  color: var(--nord4);
-}
-
-.budget-meter-reading {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  font-weight: 600;
-  color: var(--nord4);
-}
-
-.budget-meter-reading.severity-critical {
-  color: var(--nord11);
-}
-
-.budget-meter-icon {
-  color: var(--nord11);
-}
-
-.budget-meter-track {
-  position: relative;
-  height: 10px;
-  border-radius: 999px;
-  background-color: var(--nord3);
-  overflow: hidden;
-}
-
-.budget-meter-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width var(--transition-base, 0.2s ease);
-}
-
-.budget-meter-fill.severity-good {
-  background-color: var(--nord14);
-}
-
-.budget-meter-fill.severity-warning {
-  background-color: var(--nord13);
-}
-
-.budget-meter-fill.severity-critical {
-  background-color: var(--nord11);
-}
-</style>

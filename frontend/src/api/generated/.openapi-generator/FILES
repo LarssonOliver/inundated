@@ -16,7 +16,9 @@ docs/Project.md
 docs/ProjectStats.md
 docs/ProjectsApi.md
 docs/SeriesPoint.md
+docs/StatsMetric.md
 docs/Tag.md
+docs/TagStats.md
 docs/TagsApi.md
 docs/Timespan.md
 docs/TimespansApi.md
@@ -36,7 +38,9 @@ models/PaginationDetails.ts
 models/Project.ts
 models/ProjectStats.ts
 models/SeriesPoint.ts
+models/StatsMetric.ts
 models/Tag.ts
+models/TagStats.ts
 models/Timespan.ts
 models/UpdateProject.ts
 models/UpdateTag.ts

@@ -390,7 +390,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 		s := service.NewService(repo)
 		got, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID:      projectID,
-			Metric:         model.ProjectStatsMetricTimeSpent,
+			Metric:         model.StatsMetricTimeSpent,
 			IntervalRaw:    &intervalRaw,
 			GranularityRaw: &granularityRaw,
 			TimezoneRaw:    &timezoneRaw,
@@ -399,7 +399,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, projectID, got.ProjectID)
-		require.Equal(t, model.ProjectStatsMetricTimeSpent, got.Metric)
+		require.Equal(t, model.StatsMetricTimeSpent, got.Metric)
 		require.True(t, got.Interval.Start.Equal(base))
 		require.True(t, got.Interval.End.Equal(base.Add(2*time.Hour)))
 		require.Equal(t, "PT1H", got.Granularity)
@@ -415,7 +415,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID: projectID,
-			Metric:    model.ProjectStatsMetric("invalid_metric"),
+			Metric:    model.StatsMetric("invalid_metric"),
 		})
 
 		require.ErrorIs(t, err, model.ErrInvalidArgument)
@@ -431,7 +431,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID: projectID,
-			Metric:    model.ProjectStatsMetricTimeSpent,
+			Metric:    model.StatsMetricTimeSpent,
 		})
 
 		require.ErrorIs(t, err, model.ErrNotFound)
@@ -447,7 +447,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID: projectID,
-			Metric:    model.ProjectStatsMetricTimeSpent,
+			Metric:    model.StatsMetricTimeSpent,
 		})
 
 		require.Error(t, err)
@@ -466,7 +466,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID:   projectID,
-			Metric:      model.ProjectStatsMetricTimeSpent,
+			Metric:      model.StatsMetricTimeSpent,
 			IntervalRaw: &badInterval,
 		})
 
@@ -487,7 +487,7 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 		_, err := s.GetProjectStats(context.Background(), service.GetProjectStatsInput{
 			ProjectID:   projectID,
-			Metric:      model.ProjectStatsMetricTimeSpent,
+			Metric:      model.StatsMetricTimeSpent,
 			IntervalRaw: &unprocessableInterval,
 		})
 

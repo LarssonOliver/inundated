@@ -1,32 +1,21 @@
 
-# ProjectStats
+# StatsMetric
 
+A metric that can be aggregated over time for a project or tag.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`projectId` | string
-`metric` | [StatsMetric](StatsMetric.md)
-`interval` | string
-`granularity` | string
-`unit` | string
-`series` | [Array&lt;SeriesPoint&gt;](SeriesPoint.md)
 
 ## Example
 
 ```typescript
-import type { ProjectStats } from ''
+import type { StatsMetric } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "projectId": null,
-  "metric": null,
-  "interval": 2024-01-01T00:00:00Z/2024-03-31T23:59:59Z,
-  "granularity": P1W,
-  "unit": seconds,
-  "series": null,
-} satisfies ProjectStats
+} satisfies StatsMetric
 
 console.log(example)
 
@@ -35,7 +24,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as ProjectStats
+const exampleParsed = JSON.parse(exampleJSON) as StatsMetric
 console.log(exampleParsed)
 ```
 

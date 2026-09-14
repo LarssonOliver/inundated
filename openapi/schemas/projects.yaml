@@ -63,10 +63,7 @@ ProjectStats:
       format: uuid
       description: The ID of the project this data belongs to.
     metric:
-      type: string
-      description: The metric that was aggregated.
-      enum:
-        - time_spent
+      $ref: "./shared.yaml#/StatsMetric"
     interval:
       type: string
       description: >

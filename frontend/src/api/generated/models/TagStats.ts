@@ -31,45 +31,45 @@ import {
 /**
  * 
  * @export
- * @interface ProjectStats
+ * @interface TagStats
  */
-export interface ProjectStats {
+export interface TagStats {
     /**
-     * The ID of the project this data belongs to.
+     * The ID of the tag this data belongs to.
      * @type {string}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
-    projectId: string;
+    tagId: string;
     /**
      * 
      * @type {StatsMetric}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
     metric: StatsMetric;
     /**
      * The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
      * 
      * @type {string}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
     interval: string;
     /**
      * The ISO 8601 duration used to bucket each series point.
      * @type {string}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
     granularity: string;
     /**
      * The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
      * 
      * @type {string}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
     unit: string;
     /**
      * Ordered list of aggregated data points.
      * @type {Array<SeriesPoint>}
-     * @memberof ProjectStats
+     * @memberof TagStats
      */
     series: Array<SeriesPoint>;
 }
@@ -77,10 +77,10 @@ export interface ProjectStats {
 
 
 /**
- * Check if a given object implements the ProjectStats interface.
+ * Check if a given object implements the TagStats interface.
  */
-export function instanceOfProjectStats(value: object): value is ProjectStats {
-    if (!('projectId' in value) || value['projectId'] === undefined) return false;
+export function instanceOfTagStats(value: object): value is TagStats {
+    if (!('tagId' in value) || value['tagId'] === undefined) return false;
     if (!('metric' in value) || value['metric'] === undefined) return false;
     if (!('interval' in value) || value['interval'] === undefined) return false;
     if (!('granularity' in value) || value['granularity'] === undefined) return false;
@@ -89,17 +89,17 @@ export function instanceOfProjectStats(value: object): value is ProjectStats {
     return true;
 }
 
-export function ProjectStatsFromJSON(json: any): ProjectStats {
-    return ProjectStatsFromJSONTyped(json, false);
+export function TagStatsFromJSON(json: any): TagStats {
+    return TagStatsFromJSONTyped(json, false);
 }
 
-export function ProjectStatsFromJSONTyped(json: any, ignoreDiscriminator: boolean): ProjectStats {
+export function TagStatsFromJSONTyped(json: any, ignoreDiscriminator: boolean): TagStats {
     if (json == null) {
         return json;
     }
     return {
         
-        'projectId': json['project_id'],
+        'tagId': json['tag_id'],
         'metric': StatsMetricFromJSON(json['metric']),
         'interval': json['interval'],
         'granularity': json['granularity'],
@@ -108,18 +108,18 @@ export function ProjectStatsFromJSONTyped(json: any, ignoreDiscriminator: boolea
     };
 }
 
-export function ProjectStatsToJSON(json: any): ProjectStats {
-    return ProjectStatsToJSONTyped(json, false);
+export function TagStatsToJSON(json: any): TagStats {
+    return TagStatsToJSONTyped(json, false);
 }
 
-export function ProjectStatsToJSONTyped(value?: ProjectStats | null, ignoreDiscriminator: boolean = false): any {
+export function TagStatsToJSONTyped(value?: TagStats | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
 
     return {
         
-        'project_id': value['projectId'],
+        'tag_id': value['tagId'],
         'metric': StatsMetricToJSON(value['metric']),
         'interval': value['interval'],
         'granularity': value['granularity'],

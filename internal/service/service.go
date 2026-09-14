@@ -56,6 +56,16 @@ type TagService interface {
 	CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
+	GetTagStats(ctx context.Context, input GetTagStatsInput) (model.TagStats, error)
+}
+
+type GetTagStatsInput struct {
+	TagID          uuid.UUID
+	Metric         model.StatsMetric
+	IntervalRaw    *string
+	GranularityRaw *string
+	TimezoneRaw    *string
+	Now            time.Time
 }
 
 type ProjectServiceGetIncludes struct {
@@ -73,7 +83,7 @@ type ProjectService interface {
 
 type GetProjectStatsInput struct {
 	ProjectID      uuid.UUID
-	Metric         model.ProjectStatsMetric
+	Metric         model.StatsMetric
 	IntervalRaw    *string
 	GranularityRaw *string
 	TimezoneRaw    *string

@@ -59,6 +59,20 @@ func scopedMethods() []scopedMethod {
 			return s.DeleteTag(ctx, uuid.New())
 		}, 1},
 
+		// GetTagStats must pass the SAME scope to both GetTag and
+		// AggregateTimeSpentByTagsAndBuckets (spec Testing section).
+		{"GetTagStats", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetTagStats(ctx, service.GetTagStatsInput{
+				TagID:          uuid.New(),
+				Metric:         model.StatsMetricTimeSpent,
+				IntervalRaw:    &intervalRaw,
+				GranularityRaw: &granularityRaw,
+				TimezoneRaw:    &timezoneRaw,
+				Now:            time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			})
+			return err
+		}, 2},
+
 		{"GetProject", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.GetProject(ctx, uuid.New(), nil)
 			return err
@@ -104,7 +118,7 @@ func scopedMethods() []scopedMethod {
 		{"GetProjectStats", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.GetProjectStats(ctx, service.GetProjectStatsInput{
 				ProjectID:      uuid.New(),
-				Metric:         model.ProjectStatsMetricTimeSpent,
+				Metric:         model.StatsMetricTimeSpent,
 				IntervalRaw:    &intervalRaw,
 				GranularityRaw: &granularityRaw,
 				TimezoneRaw:    &timezoneRaw,

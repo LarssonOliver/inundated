@@ -5,14 +5,19 @@
       <h2 v-if="!isNewTag">Tag Details</h2>
       <h2 v-else>New Tag</h2>
     </div>
-    <div class="card">
-      <TagEdit
-        v-model="tag"
-        :is-new-tag="isNewTag"
-        @save="saveTag"
-        @create="createTag"
-        @delete="deleteTag"
-      />
+    <div class="content">
+      <div class="tag-edit card">
+        <TagEdit
+          v-model="tag"
+          :is-new-tag="isNewTag"
+          @save="saveTag"
+          @create="createTag"
+          @delete="deleteTag"
+        />
+      </div>
+      <div v-if="!isNewTag" class="card">
+        <TagStats :tag="tag" />
+      </div>
     </div>
   </div>
 </template>
@@ -24,6 +29,7 @@ import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";
 import { newTagWithDefaults } from "@/helpers/tag";
 import TagEdit from "@/components/tags/TagEdit.vue";
+import TagStats from "@/components/tags/TagStats.vue";
 import NotFoundView from "./NotFoundView.vue";
 
 const tagsStore = useTagsStore();
@@ -105,12 +111,22 @@ async function deleteTag() {
   padding: 0.25em 0;
 }
 
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+}
+
 .card {
   background-color: var(--nord0);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: 1.5em;
   padding-top: 0.5em;
+}
+
+.tag-edit {
+  flex: 1;
   max-width: 400px;
 }
 

@@ -43,11 +43,12 @@ func (m *TimespanServiceMock) UpdateTimespan(ctx context.Context, timespan model
 }
 
 type TagServiceMock struct {
-	CreateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
-	DeleteFn func(ctx context.Context, id uuid.UUID) error
-	GetFn    func(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error)
-	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
-	UpdateFn func(ctx context.Context, tag model.Tag) (model.Tag, error)
+	CreateFn   func(ctx context.Context, tag model.Tag) (model.Tag, error)
+	DeleteFn   func(ctx context.Context, id uuid.UUID) error
+	GetFn      func(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error)
+	GetStatsFn func(ctx context.Context, input GetTagStatsInput) (model.TagStats, error)
+	ListFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
+	UpdateFn   func(ctx context.Context, tag model.Tag) (model.Tag, error)
 }
 
 var _ TagService = (*TagServiceMock)(nil)
@@ -75,6 +76,14 @@ func (m *TagServiceMock) ListTags(ctx context.Context, params model.PaginationPa
 // UpdateTag implements [service.TagService].
 func (m *TagServiceMock) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {
 	return m.UpdateFn(ctx, tag)
+}
+
+// GetTagStats implements [service.TagService].
+func (m *TagServiceMock) GetTagStats(ctx context.Context, input GetTagStatsInput) (model.TagStats, error) {
+	if m.GetStatsFn == nil {
+		return model.TagStats{}, model.ErrNotImplemented
+	}
+	return m.GetStatsFn(ctx, input)
 }
 
 type ProjectServiceMock struct {
