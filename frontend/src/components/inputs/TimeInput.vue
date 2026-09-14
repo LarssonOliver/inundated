@@ -15,9 +15,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { parseGoDuration } from "@/helpers/time";
 
-defineProps<{
+const props = defineProps<{
   showNextDay?: boolean;
+  resolveDuration?: (durationMs: number) => string | null;
 }>();
 
 const model = defineModel<string>({ default: "00:00" });
@@ -50,12 +52,20 @@ function valueEntered() {
     hours = +value.slice(0, -2);
     minutes = +value.slice(-2);
   } else {
-    resetToLastValid();
+    const durationMs = parseGoDuration(value);
+    const resolved = durationMs === null ? null : (props.resolveDuration?.(durationMs) ?? null);
+    if (resolved === null) {
+      resetToLastValid();
+      return;
+    }
+    lastValidValue.value = resolved;
+    model.value = currentValue.value = resolved;
     return;
   }
 
   if (hours > 23 || minutes > 59) {
     resetToLastValid();
+    return;
   }
 
   lastValidValue.value = formatTime(hours, minutes);

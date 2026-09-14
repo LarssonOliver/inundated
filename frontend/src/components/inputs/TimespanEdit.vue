@@ -7,9 +7,13 @@
       @change="model = { ...model, name: ($event.target as HTMLInputElement).value }"
       @keydown.enter="$emit('submit')"
     />
-    <TimeInput v-model="startTimeString" />
+    <TimeInput v-model="startTimeString" :resolve-duration="resolveStartFromDuration" />
     <span class="centered-text">-</span>
-    <TimeInput v-model="endTimeString" :show-next-day="isEndNextDay" />
+    <TimeInput
+      v-model="endTimeString"
+      :show-next-day="isEndNextDay"
+      :resolve-duration="resolveEndFromDuration"
+    />
     <input type="date" v-model="startDateString" />
   </div>
 </template>
@@ -70,6 +74,18 @@ const startDateString = computed({
     };
   },
 });
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function resolveEndFromDuration(durationMs: number): string | null {
+  if (durationMs <= 0 || durationMs >= ONE_DAY_MS) return null;
+  return getTimeString(new Date(model.value.startTime.getTime() + durationMs));
+}
+
+function resolveStartFromDuration(durationMs: number): string | null {
+  if (durationMs <= 0 || durationMs >= ONE_DAY_MS) return null;
+  return getTimeString(new Date(model.value.endTime.getTime() - durationMs));
+}
 
 function setTime(date: Date, hours: number, minutes: number): Date {
   const newDate = new Date(date);
