@@ -17,7 +17,7 @@ func (s *ServiceImpl) GetTagStats(ctx context.Context, input GetTagStatsInput) (
 		return model.TagStats{}, err
 	}
 
-	tag, err := s.repository.GetTag(ctx, scope, input.TagID)
+	tag, err := s.GetTag(ctx, input.TagID, nil)
 	if err != nil {
 		return model.TagStats{}, err
 	}

@@ -16,7 +16,7 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		return model.ProjectStats{}, err
 	}
 
-	project, err := s.repository.GetProject(ctx, scope, input.ProjectID)
+	project, err := s.GetProject(ctx, input.ProjectID, nil)
 	if err != nil {
 		return model.ProjectStats{}, err
 	}
