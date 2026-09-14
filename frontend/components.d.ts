@@ -21,6 +21,7 @@ declare module 'vue' {
     TagEdit: typeof import('./src/components/tags/TagEdit.vue')['default']
     TagItem: typeof import('./src/components/tags/TagItem.vue')['default']
     TagListEmbedded: typeof import('./src/components/tags/TagListEmbedded.vue')['default']
+    TagStats: typeof import('./src/components/tags/TagStats.vue')['default']
     TheMenu: typeof import('./src/components/TheMenu.vue')['default']
     TheTimesheet: typeof import('./src/components/timesheet/TheTimesheet.vue')['default']
     TimeInput: typeof import('./src/components/inputs/TimeInput.vue')['default']

@@ -26,6 +26,7 @@ type TagHandler interface {
 	CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error)
 	UpdateTag(ctx context.Context, request UpdateTagRequestObject) (UpdateTagResponseObject, error)
 	DeleteTag(ctx context.Context, request DeleteTagRequestObject) (DeleteTagResponseObject, error)
+	GetTagStats(ctx context.Context, request GetTagStatsRequestObject) (GetTagStatsResponseObject, error)
 }
 
 type ProjectHandler interface {

@@ -64,6 +64,11 @@ func (s *Server) UpdateTag(ctx context.Context, request UpdateTagRequestObject) 
 	return s.handler.UpdateTag(ctx, request)
 }
 
+// GetTagStats implements StrictServerInterface.
+func (s *Server) GetTagStats(ctx context.Context, request GetTagStatsRequestObject) (GetTagStatsResponseObject, error) {
+	return s.handler.GetTagStats(ctx, request)
+}
+
 // CreateProject implements StrictServerInterface.
 func (s *Server) CreateProject(ctx context.Context, request CreateProjectRequestObject) (CreateProjectResponseObject, error) {
 	return s.handler.CreateProject(ctx, request)

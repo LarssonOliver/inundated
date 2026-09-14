@@ -13,30 +13,15 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
-// Defines values for ProjectStatsMetric.
+// Defines values for StatsMetric.
 const (
-	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
+	TimeSpent StatsMetric = "time_spent"
 )
 
-// Valid indicates whether the value is a known member of the ProjectStatsMetric enum.
-func (e ProjectStatsMetric) Valid() bool {
+// Valid indicates whether the value is a known member of the StatsMetric enum.
+func (e StatsMetric) Valid() bool {
 	switch e {
-	case ProjectStatsMetricTimeSpent:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ProjectStatsMetrics.
-const (
-	ProjectStatsMetricsTimeSpent ProjectStatsMetrics = "time_spent"
-)
-
-// Valid indicates whether the value is a known member of the ProjectStatsMetrics enum.
-func (e ProjectStatsMetrics) Valid() bool {
-	switch e {
-	case ProjectStatsMetricsTimeSpent:
+	case TimeSpent:
 		return true
 	default:
 		return false
@@ -52,21 +37,6 @@ const (
 func (e GetProjectParamsInclude) Valid() bool {
 	switch e {
 	case GetProjectParamsIncludeTotalTimeMs:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetProjectStatsParamsMetric.
-const (
-	TimeSpent GetProjectStatsParamsMetric = "time_spent"
-)
-
-// Valid indicates whether the value is a known member of the GetProjectStatsParamsMetric enum.
-func (e GetProjectStatsParamsMetric) Valid() bool {
-	switch e {
-	case TimeSpent:
 		return true
 	default:
 		return false
@@ -173,8 +143,8 @@ type ProjectStats struct {
 	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
 	Interval string `json:"interval"`
 
-	// Metric The metric that was aggregated.
-	Metric ProjectStatsMetric `json:"metric"`
+	// Metric A metric that can be aggregated over time for a project or tag.
+	Metric StatsMetric `json:"metric"`
 
 	// ProjectId The ID of the project this data belongs to.
 	ProjectId openapi_types.UUID `json:"project_id"`
@@ -186,9 +156,6 @@ type ProjectStats struct {
 	Unit string `json:"unit"`
 }
 
-// ProjectStatsMetric The metric that was aggregated.
-type ProjectStatsMetric string
-
 // SeriesPoint defines model for SeriesPoint.
 type SeriesPoint struct {
 	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{end}` form (e.g. `2024-01-01T00:00:00Z/2024-01-08T00:00:00Z`).
@@ -197,6 +164,9 @@ type SeriesPoint struct {
 	// Value The aggregated metric value for this bucket.
 	Value float32 `json:"value"`
 }
+
+// StatsMetric A metric that can be aggregated over time for a project or tag.
+type StatsMetric string
 
 // Tag defines model for Tag.
 type Tag struct {
@@ -208,6 +178,27 @@ type Tag struct {
 
 // TagIdList defines model for TagIdList.
 type TagIdList = []openapi_types.UUID
+
+// TagStats defines model for TagStats.
+type TagStats struct {
+	// Granularity The ISO 8601 duration used to bucket each series point.
+	Granularity string `json:"granularity"`
+
+	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
+	Interval string `json:"interval"`
+
+	// Metric A metric that can be aggregated over time for a project or tag.
+	Metric StatsMetric `json:"metric"`
+
+	// Series Ordered list of aggregated data points.
+	Series []SeriesPoint `json:"series"`
+
+	// TagId The ID of the tag this data belongs to.
+	TagId openapi_types.UUID `json:"tag_id"`
+
+	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
+	Unit string `json:"unit"`
+}
 
 // Timespan defines model for Timespan.
 type Timespan struct {
@@ -279,9 +270,6 @@ type Offset = int
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
-// ProjectStatsMetrics defines model for projectStatsMetrics.
-type ProjectStatsMetrics string
-
 // Redirect defines model for redirect.
 type Redirect = string
 
@@ -336,7 +324,7 @@ type GetProjectParamsInclude string
 // GetProjectStatsParams defines parameters for GetProjectStats.
 type GetProjectStatsParams struct {
 	// Metric The metric to aggregate over time.
-	Metric GetProjectStatsParamsMetric `form:"metric" json:"metric"`
+	Metric StatsMetric `form:"metric" json:"metric"`
 
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
@@ -350,9 +338,6 @@ type GetProjectStatsParams struct {
 	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
 	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
 }
-
-// GetProjectStatsParamsMetric defines parameters for GetProjectStats.
-type GetProjectStatsParamsMetric string
 
 // ListTagsParams defines parameters for ListTags.
 type ListTagsParams struct {
@@ -371,6 +356,24 @@ type GetTagParams struct {
 
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
+
+// GetTagStatsParams defines parameters for GetTagStats.
+type GetTagStatsParams struct {
+	// Metric The metric to aggregate over time.
+	Metric StatsMetric `form:"metric" json:"metric"`
+
+	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
+	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
+	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
+	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
+
+	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+
+	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
+	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
 
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {

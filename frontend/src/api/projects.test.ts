@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
 import { __test__ } from "./projects";
-import type { ProjectsApi, ProjectStatsMetricEnum } from "./generated";
+import type { ProjectsApi, StatsMetric } from "./generated";
 
 const { createProjectsApi } = __test__;
 
@@ -161,7 +161,7 @@ describe("projects API", () => {
 
     expect(api.getProjectStats).toHaveBeenCalledWith({
       projectId: "proj1",
-      metric: "timeSpent" as ProjectStatsMetricEnum,
+      metric: "timeSpent" as StatsMetric,
       interval: "2023-01-01/2023-01-31",
       granularity: "daily",
       timezone: "UTC",

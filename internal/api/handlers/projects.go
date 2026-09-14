@@ -249,7 +249,7 @@ func mapGetProjectStatsRequestToServiceInput(request api.GetProjectStatsRequestO
 
 	return service.GetProjectStatsInput{
 		ProjectID:      request.ProjectId,
-		Metric:         model.ProjectStatsMetric(request.Params.Metric),
+		Metric:         model.StatsMetric(request.Params.Metric),
 		IntervalRaw:    intervalRaw,
 		GranularityRaw: granularityRaw,
 		TimezoneRaw:    timezoneRaw,
@@ -268,7 +268,7 @@ func mapProjectStatsToAPIResponse(stats model.ProjectStats) api.GetProjectStatsR
 
 	return api.GetProjectStats200JSONResponse(api.ProjectStats{
 		ProjectId:   stats.ProjectID,
-		Metric:      api.ProjectStatsMetric(stats.Metric),
+		Metric:      api.StatsMetric(stats.Metric),
 		Interval:    formatInterval(stats.Interval),
 		Granularity: stats.Granularity,
 		Unit:        stats.Unit,

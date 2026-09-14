@@ -101,7 +101,7 @@ projects-id-stats:
       specified time range.
     parameters:
       - $ref: "../parameters/shared.yaml#/projectIdPath"
-      - $ref: "../parameters/shared.yaml#/projectStatsMetrics"
+      - $ref: "../parameters/shared.yaml#/statsMetric"
       - $ref: "../parameters/shared.yaml#/interval"
       - $ref: "../parameters/shared.yaml#/granularity"
       - $ref: "../parameters/shared.yaml#/timezone"

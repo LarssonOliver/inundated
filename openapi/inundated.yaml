@@ -33,6 +33,8 @@ paths:
     $ref: "./paths/tags.yaml#/tags"
   /api/tags/{tagId}:
     $ref: "./paths/tags.yaml#/tags-id"
+  /api/tags/{tagId}/stats:
+    $ref: "./paths/tags.yaml#/tags-id-stats"
   /api/projects:
     $ref: "./paths/projects.yaml#/projects"
   /api/projects/{projectId}:

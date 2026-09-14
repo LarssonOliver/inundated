@@ -27,6 +27,7 @@ describe("tags store", () => {
       createTag: vi.fn(),
       updateTag: vi.fn(),
       deleteTag: vi.fn(),
+      fetchTagStats: vi.fn(),
     };
 
     useStore = __test__.createTagsStore(api);
@@ -275,6 +276,22 @@ describe("tags store", () => {
     api.getTag.mockRejectedValue(new Error());
     const store = useStore();
     await expect(store.fetchDetailedTagById("missing")).rejects.toThrow();
+  });
+
+  it("fetches tag stats via the API", async () => {
+    const stats = {
+      tagId: "1",
+      metric: "time_spent",
+      interval: "2024-01-01/2024-01-31",
+      granularity: "day",
+      unit: "seconds",
+      series: [],
+    };
+
+    api.fetchTagStats.mockResolvedValue(stats);
+    const result = await useStore().fetchTagStats("1", "time_spent", "2024-01", "day", "UTC");
+    expect(api.fetchTagStats).toHaveBeenCalledWith("1", "time_spent", "2024-01", "day", "UTC");
+    expect(result).toEqual(stats);
   });
 
   it("fetches pages of tags for infinite scroll", async () => {

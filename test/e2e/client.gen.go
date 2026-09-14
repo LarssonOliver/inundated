@@ -22,30 +22,15 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
-// Defines values for ProjectStatsMetric.
+// Defines values for StatsMetric.
 const (
-	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
+	TimeSpent StatsMetric = "time_spent"
 )
 
-// Valid indicates whether the value is a known member of the ProjectStatsMetric enum.
-func (e ProjectStatsMetric) Valid() bool {
+// Valid indicates whether the value is a known member of the StatsMetric enum.
+func (e StatsMetric) Valid() bool {
 	switch e {
-	case ProjectStatsMetricTimeSpent:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ProjectStatsMetrics.
-const (
-	ProjectStatsMetricsTimeSpent ProjectStatsMetrics = "time_spent"
-)
-
-// Valid indicates whether the value is a known member of the ProjectStatsMetrics enum.
-func (e ProjectStatsMetrics) Valid() bool {
-	switch e {
-	case ProjectStatsMetricsTimeSpent:
+	case TimeSpent:
 		return true
 	default:
 		return false
@@ -61,21 +46,6 @@ const (
 func (e GetProjectParamsInclude) Valid() bool {
 	switch e {
 	case GetProjectParamsIncludeTotalTimeMs:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetProjectStatsParamsMetric.
-const (
-	TimeSpent GetProjectStatsParamsMetric = "time_spent"
-)
-
-// Valid indicates whether the value is a known member of the GetProjectStatsParamsMetric enum.
-func (e GetProjectStatsParamsMetric) Valid() bool {
-	switch e {
-	case TimeSpent:
 		return true
 	default:
 		return false
@@ -182,8 +152,8 @@ type ProjectStats struct {
 	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
 	Interval string `json:"interval"`
 
-	// Metric The metric that was aggregated.
-	Metric ProjectStatsMetric `json:"metric"`
+	// Metric A metric that can be aggregated over time for a project or tag.
+	Metric StatsMetric `json:"metric"`
 
 	// ProjectId The ID of the project this data belongs to.
 	ProjectId openapi_types.UUID `json:"project_id"`
@@ -195,9 +165,6 @@ type ProjectStats struct {
 	Unit string `json:"unit"`
 }
 
-// ProjectStatsMetric The metric that was aggregated.
-type ProjectStatsMetric string
-
 // SeriesPoint defines model for SeriesPoint.
 type SeriesPoint struct {
 	// Interval The time bucket for this data point as an ISO 8601 interval in `{start}/{end}` form (e.g. `2024-01-01T00:00:00Z/2024-01-08T00:00:00Z`).
@@ -206,6 +173,9 @@ type SeriesPoint struct {
 	// Value The aggregated metric value for this bucket.
 	Value float32 `json:"value"`
 }
+
+// StatsMetric A metric that can be aggregated over time for a project or tag.
+type StatsMetric string
 
 // Tag defines model for Tag.
 type Tag struct {
@@ -217,6 +187,27 @@ type Tag struct {
 
 // TagIdList defines model for TagIdList.
 type TagIdList = []openapi_types.UUID
+
+// TagStats defines model for TagStats.
+type TagStats struct {
+	// Granularity The ISO 8601 duration used to bucket each series point.
+	Granularity string `json:"granularity"`
+
+	// Interval The effective time range of the response as an ISO 8601 interval, always resolved to `{start}/{end}` form regardless of how the request was expressed.
+	Interval string `json:"interval"`
+
+	// Metric A metric that can be aggregated over time for a project or tag.
+	Metric StatsMetric `json:"metric"`
+
+	// Series Ordered list of aggregated data points.
+	Series []SeriesPoint `json:"series"`
+
+	// TagId The ID of the tag this data belongs to.
+	TagId openapi_types.UUID `json:"tag_id"`
+
+	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
+	Unit string `json:"unit"`
+}
 
 // Timespan defines model for Timespan.
 type Timespan struct {
@@ -288,9 +279,6 @@ type Offset = int
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
-// ProjectStatsMetrics defines model for projectStatsMetrics.
-type ProjectStatsMetrics string
-
 // Redirect defines model for redirect.
 type Redirect = string
 
@@ -345,7 +333,7 @@ type GetProjectParamsInclude string
 // GetProjectStatsParams defines parameters for GetProjectStats.
 type GetProjectStatsParams struct {
 	// Metric The metric to aggregate over time.
-	Metric GetProjectStatsParamsMetric `form:"metric" json:"metric"`
+	Metric StatsMetric `form:"metric" json:"metric"`
 
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
@@ -359,9 +347,6 @@ type GetProjectStatsParams struct {
 	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
 	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
 }
-
-// GetProjectStatsParamsMetric defines parameters for GetProjectStats.
-type GetProjectStatsParamsMetric string
 
 // ListTagsParams defines parameters for ListTags.
 type ListTagsParams struct {
@@ -380,6 +365,24 @@ type GetTagParams struct {
 
 // GetTagParamsInclude defines parameters for GetTag.
 type GetTagParamsInclude string
+
+// GetTagStatsParams defines parameters for GetTagStats.
+type GetTagStatsParams struct {
+	// Metric The metric to aggregate over time.
+	Metric StatsMetric `form:"metric" json:"metric"`
+
+	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
+	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
+	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
+	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
+
+	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+
+	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
+	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
 
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {
@@ -533,6 +536,9 @@ type ClientInterface interface {
 	UpdateTagWithBody(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTagStats request
+	GetTagStats(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTimespans request
 	ListTimespans(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -772,6 +778,18 @@ func (c *Client) UpdateTagWithBody(ctx context.Context, tagId TagIdPath, content
 
 func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTagRequest(c.Server, tagId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTagStats(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTagStatsRequest(c.Server, tagId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1638,6 +1656,99 @@ func NewUpdateTagRequestWithBody(server string, tagId TagIdPath, contentType str
 	return req, nil
 }
 
+// NewGetTagStatsRequest generates requests for GetTagStats
+func NewGetTagStatsRequest(server string, tagId TagIdPath, params *GetTagStatsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "tagId", tagId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tags/%s/stats", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "metric", params.Metric, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Interval != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "interval", *params.Interval, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Granularity != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "granularity", *params.Granularity, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Timezone != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "timezone", *params.Timezone, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListTimespansRequest generates requests for ListTimespans
 func NewListTimespansRequest(server string, params *ListTimespansParams) (*http.Request, error) {
 	var err error
@@ -1954,6 +2065,9 @@ type ClientWithResponsesInterface interface {
 	UpdateTagWithBodyWithResponse(ctx context.Context, tagId TagIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
 
 	UpdateTagWithResponse(ctx context.Context, tagId TagIdPath, body UpdateTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTagResponse, error)
+
+	// GetTagStatsWithResponse request
+	GetTagStatsWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*GetTagStatsResponse, error)
 
 	// ListTimespansWithResponse request
 	ListTimespansWithResponse(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
@@ -2420,6 +2534,36 @@ func (r UpdateTagResponse) ContentType() string {
 	return ""
 }
 
+type GetTagStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TagStats
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTagStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTagStatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTagStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTimespansResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2734,6 +2878,15 @@ func (c *ClientWithResponses) UpdateTagWithResponse(ctx context.Context, tagId T
 		return nil, err
 	}
 	return ParseUpdateTagResponse(rsp)
+}
+
+// GetTagStatsWithResponse request returning *GetTagStatsResponse
+func (c *ClientWithResponses) GetTagStatsWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*GetTagStatsResponse, error) {
+	rsp, err := c.GetTagStats(ctx, tagId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTagStatsResponse(rsp)
 }
 
 // ListTimespansWithResponse request returning *ListTimespansResponse
@@ -3127,6 +3280,32 @@ func ParseUpdateTagResponse(rsp *http.Response) (*UpdateTagResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest Tag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTagStatsResponse parses an HTTP response from a GetTagStatsWithResponse call
+func ParseGetTagStatsResponse(rsp *http.Response) (*GetTagStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTagStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TagStats
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

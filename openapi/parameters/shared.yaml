@@ -103,15 +103,13 @@ projectIdPath:
     type: string
     format: uuid
 
-projectStatsMetrics:
+statsMetric:
   name: metric
   in: query
   required: true
   description: The metric to aggregate over time.
   schema:
-    type: string
-    enum:
-      - time_spent
+    $ref: "../schemas/shared.yaml#/StatsMetric"
   example: time_spent
 
 timespanIdPath:

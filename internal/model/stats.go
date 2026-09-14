@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type ProjectStatsMetric string
+type StatsMetric string
 
 const (
-	ProjectStatsMetricTimeSpent ProjectStatsMetric = "time_spent"
+	StatsMetricTimeSpent StatsMetric = "time_spent"
 )
 
 type BucketRange struct {
@@ -24,7 +24,16 @@ type BucketValue struct {
 
 type ProjectStats struct {
 	ProjectID   uuid.UUID
-	Metric      ProjectStatsMetric
+	Metric      StatsMetric
+	Interval    BucketRange
+	Granularity string
+	Unit        string
+	Series      []BucketValue
+}
+
+type TagStats struct {
+	TagID       uuid.UUID
+	Metric      StatsMetric
 	Interval    BucketRange
 	Granularity string
 	Unit        string

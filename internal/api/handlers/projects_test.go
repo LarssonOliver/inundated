@@ -485,12 +485,12 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 			name: "success",
 			getStatsFn: func(ctx context.Context, input service.GetProjectStatsInput) (model.ProjectStats, error) {
 				require.Equal(t, projectID, input.ProjectID)
-				require.Equal(t, model.ProjectStatsMetricTimeSpent, input.Metric)
+				require.Equal(t, model.StatsMetricTimeSpent, input.Metric)
 				require.NotNil(t, input.IntervalRaw)
 				require.Equal(t, string(intervalRaw), *input.IntervalRaw)
 				return model.ProjectStats{
 					ProjectID:   projectID,
-					Metric:      model.ProjectStatsMetricTimeSpent,
+					Metric:      model.StatsMetricTimeSpent,
 					Interval:    model.BucketRange{Start: base, End: base.Add(2 * time.Hour)},
 					Granularity: "PT1H",
 					Unit:        "seconds",
@@ -565,7 +565,7 @@ func TestProjectHandler_GetProjectStats(t *testing.T) {
 				res, ok := got.(api.GetProjectStats200JSONResponse)
 				require.True(t, ok)
 				require.Equal(t, projectID, res.ProjectId)
-				require.Equal(t, api.ProjectStatsMetricTimeSpent, res.Metric)
+				require.Equal(t, api.TimeSpent, res.Metric)
 				require.Equal(t, "2024-01-01T00:00:00Z/2024-01-01T02:00:00Z", res.Interval)
 				require.Equal(t, "PT1H", res.Granularity)
 				require.Equal(t, "seconds", res.Unit)

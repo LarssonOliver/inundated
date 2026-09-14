@@ -2,7 +2,7 @@ import type { Project, ProjectStats } from "@/model";
 import {
   ProjectsApi as GeneratedProjectsApi,
   GetProjectIncludeEnum,
-  ProjectStatsMetricEnum,
+  type StatsMetric,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, projectMapper, toApiCreateProject, toApiUpdateProject } from "./mappers";
@@ -99,7 +99,7 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
     ): Promise<ProjectStats> {
       const response = await api.getProjectStats({
         projectId,
-        metric: metric as ProjectStatsMetricEnum,
+        metric: metric as StatsMetric,
         interval,
         granularity,
         timezone,

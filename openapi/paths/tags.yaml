@@ -89,3 +89,45 @@ tags-id:
         description: Deleted
       '404':
         description: Not found
+
+tags-id-stats:
+  get:
+    operationId: getTagStats
+    summary: Get timeseries stats for a tag
+    tags: [tags]
+    description: >
+      Returns aggregated timeseries data for a given metric on a tag.
+      Data is bucketed by the requested interval granularity within the
+      specified time range.
+    parameters:
+      - $ref: "../parameters/shared.yaml#/tagIdPath"
+      - $ref: "../parameters/shared.yaml#/statsMetric"
+      - $ref: "../parameters/shared.yaml#/interval"
+      - $ref: "../parameters/shared.yaml#/granularity"
+      - $ref: "../parameters/shared.yaml#/timezone"
+    responses:
+      '200':
+        description: Timeseries data for the requested metric.
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tags.yaml#/TagStats"
+            example:
+              tag_id: "a8e6b57e-4863-4f53-abd5-edecea66382c"
+              metric: time_spent
+              interval: "2024-01-01T00:00:00Z/2024-03-31T23:59:59Z"
+              granularity: P1W
+              unit: seconds
+              series:
+                - interval: "2024-01-01T00:00:00Z/2024-01-08T00:00:00Z"
+                  value: 18000
+                - interval: "2024-01-08T00:00:00Z/2024-01-15T00:00:00Z"
+                  value: 25200
+      '400':
+        description: Invalid query parameters.
+      '404':
+        description: Tag not found.
+      '422':
+        description: >
+          Unprocessable request — e.g. `from` is after `to`, or the
+          requested range exceeds the maximum allowed window.
