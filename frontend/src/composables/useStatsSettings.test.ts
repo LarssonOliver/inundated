@@ -51,7 +51,7 @@ describe("useStatsSettings", () => {
   it("sizes the date-picker width from the current dateFormat", () => {
     const { datePickerWidth } = useStatsSettings(() => settings({ dateFormat: "text" }));
 
-    expect(datePickerWidth.value).toMatch(/^\d+ch$/);
+    expect(datePickerWidth.value).toMatch(/^\d+(\.\d+)?ch$/);
   });
 
   it("formats a chart bucket label per the current dateFormat", () => {

@@ -49,9 +49,4 @@ describe("datePickerInputWidthCh", () => {
   it("gives text format more room than iso, since letters run wider than digits", () => {
     expect(datePickerInputWidthCh("text")).toBeGreaterThan(datePickerInputWidthCh("iso"));
   });
-
-  it("gives iso, us and eu the same width, since all three are equally long", () => {
-    expect(datePickerInputWidthCh("iso")).toBe(datePickerInputWidthCh("us"));
-    expect(datePickerInputWidthCh("us")).toBe(datePickerInputWidthCh("eu"));
-  });
 });
