@@ -5,10 +5,12 @@ import TagListEmbedded from "./TagListEmbedded.vue";
 import type { Tag } from "@/model";
 
 const listTagsPaginated = vi.fn();
+const getTag = vi.fn();
 
 vi.mock("@/api", () => ({
   tagsApi: {
     listTagsPaginated: (...args: unknown[]) => listTagsPaginated(...args),
+    getTag: (...args: unknown[]) => getTag(...args),
   },
 }));
 
@@ -19,6 +21,7 @@ function tag(overrides: Partial<Tag>): Tag {
 beforeEach(() => {
   setActivePinia(createPinia());
   listTagsPaginated.mockReset();
+  getTag.mockReset();
 });
 
 test("excludes archived tags from search results", async () => {
@@ -40,4 +43,19 @@ test("excludes archived tags from search results", async () => {
 
   expect(wrapper.text()).toContain("active-tag");
   expect(wrapper.text()).not.toContain("archived-tag");
+});
+
+test("still shows an already-assigned tag that has since been archived", async () => {
+  const archived = tag({ id: "2", name: "archived-tag", archived: true });
+
+  listTagsPaginated.mockResolvedValue({
+    data: [],
+    pagination: { limit: 50, offset: 0, total: 0 },
+  });
+  getTag.mockResolvedValue(archived);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["2"]) } });
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("archived-tag");
 });

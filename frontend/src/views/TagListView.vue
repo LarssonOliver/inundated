@@ -2,10 +2,7 @@
   <div class="tag-list">
     <div class="title-bar">
       <h2>Tags</h2>
-      <label class="show-archived">
-        <input type="checkbox" v-model="showArchived" @change="onShowArchivedChange" />
-        Show archived
-      </label>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Tag' })" />
     </div>
     <div v-for="tag in tagsStore.tags" :key="tag.id">
@@ -39,17 +36,18 @@
 <script setup lang="ts">
 import { useTagsStore } from "@/stores/tags";
 import { useRouter } from "vue-router";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 import TagItem from "@/components/tags/TagItem.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
+import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
-const showArchived = ref(false);
+const showArchived = ref(tagsStore.includeArchived);
 
 const pageSize = 50;
 
@@ -59,9 +57,7 @@ onMounted(async () => {
   await tagsStore.fetchPage(pageSize, 0);
 });
 
-async function onShowArchivedChange() {
-  await tagsStore.setIncludeArchived(showArchived.value);
-}
+watch(showArchived, (value) => tagsStore.setIncludeArchived(value));
 </script>
 
 <style scoped>
@@ -80,17 +76,10 @@ async function onShowArchivedChange() {
 .show-archived {
   display: flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.5em;
   color: var(--nord3);
   font-size: 0.9em;
   cursor: pointer;
-}
-
-.show-archived input[type="checkbox"] {
-  width: auto;
-  padding: 0;
-  border: none;
-  background: none;
 }
 
 .tag-card.archived .tag-item {

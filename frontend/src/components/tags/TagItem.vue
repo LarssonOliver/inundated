@@ -29,9 +29,11 @@ const { tag, canClose } = defineProps<{
 }>();
 
 const darkText = computed(() => shouldTextBeDarkFromBgColor(tag.color));
+const isArchived = computed(() => tag.archived);
 const containerClasses = reactive({
   "tag-container": true,
   "dark-text": darkText,
+  archived: isArchived,
 });
 </script>
 
@@ -49,6 +51,10 @@ const containerClasses = reactive({
 
 .tag-container.dark-text {
   color: var(--nord0);
+}
+
+.tag-container.archived div {
+  text-decoration: line-through;
 }
 
 .close-icon {

@@ -51,9 +51,21 @@ watch(model, async () => await refreshTags(), { deep: true, immediate: true });
 
 async function refreshTags() {
   await tagsStore.fetchTags();
-  tags.value = [...model.value]
-    .map((id) => tagsStore.getTagById(id))
-    .filter((tag): tag is Tag => tag != null);
+  const resolved = await Promise.all(
+    [...model.value].map((id) => tagsStore.getTagById(id) ?? fetchAssignedTag(id)),
+  );
+  tags.value = resolved.filter((tag): tag is Tag => tag != null);
+}
+
+// Tags already assigned to this item must still be shown even if archived,
+// but the shared tags cache only holds non-archived tags unless the "show
+// archived" toggle is on elsewhere, so fall back to fetching them directly.
+async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
+  try {
+    return await tagsStore.fetchDetailedTagById(id);
+  } catch {
+    return undefined;
+  }
 }
 
 function onTagSearch(query: string) {

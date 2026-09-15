@@ -2,10 +2,7 @@
   <div class="project-list">
     <div class="title-bar">
       <h2>Projects</h2>
-      <label class="show-archived">
-        <input type="checkbox" v-model="showArchived" @change="onShowArchivedChange" />
-        Show archived
-      </label>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Project' })" />
     </div>
     <div v-for="project in projectsStore.projects" :key="project.id">
@@ -39,17 +36,18 @@
 <script setup lang="ts">
 import { useProjectsStore } from "@/stores/projects";
 import { useRouter } from "vue-router";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
+import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
-const showArchived = ref(false);
+const showArchived = ref(projectsStore.includeArchived);
 
 const pageSize = 50;
 
@@ -57,9 +55,7 @@ useInfiniteScroll(projectsStore, sentinelElement, pageSize);
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
 
-async function onShowArchivedChange() {
-  await projectsStore.setIncludeArchived(showArchived.value);
-}
+watch(showArchived, (value) => projectsStore.setIncludeArchived(value));
 </script>
 
 <style scoped>
@@ -78,17 +74,10 @@ async function onShowArchivedChange() {
 .show-archived {
   display: flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.5em;
   color: var(--nord3);
   font-size: 0.9em;
   cursor: pointer;
-}
-
-.show-archived input[type="checkbox"] {
-  width: auto;
-  padding: 0;
-  border: none;
-  background: none;
 }
 
 .project-card.archived .project-item {
