@@ -64,6 +64,7 @@ const links = [
   { to: "/", label: "Timesheet", icon: "schedule" },
   { to: "/projects", label: "Projects", icon: "folder" },
   { to: "/tags", label: "Tags", icon: "sell" },
+  { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
 const sidebarStyle = computed(() => ({

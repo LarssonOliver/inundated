@@ -41,6 +41,11 @@ const router = createRouter({
       name: "Tag",
       component: () => import("../views/TagView.vue"),
     },
+    {
+      path: "/settings",
+      name: "Settings",
+      component: () => import("../views/SettingsView.vue"),
+    },
   ],
 });
 
