@@ -2,7 +2,7 @@
   <div class="tag-list">
     <div class="title-bar">
       <h2>Tags</h2>
-      <ToggleSwitch v-model="showArchived" class="show-archived">Show archived</ToggleSwitch>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Tag' })" />
     </div>
     <div v-for="tag in tagsStore.tags" :key="tag.id">

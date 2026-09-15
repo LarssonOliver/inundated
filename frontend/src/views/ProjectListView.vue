@@ -2,7 +2,7 @@
   <div class="project-list">
     <div class="title-bar">
       <h2>Projects</h2>
-      <ToggleSwitch v-model="showArchived" class="show-archived">Show archived</ToggleSwitch>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Project' })" />
     </div>
     <div v-for="project in projectsStore.projects" :key="project.id">

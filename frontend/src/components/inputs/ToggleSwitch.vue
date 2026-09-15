@@ -21,6 +21,10 @@ defineProps<{ disabled?: boolean }>();
   align-items: center;
   gap: 0.5em;
   cursor: pointer;
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
+  background-color: var(--nord0);
+  padding: 0.25em 0.5em;
 }
 
 .toggle-field.disabled {
