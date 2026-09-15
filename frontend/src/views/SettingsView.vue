@@ -38,6 +38,9 @@
       <p class="field-label">Time Format</p>
       <Dropdown v-model="model.timeFormat" :options="timeFormatOptions" />
 
+      <p class="field-label">Date Format</p>
+      <Dropdown v-model="model.dateFormat" :options="dateFormatOptions" />
+
       <div class="button-container">
         <button class="btn-info" :disabled="saving" @click="save">
           {{ saving ? "Saving..." : "Save" }}
@@ -70,6 +73,13 @@ const durationFormatOptions: DropdownOption[] = [
 const timeFormatOptions: DropdownOption[] = [
   { value: "24h", label: "24-hour" },
   { value: "12h", label: "12-hour" },
+];
+
+const dateFormatOptions: DropdownOption[] = [
+  { value: "iso", label: "2024-01-15" },
+  { value: "us", label: "01/15/2024" },
+  { value: "eu", label: "15/01/2024" },
+  { value: "text", label: "15 Jan 2024" },
 ];
 
 const settingsStore = useSettingsStore();

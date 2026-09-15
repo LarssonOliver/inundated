@@ -3,6 +3,7 @@
 export * from './CreateProject';
 export * from './CreateTag';
 export * from './CreateTimespan';
+export * from './DateFormat';
 export * from './DurationFormat';
 export * from './PaginatedProjects';
 export * from './PaginatedTags';

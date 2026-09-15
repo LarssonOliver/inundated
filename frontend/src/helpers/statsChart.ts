@@ -2,6 +2,7 @@ import {
   endOfMonth,
   endOfWeek,
   endOfYear,
+  format,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -10,6 +11,8 @@ import {
   type Day,
 } from "date-fns";
 import type { PresetDate } from "@vuepic/vue-datepicker";
+import type { DateFormat, WeekStartDay } from "@/model";
+import { DATE_TOKENS, MONTH_TOKENS } from "@/helpers/dates";
 
 /**
  * Picks a bucket granularity for a picked date range: daily for up to a
@@ -48,56 +51,48 @@ export function unitToHoursFactor(unit: string): number {
 
 /**
  * Formats a `{start}/{end}` bucket interval into a short human-readable
- * label for a chart axis, based on the bucket's granularity.
+ * label for a chart axis, based on the bucket's granularity and the user's
+ * chosen date format. Labels are rendered in the browser's local time (chart
+ * bucket boundaries always align to whatever timezone the stats were
+ * requested with - reinterpreting them in a different zone here would be
+ * misleading without also re-bucketing on the server).
  */
-export function formatBucketLabel(interval: string, granularity: string): string {
+export function formatBucketLabel(
+  interval: string,
+  granularity: string,
+  dateFormat: DateFormat = "iso",
+): string {
   const timeZoneOffset = new Date().getTimezoneOffset();
   const rangeStart = interval.split("/")[0];
   const startDate = new Date(new Date(rangeStart).getTime() - timeZoneOffset * 60 * 1000);
 
-  const isThisYear = startDate.getFullYear() === new Date().getFullYear();
-
   switch (granularity) {
     case "P1D":
-      return startDate.toLocaleDateString(undefined, {
-        year: isThisYear ? undefined : "2-digit",
-        month: "short",
-        day: "numeric",
-        weekday: "short",
-      });
+      return `${format(startDate, "EEE")} ${format(startDate, DATE_TOKENS[dateFormat])}`;
     case "P1W": {
       const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-      return `${startDate.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: isThisYear ? undefined : "2-digit",
-      })} - ${endDate.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: isThisYear ? undefined : "2-digit",
-      })}`;
+      return `${format(startDate, DATE_TOKENS[dateFormat])} - ${format(endDate, DATE_TOKENS[dateFormat])}`;
     }
     case "P1M":
-      return startDate.toLocaleString(undefined, {
-        year: "2-digit",
-        month: "short",
-      });
+      return format(startDate, MONTH_TOKENS[dateFormat]);
     case "P1Y":
-      return startDate.toLocaleString(undefined, {
-        year: "numeric",
-      });
+      return format(startDate, "yyyy");
     default:
       return interval;
   }
 }
 
-const weekCfg = { weekStartsOn: 1 as Day }; // Todo: make this configurable based on user locale
+/** Maps the WeekStartDay setting to the date-fns `Day` index it corresponds to. */
+export function weekStartDayToDateFnsDay(weekStartDay: WeekStartDay): Day {
+  return weekStartDay === "sunday" ? 0 : 1;
+}
 
 /**
  * Preset date ranges offered by the stats date picker (this/last week,
  * this/last month, this/last year, all time).
  */
-export function statsDateRangePresets(): PresetDate[] {
+export function statsDateRangePresets(weekStartsOn: Day = 1): PresetDate[] {
+  const weekCfg = { weekStartsOn };
   return [
     {
       label: "This week",

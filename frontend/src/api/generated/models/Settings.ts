@@ -20,6 +20,13 @@ import {
     TimeFormatToJSON,
     TimeFormatToJSONTyped,
 } from './TimeFormat';
+import type { DateFormat } from './DateFormat';
+import {
+    DateFormatFromJSON,
+    DateFormatFromJSONTyped,
+    DateFormatToJSON,
+    DateFormatToJSONTyped,
+} from './DateFormat';
 import type { DurationFormat } from './DurationFormat';
 import {
     DurationFormatFromJSON,
@@ -48,7 +55,8 @@ export interface Settings {
      */
     weekStartDay: WeekStartDay;
     /**
-     * IANA timezone name, e.g. "Europe/Stockholm" or "UTC".
+     * IANA timezone name, e.g. "Europe/Stockholm" or "UTC", or the special value "browser" meaning the client should use its own local timezone instead of a fixed one.
+     * 
      * @type {string}
      * @memberof Settings
      */
@@ -65,6 +73,12 @@ export interface Settings {
      * @memberof Settings
      */
     timeFormat: TimeFormat;
+    /**
+     * 
+     * @type {DateFormat}
+     * @memberof Settings
+     */
+    dateFormat: DateFormat;
 }
 
 
@@ -77,6 +91,7 @@ export function instanceOfSettings(value: object): value is Settings {
     if (!('timezone' in value) || value['timezone'] === undefined) return false;
     if (!('durationFormat' in value) || value['durationFormat'] === undefined) return false;
     if (!('timeFormat' in value) || value['timeFormat'] === undefined) return false;
+    if (!('dateFormat' in value) || value['dateFormat'] === undefined) return false;
     return true;
 }
 
@@ -94,6 +109,7 @@ export function SettingsFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'timezone': json['timezone'],
         'durationFormat': DurationFormatFromJSON(json['durationFormat']),
         'timeFormat': TimeFormatFromJSON(json['timeFormat']),
+        'dateFormat': DateFormatFromJSON(json['dateFormat']),
     };
 }
 
@@ -112,6 +128,7 @@ export function SettingsToJSONTyped(value?: Settings | null, ignoreDiscriminator
         'timezone': value['timezone'],
         'durationFormat': DurationFormatToJSON(value['durationFormat']),
         'timeFormat': TimeFormatToJSON(value['timeFormat']),
+        'dateFormat': DateFormatToJSON(value['dateFormat']),
     };
 }
 

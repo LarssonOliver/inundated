@@ -1,30 +1,21 @@
 
-# Settings
+# DateFormat
 
+How calendar dates are rendered in the UI: \"iso\" (e.g. \"2024-01-15\"), \"us\" (e.g. \"01/15/2024\"), \"eu\" (e.g. \"15/01/2024\"), or \"text\" (e.g. \"15 Jan 2024\"). 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`weekStartDay` | [WeekStartDay](WeekStartDay.md)
-`timezone` | string
-`durationFormat` | [DurationFormat](DurationFormat.md)
-`timeFormat` | [TimeFormat](TimeFormat.md)
-`dateFormat` | [DateFormat](DateFormat.md)
 
 ## Example
 
 ```typescript
-import type { Settings } from ''
+import type { DateFormat } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "weekStartDay": null,
-  "timezone": null,
-  "durationFormat": null,
-  "timeFormat": null,
-  "dateFormat": null,
-} satisfies Settings
+} satisfies DateFormat
 
 console.log(example)
 
@@ -33,7 +24,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as Settings
+const exampleParsed = JSON.parse(exampleJSON) as DateFormat
 console.log(exampleParsed)
 ```
 

@@ -9,6 +9,7 @@ docs/AuthApi.md
 docs/CreateProject.md
 docs/CreateTag.md
 docs/CreateTimespan.md
+docs/DateFormat.md
 docs/DurationFormat.md
 docs/PaginatedProjects.md
 docs/PaginatedTags.md
@@ -38,6 +39,7 @@ index.ts
 models/CreateProject.ts
 models/CreateTag.ts
 models/CreateTimespan.ts
+models/DateFormat.ts
 models/DurationFormat.ts
 models/PaginatedProjects.ts
 models/PaginatedTags.ts

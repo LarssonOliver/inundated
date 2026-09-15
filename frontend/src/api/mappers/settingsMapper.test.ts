@@ -8,6 +8,7 @@ describe("settingsMapper", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     } as const;
 
     const domain = settingsMapper.fromApi(apiSettings);
@@ -20,6 +21,7 @@ describe("settingsMapper", () => {
       timezone: "Europe/Stockholm",
       durationFormat: "decimal",
       timeFormat: "12h",
+      dateFormat: "us",
     } as const;
 
     const api = settingsMapper.toApi(domainSettings);

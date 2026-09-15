@@ -20,6 +20,13 @@ import {
     TimeFormatToJSON,
     TimeFormatToJSONTyped,
 } from './TimeFormat';
+import type { DateFormat } from './DateFormat';
+import {
+    DateFormatFromJSON,
+    DateFormatFromJSONTyped,
+    DateFormatToJSON,
+    DateFormatToJSONTyped,
+} from './DateFormat';
 import type { DurationFormat } from './DurationFormat';
 import {
     DurationFormatFromJSON,
@@ -65,6 +72,12 @@ export interface UpdateSettings {
      * @memberof UpdateSettings
      */
     timeFormat?: TimeFormat;
+    /**
+     * 
+     * @type {DateFormat}
+     * @memberof UpdateSettings
+     */
+    dateFormat?: DateFormat;
 }
 
 
@@ -90,6 +103,7 @@ export function UpdateSettingsFromJSONTyped(json: any, ignoreDiscriminator: bool
         'timezone': json['timezone'] == null ? undefined : json['timezone'],
         'durationFormat': json['durationFormat'] == null ? undefined : DurationFormatFromJSON(json['durationFormat']),
         'timeFormat': json['timeFormat'] == null ? undefined : TimeFormatFromJSON(json['timeFormat']),
+        'dateFormat': json['dateFormat'] == null ? undefined : DateFormatFromJSON(json['dateFormat']),
     };
 }
 
@@ -108,6 +122,7 @@ export function UpdateSettingsToJSONTyped(value?: UpdateSettings | null, ignoreD
         'timezone': value['timezone'],
         'durationFormat': DurationFormatToJSON(value['durationFormat']),
         'timeFormat': TimeFormatToJSON(value['timeFormat']),
+        'dateFormat': DateFormatToJSON(value['dateFormat']),
     };
 }
 

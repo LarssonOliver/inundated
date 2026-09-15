@@ -25,6 +25,7 @@ describe("settings API", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
 
     const sut = createSettingsApi(api);
@@ -35,6 +36,7 @@ describe("settings API", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
     expect(api.getSettings).toHaveBeenCalledOnce();
   });
@@ -45,6 +47,7 @@ describe("settings API", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
 
     const sut = createSettingsApi(api);

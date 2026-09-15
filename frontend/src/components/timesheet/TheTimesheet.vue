@@ -9,16 +9,7 @@
     </div>
     <div v-for="(timespan, index) in timespans" :key="timespan.id">
       <div v-if="timespan.isNewDay">
-        <p class="date-divider">
-          {{
-            timespan.startTime.toLocaleDateString(undefined, {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })
-          }}
-        </p>
+        <p class="date-divider">{{ formatFullDate(timespan.startTime, dateFormat) }}</p>
         <hr class="item-divider" />
       </div>
       <TimesheetItem
@@ -63,13 +54,17 @@
 <script setup lang="ts">
 import TimesheetItem from "@/components/timesheet/TimesheetItem.vue";
 import { newTimespanWithDefaults } from "@/helpers/timespan";
+import { formatFullDate } from "@/helpers/dates";
 import { useTimespansStore } from "@/stores/timespans";
+import { useSettingsStore } from "@/stores/settings";
 import { computed, ref, onMounted } from "vue";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 
 const timespansStore = useTimespansStore();
+const settingsStore = useSettingsStore();
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
 const timespan = ref(newTimespanWithDefaults());
 const tagIds = ref<Set<string>>(new Set<string>());
 const sentinelElement = ref<HTMLElement>();

@@ -10,6 +10,7 @@ Name | Type
 `timezone` | string
 `durationFormat` | [DurationFormat](DurationFormat.md)
 `timeFormat` | [TimeFormat](TimeFormat.md)
+`dateFormat` | [DateFormat](DateFormat.md)
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "timezone": null,
   "durationFormat": null,
   "timeFormat": null,
+  "dateFormat": null,
 } satisfies UpdateSettings
 
 console.log(example)

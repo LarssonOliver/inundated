@@ -12,6 +12,7 @@ export const settingsMapper: Mapper<Settings, Api.Settings> = {
       timezone: apiModel.timezone,
       durationFormat: apiModel.durationFormat,
       timeFormat: apiModel.timeFormat,
+      dateFormat: apiModel.dateFormat,
     };
   },
   toApi(domainModel: Settings): Api.Settings {
@@ -20,6 +21,7 @@ export const settingsMapper: Mapper<Settings, Api.Settings> = {
       timezone: domainModel.timezone,
       durationFormat: domainModel.durationFormat,
       timeFormat: domainModel.timeFormat,
+      dateFormat: domainModel.dateFormat,
     };
   },
 };
@@ -33,5 +35,6 @@ export function toApiUpdateSettings(patch: Partial<Settings>): Api.UpdateSetting
     ...(patch.timezone !== undefined && { timezone: patch.timezone }),
     ...(patch.durationFormat !== undefined && { durationFormat: patch.durationFormat }),
     ...(patch.timeFormat !== undefined && { timeFormat: patch.timeFormat }),
+    ...(patch.dateFormat !== undefined && { dateFormat: patch.dateFormat }),
   };
 }

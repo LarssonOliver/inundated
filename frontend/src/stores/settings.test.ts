@@ -24,6 +24,7 @@ describe("settings store", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
 
     const store = useStore();
@@ -34,6 +35,7 @@ describe("settings store", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
   });
 
@@ -43,6 +45,7 @@ describe("settings store", () => {
       timezone: "UTC",
       durationFormat: "long",
       timeFormat: "24h",
+      dateFormat: "iso",
     });
 
     const store = useStore();

@@ -26,6 +26,7 @@
             dark
             range
             multi-calendars
+            :format="datePickerFormat"
             :input-attrs="{
               clearable: false,
             }"
@@ -40,9 +41,7 @@
 
     <div class="stats-summary">
       <div class="stat-tile">
-        <p class="stat-tile-value">
-          {{ periodTotalHours.toFixed(1) }}<span class="stat-tile-unit">h</span>
-        </p>
+        <p class="stat-tile-value">{{ periodTotalFormatted }}</p>
         <p class="stat-tile-label">Total this period</p>
       </div>
     </div>
@@ -72,7 +71,7 @@
                 label: function (context) {
                   const label = context.dataset.label || '';
                   const value = context.parsed.y || 0;
-                  return `${label}: ${value}h`;
+                  return `${label}: ${formatDuration(value * 3600000, durationFormat)}`;
                 },
               },
             },
@@ -87,6 +86,7 @@
 import { Bar } from "vue-chartjs";
 import type { Tag, TagStats } from "@/model";
 import { useTagsStore } from "@/stores/tags";
+import { useSettingsStore } from "@/stores/settings";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -104,7 +104,11 @@ import {
   unitToHoursFactor,
   formatBucketLabel,
   statsDateRangePresets,
+  weekStartDayToDateFnsDay,
 } from "@/helpers/statsChart";
+import { DATE_TOKENS } from "@/helpers/dates";
+import { formatDuration } from "@/helpers/time";
+import { resolveTimezone } from "@/helpers/timezones";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -113,6 +117,7 @@ import "@/assets/stats-panel.css";
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 const tagsStore = useTagsStore();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{
   tag: Tag;
@@ -125,7 +130,13 @@ const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
 
 const tagStats = ref<TagStats | undefined>();
 
-const presetDates = ref(statsDateRangePresets());
+const durationFormat = computed(() => settingsStore.settings?.durationFormat ?? "long");
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
+const datePickerFormat = computed(() => DATE_TOKENS[dateFormat.value]);
+
+const presetDates = computed(() =>
+  statsDateRangePresets(weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday")),
+);
 
 const convertToHoursFactor = computed(() =>
   tagStats.value ? unitToHoursFactor(tagStats.value.unit) : 1,
@@ -140,6 +151,10 @@ const periodTotalHours = computed(() => {
     convertToHoursFactor.value
   );
 });
+
+const periodTotalFormatted = computed(() =>
+  formatDuration(periodTotalHours.value * 3600000, durationFormat.value),
+);
 
 const iso8601Range = computed(() => {
   if (pickedRange.value.length !== 2) {
@@ -164,7 +179,7 @@ async function updateTagStats(range: string) {
       "time_spent",
       range,
       granularityFromPickedRange.value,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      resolveTimezone(settingsStore.settings?.timezone ?? "browser"),
     );
     if (result) {
       tagStats.value = result;
@@ -186,5 +201,6 @@ watch(
   { immediate: true },
 );
 
-const formatRange = formatBucketLabel;
+const formatRange = (interval: string, granularity: string) =>
+  formatBucketLabel(interval, granularity, dateFormat.value);
 </script>

@@ -26,6 +26,7 @@
             dark
             range
             multi-calendars
+            :format="datePickerFormat"
             :input-attrs="{
               clearable: false,
             }"
@@ -40,9 +41,7 @@
 
     <div class="stats-summary">
       <div class="stat-tile">
-        <p class="stat-tile-value">
-          {{ periodTotalHours.toFixed(1) }}<span class="stat-tile-unit">h</span>
-        </p>
+        <p class="stat-tile-value">{{ periodTotalFormatted }}</p>
         <p class="stat-tile-label">Total this period</p>
       </div>
 
@@ -56,9 +55,7 @@
               size="16px"
               class="budget-meter-icon"
             />
-            {{ totalHoursAllTime.toFixed(1) }} / {{ project.timeBudgetHours!.toFixed(1) }}h ({{
-              budgetPercentLabel
-            }})
+            {{ totalAllTimeFormatted }} / {{ timeBudgetFormatted }} ({{ budgetPercentLabel }})
           </span>
         </div>
         <div class="budget-meter-track">
@@ -96,7 +93,7 @@
                 label: function (context) {
                   const label = context.dataset.label || '';
                   const value = context.parsed.y || 0;
-                  return `${label}: ${value}h`;
+                  return `${label}: ${formatDuration(value * 3600000, durationFormat)}`;
                 },
               },
             },
@@ -112,6 +109,7 @@ import { Bar } from "vue-chartjs";
 import type { Project, ProjectStats } from "@/model";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { useProjectsStore } from "@/stores/projects";
+import { useSettingsStore } from "@/stores/settings";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -129,7 +127,11 @@ import {
   unitToHoursFactor,
   formatBucketLabel,
   statsDateRangePresets,
+  weekStartDayToDateFnsDay,
 } from "@/helpers/statsChart";
+import { DATE_TOKENS } from "@/helpers/dates";
+import { formatDuration } from "@/helpers/time";
+import { resolveTimezone } from "@/helpers/timezones";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -138,6 +140,7 @@ import "@/assets/stats-panel.css";
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{
   project: Project;
@@ -150,7 +153,13 @@ const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
 
 const projectStats = ref<ProjectStats | undefined>();
 
-const presetDates = ref(statsDateRangePresets());
+const durationFormat = computed(() => settingsStore.settings?.durationFormat ?? "long");
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
+const datePickerFormat = computed(() => DATE_TOKENS[dateFormat.value]);
+
+const presetDates = computed(() =>
+  statsDateRangePresets(weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday")),
+);
 
 const convertToHoursFactor = computed(() =>
   projectStats.value ? unitToHoursFactor(projectStats.value.unit) : 1,
@@ -166,11 +175,23 @@ const periodTotalHours = computed(() => {
   );
 });
 
+const periodTotalFormatted = computed(() =>
+  formatDuration(periodTotalHours.value * 3600000, durationFormat.value),
+);
+
 const hasBudget = computed(
   () => !!props.project.timeBudgetHours && props.project.timeBudgetHours > 0,
 );
 
 const totalHoursAllTime = computed(() => (props.project.totalTimeMs ?? 0) / (1000 * 60 * 60));
+
+const totalAllTimeFormatted = computed(() =>
+  formatDuration(totalHoursAllTime.value * 3600000, durationFormat.value),
+);
+
+const timeBudgetFormatted = computed(() =>
+  formatDuration((props.project.timeBudgetHours ?? 0) * 3600000, durationFormat.value),
+);
 
 const budgetRatio = computed(() => {
   if (!hasBudget.value) {
@@ -216,7 +237,7 @@ async function updateProjectStats(range: string) {
       "time_spent",
       range,
       granularityFromPickedRange.value,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      resolveTimezone(settingsStore.settings?.timezone ?? "browser"),
     );
     if (result) {
       projectStats.value = result;
@@ -238,7 +259,8 @@ watch(
   { immediate: true },
 );
 
-const formatRange = formatBucketLabel;
+const formatRange = (interval: string, granularity: string) =>
+  formatBucketLabel(interval, granularity, dateFormat.value);
 </script>
 
 <style scoped>
