@@ -25,6 +25,16 @@ describe("Dropdown", () => {
     expect(wrapper.text()).toContain("Bravo");
   });
 
+  test("flips the chevron open/closed as the panel toggles", async () => {
+    const wrapper = mount(Dropdown, { props: { options, modelValue: "a" } });
+
+    expect(wrapper.find(".dropdown-chevron").classes()).not.toContain("open");
+
+    await wrapper.find(".dropdown-trigger").trigger("click");
+
+    expect(wrapper.find(".dropdown-chevron").classes()).toContain("open");
+  });
+
   test("clicking the trigger opens the panel with all options", async () => {
     const wrapper = mount(Dropdown, { props: { options, modelValue: "a" } });
 

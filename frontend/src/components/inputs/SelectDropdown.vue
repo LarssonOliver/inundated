@@ -27,6 +27,13 @@
       {{ selectedLabel || placeholder }}
     </button>
 
+    <MaterialIcon
+      icon="expand_more"
+      size="1.2em"
+      class="dropdown-chevron"
+      :class="{ open: isOpen }"
+    />
+
     <ul v-if="isOpen" class="dropdown-panel" role="listbox">
       <li
         v-for="(option, index) in filteredOptions"
@@ -45,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 
 export interface DropdownOption {
   value: string;
@@ -155,6 +163,21 @@ function handleKeydown(event: KeyboardEvent) {
 .dropdown-trigger {
   text-align: left;
   cursor: pointer;
+  padding-right: 2em;
+}
+
+.dropdown-chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.6em;
+  transform: translateY(-50%);
+  color: var(--nord3);
+  pointer-events: none;
+  transition: transform var(--transition-fast);
+}
+
+.dropdown-chevron.open {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .dropdown-panel {
