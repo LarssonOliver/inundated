@@ -192,7 +192,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       }
 
       for (const tag of tags.value.values()) {
-        if (tag.name === normalizedName) {
+        if (!tag.archived && tag.name === normalizedName) {
           return copyTag(tag);
         }
       }
