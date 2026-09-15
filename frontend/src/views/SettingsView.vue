@@ -45,7 +45,6 @@
         <button class="btn-info" :disabled="saving" @click="save">
           {{ saving ? "Saving..." : "Save" }}
         </button>
-        <span v-if="justSaved" class="saved-hint">Saved</span>
       </div>
     </div>
   </div>
@@ -92,7 +91,6 @@ const model = ref<Settings | null>(null);
 // clobbering a change another tab saved in the meantime.
 const original = ref<Settings | null>(null);
 const saving = ref(false);
-const justSaved = ref(false);
 
 onMounted(async () => {
   if (!settingsStore.settings) {
@@ -122,14 +120,12 @@ async function save() {
   }
 
   saving.value = true;
-  justSaved.value = false;
   try {
     await settingsStore.updateSettings(patch);
     if (settingsStore.settings) {
       model.value = { ...settingsStore.settings };
       original.value = { ...settingsStore.settings };
     }
-    justSaved.value = true;
   } finally {
     saving.value = false;
   }
@@ -199,10 +195,6 @@ async function save() {
   display: flex;
   align-items: center;
   gap: 1em;
-}
-
-.saved-hint {
-  color: var(--nord14);
 }
 
 .logout {
