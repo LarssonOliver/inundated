@@ -267,6 +267,26 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Fetches a tag by its ID from the API, bypassing the local cache, but
+     * without the additional detail (e.g. totalTimeMs) that
+     * fetchDetailedTagById requests - use this when only the tag's core
+     * fields are needed, such as displaying an already-assigned archived tag
+     * that isn't in the listing cache, to avoid the server aggregating stats
+     * that won't be shown. The result is cached for getTagById, but never
+     * merged into the listing cache (tags), so it can't leak an archived tag
+     * into a list view that's filtering them out.
+     *
+     * @param id - The ID of the tag to fetch.
+     *
+     * @returns A promise that resolves to the tag if found, or rejects if not found.
+     */
+    async function fetchTagById(id: string): Promise<Tag> {
+      const tag = await api.getTag(id, false);
+      individuallyFetchedTags.value.set(id, tag);
+      return copyTag(tag);
+    }
+
+    /**
      * Searches for tags based on a query string. The search is
      * case-insensitive. Exact matches rank first, followed by prefix
      * matches, substring matches, and finally typo-tolerant fuzzy matches;
@@ -349,6 +369,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       createTagFromName,
       getTagById,
       fetchDetailedTagById,
+      fetchTagById,
       searchTags,
       updateTag,
       deleteTag,

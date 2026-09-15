@@ -67,9 +67,12 @@ async function refreshTags() {
 // Tags already assigned to this item must still be shown even if archived,
 // but the shared tags cache only holds non-archived tags unless the "show
 // archived" toggle is on elsewhere, so fall back to fetching them directly.
+// Uses the non-detailed fetch since this pill display has no use for stats
+// like totalTimeMs, which would otherwise make the server aggregate them
+// for nothing.
 async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
   try {
-    return await tagsStore.fetchDetailedTagById(id);
+    return await tagsStore.fetchTagById(id);
   } catch {
     return undefined;
   }
