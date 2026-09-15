@@ -21,3 +21,16 @@ export const MONTH_TOKENS: Record<DateFormat, string> = {
 export function formatFullDate(date: Date, dateFormat: DateFormat): string {
   return `${format(date, "EEEE")}, ${format(date, DATE_TOKENS[dateFormat])}`;
 }
+
+/**
+ * Formats the value VueDatePicker's `formats.input` callback receives - a
+ * single Date for a plain picker, or a Date[] for a range picker - per the
+ * DateFormat setting. Use as `:formats="{ input: (d) => formatDatePickerInput(d, dateFormat) }"`.
+ */
+export function formatDatePickerInput(dates: Date | Date[], dateFormat: DateFormat): string {
+  const token = DATE_TOKENS[dateFormat];
+  if (Array.isArray(dates)) {
+    return dates.map((date) => format(date, token)).join(" - ");
+  }
+  return format(dates, token);
+}

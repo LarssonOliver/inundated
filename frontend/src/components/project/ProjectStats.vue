@@ -26,7 +26,7 @@
             dark
             range
             multi-calendars
-            :format="datePickerFormat"
+            :formats="datePickerFormats"
             :input-attrs="{
               clearable: false,
             }"
@@ -129,7 +129,7 @@ import {
   statsDateRangePresets,
   weekStartDayToDateFnsDay,
 } from "@/helpers/statsChart";
-import { DATE_TOKENS } from "@/helpers/dates";
+import { formatDatePickerInput } from "@/helpers/dates";
 import { formatDuration } from "@/helpers/time";
 import { resolveTimezone } from "@/helpers/timezones";
 
@@ -155,7 +155,10 @@ const projectStats = ref<ProjectStats | undefined>();
 
 const durationFormat = computed(() => settingsStore.settings?.durationFormat ?? "long");
 const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
-const datePickerFormat = computed(() => DATE_TOKENS[dateFormat.value]);
+const datePickerFormats = computed(() => ({
+  input: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
+  preview: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
+}));
 
 const presetDates = computed(() =>
   statsDateRangePresets(weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday")),

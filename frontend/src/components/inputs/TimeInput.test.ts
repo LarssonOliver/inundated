@@ -63,6 +63,18 @@ test("displays the canonical 24h model value in 12h format when timeFormat is 12
   expect(wrapper.find("input").element.value).toBe("2:30 PM");
 });
 
+test("keeps the narrow width for 24h format", () => {
+  const wrapper = mount(TimeInput, { props: { modelValue: "14:30", timeFormat: "24h" } });
+
+  expect(wrapper.find("input").classes()).not.toContain("time-12h");
+});
+
+test("widens the input for 12h format to fit the AM/PM suffix", () => {
+  const wrapper = mount(TimeInput, { props: { modelValue: "14:30", timeFormat: "12h" } });
+
+  expect(wrapper.find("input").classes()).toContain("time-12h");
+});
+
 test("accepts a typed 12h value and still emits the canonical 24h model", async () => {
   const wrapper = mount(TimeInput, { props: { modelValue: "10:00", timeFormat: "12h" } });
 

@@ -4,6 +4,7 @@
       type="text"
       v-model="currentValue"
       placeholder="00:00"
+      :class="{ 'time-12h': format === '12h' }"
       @keydown.enter="valueEntered"
       @focusout="valueEntered"
       @focus="($event.target as HTMLInputElement).select()"
@@ -81,8 +82,12 @@ function valueEntered() {
 
 <style scoped>
 input {
-  width: 6.5em;
+  width: 4.8em;
   font-family: monospace;
+}
+
+input.time-12h {
+  width: 6.5em;
 }
 
 sup {
