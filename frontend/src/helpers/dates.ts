@@ -34,3 +34,21 @@ export function formatDatePickerInput(dates: Date | Date[], dateFormat: DateForm
   }
   return format(dates, token);
 }
+
+// A date with the widest possible day/month digits, so the width estimate
+// below is never too narrow for any actual value the format can produce.
+const WIDEST_SAMPLE_DATE = new Date(2024, 11, 31);
+
+/**
+ * Estimates how wide (in `ch` units) a start-end date range needs to be to
+ * fit without truncating, for the given DateFormat - e.g. "iso" needs less
+ * room than "text" ("2024-12-31 - 2024-12-31" vs "31 Dec 2024 - 31 Dec 2024").
+ * `ch` sizes to the font's "0" glyph, which slightly overestimates the width
+ * of letters (fine here - the goal is "never truncates", not pixel-perfect).
+ */
+export function datePickerInputWidthCh(dateFormat: DateFormat): number {
+  const sample = format(WIDEST_SAMPLE_DATE, DATE_TOKENS[dateFormat]);
+  const separator = 3; // " - "
+  const iconAndPadding = 4; // room for the calendar icon + input padding
+  return sample.length * 2 + separator + iconAndPadding;
+}

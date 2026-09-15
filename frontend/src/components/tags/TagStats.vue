@@ -20,7 +20,7 @@
         >
           This Month
         </button>
-        <div class="date-picker">
+        <div class="date-picker" :style="{ width: datePickerWidth }">
           <VueDatePicker
             v-model="pickedRange"
             dark
@@ -106,7 +106,7 @@ import {
   statsDateRangePresets,
   weekStartDayToDateFnsDay,
 } from "@/helpers/statsChart";
-import { formatDatePickerInput } from "@/helpers/dates";
+import { datePickerInputWidthCh, formatDatePickerInput } from "@/helpers/dates";
 import { formatDuration } from "@/helpers/time";
 import { resolveTimezone } from "@/helpers/timezones";
 
@@ -136,6 +136,7 @@ const datePickerFormats = computed(() => ({
   input: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
   preview: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
 }));
+const datePickerWidth = computed(() => `${datePickerInputWidthCh(dateFormat.value)}ch`);
 
 const presetDates = computed(() =>
   statsDateRangePresets(weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday")),
