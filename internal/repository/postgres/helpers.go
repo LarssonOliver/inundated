@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/larssonoliver/inundated/internal/model"
@@ -32,4 +33,10 @@ func archivedFilter(includeArchived bool) string {
 		return ""
 	}
 	return "archived_at IS NULL AND "
+}
+
+// noAssociatedTags is a tagsInScope alreadyAssociated getter for a brand new
+// project/timespan, which by definition has no pre-existing associations.
+func noAssociatedTags() ([]uuid.UUID, error) {
+	return nil, nil
 }

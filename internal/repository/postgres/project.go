@@ -34,7 +34,7 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 	}
 	p.Archived = archivedAt != nil
 
-	p.TagIds, err = r.projectTagIds(ctx, id)
+	p.TagIds, err = r.projectTagIds(ctx, r.db, id)
 	if err != nil {
 		return model.Project{}, err
 	}
@@ -87,7 +87,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 
 	var tagErr error
 	for i := range projects {
-		projects[i].TagIds, tagErr = r.projectTagIds(ctx, projects[i].Id)
+		projects[i].TagIds, tagErr = r.projectTagIds(ctx, r.db, projects[i].Id)
 		if tagErr != nil {
 			return model.Page[model.Project]{}, tagErr
 		}
@@ -116,7 +116,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 
 	var created model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, nil)
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, noAssociatedTags)
 		if err != nil {
 			return err
 		}
@@ -150,14 +150,11 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 	}
 	project.TagIds = utils.DedupeUUIDs(project.TagIds)
 
-	existingTagIds, err := r.projectTagIds(ctx, project.Id)
-	if err != nil {
-		return model.Project{}, err
-	}
-
 	var updated model.Project
-	err = r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, existingTagIds)
+	err := r.withTx(ctx, func(q Querier) error {
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, func() ([]uuid.UUID, error) {
+			return r.projectTagIds(ctx, q, project.Id)
+		})
 		if err != nil {
 			return err
 		}
@@ -211,15 +208,17 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	return nil
 }
 
-// projectTagIds returns all tag IDs linked to a project.
-func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) ([]uuid.UUID, error) {
-	const q = `
-		SELECT tag_id 
-		FROM project_tags 
-		WHERE project_id = $1 
+// projectTagIds returns all tag IDs linked to a project. Callers pass r.db
+// for a standalone read, or the transaction's Querier to read within it
+// (e.g. alongside a concurrent tagsInScope check).
+func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId uuid.UUID) ([]uuid.UUID, error) {
+	const query = `
+		SELECT tag_id
+		FROM project_tags
+		WHERE project_id = $1
 		ORDER BY tag_id`
 
-	rows, err := r.db.Query(ctx, q, projectId)
+	rows, err := q.Query(ctx, query, projectId)
 	if err != nil {
 		return nil, fmt.Errorf("projectTagIds: %w", err)
 	}
@@ -237,19 +236,16 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) 
 }
 
 // tagsInScope reports whether every id refers to a live tag owned by scope.
-// An archived tag is only acceptable if it's already in alreadyAssociated
-// (i.e. it was attached to this project/timespan before this call) - that
-// keeps existing associations with a since-archived tag intact across
+// An archived tag is only acceptable if it's already in the set alreadyAssociated
+// returns (i.e. it was attached to this project/timespan before this call) -
+// that keeps existing associations with a since-archived tag intact across
 // unrelated edits, while still blocking a fresh attachment of an archived
-// tag that a picker would never surface.
-func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) (bool, error) {
+// tag that a picker would never surface. alreadyAssociated is called at most
+// once, and only if an archived tag is actually encountered, since the vast
+// majority of calls reference no archived tags at all.
+func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated func() ([]uuid.UUID, error)) (bool, error) {
 	if len(tagIds) == 0 {
 		return true, nil
-	}
-
-	allowedArchived := make(map[uuid.UUID]bool, len(alreadyAssociated))
-	for _, id := range alreadyAssociated {
-		allowedArchived[id] = true
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{tagIds})
@@ -260,25 +256,52 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)
 	}
-	defer rows.Close()
 
+	// Fully drain and close rows before calling alreadyAssociated() below -
+	// issuing another query against q (the same connection, when q is a
+	// transaction) while this result set is still open would fail.
+	var archivedIds []uuid.UUID
 	found := 0
 	for rows.Next() {
 		var id uuid.UUID
 		var archivedAt *time.Time
 		if err := rows.Scan(&id, &archivedAt); err != nil {
+			rows.Close()
 			return false, fmt.Errorf("tagsInScope scan: %w", err)
 		}
 		found++
-		if archivedAt != nil && !allowedArchived[id] {
+		if archivedAt != nil {
+			archivedIds = append(archivedIds, id)
+		}
+	}
+	rowsErr := rows.Err()
+	rows.Close()
+	if rowsErr != nil {
+		return false, fmt.Errorf("tagsInScope rows: %w", rowsErr)
+	}
+
+	if found != len(tagIds) {
+		return false, nil
+	}
+	if len(archivedIds) == 0 {
+		return true, nil
+	}
+
+	associated, err := alreadyAssociated()
+	if err != nil {
+		return false, err
+	}
+	allowedArchived := make(map[uuid.UUID]bool, len(associated))
+	for _, aid := range associated {
+		allowedArchived[aid] = true
+	}
+	for _, id := range archivedIds {
+		if !allowedArchived[id] {
 			return false, nil
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return false, fmt.Errorf("tagsInScope rows: %w", err)
-	}
 
-	return found == len(tagIds), nil
+	return true, nil
 }
 
 // setProjectTags replaces all tag associations for a project.

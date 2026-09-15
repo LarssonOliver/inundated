@@ -324,7 +324,6 @@ func TestUpdateTimespan_Success(t *testing.T) {
 	ts := aTimespan()
 	ts.Name = "renamed session"
 
-	expectTimespanTagsQuery(mock, ts.Id, nil)
 	mock.ExpectBegin()
 	expectTagsInScope(mock, ts.TagIds)
 	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).
@@ -345,7 +344,6 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	ts := aTimespan()
 
-	expectTimespanTagsQuery(mock, ts.Id, nil)
 	mock.ExpectBegin()
 	expectTagsInScope(mock, ts.TagIds)
 	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).

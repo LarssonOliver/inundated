@@ -97,8 +97,35 @@ describe("tags store", () => {
     expect(result).toEqual(created);
   });
 
-  it("returns an existing archived tag by name instead of creating a duplicate", async () => {
+  it("skips the API name search when the local cache already covers every tag", async () => {
+    const active = makeTag({ name: "a" });
+    const archived = makeTag({ name: "b", archived: true });
+    const created = makeTag({ name: "New" });
+
+    api.listTagsPaginated.mockResolvedValueOnce({
+      data: [active, archived],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    const store = useStore();
+    // Loads every tag, including archived ones, into the local cache.
+    await store.setIncludeArchived(true);
+    api.listTagsPaginated.mockClear();
+    api.createTag.mockResolvedValue(created);
+
+    const result = await store.createTagFromName("New");
+
+    // The local cache is already authoritative (it holds every tag the
+    // server has), so paging the API again to look for a name match would
+    // be redundant.
+    expect(api.listTagsPaginated).not.toHaveBeenCalled();
+    expect(api.createTag).toHaveBeenCalledOnce();
+    expect(result).toEqual(created);
+  });
+
+  it("revives an existing archived tag by name instead of creating a duplicate", async () => {
     const archivedTag = makeTag({ id: "archived-1", name: "Focus", archived: true });
+    const revived = { ...archivedTag, archived: false };
 
     // The local cache excludes archived tags by default (includeArchived is
     // false until the user opts in), so the store must fall back to
@@ -107,13 +134,24 @@ describe("tags store", () => {
       data: [archivedTag],
       pagination: { limit: 100, offset: 0, total: 1 },
     });
+    api.updateTag.mockResolvedValue(revived);
 
     const store = useStore();
     const result = await store.createTagFromName("Focus");
 
     expect(api.listTagsPaginated).toHaveBeenCalledWith(100, 0, true);
+    // A caller creating/using a tag by name needs an ID it can actually
+    // attach to something; an archived match must be unarchived rather than
+    // handed back unusable (the backend rejects freshly attaching an
+    // archived tag).
+    expect(api.updateTag).toHaveBeenCalledWith(archivedTag.id, {
+      name: archivedTag.name,
+      color: archivedTag.color,
+      archived: false,
+    });
     expect(api.createTag).not.toHaveBeenCalled();
-    expect(result).toEqual(archivedTag);
+    expect(result).toEqual(revived);
+    expect(result.archived).toBe(false);
   });
 
   it("returns a defensive copy", async () => {

@@ -394,7 +394,6 @@ func TestUpdateProject_Success(t *testing.T) {
 	newBudget := 4 * time.Hour
 	p.TimeBudget = &newBudget
 
-	expectProjectTagsQuery(mock, p.Id, nil)
 	mock.ExpectBegin()
 	expectTagsInScope(mock, p.TagIds)
 	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$6 RETURNING id, name, color, time_budget, user_id, archived_at`).
@@ -417,7 +416,6 @@ func TestUpdateProject_Archive(t *testing.T) {
 	p.Archived = true
 	archivedAtNow := time.Now().UTC()
 
-	expectProjectTagsQuery(mock, p.Id, nil)
 	mock.ExpectBegin()
 	expectTagsInScope(mock, p.TagIds)
 	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$6 RETURNING id, name, color, time_budget, user_id, archived_at`).
@@ -437,7 +435,6 @@ func TestUpdateProject_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	p := aProject()
 
-	expectProjectTagsQuery(mock, p.Id, nil)
 	mock.ExpectBegin()
 	expectTagsInScope(mock, p.TagIds)
 	mock.ExpectQuery(`UPDATE projects .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$6 RETURNING id, name, color, time_budget, user_id, archived_at`).

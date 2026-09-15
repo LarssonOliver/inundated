@@ -1,4 +1,5 @@
 import { projectsApi, type ProjectsApi } from "@/api/projects";
+import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import type { Project, ProjectStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -20,12 +21,10 @@ export interface PaginationState {
 function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.now()) {
   return defineStore("projects", () => {
     const projects = ref<Map<string, Project>>(new Map<string, Project>());
-    const _pending = ref<Promise<void> | null>(null);
-    // Identifies which request _pending currently represents, so a request
-    // that's superseded by a newer one (e.g. a filter change while a fetch
-    // is in flight) can detect that and discard its stale result instead of
-    // clobbering state the newer request already applied.
-    let pendingRequestKey: string | null = null;
+    // Dedupes concurrent identical-key fetches and discards a slower, stale
+    // one that's since been superseded by a fetch with a different key (e.g.
+    // a filter change while a fetch is in flight).
+    const supersededFetch = useSupersededFetch();
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
@@ -36,7 +35,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       Array.from(projects.value.values()).map(copyProject),
     );
 
-    const isLoading = computed(() => !!_pending.value);
+    const isLoading = supersededFetch.isLoading;
 
     /**
      * Fetches the first page of projects from the API and stores them locally.
@@ -45,22 +44,13 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
      */
     async function fetchProjectsAlways(): Promise<void> {
       const key = `always:${includeArchived.value}`;
-      if (_pending.value && pendingRequestKey === key) return _pending.value;
-
-      pendingRequestKey = key;
-      _pending.value = (async () => {
+      await supersededFetch.run(key, async () => {
         const result = await api.listProjectsPaginated(50, 0, includeArchived.value);
-        if (pendingRequestKey !== key) return; // superseded by a newer request
+        if (supersededFetch.isStale(key)) return;
 
         projects.value = new Map(result.data.map((project) => [project.id, project]));
         paginationState.value = result.pagination;
-      })();
-
-      try {
-        await _pending.value;
-      } finally {
-        if (pendingRequestKey === key) _pending.value = null;
-      }
+      });
     }
 
     /**
@@ -103,12 +93,9 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
      */
     async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
       const key = `${limit}:${offset}:${includeArchived.value}`;
-      if (_pending.value && pendingRequestKey === key) return _pending.value;
-
-      pendingRequestKey = key;
-      _pending.value = (async () => {
+      await supersededFetch.run(key, async () => {
         const result = await api.listProjectsPaginated(limit, offset, includeArchived.value);
-        if (pendingRequestKey !== key) return; // superseded by a newer request
+        if (supersededFetch.isStale(key)) return;
 
         // A page-0 fetch is a fresh load (e.g. after remounting the list), so
         // start clean rather than leaving behind stale entries that no longer
@@ -121,13 +108,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
           projects.value.set(project.id, project);
         }
         paginationState.value = result.pagination;
-      })();
-
-      try {
-        await _pending.value;
-      } finally {
-        if (pendingRequestKey === key) _pending.value = null;
-      }
+      });
     }
 
     /**

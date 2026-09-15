@@ -1,6 +1,7 @@
 import { tagsApi, type TagsApi } from "@/api";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
+import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import type { Tag, TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -24,12 +25,10 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     // Kept separate from `tags` so it's available to getTagById without
     // leaking archived tags into list views that don't want them.
     const individuallyFetchedTags = ref<Map<string, Tag>>(new Map<string, Tag>());
-    const _pending = ref<Promise<void> | null>(null);
-    // Identifies which request _pending currently represents, so a request
-    // that's superseded by a newer one (e.g. a filter change while a fetch
-    // is in flight) can detect that and discard its stale result instead of
-    // clobbering state the newer request already applied.
-    let pendingRequestKey: string | null = null;
+    // Dedupes concurrent identical-key fetches and discards a slower, stale
+    // one that's since been superseded by a fetch with a different key (e.g.
+    // a filter change while a fetch is in flight).
+    const supersededFetch = useSupersededFetch();
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
@@ -40,7 +39,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       Array.from(tags.value.values()).map(copyTag),
     );
 
-    const isLoading = computed(() => !!_pending.value);
+    const isLoading = supersededFetch.isLoading;
 
     /**
      * Fetches the first page of tags from the API and stores them locally.
@@ -49,22 +48,13 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      */
     async function fetchTagsAlways(): Promise<void> {
       const key = `always:${includeArchived.value}`;
-      if (_pending.value && pendingRequestKey === key) return _pending.value;
-
-      pendingRequestKey = key;
-      _pending.value = (async () => {
+      await supersededFetch.run(key, async () => {
         const result = await api.listTagsPaginated(50, 0, includeArchived.value);
-        if (pendingRequestKey !== key) return; // superseded by a newer request
+        if (supersededFetch.isStale(key)) return;
 
         tags.value = new Map(result.data.map((tag) => [tag.id, tag]));
         paginationState.value = result.pagination;
-      })();
-
-      try {
-        await _pending.value;
-      } finally {
-        if (pendingRequestKey === key) _pending.value = null;
-      }
+      });
     }
 
     /**
@@ -107,12 +97,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      */
     async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
       const key = `${limit}:${offset}:${includeArchived.value}`;
-      if (_pending.value && pendingRequestKey === key) return _pending.value;
-
-      pendingRequestKey = key;
-      _pending.value = (async () => {
+      await supersededFetch.run(key, async () => {
         const result = await api.listTagsPaginated(limit, offset, includeArchived.value);
-        if (pendingRequestKey !== key) return; // superseded by a newer request
+        if (supersededFetch.isStale(key)) return;
 
         // A page-0 fetch is a fresh load (e.g. after remounting the list), so
         // start clean rather than leaving behind stale entries that no longer
@@ -125,13 +112,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
           tags.value.set(tag.id, tag);
         }
         paginationState.value = result.pagination;
-      })();
-
-      try {
-        await _pending.value;
-      } finally {
-        if (pendingRequestKey === key) _pending.value = null;
-      }
+      });
     }
 
     /**
@@ -219,9 +200,23 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       // The local cache may exclude archived tags (it only holds whatever
       // the current includeArchived filter has fetched). Archived tag names
       // aren't unique-constrained in the database, so skipping this check
-      // would silently create a duplicate.
-      const existing = await findTagByName(normalizedName);
+      // would silently create a duplicate. But if the cache already holds
+      // every tag the server has (including archived ones), the scan above
+      // is authoritative and paging the API again would be redundant.
+      const cacheIsComplete =
+        includeArchived.value &&
+        paginationState.value != null &&
+        tags.value.size >= paginationState.value.total;
+
+      const existing = cacheIsComplete ? undefined : await findTagByName(normalizedName);
       if (existing) {
+        // A caller creating/using a tag by name needs an ID it can actually
+        // attach to something. Returning an archived tag as-is would look
+        // like success here but fail later: the backend rejects freshly
+        // attaching an archived tag, so revive it instead.
+        if (existing.archived) {
+          return await updateTag({ ...existing, archived: false });
+        }
         tags.value.set(existing.id, existing);
         return copyTag(existing);
       }
