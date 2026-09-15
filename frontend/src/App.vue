@@ -35,6 +35,7 @@ onMounted(() => {
 
 <style>
 @import "@/../node_modules/@fontsource/roboto/index.css";
+@import "@/../node_modules/@fontsource/pt-sans/700.css";
 @import "@/../node_modules/material-icons/iconfont/material-icons.css";
 @import "@/assets/nord.css";
 @import "@/assets/main.css";

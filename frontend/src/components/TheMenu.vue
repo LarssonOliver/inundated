@@ -2,8 +2,8 @@
   <div class="sidebar" :style="sidebarStyle">
     <div class="sidebar-container">
       <div class="title">
-        <h2 v-if="isExpanded">INUNDATED</h2>
-        <h2 v-else class="title-mark">I</h2>
+        <img src="/logo.svg" alt="Inundated" class="brand-mark" />
+        <h2 v-if="isExpanded" class="brand-name">Inundated</h2>
       </div>
       <nav>
         <ul class="link-list">
@@ -109,19 +109,24 @@ const sidebarStyle = computed(() => ({
   margin-bottom: 1.5em;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.6em;
   min-height: 2em;
 }
 
-.title h2 {
-  margin: 0;
-  font-size: 1.2em;
-  white-space: nowrap;
-  overflow: hidden;
+.brand-mark {
+  width: 3em;
+  height: 3em;
+  flex-shrink: 0;
 }
 
-.title-mark {
-  color: var(--nord8);
+.brand-name {
+  margin: 0;
+  font-family: "PT Sans", sans-serif;
+  font-weight: 700;
+  font-size: 2em;
+  color: var(--nord6);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .bottom {
