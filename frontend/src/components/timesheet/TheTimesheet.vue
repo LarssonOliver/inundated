@@ -110,6 +110,7 @@ async function createTimespan() {
 
 .new-timespan-container {
   padding: 0.75em;
+  padding-left: 0.5em;
   margin-bottom: 1em;
   background-color: var(--nord0);
   border-radius: var(--radius-md);
