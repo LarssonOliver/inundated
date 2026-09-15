@@ -85,7 +85,7 @@ func TestSettingsService_GetSettings_RepositoryError(t *testing.T) {
 
 func TestSettingsService_UpdateSettings_Success(t *testing.T) {
 	want := model.Settings{WeekStartDay: model.WeekStartSunday, Timezone: "Europe/Stockholm",
-		DurationFormat: model.DurationFormatDecimal, TimeFormat: model.TimeFormat12h}
+		DurationFormat: model.DurationFormatDecimal, TimeFormat: model.TimeFormat12h, DateFormat: model.DateFormatUS}
 
 	repo := &repository.RepoMock{
 		UpdateSettingsFn: func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
@@ -98,15 +98,41 @@ func TestSettingsService_UpdateSettings_Success(t *testing.T) {
 	require.Equal(t, want, got)
 }
 
+func TestSettingsService_UpdateSettings_AcceptsBrowserTimezoneSentinel(t *testing.T) {
+	want := model.Settings{WeekStartDay: model.WeekStartMonday, Timezone: model.TimezoneBrowser,
+		DurationFormat: model.DurationFormatLong, TimeFormat: model.TimeFormat24h, DateFormat: model.DateFormatISO}
+
+	repo := &repository.RepoMock{
+		UpdateSettingsFn: func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+			return settings, nil
+		},
+	}
+
+	got, err := service.NewService(repo).UpdateSettings(context.Background(), want)
+	require.NoError(t, err)
+	require.Equal(t, model.TimezoneBrowser, got.Timezone)
+}
+
 func TestSettingsService_UpdateSettings_RejectsInvalidFields(t *testing.T) {
+	valid := func() model.Settings {
+		return model.Settings{
+			WeekStartDay:   model.WeekStartMonday,
+			Timezone:       "UTC",
+			DurationFormat: model.DurationFormatLong,
+			TimeFormat:     model.TimeFormat24h,
+			DateFormat:     model.DateFormatISO,
+		}
+	}
+
 	tests := []struct {
 		name     string
 		settings model.Settings
 	}{
-		{"bad week start day", model.Settings{WeekStartDay: "tuesday", Timezone: "UTC", DurationFormat: model.DurationFormatLong, TimeFormat: model.TimeFormat24h}},
-		{"bad duration format", model.Settings{WeekStartDay: model.WeekStartMonday, Timezone: "UTC", DurationFormat: "fancy", TimeFormat: model.TimeFormat24h}},
-		{"bad time format", model.Settings{WeekStartDay: model.WeekStartMonday, Timezone: "UTC", DurationFormat: model.DurationFormatLong, TimeFormat: "30h"}},
-		{"bad timezone", model.Settings{WeekStartDay: model.WeekStartMonday, Timezone: "Nowhere/Fake", DurationFormat: model.DurationFormatLong, TimeFormat: model.TimeFormat24h}},
+		{"bad week start day", func() model.Settings { s := valid(); s.WeekStartDay = "tuesday"; return s }()},
+		{"bad duration format", func() model.Settings { s := valid(); s.DurationFormat = "fancy"; return s }()},
+		{"bad time format", func() model.Settings { s := valid(); s.TimeFormat = "30h"; return s }()},
+		{"bad date format", func() model.Settings { s := valid(); s.DateFormat = "banana"; return s }()},
+		{"bad timezone", func() model.Settings { s := valid(); s.Timezone = "Nowhere/Fake"; return s }()},
 	}
 
 	for _, tt := range tests {

@@ -48,6 +48,9 @@ func (h *SettingsHandler) UpdateSettings(ctx context.Context, request api.Update
 	if request.Body.TimeFormat != nil {
 		current.TimeFormat = string(*request.Body.TimeFormat)
 	}
+	if request.Body.DateFormat != nil {
+		current.DateFormat = string(*request.Body.DateFormat)
+	}
 
 	reply, err := h.svc.UpdateSettings(ctx, current)
 	if errors.Is(err, model.ErrInvalidArgument) {
@@ -65,5 +68,6 @@ func toAPISettings(s model.Settings) api.Settings {
 		Timezone:       s.Timezone,
 		DurationFormat: api.DurationFormat(s.DurationFormat),
 		TimeFormat:     api.TimeFormat(s.TimeFormat),
+		DateFormat:     api.DateFormat(s.DateFormat),
 	}
 }

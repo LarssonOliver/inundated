@@ -1,16 +1,21 @@
 Settings:
   type: object
-  required: [weekStartDay, timezone, durationFormat, timeFormat]
+  required: [weekStartDay, timezone, durationFormat, timeFormat, dateFormat]
   properties:
     weekStartDay:
       $ref: "#/WeekStartDay"
     timezone:
       type: string
-      description: IANA timezone name, e.g. "Europe/Stockholm" or "UTC".
+      description: >
+        IANA timezone name, e.g. "Europe/Stockholm" or "UTC", or the special
+        value "browser" meaning the client should use its own local timezone
+        instead of a fixed one.
     durationFormat:
       $ref: "#/DurationFormat"
     timeFormat:
       $ref: "#/TimeFormat"
+    dateFormat:
+      $ref: "#/DateFormat"
 
 UpdateSettings:
   type: object
@@ -24,6 +29,8 @@ UpdateSettings:
       $ref: "#/DurationFormat"
     timeFormat:
       $ref: "#/TimeFormat"
+    dateFormat:
+      $ref: "#/DateFormat"
 
 WeekStartDay:
   type: string
@@ -41,3 +48,11 @@ TimeFormat:
   type: string
   enum: ["12h", "24h"]
   description: Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+
+DateFormat:
+  type: string
+  enum: [iso, us, eu, text]
+  description: >
+    How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"),
+    "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text"
+    (e.g. "15 Jan 2024").

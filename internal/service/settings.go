@@ -25,6 +25,13 @@ var validTimeFormats = map[string]bool{
 	model.TimeFormat24h: true,
 }
 
+var validDateFormats = map[string]bool{
+	model.DateFormatISO:  true,
+	model.DateFormatUS:   true,
+	model.DateFormatEU:   true,
+	model.DateFormatText: true,
+}
+
 func validateSettings(s model.Settings) error {
 	if !validWeekStartDays[s.WeekStartDay] {
 		return fmt.Errorf("weekStartDay %q: %w", s.WeekStartDay, model.ErrInvalidArgument)
@@ -35,8 +42,16 @@ func validateSettings(s model.Settings) error {
 	if !validTimeFormats[s.TimeFormat] {
 		return fmt.Errorf("timeFormat %q: %w", s.TimeFormat, model.ErrInvalidArgument)
 	}
-	if _, err := time.LoadLocation(s.Timezone); err != nil {
-		return fmt.Errorf("timezone %q: %w", s.Timezone, model.ErrInvalidArgument)
+	if !validDateFormats[s.DateFormat] {
+		return fmt.Errorf("dateFormat %q: %w", s.DateFormat, model.ErrInvalidArgument)
+	}
+	// "browser" is a sentinel meaning "whatever zone the client is in" - only
+	// the client can resolve it, so the server accepts it without trying to
+	// load it as a real IANA zone.
+	if s.Timezone != model.TimezoneBrowser {
+		if _, err := time.LoadLocation(s.Timezone); err != nil {
+			return fmt.Errorf("timezone %q: %w", s.Timezone, model.ErrInvalidArgument)
+		}
 	}
 	return nil
 }

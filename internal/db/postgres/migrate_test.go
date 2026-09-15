@@ -257,6 +257,7 @@ func TestIndividualMigrations(t *testing.T) {
 				assertColumnExists(t, ctx, pool, "settings", "timezone", sptr("text"))
 				assertColumnExists(t, ctx, pool, "settings", "duration_format", sptr("text"))
 				assertColumnExists(t, ctx, pool, "settings", "time_format", sptr("text"))
+				assertColumnExists(t, ctx, pool, "settings", "date_format", sptr("text"))
 				assertForeignKeyExists(t, ctx, pool, "settings", "settings_user_id_fkey")
 				assertUniqueIndexExists(t, ctx, pool, "idx_settings_user_id")
 				assertUniqueIndexExists(t, ctx, pool, "idx_settings_unowned_singleton")

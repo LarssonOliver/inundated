@@ -22,6 +22,30 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
+// Defines values for DateFormat.
+const (
+	Eu   DateFormat = "eu"
+	Iso  DateFormat = "iso"
+	Text DateFormat = "text"
+	Us   DateFormat = "us"
+)
+
+// Valid indicates whether the value is a known member of the DateFormat enum.
+func (e DateFormat) Valid() bool {
+	switch e {
+	case Eu:
+		return true
+	case Iso:
+		return true
+	case Text:
+		return true
+	case Us:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DurationFormat.
 const (
 	Clock   DurationFormat = "clock"
@@ -146,6 +170,9 @@ type CreateTimespan struct {
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
 
+// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+type DateFormat string
+
 // DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
 type DurationFormat string
 
@@ -238,13 +265,16 @@ type SeriesPoint struct {
 
 // Settings defines model for Settings.
 type Settings struct {
+	// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+	DateFormat DateFormat `json:"dateFormat"`
+
 	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
 	DurationFormat DurationFormat `json:"durationFormat"`
 
 	// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
 	TimeFormat TimeFormat `json:"timeFormat"`
 
-	// Timezone IANA timezone name, e.g. "Europe/Stockholm" or "UTC".
+	// Timezone IANA timezone name, e.g. "Europe/Stockholm" or "UTC", or the special value "browser" meaning the client should use its own local timezone instead of a fixed one.
 	Timezone string `json:"timezone"`
 
 	// WeekStartDay The first day of the week for calendar/report views.
@@ -311,6 +341,9 @@ type UpdateProject struct {
 
 // UpdateSettings defines model for UpdateSettings.
 type UpdateSettings struct {
+	// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+	DateFormat *DateFormat `json:"dateFormat,omitempty"`
+
 	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
 	DurationFormat *DurationFormat `json:"durationFormat,omitempty"`
 

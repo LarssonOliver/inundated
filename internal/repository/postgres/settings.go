@@ -15,13 +15,13 @@ import (
 func (r *PostgresStore) GetSettings(ctx context.Context, scope model.OwnerScope) (model.Settings, error) {
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{})
 	q := `
-		SELECT id, user_id, week_start_day, timezone, duration_format, time_format
+		SELECT id, user_id, week_start_day, timezone, duration_format, time_format, date_format
 		FROM settings
 		WHERE ` + ownerSQL
 
 	var s model.Settings
 	err := r.db.QueryRow(ctx, q, args...).
-		Scan(&s.Id, &s.UserId, &s.WeekStartDay, &s.Timezone, &s.DurationFormat, &s.TimeFormat)
+		Scan(&s.Id, &s.UserId, &s.WeekStartDay, &s.Timezone, &s.DurationFormat, &s.TimeFormat, &s.DateFormat)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Settings{}, fmt.Errorf("GetSettings: %w", model.ErrNotFound)
 	}
@@ -38,14 +38,16 @@ func (r *PostgresStore) CreateSettings(ctx context.Context, scope model.OwnerSco
 	}
 
 	const q = `
-		INSERT INTO settings (id, user_id, week_start_day, timezone, duration_format, time_format)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, user_id, week_start_day, timezone, duration_format, time_format`
+		INSERT INTO settings (id, user_id, week_start_day, timezone, duration_format, time_format, date_format)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, user_id, week_start_day, timezone, duration_format, time_format, date_format`
 
 	var created model.Settings
 	err := r.db.QueryRow(ctx, q,
-		settings.Id, scope.UserID(), settings.WeekStartDay, settings.Timezone, settings.DurationFormat, settings.TimeFormat,
-	).Scan(&created.Id, &created.UserId, &created.WeekStartDay, &created.Timezone, &created.DurationFormat, &created.TimeFormat)
+		settings.Id, scope.UserID(), settings.WeekStartDay, settings.Timezone,
+		settings.DurationFormat, settings.TimeFormat, settings.DateFormat,
+	).Scan(&created.Id, &created.UserId, &created.WeekStartDay, &created.Timezone,
+		&created.DurationFormat, &created.TimeFormat, &created.DateFormat)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return model.Settings{}, fmt.Errorf("CreateSettings: %w", model.ErrAlreadyExists)
@@ -58,17 +60,18 @@ func (r *PostgresStore) CreateSettings(ctx context.Context, scope model.OwnerSco
 // UpdateSettings implements [repository.SettingsRepository].
 func (r *PostgresStore) UpdateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{
-		settings.WeekStartDay, settings.Timezone, settings.DurationFormat, settings.TimeFormat,
+		settings.WeekStartDay, settings.Timezone, settings.DurationFormat, settings.TimeFormat, settings.DateFormat,
 	})
 	q := `
 		UPDATE settings
-		SET week_start_day = $1, timezone = $2, duration_format = $3, time_format = $4
+		SET week_start_day = $1, timezone = $2, duration_format = $3, time_format = $4, date_format = $5
 		WHERE ` + ownerSQL + `
-		RETURNING id, user_id, week_start_day, timezone, duration_format, time_format`
+		RETURNING id, user_id, week_start_day, timezone, duration_format, time_format, date_format`
 
 	var updated model.Settings
 	err := r.db.QueryRow(ctx, q, args...).
-		Scan(&updated.Id, &updated.UserId, &updated.WeekStartDay, &updated.Timezone, &updated.DurationFormat, &updated.TimeFormat)
+		Scan(&updated.Id, &updated.UserId, &updated.WeekStartDay, &updated.Timezone,
+			&updated.DurationFormat, &updated.TimeFormat, &updated.DateFormat)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Settings{}, fmt.Errorf("UpdateSettings: %w", model.ErrNotFound)
 	}

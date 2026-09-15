@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS settings (
     week_start_day TEXT NOT NULL DEFAULT 'monday',
     timezone TEXT NOT NULL DEFAULT 'UTC',
     duration_format TEXT NOT NULL DEFAULT 'long',
-    time_format TEXT NOT NULL DEFAULT '24h'
+    time_format TEXT NOT NULL DEFAULT '24h',
+    date_format TEXT NOT NULL DEFAULT 'iso'
 );
 
 DO $$ BEGIN

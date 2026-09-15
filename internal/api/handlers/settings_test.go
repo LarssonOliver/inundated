@@ -19,6 +19,7 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 				return model.Settings{
 					WeekStartDay: model.WeekStartSunday, Timezone: "Europe/Stockholm",
 					DurationFormat: model.DurationFormatDecimal, TimeFormat: model.TimeFormat12h,
+					DateFormat: model.DateFormatUS,
 				}, nil
 			},
 		}
@@ -33,6 +34,7 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 		require.Equal(t, "Europe/Stockholm", got.Timezone)
 		require.Equal(t, api.Decimal, got.DurationFormat)
 		require.Equal(t, api.N12h, got.TimeFormat)
+		require.Equal(t, api.Us, got.DateFormat)
 	})
 
 	t.Run("service error", func(t *testing.T) {
@@ -53,6 +55,7 @@ func TestSettingsHandler_UpdateSettings(t *testing.T) {
 	current := model.Settings{
 		WeekStartDay: model.WeekStartMonday, Timezone: "UTC",
 		DurationFormat: model.DurationFormatLong, TimeFormat: model.TimeFormat24h,
+		DateFormat: model.DateFormatISO,
 	}
 
 	t.Run("partial update merges onto current settings", func(t *testing.T) {
@@ -68,8 +71,9 @@ func TestSettingsHandler_UpdateSettings(t *testing.T) {
 		h := handlers.NewSettingsHandler(svc)
 
 		sunday := api.Sunday
+		dateFormat := api.Us
 		raw, err := h.UpdateSettings(context.Background(), api.UpdateSettingsRequestObject{
-			Body: &api.UpdateSettings{WeekStartDay: &sunday},
+			Body: &api.UpdateSettings{WeekStartDay: &sunday, DateFormat: &dateFormat},
 		})
 		require.NoError(t, err)
 
@@ -77,9 +81,11 @@ func TestSettingsHandler_UpdateSettings(t *testing.T) {
 		require.Equal(t, "UTC", updateArg.Timezone, "fields not in the patch must carry the current value forward")
 		require.Equal(t, model.DurationFormatLong, updateArg.DurationFormat)
 		require.Equal(t, model.TimeFormat24h, updateArg.TimeFormat)
+		require.Equal(t, model.DateFormatUS, updateArg.DateFormat)
 
 		got := raw.(api.UpdateSettings200JSONResponse)
 		require.Equal(t, api.Sunday, got.WeekStartDay)
+		require.Equal(t, api.Us, got.DateFormat)
 	})
 
 	t.Run("invalid argument maps to 400", func(t *testing.T) {
