@@ -123,7 +123,7 @@ function handleKeydown(event: KeyboardEvent) {
     case "ArrowDown":
       if (!isOpen.value) {
         open();
-      } else {
+      } else if (filteredOptions.value.length > 0) {
         highlightedIndex.value = Math.min(
           (highlightedIndex.value ?? -1) + 1,
           filteredOptions.value.length - 1,
@@ -138,7 +138,11 @@ function handleKeydown(event: KeyboardEvent) {
       event.preventDefault();
       break;
     case "Enter":
-      if (isOpen.value && highlightedIndex.value !== null) {
+      if (
+        isOpen.value &&
+        highlightedIndex.value !== null &&
+        highlightedIndex.value < filteredOptions.value.length
+      ) {
         selectOption(filteredOptions.value[highlightedIndex.value]);
         event.preventDefault();
       }

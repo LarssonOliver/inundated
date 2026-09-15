@@ -109,5 +109,18 @@ describe("Dropdown", () => {
       expect(wrapper.emitted("update:modelValue")?.[0]).toEqual(["b"]);
       expect((wrapper.find(".dropdown-trigger").element as HTMLInputElement).value).toBe("Bravo");
     });
+
+    test("ArrowDown then Enter does nothing when the search matches no options", async () => {
+      const wrapper = mount(Dropdown, {
+        props: { options, modelValue: "a", searchable: true },
+      });
+
+      await wrapper.find(".dropdown-trigger").trigger("focus");
+      await wrapper.find(".dropdown-trigger").setValue("zzz");
+      await wrapper.find(".dropdown-trigger").trigger("keydown", { key: "ArrowDown" });
+      await wrapper.find(".dropdown-trigger").trigger("keydown", { key: "Enter" });
+
+      expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+    });
   });
 });

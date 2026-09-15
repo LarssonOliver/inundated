@@ -58,6 +58,7 @@ import { useUserStore } from "@/stores/user";
 import type { Settings } from "@/model";
 import Dropdown, { type DropdownOption } from "@/components/inputs/SelectDropdown.vue";
 import { timezoneOptions } from "@/helpers/timezones";
+import { diffSettings } from "@/helpers/settingsDiff";
 
 const weekStartDayOptions: DropdownOption[] = [
   { value: "monday", label: "Monday" },
@@ -86,6 +87,10 @@ const settingsStore = useSettingsStore();
 const userStore = useUserStore();
 
 const model = ref<Settings | null>(null);
+// The snapshot save() diffs against, so a save only PATCHes fields this page
+// actually changed - not the whole object, which would risk silently
+// clobbering a change another tab saved in the meantime.
+const original = ref<Settings | null>(null);
 const saving = ref(false);
 const justSaved = ref(false);
 
@@ -100,20 +105,30 @@ watch(
   (loaded) => {
     if (loaded && !model.value) {
       model.value = { ...loaded };
+      original.value = { ...loaded };
     }
   },
   { immediate: true },
 );
 
 async function save() {
-  if (!model.value) {
+  if (!model.value || !original.value) {
+    return;
+  }
+
+  const patch = diffSettings(original.value, model.value);
+  if (Object.keys(patch).length === 0) {
     return;
   }
 
   saving.value = true;
   justSaved.value = false;
   try {
-    await settingsStore.updateSettings({ ...model.value });
+    await settingsStore.updateSettings(patch);
+    if (settingsStore.settings) {
+      model.value = { ...settingsStore.settings };
+      original.value = { ...settingsStore.settings };
+    }
     justSaved.value = true;
   } finally {
     saving.value = false;

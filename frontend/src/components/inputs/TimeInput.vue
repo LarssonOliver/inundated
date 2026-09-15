@@ -40,21 +40,21 @@ function toCanonical(hours: number, minutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+// model is always kept valid (it only ever holds a well-formed canonical
+// time), so it doubles as its own "last valid value" - no separate ref
+// needed to remember what to revert to.
 const currentValue = ref<string>(toDisplay(model.value));
-const lastValidValue = ref<string>(model.value);
 
 watch(model, (newValue) => {
   currentValue.value = toDisplay(newValue);
-  lastValidValue.value = newValue;
 });
 
 watch(format, () => {
-  currentValue.value = toDisplay(lastValidValue.value);
+  currentValue.value = toDisplay(model.value);
 });
 
 function resetToLastValid() {
-  currentValue.value = toDisplay(lastValidValue.value);
-  model.value = lastValidValue.value;
+  currentValue.value = toDisplay(model.value);
 }
 
 function valueEntered() {
@@ -67,14 +67,12 @@ function valueEntered() {
       resetToLastValid();
       return;
     }
-    lastValidValue.value = resolved;
     model.value = resolved;
     currentValue.value = toDisplay(resolved);
     return;
   }
 
   const canonical = toCanonical(parsed.hours, parsed.minutes);
-  lastValidValue.value = canonical;
   model.value = canonical;
   currentValue.value = toDisplay(canonical);
 }

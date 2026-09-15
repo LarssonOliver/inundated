@@ -99,16 +99,9 @@ import {
 import { computed, ref, watch } from "vue";
 import { nord } from "@/helpers/nord";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
-import {
-  granularityForRange,
-  unitToHoursFactor,
-  formatBucketLabel,
-  statsDateRangePresets,
-  weekStartDayToDateFnsDay,
-} from "@/helpers/statsChart";
-import { datePickerInputWidthCh, formatDatePickerInput } from "@/helpers/dates";
+import { granularityForRange, unitToHoursFactor } from "@/helpers/statsChart";
 import { formatDuration } from "@/helpers/time";
-import { resolveTimezone } from "@/helpers/timezones";
+import { useStatsSettings } from "@/composables/useStatsSettings";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -130,17 +123,8 @@ const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
 
 const tagStats = ref<TagStats | undefined>();
 
-const durationFormat = computed(() => settingsStore.settings?.durationFormat ?? "long");
-const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
-const datePickerFormats = computed(() => ({
-  input: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
-  preview: (dates: Date | Date[]) => formatDatePickerInput(dates, dateFormat.value),
-}));
-const datePickerWidth = computed(() => `${datePickerInputWidthCh(dateFormat.value)}ch`);
-
-const presetDates = computed(() =>
-  statsDateRangePresets(weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday")),
-);
+const { durationFormat, timezone, datePickerFormats, datePickerWidth, presetDates, formatRange } =
+  useStatsSettings(() => settingsStore.settings);
 
 const convertToHoursFactor = computed(() =>
   tagStats.value ? unitToHoursFactor(tagStats.value.unit) : 1,
@@ -183,7 +167,7 @@ async function updateTagStats(range: string) {
       "time_spent",
       range,
       granularityFromPickedRange.value,
-      resolveTimezone(settingsStore.settings?.timezone ?? "browser"),
+      timezone.value,
     );
     if (result) {
       tagStats.value = result;
@@ -204,7 +188,4 @@ watch(
   },
   { immediate: true },
 );
-
-const formatRange = (interval: string, granularity: string) =>
-  formatBucketLabel(interval, granularity, dateFormat.value);
 </script>
