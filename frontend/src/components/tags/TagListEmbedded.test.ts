@@ -45,6 +45,40 @@ test("excludes archived tags from search results", async () => {
   expect(wrapper.text()).not.toContain("archived-tag");
 });
 
+test("a slower stale refresh does not clobber a newer model change", async () => {
+  const active = tag({ id: "active-1", name: "active-tag" });
+  const archived = tag({ id: "archived-1", name: "archived-tag", archived: true });
+
+  listTagsPaginated.mockResolvedValue({
+    data: [active],
+    pagination: { limit: 50, offset: 0, total: 1 },
+  });
+
+  let resolveGetTag: (value: unknown) => void;
+  const staleFetch = new Promise((resolve) => {
+    resolveGetTag = resolve;
+  });
+  getTag.mockReturnValue(staleFetch);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["archived-1"]) } });
+  await flushPromises();
+
+  // Before the archived tag's fetch resolves, the model changes to an
+  // already-cached active tag - this refresh should win regardless of when
+  // the slower, now-stale one finishes.
+  await wrapper.setProps({ modelValue: new Set(["active-1"]) });
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("active-tag");
+  expect(wrapper.text()).not.toContain("archived-tag");
+
+  resolveGetTag!(archived);
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("active-tag");
+  expect(wrapper.text()).not.toContain("archived-tag");
+});
+
 test("still shows an already-assigned tag that has since been archived", async () => {
   const archived = tag({ id: "2", name: "archived-tag", archived: true });
 

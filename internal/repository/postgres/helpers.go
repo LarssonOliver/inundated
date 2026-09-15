@@ -20,3 +20,16 @@ func ownerPredicate(column string, scope model.OwnerScope, args []any) (sql stri
 	}
 	return column + " IS NULL", args
 }
+
+// archivedFilter returns the SQL fragment (with a trailing "AND ") that
+// excludes archived rows, or an empty string when includeArchived is true.
+// This is baked into the query text rather than bound as a parameter: an
+// `archived_at IS NULL OR $n` predicate can't use an index on archived_at,
+// and folding it into a query-shaped string avoids hand-syncing its
+// placeholder number against the rest of the positional args.
+func archivedFilter(includeArchived bool) string {
+	if includeArchived {
+		return ""
+	}
+	return "archived_at IS NULL AND "
+}

@@ -420,6 +420,64 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Equal(t, []uuid.UUID{tag}, updated.TagIds)
 		})
 
+		t.Run(repoName+"CreateFailsIfTagArchived", func(t *testing.T) {
+			repo := newRepo(t)
+			scope := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scope)
+			archivedTag := seedArchivedTag(t, ctx, repo, scope)
+
+			start := time.Now().UTC()
+			_, err := repo.CreateTimespan(ctx, scope, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+				TagIds: []uuid.UUID{archivedTag},
+			})
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+		})
+
+		t.Run(repoName+"UpdateFailsIfNewlyAttachingAnArchivedTag", func(t *testing.T) {
+			repo := newRepo(t)
+			scope := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scope)
+			archivedTag := seedArchivedTag(t, ctx, repo, scope)
+
+			start := time.Now().UTC()
+			created, err := repo.CreateTimespan(ctx, scope, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+			})
+			require.NoError(t, err)
+
+			created.TagIds = []uuid.UUID{archivedTag}
+			_, err = repo.UpdateTimespan(ctx, scope, created)
+			require.ErrorIs(t, err, model.ErrInvalidReference)
+		})
+
+		t.Run(repoName+"UpdateKeepsAnAlreadyAttachedArchivedTag", func(t *testing.T) {
+			repo := newRepo(t)
+			scope := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, scope)
+			activeTag := seedTags(t, ctx, repo, scope, 1)[0]
+
+			start := time.Now().UTC()
+			created, err := repo.CreateTimespan(ctx, scope, model.Timespan{
+				Name: "a", StartTime: start, EndTime: start.Add(time.Hour),
+				TagIds: []uuid.UUID{activeTag},
+			})
+			require.NoError(t, err)
+
+			// Archive the tag out from under the timespan, then save an
+			// unrelated field change while resending the same tag set - the
+			// existing association must survive even though the tag is now
+			// archived and could no longer be freshly attached.
+			_, err = repo.UpdateTag(ctx, scope, model.Tag{Id: activeTag, Name: "archived-tag", Color: "#123456", Archived: true})
+			require.NoError(t, err)
+
+			created.Name = "renamed"
+			updated, err := repo.UpdateTimespan(ctx, scope, created)
+			require.NoError(t, err)
+			require.Equal(t, "renamed", updated.Name)
+			require.Equal(t, []uuid.UUID{activeTag}, updated.TagIds)
+		})
+
 		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
 			repo := newRepo(t)
 			user := model.UserScope(uuid.New())

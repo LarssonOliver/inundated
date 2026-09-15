@@ -113,7 +113,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 
 	var created model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, nil)
 		if err != nil {
 			return err
 		}
@@ -150,9 +150,14 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 	}
 	timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 
+	existingTagIds, err := r.timespanTagIds(ctx, timespan.Id)
+	if err != nil {
+		return model.Timespan{}, err
+	}
+
 	var updated model.Timespan
-	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+	err = r.withTx(ctx, func(q Querier) error {
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, existingTagIds)
 		if err != nil {
 			return err
 		}

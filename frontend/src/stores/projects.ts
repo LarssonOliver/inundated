@@ -21,6 +21,11 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
   return defineStore("projects", () => {
     const projects = ref<Map<string, Project>>(new Map<string, Project>());
     const _pending = ref<Promise<void> | null>(null);
+    // Identifies which request _pending currently represents, so a request
+    // that's superseded by a newer one (e.g. a filter change while a fetch
+    // is in flight) can detect that and discard its stale result instead of
+    // clobbering state the newer request already applied.
+    let pendingRequestKey: string | null = null;
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
@@ -39,10 +44,14 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
      * @returns A promise that resolves when the projects have been fetched.
      */
     async function fetchProjectsAlways(): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `always:${includeArchived.value}`;
+      if (_pending.value && pendingRequestKey === key) return _pending.value;
 
+      pendingRequestKey = key;
       _pending.value = (async () => {
         const result = await api.listProjectsPaginated(50, 0, includeArchived.value);
+        if (pendingRequestKey !== key) return; // superseded by a newer request
+
         projects.value = new Map(result.data.map((project) => [project.id, project]));
         paginationState.value = result.pagination;
       })();
@@ -50,7 +59,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       try {
         await _pending.value;
       } finally {
-        _pending.value = null;
+        if (pendingRequestKey === key) _pending.value = null;
       }
     }
 
@@ -93,10 +102,14 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
      * @returns A promise that resolves when the page has been fetched
      */
     async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `${limit}:${offset}:${includeArchived.value}`;
+      if (_pending.value && pendingRequestKey === key) return _pending.value;
 
+      pendingRequestKey = key;
       _pending.value = (async () => {
         const result = await api.listProjectsPaginated(limit, offset, includeArchived.value);
+        if (pendingRequestKey !== key) return; // superseded by a newer request
+
         // A page-0 fetch is a fresh load (e.g. after remounting the list), so
         // start clean rather than leaving behind stale entries that no longer
         // match the current filter (e.g. a project archived elsewhere). Later
@@ -113,7 +126,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       try {
         await _pending.value;
       } finally {
-        _pending.value = null;
+        if (pendingRequestKey === key) _pending.value = null;
       }
     }
 

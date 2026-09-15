@@ -321,6 +321,39 @@ describe("projects store", () => {
     expect(store.projects).toHaveLength(2);
   });
 
+  it("a slower stale fetchPage does not clobber a newer setIncludeArchived result", async () => {
+    const active = project({ id: "active", name: "active" });
+    const archived = project({ id: "archived", name: "archived", archived: true });
+
+    let resolveStale: (value: unknown) => void;
+    const staleFetch = new Promise((resolve) => {
+      resolveStale = resolve;
+    });
+
+    api.listProjectsPaginated
+      .mockImplementationOnce(() => staleFetch as never) // includeArchived=false, hangs
+      .mockResolvedValueOnce({
+        data: [active, archived],
+        pagination: { limit: 50, offset: 0, total: 2 },
+      }); // includeArchived=true, resolves promptly
+
+    const store = useStore();
+    const stalePromise = store.fetchPage(50, 0);
+    const freshPromise = store.setIncludeArchived(true);
+
+    // The stale request resolves after the newer one has already landed.
+    resolveStale!({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+    await stalePromise;
+    await freshPromise;
+
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(2);
+    expect(store.includeArchived).toBe(true);
+    expect(store.projects.map((p) => p.name).sort()).toEqual(["active", "archived"]);
+  });
+
   it("setIncludeArchived is a no-op when the value is unchanged", async () => {
     const store = useStore();
     await store.setIncludeArchived(false);

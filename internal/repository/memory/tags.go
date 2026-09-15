@@ -9,9 +9,24 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-func (t *MemoryStore) tagsExist(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) bool {
+// tagsExist reports whether every id refers to a live tag owned by scope.
+// An archived tag is only acceptable if it's already in alreadyAssociated
+// (i.e. it was attached to this project/timespan before this call) - that
+// keeps existing associations with a since-archived tag intact across
+// unrelated edits, while still blocking a fresh attachment of an archived
+// tag that a picker would never surface.
+func (t *MemoryStore) tagsExist(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
+	allowedArchived := make(map[uuid.UUID]bool, len(alreadyAssociated))
+	for _, id := range alreadyAssociated {
+		allowedArchived[id] = true
+	}
+
 	for _, tagId := range tagIds {
-		if _, err := t.GetTag(ctx, scope, tagId); err != nil {
+		tag, err := t.GetTag(ctx, scope, tagId)
+		if err != nil {
+			return false
+		}
+		if tag.Archived && !allowedArchived[tagId] {
 			return false
 		}
 	}

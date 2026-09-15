@@ -84,6 +84,10 @@ describe("tags store", () => {
 
   it("creates a new tag if name does not exist", async () => {
     const created = makeTag({ name: "New" });
+    api.listTagsPaginated.mockResolvedValue({
+      data: [],
+      pagination: { limit: 100, offset: 0, total: 0 },
+    });
     api.createTag.mockResolvedValue(created);
 
     const store = useStore();
@@ -91,6 +95,25 @@ describe("tags store", () => {
 
     expect(api.createTag).toHaveBeenCalledOnce();
     expect(result).toEqual(created);
+  });
+
+  it("returns an existing archived tag by name instead of creating a duplicate", async () => {
+    const archivedTag = makeTag({ id: "archived-1", name: "Focus", archived: true });
+
+    // The local cache excludes archived tags by default (includeArchived is
+    // false until the user opts in), so the store must fall back to
+    // searching the API directly to find it.
+    api.listTagsPaginated.mockResolvedValue({
+      data: [archivedTag],
+      pagination: { limit: 100, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    const result = await store.createTagFromName("Focus");
+
+    expect(api.listTagsPaginated).toHaveBeenCalledWith(100, 0, true);
+    expect(api.createTag).not.toHaveBeenCalled();
+    expect(result).toEqual(archivedTag);
   });
 
   it("returns a defensive copy", async () => {
@@ -406,6 +429,39 @@ describe("tags store", () => {
 
     expect(api.listTagsPaginated).toHaveBeenLastCalledWith(50, 0, true);
     expect(store.tags).toHaveLength(2);
+  });
+
+  it("a slower stale fetchPage does not clobber a newer setIncludeArchived result", async () => {
+    const active = makeTag({ name: "active" });
+    const archived = makeTag({ name: "archived", archived: true });
+
+    let resolveStale: (value: unknown) => void;
+    const staleFetch = new Promise((resolve) => {
+      resolveStale = resolve;
+    });
+
+    api.listTagsPaginated
+      .mockImplementationOnce(() => staleFetch as never) // includeArchived=false, hangs
+      .mockResolvedValueOnce({
+        data: [active, archived],
+        pagination: { limit: 50, offset: 0, total: 2 },
+      }); // includeArchived=true, resolves promptly
+
+    const store = useStore();
+    const stalePromise = store.fetchPage(50, 0);
+    const freshPromise = store.setIncludeArchived(true);
+
+    // The stale request resolves after the newer one has already landed.
+    resolveStale!({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+    await stalePromise;
+    await freshPromise;
+
+    expect(api.listTagsPaginated).toHaveBeenCalledTimes(2);
+    expect(store.includeArchived).toBe(true);
+    expect(store.tags.map((t) => t.name).sort()).toEqual(["active", "archived"]);
   });
 
   it("setIncludeArchived is a no-op when the value is unchanged", async () => {

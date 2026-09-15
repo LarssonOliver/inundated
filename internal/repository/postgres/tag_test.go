@@ -84,15 +84,15 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$1\) AND user_id = \$2`).
-		WithArgs(false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$3\) AND user_id = \$4 ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0, false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsArchived).
 				AddRow(t1.Id, t1.Name, t1.Color, t1.UserId, nil).
@@ -114,15 +114,15 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$1\) AND user_id = \$2`).
-		WithArgs(false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$3\) AND user_id = \$4 ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(1, 1, false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsArchived).
 				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil),
@@ -145,15 +145,15 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$1\) AND user_id = \$2`).
-		WithArgs(false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$3\) AND user_id = \$4 ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0, false, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsArchived),
 		)
@@ -173,15 +173,14 @@ func TestListTags_UnownedScope(t *testing.T) {
 	tag := aTag()
 	tag.UserId = nil
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$1\) AND user_id IS NULL`).
-		WithArgs(false).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL`).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$3\) AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0, false).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsArchived).
 				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil),
@@ -201,12 +200,12 @@ func TestListTags_IncludeArchived(t *testing.T) {
 	tag := aTag()
 	archivedAt := time.Now().UTC()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$1\) AND user_id = \$2`).
-		WithArgs(true, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(1))
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND \(archived_at IS NULL OR \$3\) AND user_id = \$4 ORDER BY name LIMIT \$1 OFFSET \$2`).
-		WithArgs(25, 0, true, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(tagColsArchived).
 			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt))
 

@@ -42,22 +42,24 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 }
 
 func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error) {
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, []any{params.IncludeArchived})
+	archivedSQL := archivedFilter(params.IncludeArchived)
+
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
 	countQ := `
 		SELECT COUNT(*)
 		FROM projects
-		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $1) AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL AND ` + archivedSQL + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Project]{}, fmt.Errorf("ListProjects count: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset, params.IncludeArchived})
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	dataQ := `
 		SELECT id, name, color, time_budget, user_id, archived_at
 		FROM projects
-		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $3) AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
@@ -114,7 +116,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 
 	var created model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds)
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, nil)
 		if err != nil {
 			return err
 		}
@@ -148,9 +150,14 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 	}
 	project.TagIds = utils.DedupeUUIDs(project.TagIds)
 
+	existingTagIds, err := r.projectTagIds(ctx, project.Id)
+	if err != nil {
+		return model.Project{}, err
+	}
+
 	var updated model.Project
-	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds)
+	err = r.withTx(ctx, func(q Querier) error {
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, existingTagIds)
 		if err != nil {
 			return err
 		}
@@ -230,19 +237,48 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, projectId uuid.UUID) 
 }
 
 // tagsInScope reports whether every id refers to a live tag owned by scope.
-func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID) (bool, error) {
+// An archived tag is only acceptable if it's already in alreadyAssociated
+// (i.e. it was attached to this project/timespan before this call) - that
+// keeps existing associations with a since-archived tag intact across
+// unrelated edits, while still blocking a fresh attachment of an archived
+// tag that a picker would never surface.
+func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) (bool, error) {
 	if len(tagIds) == 0 {
 		return true, nil
 	}
+
+	allowedArchived := make(map[uuid.UUID]bool, len(alreadyAssociated))
+	for _, id := range alreadyAssociated {
+		allowedArchived[id] = true
+	}
+
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{tagIds})
 	query := `
-		SELECT count(*) FROM tags
+		SELECT id, archived_at FROM tags
 		WHERE id = ANY($1) AND deleted_at IS NULL AND ` + ownerSQL
-	var n int
-	if err := q.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+	rows, err := q.Query(ctx, query, args...)
+	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)
 	}
-	return n == len(tagIds), nil
+	defer rows.Close()
+
+	found := 0
+	for rows.Next() {
+		var id uuid.UUID
+		var archivedAt *time.Time
+		if err := rows.Scan(&id, &archivedAt); err != nil {
+			return false, fmt.Errorf("tagsInScope scan: %w", err)
+		}
+		found++
+		if archivedAt != nil && !allowedArchived[id] {
+			return false, nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("tagsInScope rows: %w", err)
+	}
+
+	return found == len(tagIds), nil
 }
 
 // setProjectTags replaces all tag associations for a project.

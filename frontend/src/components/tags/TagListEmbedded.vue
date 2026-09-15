@@ -47,13 +47,20 @@ const tagSearchResult = computed(() => {
     .slice(0, 5);
 });
 
+// Guards against overlapping refreshes: if the model changes again before an
+// earlier refresh's (slower) network calls resolve, that stale result must
+// not clobber the tags the newer refresh already resolved.
+let refreshToken = 0;
+
 watch(model, async () => await refreshTags(), { deep: true, immediate: true });
 
 async function refreshTags() {
+  const token = ++refreshToken;
   await tagsStore.fetchTags();
   const resolved = await Promise.all(
     [...model.value].map((id) => tagsStore.getTagById(id) ?? fetchAssignedTag(id)),
   );
+  if (token !== refreshToken) return; // superseded by a newer refresh
   tags.value = resolved.filter((tag): tag is Tag => tag != null);
 }
 

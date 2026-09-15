@@ -18,7 +18,7 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 	var tagIds []uuid.UUID
 
 	if project.TagIds != nil {
-		if !t.tagsExist(ctx, scope, project.TagIds) {
+		if !t.tagsExist(ctx, scope, project.TagIds, nil) {
 			return model.Project{}, model.ErrInvalidReference
 		}
 
@@ -90,7 +90,11 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 	}
 
 	if project.TagIds != nil {
-		if !t.tagsExist(ctx, scope, project.TagIds) {
+		existing, err := t.GetProject(ctx, scope, project.Id)
+		if err != nil {
+			return model.Project{}, err
+		}
+		if !t.tagsExist(ctx, scope, project.TagIds, existing.TagIds) {
 			return model.Project{}, model.ErrInvalidReference
 		}
 		project.TagIds = utils.DedupeUUIDs(project.TagIds)

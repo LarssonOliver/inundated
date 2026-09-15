@@ -19,7 +19,17 @@ export interface PaginationState {
 function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
   return defineStore("tags", () => {
     const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
+    // Tags fetched individually by id (e.g. an archived tag that's still
+    // assigned to an item but excluded from the current listing filter).
+    // Kept separate from `tags` so it's available to getTagById without
+    // leaking archived tags into list views that don't want them.
+    const individuallyFetchedTags = ref<Map<string, Tag>>(new Map<string, Tag>());
     const _pending = ref<Promise<void> | null>(null);
+    // Identifies which request _pending currently represents, so a request
+    // that's superseded by a newer one (e.g. a filter change while a fetch
+    // is in flight) can detect that and discard its stale result instead of
+    // clobbering state the newer request already applied.
+    let pendingRequestKey: string | null = null;
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
@@ -38,10 +48,14 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the tags have been fetched.
      */
     async function fetchTagsAlways(): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `always:${includeArchived.value}`;
+      if (_pending.value && pendingRequestKey === key) return _pending.value;
 
+      pendingRequestKey = key;
       _pending.value = (async () => {
         const result = await api.listTagsPaginated(50, 0, includeArchived.value);
+        if (pendingRequestKey !== key) return; // superseded by a newer request
+
         tags.value = new Map(result.data.map((tag) => [tag.id, tag]));
         paginationState.value = result.pagination;
       })();
@@ -49,7 +63,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       try {
         await _pending.value;
       } finally {
-        _pending.value = null;
+        if (pendingRequestKey === key) _pending.value = null;
       }
     }
 
@@ -92,10 +106,14 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the page has been fetched
      */
     async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `${limit}:${offset}:${includeArchived.value}`;
+      if (_pending.value && pendingRequestKey === key) return _pending.value;
 
+      pendingRequestKey = key;
       _pending.value = (async () => {
         const result = await api.listTagsPaginated(limit, offset, includeArchived.value);
+        if (pendingRequestKey !== key) return; // superseded by a newer request
+
         // A page-0 fetch is a fresh load (e.g. after remounting the list), so
         // start clean rather than leaving behind stale entries that no longer
         // match the current filter (e.g. a tag archived elsewhere). Later
@@ -112,7 +130,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       try {
         await _pending.value;
       } finally {
-        _pending.value = null;
+        if (pendingRequestKey === key) _pending.value = null;
       }
     }
 
@@ -151,6 +169,31 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Searches the API (not just the local cache) for a tag with an exact
+     * name match, including archived tags. Pages through all tags since
+     * there's no server-side name filter.
+     *
+     * @param normalizedName - The exact name to match.
+     *
+     * @returns The matching tag, or undefined if none exists.
+     */
+    async function findTagByName(normalizedName: string): Promise<Tag | undefined> {
+      const limit = 100;
+      let offset = 0;
+
+      while (true) {
+        const result = await api.listTagsPaginated(limit, offset, true);
+        const match = result.data.find((tag) => tag.name === normalizedName);
+        if (match) return match;
+
+        offset += result.data.length;
+        if (result.data.length === 0 || offset >= result.pagination.total) {
+          return undefined;
+        }
+      }
+    }
+
+    /**
      * Creates a new tag from a name and an optional color. Should a tag with
      * the same name already exist, it will be returned instead of creating
      * a new one.
@@ -173,6 +216,16 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
         }
       }
 
+      // The local cache may exclude archived tags (it only holds whatever
+      // the current includeArchived filter has fetched). Archived tag names
+      // aren't unique-constrained in the database, so skipping this check
+      // would silently create a duplicate.
+      const existing = await findTagByName(normalizedName);
+      if (existing) {
+        tags.value.set(existing.id, existing);
+        return copyTag(existing);
+      }
+
       const newTag = await createTag({
         name: normalizedName,
         color: color ?? stringToHexColor(normalizedName),
@@ -182,7 +235,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Gets a tag by its ID. This does not fetch the tag from the API.
+     * Gets a tag by its ID. This does not fetch the tag from the API; it
+     * checks both the current listing cache and any tags previously fetched
+     * individually via fetchDetailedTagById.
      *
      * @param id - The ID of the tag to get.
      *
@@ -190,14 +245,16 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      *  if not found.
      */
     function getTagById(id: string): Tag | undefined {
-      const tag = tags.value.get(id);
+      const tag = tags.value.get(id) ?? individuallyFetchedTags.value.get(id);
       return tag ? copyTag(tag) : undefined;
     }
 
     /**
      * Fetches a tag by its ID from the API, bypassing the local cache.
      * This includes additional details such as totalTimeMs which may not
-     * be present in the local cache.
+     * be present in the local cache. The result is cached for getTagById,
+     * but never merged into the listing cache (tags), so it can't leak an
+     * archived tag into a list view that's filtering them out.
      *
      * @param id - The ID of the tag to fetch.
      *
@@ -205,6 +262,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      */
     async function fetchDetailedTagById(id: string): Promise<Tag> {
       const detailedTag = await api.getTag(id, true);
+      individuallyFetchedTags.value.set(id, detailedTag);
       return copyTag(detailedTag);
     }
 

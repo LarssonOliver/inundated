@@ -36,9 +36,10 @@
 <script setup lang="ts">
 import { useProjectsStore } from "@/stores/projects";
 import { useRouter } from "vue-router";
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { useArchivableList } from "@/composables/useArchivableList";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
@@ -47,21 +48,17 @@ import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 const projectsStore = useProjectsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
-const showArchived = ref(projectsStore.includeArchived);
 
 const pageSize = 50;
 
-const sortedProjects = computed(() =>
-  [...projectsStore.projects].sort(
-    (a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name),
-  ),
+const { showArchived, sorted: sortedProjects } = useArchivableList(
+  () => projectsStore.projects,
+  projectsStore,
 );
 
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
-
-watch(showArchived, (value) => projectsStore.setIncludeArchived(value));
 </script>
 
 <style scoped>

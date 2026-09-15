@@ -59,6 +59,27 @@ func seedTags(
 	return ids
 }
 
+// seedArchivedTag creates a single tag and immediately archives it.
+func seedArchivedTag(
+	t *testing.T,
+	ctx context.Context,
+	repo repository.TagRepository,
+	scope model.OwnerScope,
+) uuid.UUID {
+	t.Helper()
+
+	created, err := repo.CreateTag(ctx, scope, model.Tag{Name: "archived-tag", Color: "#123456"})
+	require.NoError(t, err)
+
+	archived, err := repo.UpdateTag(ctx, scope, model.Tag{
+		Id: created.Id, Name: created.Name, Color: created.Color, Archived: true,
+	})
+	require.NoError(t, err)
+	require.True(t, archived.Archived)
+
+	return created.Id
+}
+
 // seedOrphanResources creates the given number of tags, projects and timespans
 // in the unowned scope (model.UnownedScope() → user_id IS NULL), so that
 // CreateUserAdoptingOrphans still adopts them for the first user.

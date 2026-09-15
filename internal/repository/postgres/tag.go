@@ -37,22 +37,24 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 }
 
 func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, []any{params.IncludeArchived})
+	archivedSQL := archivedFilter(params.IncludeArchived)
+
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
 	countQ := `
 		SELECT COUNT(*)
 		FROM tags
-		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $1) AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL AND ` + archivedSQL + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("count tags: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset, params.IncludeArchived})
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	q := `
 		SELECT id, name, color, user_id, archived_at
 		FROM tags
-		WHERE deleted_at IS NULL AND (archived_at IS NULL OR $3) AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
