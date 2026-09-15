@@ -3,28 +3,34 @@
     <div class="title-bar">
       <h2>Settings</h2>
     </div>
+
+    <div v-if="userStore.user" class="card account-card">
+      <p class="field-label">Account</p>
+      <div class="account">
+        <span class="account-name" :title="userStore.user.email">
+          {{ userStore.user.name || userStore.user.email }}
+        </span>
+        <button class="btn-info logout" @click="userStore.logout()">Log out</button>
+      </div>
+    </div>
+
     <div v-if="model" class="card settings-edit">
       <p class="field-label">Week starts on</p>
-      <select v-model="model.weekStartDay">
-        <option value="monday">Monday</option>
-        <option value="sunday">Sunday</option>
-      </select>
+      <Dropdown v-model="model.weekStartDay" :options="weekStartDayOptions" />
 
       <p class="field-label">Timezone</p>
-      <input v-model="model.timezone" type="text" placeholder="e.g. Europe/Stockholm or UTC" />
+      <Dropdown
+        v-model="model.timezone"
+        :options="timezoneOptions"
+        searchable
+        placeholder="Search timezones..."
+      />
 
       <p class="field-label">Duration format</p>
-      <select v-model="model.durationFormat">
-        <option value="long">Long (2h 30m)</option>
-        <option value="decimal">Decimal (2.5h)</option>
-        <option value="clock">Clock (02:30)</option>
-      </select>
+      <Dropdown v-model="model.durationFormat" :options="durationFormatOptions" />
 
       <p class="field-label">Time format</p>
-      <select v-model="model.timeFormat">
-        <option value="24h">24-hour</option>
-        <option value="12h">12-hour</option>
-      </select>
+      <Dropdown v-model="model.timeFormat" :options="timeFormatOptions" />
 
       <div class="button-container">
         <button class="btn-info" :disabled="saving" @click="save">
@@ -39,9 +45,29 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
+import { useUserStore } from "@/stores/user";
 import type { Settings } from "@/model";
+import Dropdown, { type DropdownOption } from "@/components/inputs/SelectDropdown.vue";
+import { timezoneOptions } from "@/helpers/timezones";
+
+const weekStartDayOptions: DropdownOption[] = [
+  { value: "monday", label: "Monday" },
+  { value: "sunday", label: "Sunday" },
+];
+
+const durationFormatOptions: DropdownOption[] = [
+  { value: "long", label: "Long (2h 30m)" },
+  { value: "decimal", label: "Decimal (2.5h)" },
+  { value: "clock", label: "Clock (02:30)" },
+];
+
+const timeFormatOptions: DropdownOption[] = [
+  { value: "24h", label: "24-hour" },
+  { value: "12h", label: "12-hour" },
+];
 
 const settingsStore = useSettingsStore();
+const userStore = useUserStore();
 
 const model = ref<Settings | null>(null);
 const saving = ref(false);
@@ -83,12 +109,13 @@ async function save() {
 .settings-page {
   display: flex;
   flex-direction: column;
+  gap: 1.5em;
 }
 
 .title-bar {
   display: flex;
   flex-direction: row;
-  margin-bottom: 1.25em;
+  margin-bottom: -1em;
 }
 
 .title-bar h2 {
@@ -106,10 +133,28 @@ async function save() {
   padding-top: 0.5em;
 }
 
+.account-card,
+.settings-edit {
+  max-width: 400px;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.account-name {
+  color: var(--nord4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .settings-edit {
   display: flex;
   flex-direction: column;
-  max-width: 400px;
 }
 
 .field-label {
@@ -117,8 +162,7 @@ async function save() {
   color: var(--nord3);
 }
 
-select {
-  width: 100%;
+.settings-edit > :deep(.dropdown) {
   margin-bottom: 1em;
 }
 

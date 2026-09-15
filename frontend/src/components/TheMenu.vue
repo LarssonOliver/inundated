@@ -16,20 +16,14 @@
         </ul>
       </nav>
       <div class="footer">
-        <div v-if="userStore.user" class="account">
-          <span v-if="isExpanded" class="account-name" :title="userStore.user.email">
-            {{ userStore.user.name || userStore.user.email }}
-          </span>
-          <button
-            class="btn-info logout"
-            :class="{ 'logout-compact': !isExpanded }"
-            :title="!isExpanded ? 'Log out' : ''"
-            @click="userStore.logout()"
-          >
-            <MaterialIcon v-if="!isExpanded" icon="logout" size="1.1em" />
-            <span v-else>Log out</span>
-          </button>
-        </div>
+        <router-link
+          to="/settings"
+          class="nav-link settings-link"
+          :title="!isExpanded ? 'Settings' : ''"
+        >
+          <MaterialIcon class="nav-icon" icon="settings" size="1.3em" />
+          <span v-if="isExpanded" class="nav-label">Settings</span>
+        </router-link>
         <div class="bottom">
           <strong v-if="isExpanded"> Inundated {{ version }} </strong>
           <button
@@ -50,10 +44,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { version } from "@/../package.json";
-import { useUserStore } from "@/stores/user";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
-
-const userStore = useUserStore();
 
 const isExpanded = ref(true);
 const toggleSidebar = () => {
@@ -64,7 +55,6 @@ const links = [
   { to: "/", label: "Timesheet", icon: "schedule" },
   { to: "/projects", label: "Projects", icon: "folder" },
   { to: "/tags", label: "Tags", icon: "sell" },
-  { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
 const sidebarStyle = computed(() => ({
@@ -102,29 +92,8 @@ const sidebarStyle = computed(() => ({
   white-space: nowrap;
 }
 
-.account {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
+.settings-link {
   margin-bottom: 0.75em;
-}
-
-.account-name {
-  color: var(--nord4);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.logout {
-  width: 100%;
-}
-
-.logout-compact {
-  padding: 0.5em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .title {
