@@ -89,7 +89,7 @@ describe("tags API", () => {
       archived: false,
     });
 
-    expect(api.getTag).toHaveBeenCalledWith({ tagId: "abc", include: new Set() });
+    expect(api.getTag).toHaveBeenCalledWith({ tagId: "abc", include: undefined });
 
     await sut.getTag("abc", true);
     expect(api.getTag).toHaveBeenCalledWith({

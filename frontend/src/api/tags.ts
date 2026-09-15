@@ -66,7 +66,10 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
         include.add(GetTagIncludeEnum.TotalTimeMs);
       }
 
-      const response = await api.getTag({ tagId: id, include: include });
+      const response = await api.getTag({
+        tagId: id,
+        include: include.size > 0 ? include : undefined,
+      });
       return tagMapper.fromApi(response);
     },
 
