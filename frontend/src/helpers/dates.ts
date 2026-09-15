@@ -49,6 +49,6 @@ const WIDEST_SAMPLE_DATE = new Date(2024, 11, 31);
 export function datePickerInputWidthCh(dateFormat: DateFormat): number {
   const sample = format(WIDEST_SAMPLE_DATE, DATE_TOKENS[dateFormat]);
   const separator = 3; // " - "
-  const iconAndPadding = 5; // room for the calendar icon + input padding
+  const iconAndPadding = 5.5 + (dateFormat === "iso" ? 1 : 0); // room for the calendar icon + input padding
   return sample.length * 2 + separator + iconAndPadding;
 }
