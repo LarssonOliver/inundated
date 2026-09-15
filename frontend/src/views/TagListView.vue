@@ -2,10 +2,11 @@
   <div class="tag-list">
     <div class="title-bar">
       <h2>Tags</h2>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Tag' })" />
     </div>
-    <div v-for="tag in tagsStore.tags" :key="tag.id">
-      <div class="tag-card">
+    <div v-for="tag in sortedTags" :key="tag.id">
+      <div class="tag-card" :class="{ archived: tag.archived }">
         <div class="color-bar" :style="{ backgroundColor: tag.color }">
           <div class="tag-item">
             <router-link class="tag-name" :to="`/tags/${tag.id}`">
@@ -38,15 +39,19 @@ import { useRouter } from "vue-router";
 import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { useArchivableList } from "@/composables/useArchivableList";
 
 import TagItem from "@/components/tags/TagItem.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
+import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 
 const tagsStore = useTagsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
 
 const pageSize = 50;
+
+const { showArchived, sorted: sortedTags } = useArchivableList(() => tagsStore.tags, tagsStore);
 
 useInfiniteScroll(tagsStore, sentinelElement, pageSize);
 
@@ -59,6 +64,7 @@ onMounted(async () => {
 .title-bar {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   margin-bottom: 1.25em;
 }
 
@@ -66,6 +72,20 @@ onMounted(async () => {
   flex: 1;
   margin: 0;
   align-content: center;
+}
+
+.show-archived {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 0.5em;
+  color: var(--nord3);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.tag-card.archived .tag-item {
+  opacity: 0.5;
 }
 
 input[type="button"] {

@@ -14,6 +14,7 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       timeBudgetHours: apiModel.timeBudgetHours,
       tagIds: new Set(apiModel.tagIds || []),
       totalTimeMs: apiModel.totalTimeMs,
+      archived: apiModel.archived,
     };
   },
   toApi(domainModel: Project): Api.Project {
@@ -23,6 +24,7 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       color: domainModel.color,
       timeBudgetHours: domainModel.timeBudgetHours,
       tagIds: domainModel.tagIds.size > 0 ? new Set(domainModel.tagIds) : undefined,
+      archived: domainModel.archived,
     };
   },
 };
@@ -48,5 +50,6 @@ export function toApiUpdateProject(patch: Partial<Omit<Project, "id">>): Api.Upd
     ...(patch.color !== undefined && { color: patch.color }),
     ...(patch.timeBudgetHours !== undefined && { timeBudgetHours: patch.timeBudgetHours }),
     ...(patch.tagIds !== undefined && { tagIds: new Set(patch.tagIds) }),
+    ...(patch.archived !== undefined && { archived: patch.archived }),
   };
 }

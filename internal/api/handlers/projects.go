@@ -54,6 +54,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
+		Archived:        reply.Archived,
 	}
 
 	if len(reply.TagIds) > 0 {
@@ -97,6 +98,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
+		Archived:        reply.Archived,
 	}
 
 	if includes.TotalTime && reply.TotalTime != nil {
@@ -129,6 +131,10 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 		paginationParams.Offset = *request.Params.Offset
 	}
 
+	if request.Params.IncludeArchived != nil {
+		paginationParams.IncludeArchived = *request.Params.IncludeArchived
+	}
+
 	page, err := p.svc.ListProjects(ctx, paginationParams)
 
 	if err != nil {
@@ -142,6 +148,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 			Name:            project.Name,
 			Color:           project.Color,
 			TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
+			Archived:        project.Archived,
 		}
 		if len(project.TagIds) > 0 {
 			apiProject.TagIds = &project.TagIds
@@ -187,6 +194,10 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 		project.TagIds = *request.Body.TagIds
 	}
 
+	if request.Body.Archived != nil {
+		project.Archived = *request.Body.Archived
+	}
+
 	reply, err := p.svc.UpdateProject(ctx, project)
 
 	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
@@ -200,6 +211,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
+		Archived:        reply.Archived,
 	}
 
 	if len(reply.TagIds) > 0 {

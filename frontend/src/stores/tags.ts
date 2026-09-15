@@ -1,6 +1,7 @@
 import { tagsApi, type TagsApi } from "@/api";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
+import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import type { Tag, TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -19,17 +20,26 @@ export interface PaginationState {
 function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
   return defineStore("tags", () => {
     const tags = ref<Map<string, Tag>>(new Map<string, Tag>());
-    const _pending = ref<Promise<void> | null>(null);
+    // Tags fetched individually by id (e.g. an archived tag that's still
+    // assigned to an item but excluded from the current listing filter).
+    // Kept separate from `tags` so it's available to getTagById without
+    // leaking archived tags into list views that don't want them.
+    const individuallyFetchedTags = ref<Map<string, Tag>>(new Map<string, Tag>());
+    // Dedupes concurrent identical-key fetches and discards a slower, stale
+    // one that's since been superseded by a fetch with a different key (e.g.
+    // a filter change while a fetch is in flight).
+    const supersededFetch = useSupersededFetch();
 
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
+    const includeArchived = ref(false);
     const TTL = 60_000; // 1 minute
 
     const readOnlyTags = computed<readonly Tag[]>(() =>
       Array.from(tags.value.values()).map(copyTag),
     );
 
-    const isLoading = computed(() => !!_pending.value);
+    const isLoading = supersededFetch.isLoading;
 
     /**
      * Fetches the first page of tags from the API and stores them locally.
@@ -37,19 +47,30 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the tags have been fetched.
      */
     async function fetchTagsAlways(): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `always:${includeArchived.value}`;
+      await supersededFetch.run(key, async () => {
+        const result = await api.listTagsPaginated(50, 0, includeArchived.value);
+        if (supersededFetch.isStale(key)) return;
 
-      _pending.value = (async () => {
-        const result = await api.listTagsPaginated(50, 0);
         tags.value = new Map(result.data.map((tag) => [tag.id, tag]));
         paginationState.value = result.pagination;
-      })();
+      });
+    }
 
-      try {
-        await _pending.value;
-      } finally {
-        _pending.value = null;
-      }
+    /**
+     * Sets whether archived tags should be included in future fetches,
+     * clearing the cache and reloading the first page if the value changes.
+     *
+     * @param value - Whether archived tags should be included.
+     */
+    async function setIncludeArchived(value: boolean): Promise<void> {
+      if (includeArchived.value === value) return;
+
+      includeArchived.value = value;
+      tags.value = new Map();
+      paginationState.value = null;
+      lastFetched.value = null;
+      await fetchPage(50, 0);
     }
 
     /**
@@ -75,22 +96,23 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the page has been fetched
      */
     async function fetchPage(limit: number = 50, offset: number = 0): Promise<void> {
-      if (_pending.value) return _pending.value;
+      const key = `${limit}:${offset}:${includeArchived.value}`;
+      await supersededFetch.run(key, async () => {
+        const result = await api.listTagsPaginated(limit, offset, includeArchived.value);
+        if (supersededFetch.isStale(key)) return;
 
-      _pending.value = (async () => {
-        const result = await api.listTagsPaginated(limit, offset);
-        // Accumulate items in the map instead of replacing
+        // A page-0 fetch is a fresh load (e.g. after remounting the list), so
+        // start clean rather than leaving behind stale entries that no longer
+        // match the current filter (e.g. a tag archived elsewhere). Later
+        // pages accumulate onto that, as used for infinite scrolling.
+        if (offset === 0) {
+          tags.value = new Map();
+        }
         for (const tag of result.data) {
           tags.value.set(tag.id, tag);
         }
         paginationState.value = result.pagination;
-      })();
-
-      try {
-        await _pending.value;
-      } finally {
-        _pending.value = null;
-      }
+      });
     }
 
     /**
@@ -128,6 +150,31 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Searches the API (not just the local cache) for a tag with an exact
+     * name match, including archived tags. Pages through all tags since
+     * there's no server-side name filter.
+     *
+     * @param normalizedName - The exact name to match.
+     *
+     * @returns The matching tag, or undefined if none exists.
+     */
+    async function findTagByName(normalizedName: string): Promise<Tag | undefined> {
+      const limit = 100;
+      let offset = 0;
+
+      while (true) {
+        const result = await api.listTagsPaginated(limit, offset, true);
+        const match = result.data.find((tag) => tag.name === normalizedName);
+        if (match) return match;
+
+        offset += result.data.length;
+        if (result.data.length === 0 || offset >= result.pagination.total) {
+          return undefined;
+        }
+      }
+    }
+
+    /**
      * Creates a new tag from a name and an optional color. Should a tag with
      * the same name already exist, it will be returned instead of creating
      * a new one.
@@ -150,15 +197,42 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
         }
       }
 
+      // The local cache may exclude archived tags (it only holds whatever
+      // the current includeArchived filter has fetched). Archived tag names
+      // aren't unique-constrained in the database, so skipping this check
+      // would silently create a duplicate. But if the cache already holds
+      // every tag the server has (including archived ones), the scan above
+      // is authoritative and paging the API again would be redundant.
+      const cacheIsComplete =
+        includeArchived.value &&
+        paginationState.value != null &&
+        tags.value.size >= paginationState.value.total;
+
+      const existing = cacheIsComplete ? undefined : await findTagByName(normalizedName);
+      if (existing) {
+        // A caller creating/using a tag by name needs an ID it can actually
+        // attach to something. Returning an archived tag as-is would look
+        // like success here but fail later: the backend rejects freshly
+        // attaching an archived tag, so revive it instead.
+        if (existing.archived) {
+          return await updateTag({ ...existing, archived: false });
+        }
+        tags.value.set(existing.id, existing);
+        return copyTag(existing);
+      }
+
       const newTag = await createTag({
         name: normalizedName,
         color: color ?? stringToHexColor(normalizedName),
+        archived: false,
       });
       return newTag;
     }
 
     /**
-     * Gets a tag by its ID. This does not fetch the tag from the API.
+     * Gets a tag by its ID. This does not fetch the tag from the API; it
+     * checks both the current listing cache and any tags previously fetched
+     * individually via fetchDetailedTagById.
      *
      * @param id - The ID of the tag to get.
      *
@@ -166,14 +240,16 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      *  if not found.
      */
     function getTagById(id: string): Tag | undefined {
-      const tag = tags.value.get(id);
+      const tag = tags.value.get(id) ?? individuallyFetchedTags.value.get(id);
       return tag ? copyTag(tag) : undefined;
     }
 
     /**
      * Fetches a tag by its ID from the API, bypassing the local cache.
      * This includes additional details such as totalTimeMs which may not
-     * be present in the local cache.
+     * be present in the local cache. The result is cached for getTagById,
+     * but never merged into the listing cache (tags), so it can't leak an
+     * archived tag into a list view that's filtering them out.
      *
      * @param id - The ID of the tag to fetch.
      *
@@ -181,7 +257,28 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      */
     async function fetchDetailedTagById(id: string): Promise<Tag> {
       const detailedTag = await api.getTag(id, true);
+      individuallyFetchedTags.value.set(id, detailedTag);
       return copyTag(detailedTag);
+    }
+
+    /**
+     * Fetches a tag by its ID from the API, bypassing the local cache, but
+     * without the additional detail (e.g. totalTimeMs) that
+     * fetchDetailedTagById requests - use this when only the tag's core
+     * fields are needed, such as displaying an already-assigned archived tag
+     * that isn't in the listing cache, to avoid the server aggregating stats
+     * that won't be shown. The result is cached for getTagById, but never
+     * merged into the listing cache (tags), so it can't leak an archived tag
+     * into a list view that's filtering them out.
+     *
+     * @param id - The ID of the tag to fetch.
+     *
+     * @returns A promise that resolves to the tag if found, or rejects if not found.
+     */
+    async function fetchTagById(id: string): Promise<Tag> {
+      const tag = await api.getTag(id, false);
+      individuallyFetchedTags.value.set(id, tag);
+      return copyTag(tag);
     }
 
     /**
@@ -257,6 +354,8 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     return {
       tags: readOnlyTags,
       isLoading,
+      includeArchived,
+      setIncludeArchived,
       fetchTags,
       fetchPage,
       getPaginationState,
@@ -265,6 +364,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       createTagFromName,
       getTagById,
       fetchDetailedTagById,
+      fetchTagById,
       searchTags,
       updateTag,
       deleteTag,

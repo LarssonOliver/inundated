@@ -10,6 +10,7 @@ Name | Type
 `name` | string
 `color` | string
 `totalTimeMs` | number
+`archived` | boolean
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "name": null,
   "color": null,
   "totalTimeMs": null,
+  "archived": null,
 } satisfies Tag
 
 console.log(example)

@@ -21,7 +21,11 @@ export interface PaginatedProjectsResponse {
 
 export interface ProjectsApi {
   listProjects(): Promise<Project[]>;
-  listProjectsPaginated(limit?: number, offset?: number): Promise<PaginatedProjectsResponse>;
+  listProjectsPaginated(
+    limit?: number,
+    offset?: number,
+    includeArchived?: boolean,
+  ): Promise<PaginatedProjectsResponse>;
   getProject(id: string, detailed: boolean): Promise<Project>;
   createProject(project: Omit<Project, "id">): Promise<Project>;
   updateProject(id: string, project: Partial<Omit<Project, "id">>): Promise<Project>;
@@ -47,8 +51,9 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
     async listProjectsPaginated(
       limit: number = 50,
       offset: number = 0,
+      includeArchived: boolean = false,
     ): Promise<PaginatedProjectsResponse> {
-      const response = await api.listProjects({ limit, offset });
+      const response = await api.listProjects({ limit, offset, includeArchived });
       return {
         data: mapFromApiArray(projectMapper, response.data),
         pagination: {

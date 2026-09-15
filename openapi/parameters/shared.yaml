@@ -144,6 +144,17 @@ offset:
     minimum: 0
   example: 0
 
+includeArchivedQuery:
+  name: includeArchived
+  in: query
+  required: false
+  description: >
+    Whether to include archived items in the results. Defaults to false, so
+    archived items are hidden unless explicitly requested.
+  schema:
+    type: boolean
+    default: false
+
 redirect:
   name: redirect
   in: query

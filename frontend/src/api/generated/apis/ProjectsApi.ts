@@ -68,6 +68,7 @@ export interface GetProjectStatsRequest {
 export interface ListProjectsRequest {
     limit?: number;
     offset?: number;
+    includeArchived?: boolean;
 }
 
 export interface UpdateProjectRequest {
@@ -302,6 +303,10 @@ export class ProjectsApi extends runtime.BaseAPI {
 
         if (requestParameters['offset'] != null) {
             queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['includeArchived'] != null) {
+            queryParameters['includeArchived'] = requestParameters['includeArchived'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

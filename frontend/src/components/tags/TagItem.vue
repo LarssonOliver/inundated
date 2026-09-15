@@ -29,9 +29,15 @@ const { tag, canClose } = defineProps<{
 }>();
 
 const darkText = computed(() => shouldTextBeDarkFromBgColor(tag.color));
+// Must stay a computed, not a plain `tag.archived` read: reactive() only
+// auto-unwraps refs on read, so a bare boolean captured here would freeze at
+// mount time and stop tracking archive/unarchive changes on this instance
+// (e.g. TagListView re-rendering the same TagItem after a toggle).
+const isArchived = computed(() => tag.archived);
 const containerClasses = reactive({
   "tag-container": true,
   "dark-text": darkText,
+  archived: isArchived,
 });
 </script>
 
@@ -49,6 +55,10 @@ const containerClasses = reactive({
 
 .tag-container.dark-text {
   color: var(--nord0);
+}
+
+.tag-container.archived div {
+  text-decoration: line-through;
 }
 
 .close-icon {

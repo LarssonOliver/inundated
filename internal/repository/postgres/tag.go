@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,27 +19,31 @@ func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id u
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
 	q := `
-		SELECT id, name, color, user_id
+		SELECT id, name, color, user_id, archived_at
 		FROM tags
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var t model.Tag
-	err := r.db.QueryRow(ctx, q, args...).Scan(&t.Id, &t.Name, &t.Color, &t.UserId)
+	var archivedAt *time.Time
+	err := r.db.QueryRow(ctx, q, args...).Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
 	}
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("GetTag: %w", err)
 	}
+	t.Archived = archivedAt != nil
 	return t, nil
 }
 
 func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+	archivedSQL := archivedFilter(params.IncludeArchived)
+
 	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
 	countQ := `
 		SELECT COUNT(*)
 		FROM tags
-		WHERE deleted_at IS NULL AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL AND ` + archivedSQL + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
@@ -47,9 +52,9 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 
 	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	q := `
-		SELECT id, name, color, user_id
+		SELECT id, name, color, user_id, archived_at
 		FROM tags
-		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
 		ORDER BY name
 		LIMIT $1 OFFSET $2`
 
@@ -62,9 +67,11 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 	var tags []model.Tag
 	for rows.Next() {
 		var t model.Tag
-		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &t.UserId); err != nil {
+		var archivedAt *time.Time
+		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt); err != nil {
 			return model.Page[model.Tag]{}, fmt.Errorf("ListTags scan: %w", err)
 		}
+		t.Archived = archivedAt != nil
 		tags = append(tags, t)
 	}
 	if err := rows.Err(); err != nil {
@@ -111,22 +118,25 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		return model.Tag{}, fmt.Errorf("UpdateTag: name must not be empty: %w", model.ErrInvalidArgument)
 	}
 
-	ownerSQL, args := ownerPredicate("user_id", scope, []any{tag.Id, tag.Name, tag.Color})
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{tag.Id, tag.Name, tag.Color, tag.Archived})
 	q := `
 		UPDATE tags
-		SET name = $2, color = $3
+		SET name = $2, color = $3,
+			archived_at = CASE WHEN $4 THEN COALESCE(archived_at, now()) ELSE NULL END
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-		RETURNING id, name, color, user_id`
+		RETURNING id, name, color, user_id, archived_at`
 
 	var updated model.Tag
+	var archivedAt *time.Time
 	err := r.db.QueryRow(ctx, q, args...).
-		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.UserId)
+		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.UserId, &archivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, model.ErrNotFound)
 	}
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("UpdateTag: %w", err)
 	}
+	updated.Archived = archivedAt != nil
 	return updated, nil
 }
 

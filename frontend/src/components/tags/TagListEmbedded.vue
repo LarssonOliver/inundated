@@ -43,17 +43,39 @@ const tagSearchResult = computed(() => {
   if (!tagSearchQuery.value) return [];
   return tagsStore
     .searchTags(tagSearchQuery.value)
-    .filter((tag) => !model.value.has(tag.id))
+    .filter((tag) => !tag.archived && !model.value.has(tag.id))
     .slice(0, 5);
 });
+
+// Guards against overlapping refreshes: if the model changes again before an
+// earlier refresh's (slower) network calls resolve, that stale result must
+// not clobber the tags the newer refresh already resolved.
+let refreshToken = 0;
 
 watch(model, async () => await refreshTags(), { deep: true, immediate: true });
 
 async function refreshTags() {
+  const token = ++refreshToken;
   await tagsStore.fetchTags();
-  tags.value = [...model.value]
-    .map((id) => tagsStore.getTagById(id))
-    .filter((tag): tag is Tag => tag != null);
+  const resolved = await Promise.all(
+    [...model.value].map((id) => tagsStore.getTagById(id) ?? fetchAssignedTag(id)),
+  );
+  if (token !== refreshToken) return; // superseded by a newer refresh
+  tags.value = resolved.filter((tag): tag is Tag => tag != null);
+}
+
+// Tags already assigned to this item must still be shown even if archived,
+// but the shared tags cache only holds non-archived tags unless the "show
+// archived" toggle is on elsewhere, so fall back to fetching them directly.
+// Uses the non-detailed fetch since this pill display has no use for stats
+// like totalTimeMs, which would otherwise make the server aggregate them
+// for nothing.
+async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
+  try {
+    return await tagsStore.fetchTagById(id);
+  } catch {
+    return undefined;
+  }
 }
 
 function onTagSearch(query: string) {

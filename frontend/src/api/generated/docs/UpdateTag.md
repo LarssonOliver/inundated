@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `name` | string
 `color` | string
+`archived` | boolean
 
 ## Example
 
@@ -18,6 +19,7 @@ import type { UpdateTag } from ''
 const example = {
   "name": null,
   "color": null,
+  "archived": null,
 } satisfies UpdateTag
 
 console.log(example)

@@ -292,6 +292,20 @@ func TestTagHandler_ListTags(t *testing.T) {
 			initParams: func() *api.ListTagsParams { return nil },
 			wantErr:    true,
 		},
+		{
+			name: "includeArchived forwarded to service",
+			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+				require.True(t, params.IncludeArchived)
+				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListTagsParams {
+				include := true
+				return &api.ListTagsParams{IncludeArchived: &include}
+			},
+			wantData:  []api.Tag{},
+			wantLimit: 25,
+			wantTotal: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -395,6 +409,26 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 				Color: "#000000",
 			},
 		},
+		{
+			name:      "archives a tag",
+			requestId: existingID,
+			request: api.UpdateTag{
+				Archived: boolPtr(true),
+			},
+			getFn: func(ctx context.Context, id uuid.UUID, i *service.TagServiceGetIncludes) (model.Tag, error) {
+				return model.Tag{Id: id, Name: name, Color: color}, nil
+			},
+			updateFn: func(ctx context.Context, tag model.Tag) (model.Tag, error) {
+				require.True(t, tag.Archived)
+				return tag, nil
+			},
+			want: api.Tag{
+				Id:       existingID,
+				Name:     name,
+				Color:    color,
+				Archived: true,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -418,6 +452,7 @@ func TestTagHandler_UpdateTag(t *testing.T) {
 			require.Equal(t, tt.requestId, res.Id)
 			require.Equal(t, tt.want.Name, res.Name)
 			require.Equal(t, tt.want.Color, res.Color)
+			require.Equal(t, tt.want.Archived, res.Archived)
 		})
 	}
 }

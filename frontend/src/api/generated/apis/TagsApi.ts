@@ -68,6 +68,7 @@ export interface GetTagStatsRequest {
 export interface ListTagsRequest {
     limit?: number;
     offset?: number;
+    includeArchived?: boolean;
 }
 
 export interface UpdateTagRequest {
@@ -302,6 +303,10 @@ export class TagsApi extends runtime.BaseAPI {
 
         if (requestParameters['offset'] != null) {
             queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['includeArchived'] != null) {
+            queryParameters['includeArchived'] = requestParameters['includeArchived'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

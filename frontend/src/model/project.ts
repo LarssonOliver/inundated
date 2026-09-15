@@ -7,6 +7,7 @@ export interface Project {
   timeBudgetHours?: number;
   tagIds: Set<string>;
   totalTimeMs?: number;
+  archived: boolean;
 }
 
 export interface ProjectStats {

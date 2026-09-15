@@ -10,5 +10,6 @@ export function newProjectWithDefaults(): Project {
     timeBudgetHours: 0,
     color: stringToHexColor(randomColorString),
     tagIds: new Set<string>(),
+    archived: false,
   };
 }

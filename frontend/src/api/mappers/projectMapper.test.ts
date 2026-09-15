@@ -16,6 +16,7 @@ describe("projectMapper", () => {
           "22222222-2222-2222-2222-222222222222",
         ]),
         totalTimeMs: 123456789,
+        archived: false,
       };
 
       const result = projectMapper.fromApi(apiProject);
@@ -30,6 +31,7 @@ describe("projectMapper", () => {
           "22222222-2222-2222-2222-222222222222",
         ]),
         totalTimeMs: 123456789,
+        archived: false,
       });
     });
 
@@ -40,6 +42,7 @@ describe("projectMapper", () => {
         color: "#000000",
         timeBudgetHours: 10,
         tagIds: undefined,
+        archived: false,
       };
 
       const result = projectMapper.fromApi(apiProject);
@@ -61,6 +64,7 @@ describe("projectMapper", () => {
           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         ]),
         totalTimeMs: 987654321,
+        archived: false,
       };
 
       const result = projectMapper.toApi(domainProject);
@@ -75,6 +79,7 @@ describe("projectMapper", () => {
           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         ]),
         totalTimeMs: undefined,
+        archived: false,
       });
     });
   });
@@ -90,6 +95,7 @@ describe("toApiCreateProject", () => {
         "cccccccc-cccc-cccc-cccc-cccccccccccc",
         "dddddddd-dddd-dddd-dddd-dddddddddddd",
       ]),
+      archived: false,
     };
 
     const result = toApiCreateProject(domain);
@@ -130,6 +136,18 @@ describe("toApiUpdateProject", () => {
 
     expect(result).toEqual({
       tagIds: new Set(["eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"]),
+    });
+  });
+
+  it("maps archived when provided", () => {
+    const patch: Partial<Omit<Project, "id">> = {
+      archived: true,
+    };
+
+    const result = toApiUpdateProject(patch);
+
+    expect(result).toEqual({
+      archived: true,
     });
   });
 

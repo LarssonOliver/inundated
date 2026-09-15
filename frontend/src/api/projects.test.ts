@@ -28,8 +28,15 @@ describe("projects API", () => {
   it("listProjects maps paginated API response to domain projects", async () => {
     api.listProjects.mockResolvedValue({
       data: [
-        { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
-        { id: "2", name: "B", color: "#222", tagIds: new Set() },
+        {
+          id: "1",
+          name: "A",
+          color: "#111",
+          timeBudgetHours: 2,
+          tagIds: new Set(["2"]),
+          archived: false,
+        },
+        { id: "2", name: "B", color: "#222", tagIds: new Set(), archived: false },
       ],
       pagination: { limit: 50, offset: 0, total: 2 },
     });
@@ -38,8 +45,15 @@ describe("projects API", () => {
     const result = await sut.listProjects();
 
     expect(result).toEqual([
-      { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
-      { id: "2", name: "B", color: "#222", tagIds: new Set() },
+      {
+        id: "1",
+        name: "A",
+        color: "#111",
+        timeBudgetHours: 2,
+        tagIds: new Set(["2"]),
+        archived: false,
+      },
+      { id: "2", name: "B", color: "#222", tagIds: new Set(), archived: false },
     ]);
 
     expect(api.listProjects).toHaveBeenCalledOnce();
@@ -47,7 +61,16 @@ describe("projects API", () => {
 
   it("listProjectsPaginated returns mapped projects with pagination info", async () => {
     api.listProjects.mockResolvedValue({
-      data: [{ id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) }],
+      data: [
+        {
+          id: "1",
+          name: "A",
+          color: "#111",
+          timeBudgetHours: 2,
+          tagIds: new Set(["2"]),
+          archived: false,
+        },
+      ],
       pagination: { limit: 50, offset: 50, total: 100 },
     });
 
@@ -55,11 +78,34 @@ describe("projects API", () => {
     const result = await sut.listProjectsPaginated(50, 50);
 
     expect(result.data).toEqual([
-      { id: "1", name: "A", color: "#111", timeBudgetHours: 2, tagIds: new Set(["2"]) },
+      {
+        id: "1",
+        name: "A",
+        color: "#111",
+        timeBudgetHours: 2,
+        tagIds: new Set(["2"]),
+        archived: false,
+      },
     ]);
     expect(result.pagination).toEqual({ limit: 50, offset: 50, total: 100 });
 
-    expect(api.listProjects).toHaveBeenCalledWith({ limit: 50, offset: 50 });
+    expect(api.listProjects).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 50,
+      includeArchived: false,
+    });
+  });
+
+  it("listProjectsPaginated forwards includeArchived", async () => {
+    api.listProjects.mockResolvedValue({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+
+    const sut = createProjectsApi(api);
+    await sut.listProjectsPaginated(50, 0, true);
+
+    expect(api.listProjects).toHaveBeenCalledWith({ limit: 50, offset: 0, includeArchived: true });
   });
 
   it("getProject returns mapped project when found", async () => {
@@ -68,6 +114,7 @@ describe("projects API", () => {
       name: "Test",
       color: "#fff",
       tagIds: new Set(),
+      archived: false,
     });
 
     const sut = createProjectsApi(api);
@@ -78,6 +125,7 @@ describe("projects API", () => {
       name: "Test",
       color: "#fff",
       tagIds: new Set(),
+      archived: false,
     });
 
     expect(api.getProject).toHaveBeenCalledWith({ projectId: "abc", include: new Set() });
@@ -89,6 +137,7 @@ describe("projects API", () => {
       name: "New",
       color: "#000",
       tagIds: new Set(),
+      archived: false,
     });
 
     const sut = createProjectsApi(api);
@@ -96,6 +145,7 @@ describe("projects API", () => {
       name: "New",
       color: "#000",
       tagIds: new Set(),
+      archived: false,
     });
 
     expect(api.createProject).toHaveBeenCalledWith({
@@ -107,6 +157,7 @@ describe("projects API", () => {
       name: "New",
       color: "#000",
       tagIds: new Set(),
+      archived: false,
     });
   });
 
@@ -115,6 +166,7 @@ describe("projects API", () => {
       id: "1",
       name: "Updated",
       color: "#123",
+      archived: false,
     });
 
     const sut = createProjectsApi(api);
@@ -132,7 +184,26 @@ describe("projects API", () => {
       name: "Updated",
       color: "#123",
       tagIds: new Set(),
+      archived: false,
     });
+  });
+
+  it("updateProject can toggle archived", async () => {
+    api.updateProject.mockResolvedValue({
+      id: "1",
+      name: "Updated",
+      color: "#123",
+      archived: true,
+    });
+
+    const sut = createProjectsApi(api);
+    const result = await sut.updateProject("1", { archived: true });
+
+    expect(api.updateProject).toHaveBeenCalledWith({
+      projectId: "1",
+      updateProject: { archived: true },
+    });
+    expect(result.archived).toBe(true);
   });
 
   it("deleteProject calls API with correct id", async () => {

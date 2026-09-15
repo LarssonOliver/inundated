@@ -6,6 +6,7 @@ projects:
     parameters:
       - $ref: "../parameters/shared.yaml#/limit"
       - $ref: "../parameters/shared.yaml#/offset"
+      - $ref: "../parameters/shared.yaml#/includeArchivedQuery"
     responses:
       "200":
         description: Paginated list of projects

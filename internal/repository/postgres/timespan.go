@@ -32,7 +32,7 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 		return model.Timespan{}, fmt.Errorf("GetTimespan: %w", err)
 	}
 
-	ts.TagIds, err = r.timespanTagIds(ctx, id)
+	ts.TagIds, err = r.timespanTagIds(ctx, r.db, id)
 	if err != nil {
 		return model.Timespan{}, err
 	}
@@ -81,7 +81,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 
 	var tagErr error
 	for i := range spans {
-		spans[i].TagIds, tagErr = r.timespanTagIds(ctx, spans[i].Id)
+		spans[i].TagIds, tagErr = r.timespanTagIds(ctx, r.db, spans[i].Id)
 		if tagErr != nil {
 			return model.Page[model.Timespan]{}, tagErr
 		}
@@ -113,7 +113,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 
 	var created model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, noAssociatedTags)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,9 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 
 	var updated model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds)
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, func() ([]uuid.UUID, error) {
+			return r.timespanTagIds(ctx, q, timespan.Id)
+		})
 		if err != nil {
 			return err
 		}
@@ -203,15 +205,17 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerSco
 	return nil
 }
 
-// timespanTagIds returns all tag IDs linked to a time span.
-func (r *PostgresStore) timespanTagIds(ctx context.Context, timespanId uuid.UUID) ([]uuid.UUID, error) {
-	const q = `
-		SELECT tag_id 
-		FROM timespan_tags 
-		WHERE timespan_id = $1 
+// timespanTagIds returns all tag IDs linked to a time span. Callers pass
+// r.db for a standalone read, or the transaction's Querier to read within
+// it (e.g. alongside a concurrent tagsInScope check).
+func (r *PostgresStore) timespanTagIds(ctx context.Context, q Querier, timespanId uuid.UUID) ([]uuid.UUID, error) {
+	const query = `
+		SELECT tag_id
+		FROM timespan_tags
+		WHERE timespan_id = $1
 		ORDER BY tag_id`
 
-	rows, err := r.db.Query(ctx, q, timespanId)
+	rows, err := q.Query(ctx, query, timespanId)
 	if err != nil {
 		return nil, fmt.Errorf("timespanTagIds: %w", err)
 	}

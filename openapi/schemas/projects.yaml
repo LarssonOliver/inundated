@@ -1,6 +1,6 @@
 Project:
   type: object
-  required: [id, name, color]
+  required: [id, name, color, archived]
   properties:
     id:
       type: string
@@ -17,6 +17,11 @@ Project:
       $ref: "./shared.yaml#/TagIdList"
     totalTimeMs:
       type: integer
+    archived:
+      type: boolean
+      description: Whether this project is archived. Archived projects are hidden
+        from list views by default and excluded from search/pickers, but keep
+        their history and can still be fetched, edited, or deleted directly.
 
 CreateProject:
   type: object
@@ -47,6 +52,8 @@ UpdateProject:
       format: double
     tagIds:
       $ref: "./shared.yaml#/TagIdList"
+    archived:
+      type: boolean
 
 ProjectStats:
   type: object

@@ -2,10 +2,11 @@
   <div class="project-list">
     <div class="title-bar">
       <h2>Projects</h2>
+      <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Project' })" />
     </div>
-    <div v-for="project in projectsStore.projects" :key="project.id">
-      <div class="project-card">
+    <div v-for="project in sortedProjects" :key="project.id">
+      <div class="project-card" :class="{ archived: project.archived }">
         <div class="color-bar" :style="{ backgroundColor: project.color }">
           <div class="project-item">
             <router-link class="project-name" :to="`/projects/${project.id}`">
@@ -38,15 +39,22 @@ import { useRouter } from "vue-router";
 import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { useArchivableList } from "@/composables/useArchivableList";
 
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
+import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
 const sentinelElement = ref<HTMLElement>();
 
 const pageSize = 50;
+
+const { showArchived, sorted: sortedProjects } = useArchivableList(
+  () => projectsStore.projects,
+  projectsStore,
+);
 
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
 
@@ -57,6 +65,7 @@ onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
 .title-bar {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   margin-bottom: 1.25em;
 }
 
@@ -64,6 +73,20 @@ onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
   flex: 1;
   margin: 0;
   align-content: center;
+}
+
+.show-archived {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 0.5em;
+  color: var(--nord3);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.project-card.archived .project-item {
+  opacity: 0.5;
 }
 
 input[type="button"] {

@@ -20,6 +20,11 @@ type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
 	ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
+	// UpdateTag replaces the tag's mutable fields (including Archived)
+	// wholesale with those on tag - it does not merge with the stored tag.
+	// Callers must fetch the current tag first and copy forward any field
+	// they don't intend to change, or that field resets to its zero value
+	// (e.g. an omitted/false Archived unarchives the tag).
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }
@@ -37,6 +42,12 @@ type ProjectRepository interface {
 	GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error)
 	ListProjects(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Project], error)
 	CreateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
+	// UpdateProject replaces the project's mutable fields (including
+	// Archived) wholesale with those on project - it does not merge with
+	// the stored project. Callers must fetch the current project first and
+	// copy forward any field they don't intend to change, or that field
+	// resets to its zero value (e.g. an omitted/false Archived unarchives
+	// the project).
 	UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
 	DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }

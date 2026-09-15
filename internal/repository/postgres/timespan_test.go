@@ -303,9 +303,13 @@ func TestCreateTimespan_ForeignTagRejected(t *testing.T) {
 	mock.ExpectBegin()
 	// tagsInScope finds fewer live, in-scope tags than requested; the parent
 	// INSERT never runs and the transaction rolls back.
-	mock.ExpectQuery(`SELECT count\(\*\) FROM tags WHERE id = ANY\(\$1\) AND deleted_at IS NULL AND user_id = \$2`).
+	rows := pgxmock.NewRows([]string{"id", "archived_at"})
+	for _, tid := range ts.TagIds[:len(ts.TagIds)-1] {
+		rows.AddRow(tid, nil)
+	}
+	mock.ExpectQuery(`SELECT id, archived_at FROM tags WHERE id = ANY\(\$1\) AND deleted_at IS NULL AND user_id = \$2`).
 		WithArgs(ts.TagIds, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(len(ts.TagIds) - 1))
+		WillReturnRows(rows)
 	mock.ExpectRollback()
 
 	_, err := repo.CreateTimespan(ctx, testScope, ts)

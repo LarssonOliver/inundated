@@ -43,6 +43,12 @@ export interface Tag {
      * @memberof Tag
      */
     totalTimeMs?: number;
+    /**
+     * Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
+     * @type {boolean}
+     * @memberof Tag
+     */
+    archived: boolean;
 }
 
 /**
@@ -52,6 +58,7 @@ export function instanceOfTag(value: object): value is Tag {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('color' in value) || value['color'] === undefined) return false;
+    if (!('archived' in value) || value['archived'] === undefined) return false;
     return true;
 }
 
@@ -69,6 +76,7 @@ export function TagFromJSONTyped(json: any, ignoreDiscriminator: boolean): Tag {
         'name': json['name'],
         'color': json['color'],
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
+        'archived': json['archived'],
     };
 }
 
@@ -87,6 +95,7 @@ export function TagToJSONTyped(value?: Tag | null, ignoreDiscriminator: boolean 
         'name': value['name'],
         'color': value['color'],
         'totalTimeMs': value['totalTimeMs'],
+        'archived': value['archived'],
     };
 }
 

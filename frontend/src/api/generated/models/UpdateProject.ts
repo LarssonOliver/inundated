@@ -43,6 +43,12 @@ export interface UpdateProject {
      * @memberof UpdateProject
      */
     tagIds?: Set<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateProject
+     */
+    archived?: boolean;
 }
 
 /**
@@ -66,6 +72,7 @@ export function UpdateProjectFromJSONTyped(json: any, ignoreDiscriminator: boole
         'color': json['color'] == null ? undefined : json['color'],
         'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
+        'archived': json['archived'] == null ? undefined : json['archived'],
     };
 }
 
@@ -84,6 +91,7 @@ export function UpdateProjectToJSONTyped(value?: UpdateProject | null, ignoreDis
         'color': value['color'],
         'timeBudgetHours': value['timeBudgetHours'],
         'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
+        'archived': value['archived'],
     };
 }
 

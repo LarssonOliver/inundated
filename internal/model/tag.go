@@ -12,4 +12,5 @@ type Tag struct {
 	Color     string
 	TotalTime *time.Duration
 	UserId    *uuid.UUID
+	Archived  bool
 }

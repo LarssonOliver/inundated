@@ -225,6 +225,23 @@ func TestIndividualMigrations(t *testing.T) {
 				assertIndexNotExists(t, ctx, pool, "idx_sessions_token_hash")
 			},
 		},
+		{
+			name:        "0010_archived_at",
+			fromVersion: 9,
+			toVersion:   10,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "tags", "archived_at")
+				assertColumnNotExists(t, ctx, pool, "projects", "archived_at")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "tags", "archived_at", sptr("timestamp with time zone"))
+				assertColumnExists(t, ctx, pool, "projects", "archived_at", sptr("timestamp with time zone"))
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "tags", "archived_at")
+				assertColumnNotExists(t, ctx, pool, "projects", "archived_at")
+			},
+		},
 	}
 
 	for _, tc := range tests {

@@ -27,14 +27,14 @@ describe("API client wiring", () => {
   });
 
   it("sends requests to the /api-prefixed path without doubling the prefix", async () => {
-    await tagsApi.createTag({ name: "x", color: "#000" });
+    await tagsApi.createTag({ name: "x", color: "#000", archived: false });
 
     const url = fetchSpy.mock.calls[0][0] as string;
     expect(url).toBe("/api/tags");
   });
 
   it("sends no CSRF token header -- cross-origin protection is server-side", async () => {
-    await tagsApi.createTag({ name: "x", color: "#000" });
+    await tagsApi.createTag({ name: "x", color: "#000", archived: false });
 
     const init = fetchSpy.mock.calls[0][1] as RequestInit;
     expect(new Headers(init.headers).has("X-XSRF-TOKEN")).toBe(false);

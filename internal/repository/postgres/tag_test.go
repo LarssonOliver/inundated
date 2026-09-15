@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -12,8 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// tagCols is the ordered column list returned by tag queries.
+// tagCols is the ordered column list returned by CreateTag, which does not
+// report archived_at (a newly created tag is never archived).
 var tagCols = []string{"id", "name", "color", "user_id"}
+
+// tagColsArchived is the ordered column list returned by Get/List/Update,
+// which additionally report the archived_at column.
+var tagColsArchived = []string{"id", "name", "color", "user_id", "archived_at"}
 
 // ── GetTag ───────────────────────────────────────────────────────────────────
 
@@ -22,14 +28,30 @@ func TestGetTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
 		WithArgs(tag.Id, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows(tagCols).
-			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId))
+		WillReturnRows(pgxmock.NewRows(tagColsArchived).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil))
 
 	got, err := repo.GetTag(ctx, testScope, tag.Id)
 	require.NoError(t, err)
 	assert.Equal(t, tag, got)
+}
+
+func TestGetTag_Archived(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	tag := aTag()
+	archivedAt := time.Now().UTC()
+
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(tag.Id, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt))
+
+	got, err := repo.GetTag(ctx, testScope, tag.Id)
+	require.NoError(t, err)
+	assert.True(t, got.Archived)
 }
 
 func TestGetTag_NotFound(t *testing.T) {
@@ -37,9 +59,9 @@ func TestGetTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2`).
 		WithArgs(id, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows(tagCols))
+		WillReturnRows(pgxmock.NewRows(tagColsArchived))
 
 	_, err := repo.GetTag(ctx, testScope, id)
 	require.Error(t, err)
@@ -62,19 +84,19 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 	t1, t2 := aTag(), aTag()
 	t1.Name, t2.Name = "aaa", "zzz"
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
-			pgxmock.NewRows(tagCols).
-				AddRow(t1.Id, t1.Name, t1.Color, t1.UserId).
-				AddRow(t2.Id, t2.Name, t2.Color, t2.UserId),
+			pgxmock.NewRows(tagColsArchived).
+				AddRow(t1.Id, t1.Name, t1.Color, t1.UserId, nil).
+				AddRow(t2.Id, t2.Name, t2.Color, t2.UserId, nil),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
@@ -92,18 +114,18 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 
 	tag := aTag()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
-			pgxmock.NewRows(tagCols).
-				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId),
+			pgxmock.NewRows(tagColsArchived).
+				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.PaginationParams{
@@ -123,17 +145,17 @@ func TestListTags_Empty(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$1`).
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
-			pgxmock.NewRows(tagCols),
+			pgxmock.NewRows(tagColsArchived),
 		)
 
 	page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
@@ -151,18 +173,17 @@ func TestListTags_UnownedScope(t *testing.T) {
 	tag := aTag()
 	tag.UserId = nil
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id IS NULL`).
-		WithArgs().
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL`).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"count"}).
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, user_id FROM tags WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
 		WillReturnRows(
-			pgxmock.NewRows(tagCols).
-				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId),
+			pgxmock.NewRows(tagColsArchived).
+				AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil),
 		)
 
 	page, err := repo.ListTags(ctx, model.UnownedScope(), model.DefaultPaginationParams())
@@ -170,6 +191,31 @@ func TestListTags_UnownedScope(t *testing.T) {
 
 	assert.Len(t, page.Data, 1)
 	assert.Equal(t, 1, page.TotalCount)
+}
+
+func TestListTags_IncludeArchived(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	tag := aTag()
+	archivedAt := time.Now().UTC()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM tags WHERE deleted_at IS NULL AND user_id = \$1`).
+		WithArgs(*testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(1))
+
+	mock.ExpectQuery(`SELECT id, name, color, user_id, archived_at FROM tags WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+		WithArgs(25, 0, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt))
+
+	params := model.DefaultPaginationParams()
+	params.IncludeArchived = true
+	page, err := repo.ListTags(ctx, testScope, params)
+	require.NoError(t, err)
+
+	assert.Len(t, page.Data, 1)
+	assert.True(t, page.Data[0].Archived)
 }
 
 // ── CreateTag ────────────────────────────────────────────────────────────────
@@ -223,14 +269,31 @@ func TestUpdateTag_Success(t *testing.T) {
 	tag := aTag()
 	tag.Name = "updated-name"
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$4 RETURNING id, name, color, user_id`).
-		WithArgs(tag.Id, tag.Name, tag.Color, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows(tagCols).
-			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId))
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$5 RETURNING id, name, color, user_id, archived_at`).
+		WithArgs(tag.Id, tag.Name, tag.Color, tag.Archived, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, nil))
 
 	got, err := repo.UpdateTag(ctx, testScope, tag)
 	require.NoError(t, err)
 	assert.Equal(t, tag, got)
+}
+
+func TestUpdateTag_Archive(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	tag := aTag()
+	tag.Archived = true
+	archivedAt := time.Now().UTC()
+
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$5 RETURNING id, name, color, user_id, archived_at`).
+		WithArgs(tag.Id, tag.Name, tag.Color, tag.Archived, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived).
+			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt))
+
+	got, err := repo.UpdateTag(ctx, testScope, tag)
+	require.NoError(t, err)
+	assert.True(t, got.Archived)
 }
 
 func TestUpdateTag_NotFound(t *testing.T) {
@@ -238,9 +301,9 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	tag := aTag()
 
-	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$4 RETURNING id, name, color, user_id`).
-		WithArgs(tag.Id, tag.Name, tag.Color, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows(tagCols))
+	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$5 RETURNING id, name, color, user_id, archived_at`).
+		WithArgs(tag.Id, tag.Name, tag.Color, tag.Archived, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived))
 
 	_, err := repo.UpdateTag(ctx, testScope, tag)
 	require.Error(t, err)

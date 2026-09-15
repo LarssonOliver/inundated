@@ -1,6 +1,6 @@
 Tag:
   type: object
-  required: [id, name, color]
+  required: [id, name, color, archived]
   properties:
     id:
       type: string
@@ -12,6 +12,11 @@ Tag:
       $ref: "./shared.yaml#/HexColor"
     totalTimeMs:
       type: integer
+    archived:
+      type: boolean
+      description: Whether this tag is archived. Archived tags are hidden from
+        list views by default and excluded from search/pickers, but keep
+        their history and can still be fetched, edited, or deleted directly.
 
 CreateTag:
   type: object
@@ -32,6 +37,8 @@ UpdateTag:
       minLength: 1
     color:
       $ref: "./shared.yaml#/HexColor"
+    archived:
+      type: boolean
 
 TagStats:
   type: object

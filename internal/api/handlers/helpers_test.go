@@ -11,3 +11,7 @@ func ptrOffset(o int) *api.Offset {
 	offset := api.Offset(o)
 	return &offset
 }
+
+func boolPtr(b bool) *bool {
+	return &b
+}

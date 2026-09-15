@@ -11,6 +11,7 @@ function project(partial?: Partial<Project>): Project {
     color: partial?.color ?? "#ff0000",
     timeBudgetHours: partial?.timeBudgetHours,
     tagIds: partial?.tagIds ?? new Set(["t1", "t2"]),
+    archived: partial?.archived ?? false,
   };
 }
 
@@ -70,6 +71,7 @@ describe("projects store", () => {
       name: "New",
       color: "#000",
       tagIds: new Set<string>(),
+      archived: false,
     };
 
     const created = project({ id: "new", ...input });
@@ -103,6 +105,7 @@ describe("projects store", () => {
       color: updated.color,
       timeBudgetHours: updated.timeBudgetHours,
       tagIds: updated.tagIds,
+      archived: updated.archived,
     });
 
     expect(result.name).toBe("Updated");
@@ -234,6 +237,29 @@ describe("projects store", () => {
     expect(store.projects.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
   });
 
+  it("fetchPage at offset 0 drops stale entries no longer returned by the server", async () => {
+    const active = project({ id: "a" });
+
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+    expect(store.projects).toHaveLength(1);
+
+    // The project was archived elsewhere; a fresh page-0 fetch (e.g. after
+    // remounting the list) no longer returns it while archived projects are hidden.
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+
+    await store.fetchPage(50, 0);
+    expect(store.projects).toHaveLength(0);
+  });
+
   it("getPaginationState returns current pagination info", async () => {
     api.listProjectsPaginated.mockResolvedValue({
       data: [project()],
@@ -257,5 +283,81 @@ describe("projects store", () => {
     await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
+  });
+
+  it("fetchPage forwards includeArchived to the API", async () => {
+    api.listProjectsPaginated.mockResolvedValue({
+      data: [project()],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+
+    expect(api.listProjectsPaginated).toHaveBeenCalledWith(50, 0, false);
+  });
+
+  it("setIncludeArchived clears the cache and reloads with the new flag", async () => {
+    const active = project({ id: "active" });
+    const archived = project({ id: "archived", archived: true });
+
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+    expect(store.projects).toHaveLength(1);
+
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [active, archived],
+      pagination: { limit: 50, offset: 0, total: 2 },
+    });
+
+    await store.setIncludeArchived(true);
+
+    expect(api.listProjectsPaginated).toHaveBeenLastCalledWith(50, 0, true);
+    expect(store.projects).toHaveLength(2);
+  });
+
+  it("a slower stale fetchPage does not clobber a newer setIncludeArchived result", async () => {
+    const active = project({ id: "active", name: "active" });
+    const archived = project({ id: "archived", name: "archived", archived: true });
+
+    let resolveStale: (value: unknown) => void;
+    const staleFetch = new Promise((resolve) => {
+      resolveStale = resolve;
+    });
+
+    api.listProjectsPaginated
+      .mockImplementationOnce(() => staleFetch as never) // includeArchived=false, hangs
+      .mockResolvedValueOnce({
+        data: [active, archived],
+        pagination: { limit: 50, offset: 0, total: 2 },
+      }); // includeArchived=true, resolves promptly
+
+    const store = useStore();
+    const stalePromise = store.fetchPage(50, 0);
+    const freshPromise = store.setIncludeArchived(true);
+
+    // The stale request resolves after the newer one has already landed.
+    resolveStale!({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+    await stalePromise;
+    await freshPromise;
+
+    expect(api.listProjectsPaginated).toHaveBeenCalledTimes(2);
+    expect(store.includeArchived).toBe(true);
+    expect(store.projects.map((p) => p.name).sort()).toEqual(["active", "archived"]);
+  });
+
+  it("setIncludeArchived is a no-op when the value is unchanged", async () => {
+    const store = useStore();
+    await store.setIncludeArchived(false);
+
+    expect(api.listProjectsPaginated).not.toHaveBeenCalled();
   });
 });
