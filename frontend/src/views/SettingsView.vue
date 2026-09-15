@@ -5,17 +5,23 @@
     </div>
 
     <div v-if="userStore.user" class="card account-card">
-      <p class="field-label">Account</p>
-      <div class="account">
+      <div class="account-info-field" v-if="userStore.user.name">
+        <p class="field-label">Name</p>
         <span class="account-name" :title="userStore.user.email">
-          {{ userStore.user.name || userStore.user.email }}
+          {{ userStore.user.name }}
         </span>
-        <button class="btn-info logout" @click="userStore.logout()">Log out</button>
       </div>
+      <div class="account-info-field" v-if="userStore.user.email">
+        <p class="field-label">Email</p>
+        <span class="account-name" :title="userStore.user.email">
+          {{ userStore.user.email }}
+        </span>
+      </div>
+      <button class="btn-info logout" @click="userStore.logout()">Log out</button>
     </div>
 
     <div v-if="model" class="card settings-edit">
-      <p class="field-label">Week starts on</p>
+      <p class="field-label">Start of Week</p>
       <Dropdown v-model="model.weekStartDay" :options="weekStartDayOptions" />
 
       <p class="field-label">Timezone</p>
@@ -26,10 +32,10 @@
         placeholder="Search timezones..."
       />
 
-      <p class="field-label">Duration format</p>
+      <p class="field-label">Duration Format</p>
       <Dropdown v-model="model.durationFormat" :options="durationFormatOptions" />
 
-      <p class="field-label">Time format</p>
+      <p class="field-label">Time Format</p>
       <Dropdown v-model="model.timeFormat" :options="timeFormatOptions" />
 
       <div class="button-container">
@@ -138,11 +144,8 @@ async function save() {
   max-width: 400px;
 }
 
-.account {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1em;
+.account-info-field {
+  margin-bottom: 1em;
 }
 
 .account-name {
@@ -175,5 +178,9 @@ async function save() {
 
 .saved-hint {
   color: var(--nord14);
+}
+
+.logout {
+  margin-top: 1em;
 }
 </style>

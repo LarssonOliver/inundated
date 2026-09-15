@@ -21,8 +21,14 @@
           class="nav-link settings-link"
           :title="!isExpanded ? 'Settings' : ''"
         >
-          <MaterialIcon class="nav-icon" icon="settings" size="1.3em" />
-          <span v-if="isExpanded" class="nav-label">Settings</span>
+          <MaterialIcon
+            class="nav-icon"
+            :icon="userStore.user ? 'account_circle' : 'settings'"
+            size="1.3em"
+          />
+          <span v-if="isExpanded" class="nav-label">{{
+            userStore.user ? userStore.user.name || userStore.user.email : "Settings"
+          }}</span>
         </router-link>
         <div class="bottom">
           <strong v-if="isExpanded"> Inundated {{ version }} </strong>
@@ -45,6 +51,9 @@
 import { ref, computed } from "vue";
 import { version } from "@/../package.json";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
+import { useUserStore } from "@/stores/user";
+
+const userStore = useUserStore();
 
 const isExpanded = ref(true);
 const toggleSidebar = () => {

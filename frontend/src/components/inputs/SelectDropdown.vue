@@ -166,6 +166,7 @@ function handleKeydown(event: KeyboardEvent) {
   overflow-y: auto;
   background-color: var(--nord0);
   border-radius: var(--radius-md);
+  border: 1px solid var(--nord1);
   box-shadow: var(--shadow-lg);
   padding: 0.35em;
   margin: 0;
