@@ -22,6 +22,51 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
+// Defines values for DateFormat.
+const (
+	Eu   DateFormat = "eu"
+	Iso  DateFormat = "iso"
+	Text DateFormat = "text"
+	Us   DateFormat = "us"
+)
+
+// Valid indicates whether the value is a known member of the DateFormat enum.
+func (e DateFormat) Valid() bool {
+	switch e {
+	case Eu:
+		return true
+	case Iso:
+		return true
+	case Text:
+		return true
+	case Us:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DurationFormat.
+const (
+	Clock   DurationFormat = "clock"
+	Decimal DurationFormat = "decimal"
+	Long    DurationFormat = "long"
+)
+
+// Valid indicates whether the value is a known member of the DurationFormat enum.
+func (e DurationFormat) Valid() bool {
+	switch e {
+	case Clock:
+		return true
+	case Decimal:
+		return true
+	case Long:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StatsMetric.
 const (
 	TimeSpent StatsMetric = "time_spent"
@@ -31,6 +76,42 @@ const (
 func (e StatsMetric) Valid() bool {
 	switch e {
 	case TimeSpent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TimeFormat.
+const (
+	N12h TimeFormat = "12h"
+	N24h TimeFormat = "24h"
+)
+
+// Valid indicates whether the value is a known member of the TimeFormat enum.
+func (e TimeFormat) Valid() bool {
+	switch e {
+	case N12h:
+		return true
+	case N24h:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WeekStartDay.
+const (
+	Monday WeekStartDay = "monday"
+	Sunday WeekStartDay = "sunday"
+)
+
+// Valid indicates whether the value is a known member of the WeekStartDay enum.
+func (e WeekStartDay) Valid() bool {
+	switch e {
+	case Monday:
+		return true
+	case Sunday:
 		return true
 	default:
 		return false
@@ -88,6 +169,12 @@ type CreateTimespan struct {
 	StartTime time.Time  `json:"startTime"`
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+type DateFormat string
+
+// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+type DurationFormat string
 
 // HexColor defines model for HexColor.
 type HexColor = string
@@ -176,6 +263,24 @@ type SeriesPoint struct {
 	Value float32 `json:"value"`
 }
 
+// Settings defines model for Settings.
+type Settings struct {
+	// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+	DateFormat DateFormat `json:"dateFormat"`
+
+	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+	DurationFormat DurationFormat `json:"durationFormat"`
+
+	// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+	TimeFormat TimeFormat `json:"timeFormat"`
+
+	// Timezone IANA timezone name, e.g. "Europe/Stockholm" or "UTC", or the special value "browser" meaning the client should use its own local timezone instead of a fixed one.
+	Timezone string `json:"timezone"`
+
+	// WeekStartDay The first day of the week for calendar/report views.
+	WeekStartDay WeekStartDay `json:"weekStartDay"`
+}
+
 // StatsMetric A metric that can be aggregated over time for a project or tag.
 type StatsMetric string
 
@@ -213,6 +318,9 @@ type TagStats struct {
 	Unit string `json:"unit"`
 }
 
+// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+type TimeFormat string
+
 // Timespan defines model for Timespan.
 type Timespan struct {
 	EndTime   time.Time          `json:"endTime"`
@@ -229,6 +337,22 @@ type UpdateProject struct {
 	Name            *string    `json:"name,omitempty"`
 	TagIds          *TagIdList `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
+}
+
+// UpdateSettings defines model for UpdateSettings.
+type UpdateSettings struct {
+	// DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
+	DateFormat *DateFormat `json:"dateFormat,omitempty"`
+
+	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+	DurationFormat *DurationFormat `json:"durationFormat,omitempty"`
+
+	// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+	TimeFormat *TimeFormat `json:"timeFormat,omitempty"`
+	Timezone   *string     `json:"timezone,omitempty"`
+
+	// WeekStartDay The first day of the week for calendar/report views.
+	WeekStartDay *WeekStartDay `json:"weekStartDay,omitempty"`
 }
 
 // UpdateTag defines model for UpdateTag.
@@ -260,6 +384,9 @@ type User struct {
 	// Sub OIDC subject claim (unique per provider, immutable identifier)
 	Sub string `json:"sub"`
 }
+
+// WeekStartDay The first day of the week for calendar/report views.
+type WeekStartDay string
 
 // Code defines model for code.
 type Code = string
@@ -414,6 +541,9 @@ type CreateProjectJSONRequestBody = CreateProject
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = UpdateProject
 
+// UpdateSettingsJSONRequestBody defines body for UpdateSettings for application/json ContentType.
+type UpdateSettingsJSONRequestBody = UpdateSettings
+
 // CreateTagJSONRequestBody defines body for CreateTag for application/json ContentType.
 type CreateTagJSONRequestBody = CreateTag
 
@@ -532,6 +662,14 @@ type ClientInterface interface {
 
 	// GetProjectStats request
 	GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSettings request
+	GetSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSettingsWithBody request with any body
+	UpdateSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateSettings(ctx context.Context, body UpdateSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTags request
 	ListTags(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -709,6 +847,42 @@ func (c *Client) UpdateProject(ctx context.Context, projectId ProjectIdPath, bod
 
 func (c *Client) GetProjectStats(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProjectStatsRequest(c.Server, projectId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSettings(ctx context.Context, body UpdateSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSettingsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1435,6 +1609,73 @@ func NewGetProjectStatsRequest(server string, projectId ProjectIdPath, params *G
 	return req, nil
 }
 
+// NewGetSettingsRequest generates requests for GetSettings
+func NewGetSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSettingsRequest calls the generic UpdateSettings builder with application/json body
+func NewUpdateSettingsRequest(server string, body UpdateSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateSettingsRequestWithBody generates requests for UpdateSettings with any type of body
+func NewUpdateSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListTagsRequest generates requests for ListTags
 func NewListTagsRequest(server string, params *ListTagsParams) (*http.Request, error) {
 	var err error
@@ -2086,6 +2327,14 @@ type ClientWithResponsesInterface interface {
 	// GetProjectStatsWithResponse request
 	GetProjectStatsWithResponse(ctx context.Context, projectId ProjectIdPath, params *GetProjectStatsParams, reqEditors ...RequestEditorFn) (*GetProjectStatsResponse, error)
 
+	// GetSettingsWithResponse request
+	GetSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSettingsResponse, error)
+
+	// UpdateSettingsWithBodyWithResponse request with any body
+	UpdateSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSettingsResponse, error)
+
+	UpdateSettingsWithResponse(ctx context.Context, body UpdateSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSettingsResponse, error)
+
 	// ListTagsWithResponse request
 	ListTagsWithResponse(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*ListTagsResponse, error)
 
@@ -2418,6 +2667,66 @@ func (r GetProjectStatsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetProjectStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Settings
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Settings
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSettingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2858,6 +3167,32 @@ func (c *ClientWithResponses) GetProjectStatsWithResponse(ctx context.Context, p
 	return ParseGetProjectStatsResponse(rsp)
 }
 
+// GetSettingsWithResponse request returning *GetSettingsResponse
+func (c *ClientWithResponses) GetSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSettingsResponse, error) {
+	rsp, err := c.GetSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSettingsResponse(rsp)
+}
+
+// UpdateSettingsWithBodyWithResponse request with arbitrary body returning *UpdateSettingsResponse
+func (c *ClientWithResponses) UpdateSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSettingsResponse, error) {
+	rsp, err := c.UpdateSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSettingsResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateSettingsWithResponse(ctx context.Context, body UpdateSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSettingsResponse, error) {
+	rsp, err := c.UpdateSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSettingsResponse(rsp)
+}
+
 // ListTagsWithResponse request returning *ListTagsResponse
 func (c *ClientWithResponses) ListTagsWithResponse(ctx context.Context, params *ListTagsParams, reqEditors ...RequestEditorFn) (*ListTagsResponse, error) {
 	rsp, err := c.ListTags(ctx, params, reqEditors...)
@@ -3199,6 +3534,58 @@ func ParseGetProjectStatsResponse(rsp *http.Response) (*GetProjectStatsResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProjectStats
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSettingsResponse parses an HTTP response from a GetSettingsWithResponse call
+func ParseGetSettingsResponse(rsp *http.Response) (*GetSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Settings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSettingsResponse parses an HTTP response from a UpdateSettingsWithResponse call
+func ParseUpdateSettingsResponse(rsp *http.Response) (*UpdateSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Settings
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

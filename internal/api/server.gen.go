@@ -47,6 +47,12 @@ type ServerInterface interface {
 	// Get timeseries stats for a project
 	// (GET /api/projects/{projectId}/stats)
 	GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams)
+	// Get current settings
+	// (GET /api/settings)
+	GetSettings(w http.ResponseWriter, r *http.Request)
+	// Update settings
+	// (PATCH /api/settings)
+	UpdateSettings(w http.ResponseWriter, r *http.Request)
 	// List tags
 	// (GET /api/tags)
 	ListTags(w http.ResponseWriter, r *http.Request, params ListTagsParams)
@@ -143,6 +149,18 @@ func (_ Unimplemented) UpdateProject(w http.ResponseWriter, r *http.Request, pro
 // Get timeseries stats for a project
 // (GET /api/projects/{projectId}/stats)
 func (_ Unimplemented) GetProjectStats(w http.ResponseWriter, r *http.Request, projectId ProjectIdPath, params GetProjectStatsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get current settings
+// (GET /api/settings)
+func (_ Unimplemented) GetSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update settings
+// (PATCH /api/settings)
+func (_ Unimplemented) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -630,6 +648,46 @@ func (siw *ServerInterfaceWrapper) GetProjectStats(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectStats(w, r, projectId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetSettings(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSettings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1235,6 +1293,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/projects/{projectId}/stats", wrapper.GetProjectStats)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/settings", wrapper.GetSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/settings", wrapper.UpdateSettings)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/tags", wrapper.ListTags)
 	})
 	r.Group(func(r chi.Router) {
@@ -1626,6 +1690,57 @@ func (response GetProjectStats422Response) VisitGetProjectStatsResponse(w http.R
 	return nil
 }
 
+type GetSettingsRequestObject struct {
+}
+
+type GetSettingsResponseObject interface {
+	VisitGetSettingsResponse(w http.ResponseWriter) error
+}
+
+type GetSettings200JSONResponse Settings
+
+func (response GetSettings200JSONResponse) VisitGetSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSettingsRequestObject struct {
+	Body *UpdateSettingsJSONRequestBody
+}
+
+type UpdateSettingsResponseObject interface {
+	VisitUpdateSettingsResponse(w http.ResponseWriter) error
+}
+
+type UpdateSettings200JSONResponse Settings
+
+func (response UpdateSettings200JSONResponse) VisitUpdateSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSettings400Response struct {
+}
+
+func (response UpdateSettings400Response) VisitUpdateSettingsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 type ListTagsRequestObject struct {
 	Params ListTagsParams
 }
@@ -2012,6 +2127,12 @@ type StrictServerInterface interface {
 	// Get timeseries stats for a project
 	// (GET /api/projects/{projectId}/stats)
 	GetProjectStats(ctx context.Context, request GetProjectStatsRequestObject) (GetProjectStatsResponseObject, error)
+	// Get current settings
+	// (GET /api/settings)
+	GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error)
+	// Update settings
+	// (PATCH /api/settings)
+	UpdateSettings(ctx context.Context, request UpdateSettingsRequestObject) (UpdateSettingsResponseObject, error)
 	// List tags
 	// (GET /api/tags)
 	ListTags(ctx context.Context, request ListTagsRequestObject) (ListTagsResponseObject, error)
@@ -2339,6 +2460,61 @@ func (sh *strictHandler) GetProjectStats(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectStatsResponseObject); ok {
 		if err := validResponse.VisitGetProjectStatsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSettings operation middleware
+func (sh *strictHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	var request GetSettingsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSettings(ctx, request.(GetSettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSettings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSettingsResponseObject); ok {
+		if err := validResponse.VisitGetSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSettings operation middleware
+func (sh *strictHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	var request UpdateSettingsRequestObject
+
+	var body UpdateSettingsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSettings(ctx, request.(UpdateSettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSettings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSettingsResponseObject); ok {
+		if err := validResponse.VisitUpdateSettingsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

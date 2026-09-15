@@ -4,6 +4,7 @@
       type="text"
       v-model="currentValue"
       placeholder="00:00"
+      :class="{ 'time-12h': format === '12h' }"
       @keydown.enter="valueEntered"
       @focusout="valueEntered"
       @focus="($event.target as HTMLInputElement).select()"
@@ -14,62 +15,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { parseGoDuration } from "@/helpers/time";
+import { computed, ref, watch } from "vue";
+import { formatClockTime, parseClockTime, parseGoDuration } from "@/helpers/time";
+import type { TimeFormat } from "@/model";
 
 const props = defineProps<{
   showNextDay?: boolean;
   resolveDuration?: (durationMs: number) => string | null;
+  timeFormat?: TimeFormat;
 }>();
 
+// The exposed model is always canonical 24h "HH:MM" - callers (and
+// resolveDuration) depend on that shape. Only what's displayed/typed in the
+// input itself is rendered per the timeFormat prop.
 const model = defineModel<string>({ default: "00:00" });
-const currentValue = ref<string>(model.value);
-const lastValidValue = ref<string>(model.value);
+const format = computed(() => props.timeFormat ?? "24h");
 
-watch(model, (newValue) => {
-  currentValue.value = newValue;
-  lastValidValue.value = newValue;
-});
+function toDisplay(canonical: string): string {
+  const [hours, minutes] = canonical.split(":").map((s) => +s);
+  return formatClockTime(hours, minutes, format.value);
+}
 
-function formatTime(hours: number, minutes: number): string {
+function toCanonical(hours: number, minutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+// model is always kept valid (it only ever holds a well-formed canonical
+// time), so it doubles as its own "last valid value" - no separate ref
+// needed to remember what to revert to.
+const currentValue = ref<string>(toDisplay(model.value));
+
+watch(model, (newValue) => {
+  currentValue.value = toDisplay(newValue);
+});
+
+watch(format, () => {
+  currentValue.value = toDisplay(model.value);
+});
+
 function resetToLastValid() {
-  model.value = currentValue.value = lastValidValue.value;
+  currentValue.value = toDisplay(model.value);
 }
 
 function valueEntered() {
-  const value = currentValue.value;
-  let hours = 0;
-  let minutes = 0;
+  const parsed = parseClockTime(currentValue.value);
 
-  if (value.match(/^\d{1,2}:\d{2}$/)) {
-    [hours, minutes] = value.split(":").map((s) => +s);
-  } else if (value.match(/^\d{1,2}$/)) {
-    hours = +value;
-  } else if (value.match(/^\d{3,4}$/)) {
-    hours = +value.slice(0, -2);
-    minutes = +value.slice(-2);
-  } else {
-    const durationMs = parseGoDuration(value);
+  if (parsed === null) {
+    const durationMs = parseGoDuration(currentValue.value);
     const resolved = durationMs === null ? null : (props.resolveDuration?.(durationMs) ?? null);
     if (resolved === null) {
       resetToLastValid();
       return;
     }
-    lastValidValue.value = resolved;
-    model.value = currentValue.value = resolved;
+    model.value = resolved;
+    currentValue.value = toDisplay(resolved);
     return;
   }
 
-  if (hours > 23 || minutes > 59) {
-    resetToLastValid();
-    return;
-  }
-
-  lastValidValue.value = formatTime(hours, minutes);
-  model.value = currentValue.value = lastValidValue.value;
+  const canonical = toCanonical(parsed.hours, parsed.minutes);
+  model.value = canonical;
+  currentValue.value = toDisplay(canonical);
 }
 </script>
 
@@ -77,6 +82,10 @@ function valueEntered() {
 input {
   width: 4.8em;
   font-family: monospace;
+}
+
+input.time-12h {
+  width: 6.5em;
 }
 
 sup {

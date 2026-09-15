@@ -132,6 +132,24 @@ func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context,
 	return args.Get(0).([]model.BucketValue), args.Error(1)
 }
 
+// GetSettings implements [repository.SettingsRepository].
+func (m *MockRepository) GetSettings(ctx context.Context, scope model.OwnerScope) (model.Settings, error) {
+	args := m.Called(ctx, scope)
+	return args.Get(0).(model.Settings), args.Error(1)
+}
+
+// CreateSettings implements [repository.SettingsRepository].
+func (m *MockRepository) CreateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+	args := m.Called(ctx, scope, settings)
+	return args.Get(0).(model.Settings), args.Error(1)
+}
+
+// UpdateSettings implements [repository.SettingsRepository].
+func (m *MockRepository) UpdateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+	args := m.Called(ctx, scope, settings)
+	return args.Get(0).(model.Settings), args.Error(1)
+}
+
 // CreateSession implements [repository.SessionRepository].
 func (m *MockRepository) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
 	args := m.Called(ctx, session, token)

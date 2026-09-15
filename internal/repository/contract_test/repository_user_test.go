@@ -190,6 +190,24 @@ func TestUserRepositoryContract(t *testing.T) {
 			require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 4}, adoption)
 		})
 
+		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsExistingSettings", func(t *testing.T) {
+			repo := newRepo(t)
+
+			unowned, err := repo.CreateSettings(ctx, model.UnownedScope(), model.DefaultSettings())
+			require.NoError(t, err)
+
+			user := model.User{
+				Id: uuid.New(), Sub: "auth0|settings-first", Email: "settings-first@example.com", Name: "First",
+			}
+			created, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
+			require.NoError(t, err)
+			require.Equal(t, model.OrphanAdoption{Settings: 1}, adoption)
+
+			got, err := repo.GetSettings(ctx, model.UserScope(created.Id))
+			require.NoError(t, err)
+			require.Equal(t, unowned.Id, got.Id)
+		})
+
 		t.Run(repoName+"CreateUserAdoptingOrphans_SecondUserAdoptsNothing", func(t *testing.T) {
 			repo := newRepo(t)
 

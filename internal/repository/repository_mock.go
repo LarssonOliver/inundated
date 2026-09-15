@@ -38,6 +38,10 @@ type RepoMock struct {
 	GetTotalDurationByTagsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 
 	AggregateTimeSpentByTagsAndBucketsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
+
+	GetSettingsFn    func(ctx context.Context, scope model.OwnerScope) (model.Settings, error)
+	CreateSettingsFn func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
+	UpdateSettingsFn func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
 }
 
 var _ SessionRepository = (*SessionRepoMock)(nil)
@@ -172,6 +176,21 @@ func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, scope model.Owner
 // AggregateTimeSpentByTagsAndBuckets implements repository.ProjectStatsRepository.
 func (t *RepoMock) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	return t.AggregateTimeSpentByTagsAndBucketsFn(ctx, scope, tagIds, buckets)
+}
+
+// GetSettings implements repository.SettingsRepository.
+func (t *RepoMock) GetSettings(ctx context.Context, scope model.OwnerScope) (model.Settings, error) {
+	return t.GetSettingsFn(ctx, scope)
+}
+
+// CreateSettings implements repository.SettingsRepository.
+func (t *RepoMock) CreateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+	return t.CreateSettingsFn(ctx, scope, settings)
+}
+
+// UpdateSettings implements repository.SettingsRepository.
+func (t *RepoMock) UpdateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+	return t.UpdateSettingsFn(ctx, scope, settings)
 }
 
 // CreateSession implements [SessionRepository].

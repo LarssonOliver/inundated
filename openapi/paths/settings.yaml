@@ -1,0 +1,37 @@
+settings:
+  get:
+    tags: [settings]
+    summary: Get current settings
+    operationId: getSettings
+    description: >
+      Returns the settings for the current scope (the authenticated user, or
+      the shared unowned settings in userless mode). If none exist yet, a
+      default row is created on first access.
+    responses:
+      '200':
+        description: Current settings
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/settings.yaml#/Settings"
+  patch:
+    tags: [settings]
+    summary: Update settings
+    operationId: updateSettings
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/settings.yaml#/UpdateSettings"
+    responses:
+      '200':
+        description: Updated settings
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/settings.yaml#/Settings"
+      '400':
+        description: Bad request

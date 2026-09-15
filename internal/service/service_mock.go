@@ -175,3 +175,20 @@ func (a *AuthServiceMock) HandleCallback(ctx context.Context, stateID uuid.UUID,
 func (a *AuthServiceMock) LogoutSession(ctx context.Context, sessionId uuid.UUID) error {
 	return a.LogoutSessionFn(ctx, sessionId)
 }
+
+type SettingsServiceMock struct {
+	GetFn    func(ctx context.Context) (model.Settings, error)
+	UpdateFn func(ctx context.Context, settings model.Settings) (model.Settings, error)
+}
+
+var _ SettingsService = (*SettingsServiceMock)(nil)
+
+// GetSettings implements [service.SettingsService].
+func (m *SettingsServiceMock) GetSettings(ctx context.Context) (model.Settings, error) {
+	return m.GetFn(ctx)
+}
+
+// UpdateSettings implements [service.SettingsService].
+func (m *SettingsServiceMock) UpdateSettings(ctx context.Context, settings model.Settings) (model.Settings, error) {
+	return m.UpdateFn(ctx, settings)
+}

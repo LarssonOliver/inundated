@@ -20,12 +20,13 @@
         >
           This Month
         </button>
-        <div class="date-picker">
+        <div class="date-picker" :style="{ width: datePickerWidth }">
           <VueDatePicker
             v-model="pickedRange"
             dark
             range
             multi-calendars
+            :formats="datePickerFormats"
             :input-attrs="{
               clearable: false,
             }"
@@ -40,9 +41,7 @@
 
     <div class="stats-summary">
       <div class="stat-tile">
-        <p class="stat-tile-value">
-          {{ periodTotalHours.toFixed(1) }}<span class="stat-tile-unit">h</span>
-        </p>
+        <p class="stat-tile-value">{{ periodTotalFormatted }}</p>
         <p class="stat-tile-label">Total this period</p>
       </div>
     </div>
@@ -72,7 +71,7 @@
                 label: function (context) {
                   const label = context.dataset.label || '';
                   const value = context.parsed.y || 0;
-                  return `${label}: ${value}h`;
+                  return `${label}: ${formatDuration(value * 3600000, durationFormat)}`;
                 },
               },
             },
@@ -87,6 +86,7 @@
 import { Bar } from "vue-chartjs";
 import type { Tag, TagStats } from "@/model";
 import { useTagsStore } from "@/stores/tags";
+import { useSettingsStore } from "@/stores/settings";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -99,12 +99,9 @@ import {
 import { computed, ref, watch } from "vue";
 import { nord } from "@/helpers/nord";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
-import {
-  granularityForRange,
-  unitToHoursFactor,
-  formatBucketLabel,
-  statsDateRangePresets,
-} from "@/helpers/statsChart";
+import { granularityForRange, unitToHoursFactor } from "@/helpers/statsChart";
+import { formatDuration } from "@/helpers/time";
+import { useStatsSettings } from "@/composables/useStatsSettings";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -113,6 +110,7 @@ import "@/assets/stats-panel.css";
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 const tagsStore = useTagsStore();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{
   tag: Tag;
@@ -125,7 +123,8 @@ const pickedRange = ref<Date[]>([rangeStart, rangeEnd]);
 
 const tagStats = ref<TagStats | undefined>();
 
-const presetDates = ref(statsDateRangePresets());
+const { durationFormat, timezone, datePickerFormats, datePickerWidth, presetDates, formatRange } =
+  useStatsSettings(() => settingsStore.settings);
 
 const convertToHoursFactor = computed(() =>
   tagStats.value ? unitToHoursFactor(tagStats.value.unit) : 1,
@@ -140,6 +139,10 @@ const periodTotalHours = computed(() => {
     convertToHoursFactor.value
   );
 });
+
+const periodTotalFormatted = computed(() =>
+  formatDuration(periodTotalHours.value * 3600000, durationFormat.value),
+);
 
 const iso8601Range = computed(() => {
   if (pickedRange.value.length !== 2) {
@@ -164,7 +167,7 @@ async function updateTagStats(range: string) {
       "time_spent",
       range,
       granularityFromPickedRange.value,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone.value,
     );
     if (result) {
       tagStats.value = result;
@@ -185,6 +188,4 @@ watch(
   },
   { immediate: true },
 );
-
-const formatRange = formatBucketLabel;
 </script>

@@ -123,3 +123,13 @@ func (s *Server) ListTimespans(ctx context.Context, request ListTimespansRequest
 func (s *Server) UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error) {
 	return s.handler.UpdateTimespan(ctx, request)
 }
+
+// GetSettings implements StrictServerInterface.
+func (s *Server) GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error) {
+	return s.handler.GetSettings(ctx, request)
+}
+
+// UpdateSettings implements StrictServerInterface.
+func (s *Server) UpdateSettings(ctx context.Context, request UpdateSettingsRequestObject) (UpdateSettingsResponseObject, error) {
+	return s.handler.UpdateSettings(ctx, request)
+}

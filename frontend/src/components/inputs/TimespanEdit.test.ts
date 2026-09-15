@@ -1,8 +1,13 @@
-import { test, expect } from "vitest";
+import { test, expect, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
+import { setActivePinia, createPinia } from "pinia";
 import TimespanEdit from "./TimespanEdit.vue";
 import type { Timespan } from "@/model/timespan";
 import { getTimeString } from "@/helpers/timespan";
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+});
 
 function baseTimespan(overrides: Partial<Timespan> = {}): Timespan {
   return {

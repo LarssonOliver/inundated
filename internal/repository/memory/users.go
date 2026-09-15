@@ -109,6 +109,12 @@ func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.
 				adoption.Timespans++
 			}
 		}
+		for i := range m.settings {
+			if m.settings[i].UserId == nil {
+				m.settings[i].UserId = &id
+				adoption.Settings++
+			}
+		}
 	}
 
 	return user, adoption, nil

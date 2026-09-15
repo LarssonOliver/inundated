@@ -7,12 +7,17 @@
       @change="model = { ...model, name: ($event.target as HTMLInputElement).value }"
       @keydown.enter="$emit('submit')"
     />
-    <TimeInput v-model="startTimeString" :resolve-duration="resolveStartFromDuration" />
+    <TimeInput
+      v-model="startTimeString"
+      :resolve-duration="resolveStartFromDuration"
+      :time-format="timeFormat"
+    />
     <span class="centered-text">-</span>
     <TimeInput
       v-model="endTimeString"
       :show-next-day="isEndNextDay"
       :resolve-duration="resolveEndFromDuration"
+      :time-format="timeFormat"
     />
     <input type="date" v-model="startDateString" />
   </div>
@@ -23,10 +28,14 @@ import type { Timespan } from "@/model/timespan";
 import { computed } from "vue";
 import TimeInput from "@/components/inputs/TimeInput.vue";
 import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
+import { useSettingsStore } from "@/stores/settings";
 
 const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
 });
+
+const settingsStore = useSettingsStore();
+const timeFormat = computed(() => settingsStore.settings?.timeFormat ?? "24h");
 
 defineEmits<{
   submit: [];

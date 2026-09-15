@@ -1,0 +1,58 @@
+Settings:
+  type: object
+  required: [weekStartDay, timezone, durationFormat, timeFormat, dateFormat]
+  properties:
+    weekStartDay:
+      $ref: "#/WeekStartDay"
+    timezone:
+      type: string
+      description: >
+        IANA timezone name, e.g. "Europe/Stockholm" or "UTC", or the special
+        value "browser" meaning the client should use its own local timezone
+        instead of a fixed one.
+    durationFormat:
+      $ref: "#/DurationFormat"
+    timeFormat:
+      $ref: "#/TimeFormat"
+    dateFormat:
+      $ref: "#/DateFormat"
+
+UpdateSettings:
+  type: object
+  minProperties: 1
+  properties:
+    weekStartDay:
+      $ref: "#/WeekStartDay"
+    timezone:
+      type: string
+    durationFormat:
+      $ref: "#/DurationFormat"
+    timeFormat:
+      $ref: "#/TimeFormat"
+    dateFormat:
+      $ref: "#/DateFormat"
+
+WeekStartDay:
+  type: string
+  enum: [monday, sunday]
+  description: The first day of the week for calendar/report views.
+
+DurationFormat:
+  type: string
+  enum: [long, decimal, clock]
+  description: >
+    How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal"
+    (e.g. "2.5h"), or "clock" (e.g. "02:30").
+
+TimeFormat:
+  type: string
+  enum: ["12h", "24h"]
+  description: Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+
+DateFormat:
+  type: string
+  enum: [iso, us, eu, text]
+  description: >
+    How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"),
+    "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text"
+    (e.g. "15 Jan 2024").

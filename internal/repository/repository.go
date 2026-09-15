@@ -14,6 +14,7 @@ type Repository interface {
 	ProjectRepository
 	TimespanRepository
 	ProjectStatsRepository
+	SettingsRepository
 }
 
 type TagRepository interface {
@@ -63,6 +64,20 @@ type TimespanRepository interface {
 
 type ProjectStatsRepository interface {
 	AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
+}
+
+// SettingsRepository manages the singleton Settings row for a scope. Unlike
+// the other user-scoped resources there is no id/list/delete: a scope always
+// has at most one row, lazily created (see GetSettings's callers) rather than
+// user-initiated.
+type SettingsRepository interface {
+	GetSettings(ctx context.Context, scope model.OwnerScope) (model.Settings, error)
+	CreateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
+	// UpdateSettings replaces the settings row's fields wholesale with those
+	// on settings - it does not merge with the stored row. Callers must fetch
+	// the current settings first (e.g. via GetSettings) and copy forward any
+	// field they don't intend to change.
+	UpdateSettings(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
 }
 
 // This interface is deliberately not included in the Repository interface.
