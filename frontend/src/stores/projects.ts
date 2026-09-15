@@ -97,7 +97,13 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
       _pending.value = (async () => {
         const result = await api.listProjectsPaginated(limit, offset, includeArchived.value);
-        // Accumulate items in the map instead of replacing
+        // A page-0 fetch is a fresh load (e.g. after remounting the list), so
+        // start clean rather than leaving behind stale entries that no longer
+        // match the current filter (e.g. a project archived elsewhere). Later
+        // pages accumulate onto that, as used for infinite scrolling.
+        if (offset === 0) {
+          projects.value = new Map();
+        }
         for (const project of result.data) {
           projects.value.set(project.id, project);
         }

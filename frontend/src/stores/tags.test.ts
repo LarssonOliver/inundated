@@ -324,6 +324,29 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.name)).toEqual(["a", "b", "c", "d"]);
   });
 
+  it("fetchPage at offset 0 drops stale entries no longer returned by the server", async () => {
+    const active = makeTag({ name: "active" });
+
+    api.listTagsPaginated.mockResolvedValueOnce({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+    expect(store.tags).toHaveLength(1);
+
+    // The tag was archived elsewhere; a fresh page-0 fetch (e.g. after
+    // remounting the list) no longer returns it while archived tags are hidden.
+    api.listTagsPaginated.mockResolvedValueOnce({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+
+    await store.fetchPage(50, 0);
+    expect(store.tags).toHaveLength(0);
+  });
+
   it("getPaginationState returns current pagination info", async () => {
     api.listTagsPaginated.mockResolvedValue({
       data: [makeTag()],

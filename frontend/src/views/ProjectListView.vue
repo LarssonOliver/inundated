@@ -5,7 +5,7 @@
       <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Project' })" />
     </div>
-    <div v-for="project in projectsStore.projects" :key="project.id">
+    <div v-for="project in sortedProjects" :key="project.id">
       <div class="project-card" :class="{ archived: project.archived }">
         <div class="color-bar" :style="{ backgroundColor: project.color }">
           <div class="project-item">
@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { useProjectsStore } from "@/stores/projects";
 import { useRouter } from "vue-router";
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
@@ -51,6 +51,12 @@ const showArchived = ref(projectsStore.includeArchived);
 
 const pageSize = 50;
 
+const sortedProjects = computed(() =>
+  [...projectsStore.projects].sort(
+    (a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name),
+  ),
+);
+
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
@@ -62,6 +68,7 @@ watch(showArchived, (value) => projectsStore.setIncludeArchived(value));
 .title-bar {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   margin-bottom: 1.25em;
 }
 
@@ -74,6 +81,7 @@ watch(showArchived, (value) => projectsStore.setIncludeArchived(value));
 .show-archived {
   display: flex;
   align-items: center;
+  align-self: stretch;
   gap: 0.5em;
   color: var(--nord3);
   font-size: 0.9em;

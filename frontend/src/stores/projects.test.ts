@@ -237,6 +237,29 @@ describe("projects store", () => {
     expect(store.projects.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
   });
 
+  it("fetchPage at offset 0 drops stale entries no longer returned by the server", async () => {
+    const active = project({ id: "a" });
+
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [active],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+
+    const store = useStore();
+    await store.fetchPage(50, 0);
+    expect(store.projects).toHaveLength(1);
+
+    // The project was archived elsewhere; a fresh page-0 fetch (e.g. after
+    // remounting the list) no longer returns it while archived projects are hidden.
+    api.listProjectsPaginated.mockResolvedValueOnce({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+
+    await store.fetchPage(50, 0);
+    expect(store.projects).toHaveLength(0);
+  });
+
   it("getPaginationState returns current pagination info", async () => {
     api.listProjectsPaginated.mockResolvedValue({
       data: [project()],

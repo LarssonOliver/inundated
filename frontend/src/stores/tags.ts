@@ -96,7 +96,13 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
 
       _pending.value = (async () => {
         const result = await api.listTagsPaginated(limit, offset, includeArchived.value);
-        // Accumulate items in the map instead of replacing
+        // A page-0 fetch is a fresh load (e.g. after remounting the list), so
+        // start clean rather than leaving behind stale entries that no longer
+        // match the current filter (e.g. a tag archived elsewhere). Later
+        // pages accumulate onto that, as used for infinite scrolling.
+        if (offset === 0) {
+          tags.value = new Map();
+        }
         for (const tag of result.data) {
           tags.value.set(tag.id, tag);
         }

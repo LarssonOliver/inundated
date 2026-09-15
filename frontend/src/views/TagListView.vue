@@ -5,7 +5,7 @@
       <ToggleSwitch v-model="showArchived" class="show-archived">Show Archived</ToggleSwitch>
       <input type="button" value="Add" @click="router.push({ name: 'New Tag' })" />
     </div>
-    <div v-for="tag in tagsStore.tags" :key="tag.id">
+    <div v-for="tag in sortedTags" :key="tag.id">
       <div class="tag-card" :class="{ archived: tag.archived }">
         <div class="color-bar" :style="{ backgroundColor: tag.color }">
           <div class="tag-item">
@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { useTagsStore } from "@/stores/tags";
 import { useRouter } from "vue-router";
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
@@ -51,6 +51,12 @@ const showArchived = ref(tagsStore.includeArchived);
 
 const pageSize = 50;
 
+const sortedTags = computed(() =>
+  [...tagsStore.tags].sort(
+    (a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name),
+  ),
+);
+
 useInfiniteScroll(tagsStore, sentinelElement, pageSize);
 
 onMounted(async () => {
@@ -64,6 +70,7 @@ watch(showArchived, (value) => tagsStore.setIncludeArchived(value));
 .title-bar {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   margin-bottom: 1.25em;
 }
 
@@ -76,6 +83,7 @@ watch(showArchived, (value) => tagsStore.setIncludeArchived(value));
 .show-archived {
   display: flex;
   align-items: center;
+  align-self: stretch;
   gap: 0.5em;
   color: var(--nord3);
   font-size: 0.9em;
