@@ -12,6 +12,7 @@
       @focus="open"
       @input="onFilterInput"
       @keydown="handleKeydown"
+      @keyup.control="isCtrlDown = false"
       @focusout="close"
     />
     <button
@@ -22,6 +23,7 @@
       :aria-expanded="isOpen"
       @click="toggleOpen"
       @keydown="handleKeydown"
+      @keyup.control="isCtrlDown = false"
       @focusout="close"
     >
       {{ selectedLabel || placeholder }}

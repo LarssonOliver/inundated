@@ -310,5 +310,18 @@ describe("Dropdown", () => {
 
       expect((wrapper.find(".dropdown-trigger").element as HTMLInputElement).value).toBe("");
     });
+
+    test("releasing Ctrl stops treating plain n/p/u/y as shortcuts", async () => {
+      const wrapper = mount(Dropdown, {
+        props: { options, modelValue: "", searchable: true },
+      });
+
+      await wrapper.find(".dropdown-trigger").trigger("focus");
+      await wrapper.find(".dropdown-trigger").trigger("keydown", { key: "Control" });
+      await wrapper.find(".dropdown-trigger").trigger("keyup", { key: "Control" });
+      await wrapper.find(".dropdown-trigger").trigger("keydown", { key: "n" });
+
+      expect(wrapper.findAll("li").some((li) => li.classes().includes("highlighted"))).toBe(false);
+    });
   });
 });

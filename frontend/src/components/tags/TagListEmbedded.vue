@@ -7,6 +7,7 @@
       manual-filter
       :options="tagSearchResult"
       :option-value="(tag) => tag.id"
+      :option-label="(tag) => tag.name"
       @search="onTagSearch"
       @select="onTagSelect"
       @create="onTagCreate"
