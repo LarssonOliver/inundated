@@ -37,7 +37,7 @@ test("excludes archived tags from search results", async () => {
   await flushPromises();
 
   const input = wrapper.find("input");
-  await input.trigger("focusin");
+  await input.trigger("focus");
   await input.setValue("tag");
   await flushPromises();
 

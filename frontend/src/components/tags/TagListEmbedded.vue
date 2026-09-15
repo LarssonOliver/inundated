@@ -1,16 +1,20 @@
 <template>
   <div class="searchbox-container" v-if="!readOnly">
-    <SearchBox
+    <SelectDropdown
       placeholder=""
-      :items="tagSearchResult"
+      searchable
+      creatable
+      manual-filter
+      :options="tagSearchResult"
+      :option-value="(tag) => tag.id"
       @search="onTagSearch"
       @select="onTagSelect"
       @create="onTagCreate"
     >
-      <template #default="item">
-        <TagItem :tag="item" />
+      <template #default="{ option }">
+        <TagItem :tag="option" />
       </template>
-    </SearchBox>
+    </SelectDropdown>
   </div>
   <div class="tag-list">
     <TagItem
@@ -24,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import SearchBox from "@/components/inputs/SearchBox.vue";
+import SelectDropdown from "@/components/inputs/SelectDropdown.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import type { Tag } from "@/model";
 import { useTagsStore } from "@/stores/tags";
@@ -113,9 +117,6 @@ async function onTagCreate(name: string) {
   min-width: 8em;
   margin-left: 0.5em;
   margin-right: 0.5em;
-}
-
-:deep(.search-container) {
   --max-width: 12em;
 }
 </style>

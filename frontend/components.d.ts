@@ -16,7 +16,6 @@ declare module 'vue' {
     ProjectStats: typeof import('./src/components/project/ProjectStats.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    SearchBox: typeof import('./src/components/inputs/SearchBox.vue')['default']
     SelectDropdown: typeof import('./src/components/inputs/SelectDropdown.vue')['default']
     SkeletonLoader: typeof import('./src/components/SkeletonLoader.vue')['default']
     TagEdit: typeof import('./src/components/tags/TagEdit.vue')['default']
