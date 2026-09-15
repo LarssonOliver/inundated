@@ -8,6 +8,7 @@ type HttpHandler interface {
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+	SettingsHandler
 }
 
 type AuthHandler interface {
@@ -44,4 +45,9 @@ type TimespanHandler interface {
 	CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error)
 	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
 	DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error)
+}
+
+type SettingsHandler interface {
+	GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error)
+	UpdateSettings(ctx context.Context, request UpdateSettingsRequestObject) (UpdateSettingsResponseObject, error)
 }

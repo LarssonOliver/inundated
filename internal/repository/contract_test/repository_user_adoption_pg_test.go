@@ -30,15 +30,20 @@ func TestPostgres_CreateUserAdoptingOrphans_PopulatesUserIdColumn(t *testing.T) 
 
 	const perType = 3
 	seedOrphanResources(t, ctx, repo, perType, perType, perType)
+	// Settings is a singleton per scope, so at most one unowned row can ever
+	// exist - it doesn't scale with perType like the list resources do.
+	_, err := repo.CreateSettings(ctx, model.UnownedScope(), model.DefaultSettings())
+	require.NoError(t, err)
 
 	user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
 	_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
-	require.Equal(t, perType*len(userScopedModels), adoption.Total())
+	require.Equal(t, perType*3+1, adoption.Total())
 
-	for _, table := range userScopedModels {
+	for _, table := range []string{"tags", "projects", "timespans"} {
 		require.Equal(t, perType, countOwnedBy(t, ctx, pool, table, user.Id), "table %q", table)
 	}
+	require.Equal(t, 1, countOwnedBy(t, ctx, pool, "settings", user.Id))
 }
 
 // Two logins racing to be the first must not split ownership: row locks in the
@@ -90,5 +95,51 @@ func TestPostgres_CreateUserAdoptingOrphans_ConcurrentFirstLoginsClaimOnce(t *te
 
 	var unowned int
 	require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM projects WHERE user_id IS NULL").Scan(&unowned))
+	require.Equal(t, 0, unowned)
+}
+
+// The settings row is a singleton per scope, so this proves the same row-lock
+// serialisation that protects list resources also prevents two racing logins
+// from both believing they adopted it.
+func TestPostgres_CreateUserAdoptingOrphans_ConcurrentFirstLoginsClaimSettingsOnce(t *testing.T) {
+	ctx := context.Background()
+	pool := testutils.StartPostgresContainerWithMigrationsApplied(ctx, t)
+	repo := postgres.NewPostgresStoreFromPool(pool)
+
+	_, err := repo.CreateSettings(ctx, model.UnownedScope(), model.DefaultSettings())
+	require.NoError(t, err)
+
+	const nUsers = 6
+	results := make(chan model.OrphanAdoption, nUsers)
+	var wg sync.WaitGroup
+	for i := range nUsers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			u := model.User{
+				Id:    uuid.New(),
+				Sub:   fmt.Sprintf("auth0|settings-user-%d", i),
+				Email: fmt.Sprintf("settings-user-%d@example.com", i),
+				Name:  "User",
+			}
+			_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, u)
+			require.NoError(t, err)
+			results <- adoption
+		}(i)
+	}
+	wg.Wait()
+	close(results)
+
+	adopters := 0
+	for adoption := range results {
+		if adoption.Settings > 0 {
+			adopters++
+			require.Equal(t, 1, adoption.Settings)
+		}
+	}
+	require.Equal(t, 1, adopters, "exactly one racing user should adopt the settings row")
+
+	var unowned int
+	require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM settings WHERE user_id IS NULL").Scan(&unowned))
 	require.Equal(t, 0, unowned)
 }

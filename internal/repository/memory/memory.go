@@ -15,6 +15,7 @@ type MemoryStore struct {
 	projects    []model.Project
 	tags        []model.Tag
 	timespans   []model.Timespan
+	settings    []model.Settings
 	sessions    []storedSession
 	loginStates []model.LoginState
 }
@@ -31,6 +32,7 @@ func NewMemoryStore() *MemoryStore {
 		projects:    []model.Project{},
 		tags:        []model.Tag{},
 		timespans:   []model.Timespan{},
+		settings:    []model.Settings{},
 		sessions:    []storedSession{},
 		loginStates: []model.LoginState{},
 	}

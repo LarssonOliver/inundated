@@ -242,6 +242,29 @@ func TestIndividualMigrations(t *testing.T) {
 				assertColumnNotExists(t, ctx, pool, "projects", "archived_at")
 			},
 		},
+		{
+			name:        "0011_create_settings_table",
+			fromVersion: 10,
+			toVersion:   11,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "settings")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "settings")
+				assertColumnExists(t, ctx, pool, "settings", "id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "settings", "user_id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "settings", "week_start_day", sptr("text"))
+				assertColumnExists(t, ctx, pool, "settings", "timezone", sptr("text"))
+				assertColumnExists(t, ctx, pool, "settings", "duration_format", sptr("text"))
+				assertColumnExists(t, ctx, pool, "settings", "time_format", sptr("text"))
+				assertForeignKeyExists(t, ctx, pool, "settings", "settings_user_id_fkey")
+				assertUniqueIndexExists(t, ctx, pool, "idx_settings_user_id")
+				assertUniqueIndexExists(t, ctx, pool, "idx_settings_unowned_singleton")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "settings")
+			},
+		},
 	}
 
 	for _, tc := range tests {

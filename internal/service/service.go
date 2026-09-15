@@ -38,6 +38,7 @@ type Service interface {
 	TagService
 	ProjectService
 	TimespanService
+	SettingsService
 }
 
 type UserService interface {
@@ -96,4 +97,14 @@ type TimespanService interface {
 	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
+}
+
+// SettingsService manages the current scope's settings singleton. GetSettings
+// lazily creates a default row the first time a scope is asked for it, so it
+// never returns model.ErrNotFound; UpdateSettings expects the caller to have
+// fetched the current settings first and merged in only the fields it means
+// to change (the same wholesale-replace contract as UpdateTag/UpdateProject).
+type SettingsService interface {
+	GetSettings(ctx context.Context) (model.Settings, error)
+	UpdateSettings(ctx context.Context, settings model.Settings) (model.Settings, error)
 }

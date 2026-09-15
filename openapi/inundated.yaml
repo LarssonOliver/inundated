@@ -19,6 +19,8 @@ tags:
     description: Project-related operations
   - name: timespans
     description: Timespan-related operations
+  - name: settings
+    description: User settings operations
 paths:
   /api/auth/login:
     $ref: "./paths/auth.yaml#/login"
@@ -45,6 +47,8 @@ paths:
     $ref: "./paths/timespans.yaml#/timespans"
   /api/timespans/{timespanId}:
     $ref: "./paths/timespans.yaml#/timespans-id"
+  /api/settings:
+    $ref: "./paths/settings.yaml#/settings"
 components:
   securitySchemes:
     sessionCookie:
@@ -72,3 +76,7 @@ components:
       $ref: "./schemas/timespans.yaml#/CreateTimespan"
     UpdateTimespan:
       $ref: "./schemas/timespans.yaml#/UpdateTimespan"
+    Settings:
+      $ref: "./schemas/settings.yaml#/Settings"
+    UpdateSettings:
+      $ref: "./schemas/settings.yaml#/UpdateSettings"

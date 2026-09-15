@@ -20,6 +20,7 @@ var userScopedModels = map[string]string{
 	"Project":  "projects",
 	"Tag":      "tags",
 	"Timespan": "timespans",
+	"Settings": "settings",
 }
 
 func TestUserScopedModelsAreCovered(t *testing.T) {

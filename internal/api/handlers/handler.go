@@ -13,6 +13,7 @@ type Handler struct {
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+	SettingsHandler
 }
 
 var _ api.HttpHandler = (*Handler)(nil)
@@ -23,6 +24,7 @@ func NewHandler(authSvc service.AuthService, svc service.Service, secureCookies 
 		TagHandler:      *NewTagHandler(svc),
 		ProjectHandler:  *NewProjectHandler(svc),
 		TimespanHandler: *NewTimespanHandler(svc),
+		SettingsHandler: *NewSettingsHandler(svc),
 
 		AuthHandler: *NewAuthHandler(authSvc, secureCookies),
 	}

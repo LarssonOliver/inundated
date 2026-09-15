@@ -126,6 +126,15 @@ func scopedMethods() []scopedMethod {
 			})
 			return err
 		}, 2},
+
+		{"GetSettings", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetSettings(ctx)
+			return err
+		}, 1},
+		{"UpdateSettings", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.UpdateSettings(ctx, model.DefaultSettings())
+			return err
+		}, 1},
 	}
 }
 
@@ -205,6 +214,15 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 				out[i] = model.BucketValue{Bucket: b, Value: 0}
 			}
 			return out, nil
+		},
+
+		GetSettingsFn: func(_ context.Context, scope model.OwnerScope) (model.Settings, error) {
+			record(scope)
+			return model.DefaultSettings(), nil
+		},
+		UpdateSettingsFn: func(_ context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error) {
+			record(scope)
+			return settings, nil
 		},
 	}
 }

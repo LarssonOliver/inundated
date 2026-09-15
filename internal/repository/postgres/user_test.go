@@ -141,9 +141,9 @@ func TestCreateUser_EmptyEmail(t *testing.T) {
 
 // ── CreateUserAdoptingOrphans ────────────────────────────────────────────────
 
-func adoptionRows(id uuid.UUID, sub, email, name string, projects, tags, timespans int) *pgxmock.Rows {
-	return pgxmock.NewRows([]string{"id", "sub", "email", "name", "projects", "tags", "timespans"}).
-		AddRow(id, sub, email, name, projects, tags, timespans)
+func adoptionRows(id uuid.UUID, sub, email, name string, projects, tags, timespans, settings int) *pgxmock.Rows {
+	return pgxmock.NewRows([]string{"id", "sub", "email", "name", "projects", "tags", "timespans", "settings"}).
+		AddRow(id, sub, email, name, projects, tags, timespans, settings)
 }
 
 func TestCreateUserAdoptingOrphans_FirstUserReportsAdoptedCounts(t *testing.T) {
@@ -153,12 +153,12 @@ func TestCreateUserAdoptingOrphans_FirstUserReportsAdoptedCounts(t *testing.T) {
 
 	mock.ExpectQuery(`INSERT INTO users`).
 		WithArgs(user.Id, user.Sub, user.Email, user.Name).
-		WillReturnRows(adoptionRows(user.Id, user.Sub, user.Email, user.Name, 3, 2, 5))
+		WillReturnRows(adoptionRows(user.Id, user.Sub, user.Email, user.Name, 3, 2, 5, 1))
 
 	got, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
 	assert.Equal(t, user, got)
-	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5}, adoption)
+	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5, Settings: 1}, adoption)
 }
 
 func TestCreateUserAdoptingOrphans_GeneratesIdWhenNil(t *testing.T) {
@@ -169,7 +169,7 @@ func TestCreateUserAdoptingOrphans_GeneratesIdWhenNil(t *testing.T) {
 
 	mock.ExpectQuery(`INSERT INTO users`).
 		WithArgs(pgxmock.AnyArg(), user.Sub, user.Email, user.Name).
-		WillReturnRows(adoptionRows(uuid.New(), user.Sub, user.Email, user.Name, 0, 0, 0))
+		WillReturnRows(adoptionRows(uuid.New(), user.Sub, user.Email, user.Name, 0, 0, 0, 0))
 
 	got, _, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)

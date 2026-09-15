@@ -13,6 +13,27 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
+// Defines values for DurationFormat.
+const (
+	Clock   DurationFormat = "clock"
+	Decimal DurationFormat = "decimal"
+	Long    DurationFormat = "long"
+)
+
+// Valid indicates whether the value is a known member of the DurationFormat enum.
+func (e DurationFormat) Valid() bool {
+	switch e {
+	case Clock:
+		return true
+	case Decimal:
+		return true
+	case Long:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StatsMetric.
 const (
 	TimeSpent StatsMetric = "time_spent"
@@ -22,6 +43,42 @@ const (
 func (e StatsMetric) Valid() bool {
 	switch e {
 	case TimeSpent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TimeFormat.
+const (
+	N12h TimeFormat = "12h"
+	N24h TimeFormat = "24h"
+)
+
+// Valid indicates whether the value is a known member of the TimeFormat enum.
+func (e TimeFormat) Valid() bool {
+	switch e {
+	case N12h:
+		return true
+	case N24h:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WeekStartDay.
+const (
+	Monday WeekStartDay = "monday"
+	Sunday WeekStartDay = "sunday"
+)
+
+// Valid indicates whether the value is a known member of the WeekStartDay enum.
+func (e WeekStartDay) Valid() bool {
+	switch e {
+	case Monday:
+		return true
+	case Sunday:
 		return true
 	default:
 		return false
@@ -79,6 +136,9 @@ type CreateTimespan struct {
 	StartTime time.Time  `json:"startTime"`
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
 }
+
+// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+type DurationFormat string
 
 // HexColor defines model for HexColor.
 type HexColor = string
@@ -167,6 +227,21 @@ type SeriesPoint struct {
 	Value float32 `json:"value"`
 }
 
+// Settings defines model for Settings.
+type Settings struct {
+	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+	DurationFormat DurationFormat `json:"durationFormat"`
+
+	// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+	TimeFormat TimeFormat `json:"timeFormat"`
+
+	// Timezone IANA timezone name, e.g. "Europe/Stockholm" or "UTC".
+	Timezone string `json:"timezone"`
+
+	// WeekStartDay The first day of the week for calendar/report views.
+	WeekStartDay WeekStartDay `json:"weekStartDay"`
+}
+
 // StatsMetric A metric that can be aggregated over time for a project or tag.
 type StatsMetric string
 
@@ -204,6 +279,9 @@ type TagStats struct {
 	Unit string `json:"unit"`
 }
 
+// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+type TimeFormat string
+
 // Timespan defines model for Timespan.
 type Timespan struct {
 	EndTime   time.Time          `json:"endTime"`
@@ -220,6 +298,19 @@ type UpdateProject struct {
 	Name            *string    `json:"name,omitempty"`
 	TagIds          *TagIdList `json:"tagIds,omitempty"`
 	TimeBudgetHours *float64   `json:"timeBudgetHours,omitempty"`
+}
+
+// UpdateSettings defines model for UpdateSettings.
+type UpdateSettings struct {
+	// DurationFormat How durations are rendered in the UI: "long" (e.g. "2h 30m"), "decimal" (e.g. "2.5h"), or "clock" (e.g. "02:30").
+	DurationFormat *DurationFormat `json:"durationFormat,omitempty"`
+
+	// TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
+	TimeFormat *TimeFormat `json:"timeFormat,omitempty"`
+	Timezone   *string     `json:"timezone,omitempty"`
+
+	// WeekStartDay The first day of the week for calendar/report views.
+	WeekStartDay *WeekStartDay `json:"weekStartDay,omitempty"`
 }
 
 // UpdateTag defines model for UpdateTag.
@@ -251,6 +342,9 @@ type User struct {
 	// Sub OIDC subject claim (unique per provider, immutable identifier)
 	Sub string `json:"sub"`
 }
+
+// WeekStartDay The first day of the week for calendar/report views.
+type WeekStartDay string
 
 // Code defines model for code.
 type Code = string
@@ -404,6 +498,9 @@ type CreateProjectJSONRequestBody = CreateProject
 
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = UpdateProject
+
+// UpdateSettingsJSONRequestBody defines body for UpdateSettings for application/json ContentType.
+type UpdateSettingsJSONRequestBody = UpdateSettings
 
 // CreateTagJSONRequestBody defines body for CreateTag for application/json ContentType.
 type CreateTagJSONRequestBody = CreateTag
