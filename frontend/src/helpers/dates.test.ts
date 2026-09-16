@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { datePickerInputWidthCh, formatDatePickerInput, formatFullDate } from "./dates";
+import {
+  datePickerInputWidthCh,
+  formatDatePickerInput,
+  formatFullDate,
+  singleDatePickerInputWidthCh,
+} from "./dates";
 
 describe("formatFullDate", () => {
   const date = new Date(2024, 0, 15); // Monday, Jan 15 2024
@@ -48,5 +53,22 @@ describe("datePickerInputWidthCh", () => {
 
   it("gives text format more room than iso, since letters run wider than digits", () => {
     expect(datePickerInputWidthCh("text")).toBeGreaterThan(datePickerInputWidthCh("iso"));
+  });
+});
+
+describe("singleDatePickerInputWidthCh", () => {
+  it("is wide enough to fit an actual worst-case rendered date, with room to spare", () => {
+    for (const dateFormat of ["iso", "us", "eu", "text"] as const) {
+      const rendered = formatDatePickerInput(new Date(2024, 11, 31), dateFormat);
+      expect(singleDatePickerInputWidthCh(dateFormat)).toBeGreaterThan(rendered.length);
+    }
+  });
+
+  it("is narrower than the range width, since it fits one date instead of two", () => {
+    for (const dateFormat of ["iso", "us", "eu", "text"] as const) {
+      expect(singleDatePickerInputWidthCh(dateFormat)).toBeLessThan(
+        datePickerInputWidthCh(dateFormat),
+      );
+    }
   });
 });

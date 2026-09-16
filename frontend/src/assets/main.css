@@ -169,3 +169,10 @@ html .dp__theme_dark {
   --dp-menu-appear-transition-timing: cubic-bezier(0.4, 0, 1, 1);
   --dp-transition-timing: ease-out;
 }
+
+/* Wrapper for every VueDatePicker instance in the app - kept global (like the
+   theme overrides above) so each usage site doesn't redeclare it. */
+.date-picker {
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
+}

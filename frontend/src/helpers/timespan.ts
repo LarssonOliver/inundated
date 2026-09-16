@@ -20,7 +20,3 @@ export function getTimeString(date: Date): string {
   const minutes = date.getMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 }
-
-export function getDateString(date: Date): string {
-  return date.toISOString().split("T")[0];
-}

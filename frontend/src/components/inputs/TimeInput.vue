@@ -82,6 +82,7 @@ function valueEntered() {
 input {
   width: 4.8em;
   font-family: monospace;
+  height: 100%;
 }
 
 input.time-12h {
