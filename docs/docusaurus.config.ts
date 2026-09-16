@@ -42,7 +42,9 @@ const config: Config = {
 
   themeConfig: {
     colorMode: {
-      respectPrefersColorScheme: true,
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: false,
     },
     navbar: {
       title: 'inundated',
