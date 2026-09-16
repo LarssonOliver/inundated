@@ -23,3 +23,11 @@ npm run build
 ```
 
 Generates a static site into the `build` directory.
+
+## Typecheck
+
+```bash
+npm run typecheck
+```
+
+Runs the TypeScript compiler in check-only mode. There's no lint or test suite for this site yet — this is the only automated verification available.
