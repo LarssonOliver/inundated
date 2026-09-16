@@ -1,6 +1,7 @@
 import { test, expect, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
+import { VueDatePicker } from "@vuepic/vue-datepicker";
 import TimespanEdit from "./TimespanEdit.vue";
 import type { Timespan } from "@/model/timespan";
 import { getTimeString } from "@/helpers/timespan";
@@ -102,4 +103,15 @@ test("rejects a negative duration in the start time field instead of rolling it 
   await enterTimeField(wrapper, 1, "-2h");
 
   expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+});
+
+test("picking a new start date keeps the time of day and shifts the end date to match", async () => {
+  const timespan = baseTimespan();
+  const wrapper = mount(TimespanEdit, { props: { modelValue: timespan } });
+
+  await wrapper.findComponent(VueDatePicker).vm.$emit("update:model-value", new Date(2024, 0, 5));
+
+  const updated = lastEmittedTimespan(wrapper);
+  expect(updated.startTime).toEqual(new Date(2024, 0, 5, 15, 0));
+  expect(updated.endTime).toEqual(new Date(2024, 0, 5, 16, 0));
 });

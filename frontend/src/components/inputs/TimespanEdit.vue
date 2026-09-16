@@ -19,7 +19,15 @@
       :resolve-duration="resolveEndFromDuration"
       :time-format="timeFormat"
     />
-    <input type="date" v-model="startDateString" />
+    <div class="date-picker" :style="{ width: datePickerWidth }">
+      <VueDatePicker
+        v-model="startDate"
+        dark
+        :time-config="{ enableTimePicker: false }"
+        :input-attrs="{ clearable: false }"
+        :formats="datePickerFormats"
+      />
+    </div>
   </div>
 </template>
 
@@ -27,8 +35,12 @@
 import type { Timespan } from "@/model/timespan";
 import { computed } from "vue";
 import TimeInput from "@/components/inputs/TimeInput.vue";
-import { getDateString, getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
+import { getTimeString, newTimespanWithDefaults } from "@/helpers/timespan";
 import { useSettingsStore } from "@/stores/settings";
+import { formatDatePickerInput, singleDatePickerInputWidthCh } from "@/helpers/dates";
+
+import { VueDatePicker } from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
 const model = defineModel<Timespan>({
   default: newTimespanWithDefaults(),
@@ -36,6 +48,13 @@ const model = defineModel<Timespan>({
 
 const settingsStore = useSettingsStore();
 const timeFormat = computed(() => settingsStore.settings?.timeFormat ?? "24h");
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
+
+const datePickerFormats = computed(() => ({
+  input: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
+  preview: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
+}));
+const datePickerWidth = computed(() => `${singleDatePickerInputWidthCh(dateFormat.value)}ch`);
 
 defineEmits<{
   submit: [];
@@ -70,12 +89,11 @@ const endTimeString = computed({
   },
 });
 
-const startDateString = computed({
-  get: () => getDateString(model.value.startTime),
-  set: (v) => {
-    const [y, m, d] = v.split("-").map((s) => +s);
-    if ([y, m, d].some(isNaN)) return;
-    const newStartTime = setDate(model.value.startTime, y, m - 1, d);
+const startDate = computed({
+  get: () => model.value.startTime,
+  set: (v: Date | null) => {
+    if (!v) return;
+    const newStartTime = setDate(model.value.startTime, v.getFullYear(), v.getMonth(), v.getDate());
     model.value = {
       ...model.value,
       startTime: newStartTime,
@@ -130,11 +148,10 @@ function adjustedEndTime(start: Date, end: Date): Date {
   width: 1em;
 }
 
-input[type="date"] {
-  width: 11.5em;
+.date-picker {
   margin-left: 1em;
-  padding: 0.5em 0.75em;
-  height: 2.5em;
+  border: 1px solid var(--nord1);
+  border-radius: var(--radius-sm);
 }
 
 input[type="text"] {

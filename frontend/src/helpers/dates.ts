@@ -39,6 +39,15 @@ export function formatDatePickerInput(dates: Date | Date[], dateFormat: DateForm
 // below is never too narrow for any actual value the format can produce.
 const WIDEST_SAMPLE_DATE = new Date(2024, 11, 31);
 
+function widestRenderedSample(dateFormat: DateFormat): string {
+  return format(WIDEST_SAMPLE_DATE, DATE_TOKENS[dateFormat]);
+}
+
+// Room for the calendar icon + input padding.
+function iconAndPaddingCh(dateFormat: DateFormat): number {
+  return 5.5 + (dateFormat === "iso" ? 1 : 0);
+}
+
 /**
  * Estimates how wide (in `ch` units) a start-end date range needs to be to
  * fit without truncating, for the given DateFormat - e.g. "iso" needs less
@@ -47,8 +56,18 @@ const WIDEST_SAMPLE_DATE = new Date(2024, 11, 31);
  * of letters (fine here - the goal is "never truncates", not pixel-perfect).
  */
 export function datePickerInputWidthCh(dateFormat: DateFormat): number {
-  const sample = format(WIDEST_SAMPLE_DATE, DATE_TOKENS[dateFormat]);
   const separator = 3; // " - "
-  const iconAndPadding = 5.5 + (dateFormat === "iso" ? 1 : 0); // room for the calendar icon + input padding
-  return sample.length * 2 + separator + iconAndPadding;
+  return widestRenderedSample(dateFormat).length * 2 + separator + iconAndPaddingCh(dateFormat);
+}
+
+// Room for the calendar icon + input padding on a single (non-range) picker.
+// Measured empirically against the rendered input (~6.7ch of fixed
+// padding/border) with headroom, since the range picker's larger character
+// budget hides that same fixed decoration but a single date has little to
+// spare.
+const SINGLE_ICON_AND_PADDING_CH = 7.5;
+
+/** Same, but for a single date instead of a start-end range. */
+export function singleDatePickerInputWidthCh(dateFormat: DateFormat): number {
+  return widestRenderedSample(dateFormat).length + SINGLE_ICON_AND_PADDING_CH;
 }
