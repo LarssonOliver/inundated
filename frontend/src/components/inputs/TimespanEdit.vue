@@ -150,8 +150,6 @@ function adjustedEndTime(start: Date, end: Date): Date {
 
 .date-picker {
   margin-left: 1em;
-  border: 1px solid var(--nord1);
-  border-radius: var(--radius-sm);
 }
 
 input[type="text"] {
