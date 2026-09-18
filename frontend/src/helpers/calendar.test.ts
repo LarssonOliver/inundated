@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "temporal-polyfill";
 import {
   timespansToCalendarEvents,
@@ -7,6 +7,8 @@ import {
   navigateDate,
   formatRangeHeading,
   localeForTimeFormat,
+  loadStoredCalendarView,
+  storeCalendarView,
   UNTAGGED_CALENDAR_ID,
 } from "./calendar";
 import type { Timespan } from "@/model";
@@ -174,5 +176,48 @@ describe("localeForTimeFormat", () => {
 
   it("uses en-GB (24-hour) for the 24h setting", () => {
     expect(localeForTimeFormat("24h")).toBe("en-GB");
+  });
+});
+
+describe("loadStoredCalendarView / storeCalendarView", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("returns the given default when nothing is stored", () => {
+    expect(loadStoredCalendarView("week")).toBe("week");
+  });
+
+  it("returns a previously stored view", () => {
+    storeCalendarView("day");
+    expect(loadStoredCalendarView("week")).toBe("day");
+  });
+
+  it("falls back to the default when the stored value isn't a known view", () => {
+    localStorage.setItem("inundated:calendarView", "not-a-real-view");
+    expect(loadStoredCalendarView("week")).toBe("week");
+  });
+
+  describe("when localStorage throws", () => {
+    beforeEach(() => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("storage disabled");
+      });
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("storage disabled");
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("loadStoredCalendarView falls back to the default instead of throwing", () => {
+      expect(loadStoredCalendarView("week")).toBe("week");
+    });
+
+    it("storeCalendarView doesn't throw", () => {
+      expect(() => storeCalendarView("day")).not.toThrow();
+    });
   });
 });
