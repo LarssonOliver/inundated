@@ -4,6 +4,9 @@ import {
   timespansToCalendarEvents,
   tagsToCalendarColorDefinitions,
   dateRangeToInterval,
+  navigateDate,
+  formatRangeHeading,
+  localeForTimeFormat,
   UNTAGGED_CALENDAR_ID,
 } from "./calendar";
 import type { Timespan } from "@/model";
@@ -111,5 +114,65 @@ describe("dateRangeToInterval", () => {
     const interval = dateRangeToInterval({ start, end });
 
     expect(interval).toBe("2024-06-01T00:00:00+02:00/2024-07-01T00:00:00+02:00");
+  });
+});
+
+describe("navigateDate", () => {
+  it("moves by one month for the month-grid view", () => {
+    const date = new Date(2024, 5, 15); // June 15, 2024
+    expect(navigateDate(date, "month-grid", 1)).toEqual(new Date(2024, 6, 15));
+    expect(navigateDate(date, "month-grid", -1)).toEqual(new Date(2024, 4, 15));
+  });
+
+  it("moves by one week for the week view", () => {
+    const date = new Date(2024, 5, 15);
+    expect(navigateDate(date, "week", 1)).toEqual(new Date(2024, 5, 22));
+    expect(navigateDate(date, "week", -1)).toEqual(new Date(2024, 5, 8));
+  });
+
+  it("moves by one day for the day view", () => {
+    const date = new Date(2024, 5, 15);
+    expect(navigateDate(date, "day", 1)).toEqual(new Date(2024, 5, 16));
+    expect(navigateDate(date, "day", -1)).toEqual(new Date(2024, 5, 14));
+  });
+});
+
+describe("formatRangeHeading", () => {
+  it("formats the month-grid heading as a month and year", () => {
+    const date = new Date(2024, 8, 17); // September 17, 2024
+    expect(formatRangeHeading(date, "month-grid", "iso", 1)).toBe("September 2024");
+  });
+
+  it("formats the day heading using the app's full-date format", () => {
+    const date = new Date(2024, 8, 17); // a Tuesday
+    expect(formatRangeHeading(date, "day", "iso", 1)).toBe("Tuesday, 2024-09-17");
+  });
+
+  it("formats a week heading spanning a single month", () => {
+    // Sept 17 2024 is a Tuesday; Monday-start week is Sept 16 - 22.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("Sep 16 – 22, 2024");
+  });
+
+  it("formats a week heading spanning two months", () => {
+    // Sept 30 2024 is a Monday; Monday-start week is Sept 30 - Oct 6.
+    const date = new Date(2024, 8, 30);
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("Sep 30 – Oct 6, 2024");
+  });
+
+  it("respects a Sunday-start week", () => {
+    // Sept 17 2024 is a Tuesday; Sunday-start week is Sept 15 - 21.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "iso", 0)).toBe("Sep 15 – 21, 2024");
+  });
+});
+
+describe("localeForTimeFormat", () => {
+  it("uses en-US (12-hour) for the 12h setting", () => {
+    expect(localeForTimeFormat("12h")).toBe("en-US");
+  });
+
+  it("uses en-GB (24-hour) for the 24h setting", () => {
+    expect(localeForTimeFormat("24h")).toBe("en-GB");
   });
 });

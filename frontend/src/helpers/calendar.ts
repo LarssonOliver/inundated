@@ -1,7 +1,19 @@
 import { Temporal } from "temporal-polyfill";
+import {
+  addMonths,
+  addWeeks,
+  addDays,
+  startOfWeek,
+  endOfWeek,
+  format as formatDate,
+} from "date-fns";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
-import type { Tag, Timespan } from "@/model";
+import { formatFullDate } from "@/helpers/dates";
+import type { Tag, Timespan, DateFormat, TimeFormat } from "@/model";
 import type { CalendarEventExternal, CalendarType } from "@schedule-x/calendar";
+
+/** The subset of schedule-x views the calendar page offers. */
+export type CalendarViewName = "month-grid" | "week" | "day";
 
 /** calendarId used for a timespan with no tags - see tagsToCalendarColorDefinitions. */
 export const UNTAGGED_CALENDAR_ID = "untagged";
@@ -38,6 +50,61 @@ export function dateRangeToInterval(range: {
 }): string {
   const format = (zdt: Temporal.ZonedDateTime) => zdt.toString({ timeZoneName: "never" });
   return `${format(range.start)}/${format(range.end)}`;
+}
+
+/**
+ * Computes the new anchor date after moving one unit forward or back in the
+ * given view - a month for month-grid, a week for week, a day for day.
+ */
+export function navigateDate(date: Date, view: CalendarViewName, direction: 1 | -1): Date {
+  switch (view) {
+    case "month-grid":
+      return addMonths(date, direction);
+    case "week":
+      return addWeeks(date, direction);
+    case "day":
+      return addDays(date, direction);
+  }
+}
+
+/**
+ * Formats a human-readable heading for the range a view currently shows,
+ * anchored at `date` (e.g. "September 2024", "Sep 16 - 22, 2024").
+ */
+export function formatRangeHeading(
+  date: Date,
+  view: CalendarViewName,
+  dateFormat: DateFormat,
+  weekStartsOn: 0 | 1,
+): string {
+  switch (view) {
+    case "month-grid":
+      return formatDate(date, "MMMM yyyy");
+    case "day":
+      return formatFullDate(date, dateFormat);
+    case "week": {
+      const start = startOfWeek(date, { weekStartsOn });
+      const end = endOfWeek(date, { weekStartsOn });
+      if (start.getFullYear() !== end.getFullYear()) {
+        return `${formatDate(start, "MMM d, yyyy")} – ${formatDate(end, "MMM d, yyyy")}`;
+      }
+      if (start.getMonth() !== end.getMonth()) {
+        return `${formatDate(start, "MMM d")} – ${formatDate(end, "MMM d, yyyy")}`;
+      }
+      return `${formatDate(start, "MMM d")} – ${formatDate(end, "d, yyyy")}`;
+    }
+  }
+}
+
+/**
+ * schedule-x derives its 12h/24h event-time formatting solely from whether
+ * `locale === 'en-US'` (its only hour12 branch); everything else renders
+ * 24-hour. This maps the app's own explicit timeFormat setting onto a
+ * locale that produces the matching behavior, for both the time-grid axis
+ * and in-event time text.
+ */
+export function localeForTimeFormat(timeFormat: TimeFormat): string {
+  return timeFormat === "12h" ? "en-US" : "en-GB";
 }
 
 /**
