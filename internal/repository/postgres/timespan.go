@@ -43,6 +43,14 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 	// intervalFilterSQL returns the "AND end_time > $n AND start_time < $m"
 	// fragment for whichever of From/To are set, appending their values to
 	// args and using the placeholder numbers that follow.
+	//
+	// Placeholder numbers are positional, derived from len(args) at the time
+	// each value is appended - so callers must pass in every arg that's
+	// already bound ahead of the interval values (e.g. limit/offset), and
+	// must in turn pass this call's returned args into ownerPredicate so its
+	// own placeholder continues the same sequence. Adding another filter
+	// later must follow the same append-then-number pattern, in the same
+	// order used in the query text below.
 	intervalFilterSQL := func(args []any) (string, []any) {
 		sql := ""
 		if params.From != nil {
