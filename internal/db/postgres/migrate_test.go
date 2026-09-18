@@ -266,6 +266,20 @@ func TestIndividualMigrations(t *testing.T) {
 				assertTableNotExists(t, ctx, pool, "settings")
 			},
 		},
+		{
+			name:        "0012_timespans_start_time_index",
+			fromVersion: 11,
+			toVersion:   12,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexNotExists(t, ctx, pool, "idx_timespans_user_id_start_time")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexExists(t, ctx, pool, "idx_timespans_user_id_start_time")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexNotExists(t, ctx, pool, "idx_timespans_user_id_start_time")
+			},
+		},
 	}
 
 	for _, tc := range tests {
