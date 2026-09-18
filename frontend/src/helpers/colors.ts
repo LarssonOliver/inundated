@@ -1,12 +1,5 @@
 export function shouldTextBeDarkFromBgColor(bgColor: string): boolean {
-  let hexColor = bgColor.replace("#", "");
-
-  if (hexColor.length === 3) {
-    hexColor = hexColor
-      .split("")
-      .map((char) => char + char)
-      .join("");
-  }
+  const hexColor = normalizeHex(bgColor);
 
   if (hexColor.length !== 6) {
     return false;
