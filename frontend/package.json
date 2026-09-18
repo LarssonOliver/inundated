@@ -19,6 +19,7 @@
     "@fontsource/pt-sans": "^5.3.0",
     "@fontsource/roboto": "^5.2.5",
     "@schedule-x/calendar": "4.8.0",
+    "@schedule-x/calendar-controls": "4.8.0",
     "@schedule-x/theme-default": "4.8.0",
     "@schedule-x/vue": "4.1.0",
     "@vuepic/vue-datepicker": "^12.1.0",

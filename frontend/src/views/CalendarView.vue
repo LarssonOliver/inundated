@@ -3,7 +3,7 @@
     <div class="title-bar">
       <h2>Calendar</h2>
     </div>
-    <TheCalendar />
+    <TheCalendar class="calendar-body" />
   </div>
 </template>
 
@@ -12,10 +12,23 @@ import TheCalendar from "@/components/calendar/TheCalendar.vue";
 </script>
 
 <style scoped>
+.calendar-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .title-bar {
   display: flex;
   flex-direction: row;
   margin-bottom: 1.25em;
+  flex-shrink: 0;
+}
+
+.calendar-body {
+  flex: 1;
+  min-height: 0;
 }
 
 .title-bar h2 {
