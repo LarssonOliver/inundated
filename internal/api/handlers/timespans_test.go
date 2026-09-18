@@ -391,6 +391,22 @@ func TestTimespanHandler_ListTimespans_UnprocessableIntervalMapsTo422(t *testing
 	assert.IsType(t, api.ListTimespans422Response{}, got)
 }
 
+func TestTimespanHandler_ListTimespans_InvalidIntervalMapsTo400(t *testing.T) {
+	svc := &service.TimespanServiceMock{
+		ListFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
+			return model.Page[model.Timespan]{}, model.ErrInvalidArgument
+		},
+	}
+	ta := handlers.NewTimespanHandler(svc)
+
+	got, err := ta.ListTimespans(context.Background(), api.ListTimespansRequestObject{
+		Params: api.ListTimespansParams{Interval: ptrInterval("not-an-interval")},
+	})
+
+	require.NoError(t, err)
+	assert.IsType(t, api.ListTimespans400Response{}, got)
+}
+
 func TestTimespanHandler_UpdateTimespan(t *testing.T) {
 	baseTime := time.Now()
 
