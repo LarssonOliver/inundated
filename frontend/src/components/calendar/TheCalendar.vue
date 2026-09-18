@@ -30,7 +30,11 @@
       <div class="calendar-body">
         <ScheduleXCalendar :calendar-app="calendarApp">
           <template #timeGridEvent="{ calendarEvent }">
-            <div class="custom-event" :style="eventColorStyle(calendarEvent.calendarId ?? '')">
+            <div
+              class="custom-event"
+              :data-calendar-id="calendarEvent.calendarId"
+              :style="eventColorStyle(calendarEvent.calendarId ?? '')"
+            >
               <div v-if="calendarEvent.title" class="custom-event-title">
                 {{ calendarEvent.title }}
               </div>
@@ -51,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, shallowRef, onMounted, watch } from "vue";
+import { ref, computed, shallowRef, onMounted, onUnmounted, watch } from "vue";
 import { Temporal } from "temporal-polyfill";
 import { ScheduleXCalendar } from "@schedule-x/vue";
 import {
@@ -86,9 +90,11 @@ import {
   formatRangeHeading,
   formatEventTimeRange,
   eventColorStyle,
+  concurrentEventBorderOverrideCss,
   localeForTimeFormat,
   loadStoredCalendarView,
   storeCalendarView,
+  UNTAGGED_CALENDAR_ID,
   type CalendarViewName,
 } from "@/helpers/calendar";
 
@@ -111,6 +117,31 @@ function tagsForEvent(tagIds: readonly string[] | undefined): Tag[] {
     .map((id) => tags.value.find((tag) => tag.id === id))
     .filter((tag): tag is Tag => tag !== undefined);
 }
+
+const concurrentEventBorderCss = computed(() =>
+  concurrentEventBorderOverrideCss([...tags.value.map((tag) => tag.id), UNTAGGED_CALENDAR_ID]),
+);
+
+// Vue's template compiler rejects <style> as a template element ("tags with
+// side effect are ignored in client component templates"), so this CSS -
+// dynamic per the current tag list - is injected as a real stylesheet via
+// the DOM API instead, kept in sync with a watcher and cleaned up on unmount.
+let concurrentEventBorderStyleEl: HTMLStyleElement | null = null;
+
+onMounted(() => {
+  concurrentEventBorderStyleEl = document.createElement("style");
+  concurrentEventBorderStyleEl.textContent = concurrentEventBorderCss.value;
+  document.head.appendChild(concurrentEventBorderStyleEl);
+});
+
+onUnmounted(() => {
+  concurrentEventBorderStyleEl?.remove();
+  concurrentEventBorderStyleEl = null;
+});
+
+watch(concurrentEventBorderCss, (css) => {
+  if (concurrentEventBorderStyleEl) concurrentEventBorderStyleEl.textContent = css;
+});
 
 const locale = computed(() => localeForTimeFormat(settingsStore.settings?.timeFormat ?? "24h"));
 
@@ -332,8 +363,7 @@ onMounted(async () => {
   line-height: 1.25;
   /* A hairline gap in the page background color, so adjacent/concurrent
      events read as distinct blocks instead of a single fused strip. */
-  border-top: 1px solid var(--sx-color-background);
-  border-left: 1px solid var(--sx-color-background);
+  border-bottom: 0.75px solid var(--sx-color-background);
 }
 
 .custom-event-title {

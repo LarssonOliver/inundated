@@ -206,6 +206,24 @@ export function eventColorStyle(calendarId: string): {
 }
 
 /**
+ * CSS overriding schedule-x's own hardcoded white border on concurrent
+ * (side-by-side) events - its internal getBorderRule applies `1px solid
+ * #fff` to any event with an earlier concurrent sibling, with no config
+ * option to change the color. That border lives on an element outside this
+ * app's custom event slot, and carries no calendarId to key off of
+ * directly, so this targets it per calendarId via :has() instead, matching
+ * on the data-calendar-id attribute the event slot sets on itself.
+ */
+export function concurrentEventBorderOverrideCss(calendarIds: readonly string[]): string {
+  return calendarIds
+    .map(
+      (id) =>
+        `.sx__time-grid-event:has(.custom-event[data-calendar-id="${id}"]) { border-color: var(--sx-color-${id}) !important; }`,
+    )
+    .join("\n");
+}
+
+/**
  * Builds a schedule-x `calendars` color-definition map, one entry per tag
  * (keyed by tag id, colored with the tag's own color) plus a fixed entry for
  * {@link UNTAGGED_CALENDAR_ID}.

@@ -11,6 +11,7 @@ import {
   storeCalendarView,
   formatEventTimeRange,
   eventColorStyle,
+  concurrentEventBorderOverrideCss,
   UNTAGGED_CALENDAR_ID,
 } from "./calendar";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
@@ -274,5 +275,22 @@ describe("eventColorStyle", () => {
       color: "var(--sx-color-on-tag-1-container)",
       borderInlineStart: "4px solid var(--sx-color-tag-1)",
     });
+  });
+});
+
+describe("concurrentEventBorderOverrideCss", () => {
+  it("emits one :has() rule per calendarId, targeting schedule-x's hardcoded border color", () => {
+    const css = concurrentEventBorderOverrideCss(["tag-1", "untagged"]);
+
+    expect(css).toContain(
+      '.sx__time-grid-event:has(.custom-event[data-calendar-id="tag-1"]) { border-color: var(--sx-color-tag-1) !important; }',
+    );
+    expect(css).toContain(
+      '.sx__time-grid-event:has(.custom-event[data-calendar-id="untagged"]) { border-color: var(--sx-color-untagged) !important; }',
+    );
+  });
+
+  it("returns an empty string for no calendar ids", () => {
+    expect(concurrentEventBorderOverrideCss([])).toBe("");
   });
 });
