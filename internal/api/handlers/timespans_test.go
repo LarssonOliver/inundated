@@ -225,7 +225,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		listFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
+		listFn     func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error)
 		initParams func() *api.ListTimespansParams
 		wantData   []api.Timespan
 		wantLimit  int
@@ -234,7 +234,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 	}{
 		{
 			name: "success with multiple timespans and no params",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: []model.Timespan{timespan1, timespan2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListTimespansParams { return nil },
@@ -247,7 +247,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "success with pagination params",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				require.Equal(t, 10, params.Limit)
 				require.Equal(t, 0, params.Offset)
 				return model.Page[model.Timespan]{Data: []model.Timespan{timespan1, timespan2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
@@ -264,7 +264,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "success with offset",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				require.Equal(t, 25, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Timespan]{Data: []model.Timespan{timespan2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
@@ -278,7 +278,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "success with empty list",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListTimespansParams { return nil },
@@ -288,7 +288,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "limit too low returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Timespan]{}, nil
 			},
@@ -298,7 +298,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "limit too high returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Timespan]{}, nil
 			},
@@ -308,7 +308,7 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "negative offset returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Timespan]{}, nil
 			},
@@ -318,11 +318,28 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 		},
 		{
 			name: "service returns error",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{}, errors.New("database unavailable")
 			},
 			initParams: func() *api.ListTimespansParams { return nil },
 			wantErr:    true,
+		},
+		{
+			name: "interval param is forwarded to the service",
+			listFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
+				require.NotNil(t, intervalRaw)
+				require.Equal(t, "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z", *intervalRaw)
+				return model.Page[model.Timespan]{Data: []model.Timespan{timespan1, timespan2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
+			},
+			initParams: func() *api.ListTimespansParams {
+				return &api.ListTimespansParams{Interval: ptrInterval("2024-01-01T00:00:00Z/2024-01-02T00:00:00Z")}
+			},
+			wantData: []api.Timespan{
+				{Id: timespan1.Id, Name: &timespan1.Name},
+				{Id: timespan2.Id, Name: &timespan2.Name},
+			},
+			wantLimit: 25,
+			wantTotal: 2,
 		},
 	}
 	for _, tt := range tests {
@@ -356,6 +373,22 @@ func TestTimespanHandler_ListTimespans(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimespanHandler_ListTimespans_UnprocessableIntervalMapsTo422(t *testing.T) {
+	svc := &service.TimespanServiceMock{
+		ListFn: func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
+			return model.Page[model.Timespan]{}, model.ErrUnprocessable
+		},
+	}
+	ta := handlers.NewTimespanHandler(svc)
+
+	got, err := ta.ListTimespans(context.Background(), api.ListTimespansRequestObject{
+		Params: api.ListTimespansParams{Interval: ptrInterval("2024-01-02T00:00:00Z/2024-01-01T00:00:00Z")},
+	})
+
+	require.NoError(t, err)
+	assert.IsType(t, api.ListTimespans422Response{}, got)
 }
 
 func TestTimespanHandler_UpdateTimespan(t *testing.T) {

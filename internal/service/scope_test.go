@@ -98,7 +98,7 @@ func scopedMethods() []scopedMethod {
 			return err
 		}, 1},
 		{"ListTimespans", func(ctx context.Context, s *service.ServiceImpl) error {
-			_, err := s.ListTimespans(ctx, model.DefaultPaginationParams())
+			_, err := s.ListTimespans(ctx, model.DefaultPaginationParams(), nil)
 			return err
 		}, 1},
 		{"CreateTimespan", func(ctx context.Context, s *service.ServiceImpl) error {
@@ -190,7 +190,7 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 			record(scope)
 			return model.Timespan{Id: id}, nil
 		},
-		ListTimespanFn: func(_ context.Context, scope model.OwnerScope, _ model.PaginationParams) (model.Page[model.Timespan], error) {
+		ListTimespanFn: func(_ context.Context, scope model.OwnerScope, _ model.TimespanListParams) (model.Page[model.Timespan], error) {
 			record(scope)
 			return model.Page[model.Timespan]{}, nil
 		},

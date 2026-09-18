@@ -76,7 +76,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{Name: "a", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
 			_, _ = repo.CreateTimespan(ctx, testScope, model.Timespan{Name: "b", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)})
 
-			page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 2, page.TotalCount)
@@ -230,6 +230,40 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Equal(t, time.Duration(0), durCross)
 		})
 
+		t.Run(repoName+"ListIntervalFilter_OverlapOnly", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now().UTC().Truncate(time.Millisecond)
+			from := base.Add(3 * time.Hour)
+			to := base.Add(6 * time.Hour)
+
+			create := func(name string, start, end time.Time) uuid.UUID {
+				created, err := repo.CreateTimespan(ctx, testScope, model.Timespan{Name: name, StartTime: start, EndTime: end})
+				require.NoError(t, err)
+				return created.Id
+			}
+
+			create("before", base, base.Add(time.Hour))
+			overlapsStart := create("overlapsStart", base.Add(2*time.Hour), base.Add(4*time.Hour))
+			inside := create("inside", base.Add(4*time.Hour), base.Add(5*time.Hour))
+			overlapsEnd := create("overlapsEnd", base.Add(5*time.Hour), base.Add(7*time.Hour))
+			create("after", base.Add(8*time.Hour), base.Add(9*time.Hour))
+
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{
+				PaginationParams: model.DefaultPaginationParams(),
+				From:             &from,
+				To:               &to,
+			})
+			require.NoError(t, err)
+
+			gotIds := make([]uuid.UUID, 0, len(page.Data))
+			for _, ts := range page.Data {
+				gotIds = append(gotIds, ts.Id)
+			}
+			require.ElementsMatch(t, []uuid.UUID{overlapsStart, inside, overlapsEnd}, gotIds)
+			require.Equal(t, 3, page.TotalCount)
+		})
+
 		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {
 			repo := newRepo(t)
 
@@ -242,12 +276,12 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 2, Offset: 0}})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
 
-			page2, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 2})
+			page2, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 2, Offset: 2}})
 			require.NoError(t, err)
 			require.Len(t, page2.Data, 2)
 			require.Equal(t, 5, page2.TotalCount)
@@ -271,7 +305,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				EndTime:   base.Add(time.Hour),
 			})
 
-			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 100})
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 100}})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 1, page.TotalCount)
@@ -289,7 +323,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 3, Offset: 3})
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 3, Offset: 3}})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 5, page.TotalCount)
@@ -298,7 +332,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
 			repo := newRepo(t)
 
-			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 0}})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 			require.Equal(t, 0, page.TotalCount)
@@ -316,7 +350,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{Limit: 1, Offset: 0})
+			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 1, Offset: 0}})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 1)
 			require.Equal(t, 5, page.TotalCount)
@@ -340,7 +374,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			pageA, err := repo.ListTimespans(ctx, scopeA, model.DefaultPaginationParams())
+			pageA, err := repo.ListTimespans(ctx, scopeA, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, pageA.Data, 1)
 			require.Equal(t, 1, pageA.TotalCount)
@@ -373,7 +407,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 
 			// The rejected create leaves no orphan timespan row.
-			page, err := repo.ListTimespans(ctx, scopeA, model.DefaultPaginationParams())
+			page, err := repo.ListTimespans(ctx, scopeA, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Empty(t, page.Data)
 
@@ -494,7 +528,7 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 1)
 

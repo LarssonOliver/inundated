@@ -75,14 +75,14 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 	tests := []struct {
 		name    string
 		params  model.PaginationParams
-		listFn  func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error)
+		listFn  func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
 		want    model.Page[model.Timespan]
 		wantErr bool
 	}{
 		{
 			name:   "successful list",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: timespans, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Timespan]{Data: timespans, TotalCount: 2},
@@ -91,7 +91,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "repository error",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{}, errors.New("database error")
 			},
 			wantErr: true,
@@ -99,7 +99,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "pagination params are forwarded",
 			params: model.PaginationParams{Limit: 1, Offset: 1},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 				require.Equal(t, 1, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Timespan]{Data: timespans[1:], TotalCount: 2}, nil
@@ -110,7 +110,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 		{
 			name:   "empty page",
 			params: model.PaginationParams{Limit: 10, Offset: 100},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 				return model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Timespan]{Data: []model.Timespan{}, TotalCount: 2},
@@ -124,7 +124,7 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.ListTimespans(context.Background(), tt.params)
+			got, gotErr := s.ListTimespans(context.Background(), tt.params, nil)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
@@ -134,6 +134,83 @@ func TestTimespanService_ListTimespans(t *testing.T) {
 			require.ElementsMatch(t, tt.want.Data, got.Data)
 		})
 	}
+}
+
+func TestTimespanService_ListTimespans_IntervalFilter(t *testing.T) {
+	t.Run("valid interval is parsed and forwarded as From/To", func(t *testing.T) {
+		interval := "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z"
+		wantFrom, err := time.Parse(time.RFC3339, "2024-01-01T00:00:00Z")
+		require.NoError(t, err)
+		wantTo, err := time.Parse(time.RFC3339, "2024-01-02T00:00:00Z")
+		require.NoError(t, err)
+
+		var gotParams model.TimespanListParams
+		called := false
+		repo := &repository.RepoMock{
+			ListTimespanFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+				called = true
+				gotParams = params
+				return model.Page[model.Timespan]{}, nil
+			},
+		}
+
+		s := service.NewService(repo)
+		_, err = s.ListTimespans(context.Background(), model.DefaultPaginationParams(), &interval)
+
+		require.NoError(t, err)
+		require.True(t, called)
+		require.NotNil(t, gotParams.From)
+		require.NotNil(t, gotParams.To)
+		require.True(t, wantFrom.Equal(*gotParams.From))
+		require.True(t, wantTo.Equal(*gotParams.To))
+	})
+
+	t.Run("nil interval leaves From/To unset", func(t *testing.T) {
+		var gotParams model.TimespanListParams
+		repo := &repository.RepoMock{
+			ListTimespanFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+				gotParams = params
+				return model.Page[model.Timespan]{}, nil
+			},
+		}
+
+		s := service.NewService(repo)
+		_, err := s.ListTimespans(context.Background(), model.DefaultPaginationParams(), nil)
+
+		require.NoError(t, err)
+		require.Nil(t, gotParams.From)
+		require.Nil(t, gotParams.To)
+	})
+
+	t.Run("malformed interval returns ErrInvalidArgument without calling the repository", func(t *testing.T) {
+		interval := "not-an-interval"
+		repo := &repository.RepoMock{
+			ListTimespanFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+				t.Fatal("repository should not be called")
+				return model.Page[model.Timespan]{}, nil
+			},
+		}
+
+		s := service.NewService(repo)
+		_, err := s.ListTimespans(context.Background(), model.DefaultPaginationParams(), &interval)
+
+		require.ErrorIs(t, err, model.ErrInvalidArgument)
+	})
+
+	t.Run("interval with end before start returns ErrUnprocessable without calling the repository", func(t *testing.T) {
+		interval := "2024-01-02T00:00:00Z/2024-01-01T00:00:00Z"
+		repo := &repository.RepoMock{
+			ListTimespanFn: func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+				t.Fatal("repository should not be called")
+				return model.Page[model.Timespan]{}, nil
+			},
+		}
+
+		s := service.NewService(repo)
+		_, err := s.ListTimespans(context.Background(), model.DefaultPaginationParams(), &interval)
+
+		require.ErrorIs(t, err, model.ErrUnprocessable)
+	})
 }
 
 func TestTimespanService_CreateTimespan(t *testing.T) {

@@ -93,7 +93,7 @@ type GetProjectStatsInput struct {
 
 type TimespanService interface {
 	GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
+	ListTimespans(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error)
 	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error

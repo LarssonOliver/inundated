@@ -12,6 +12,11 @@ func ptrOffset(o int) *api.Offset {
 	return &offset
 }
 
+func ptrInterval(i string) *api.Interval {
+	interval := api.Interval(i)
+	return &interval
+}
+
 func boolPtr(b bool) *bool {
 	return &b
 }

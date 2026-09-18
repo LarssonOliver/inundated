@@ -55,7 +55,7 @@ type ProjectRepository interface {
 
 type TimespanRepository interface {
 	GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
-	ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error)
+	ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
 	CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error

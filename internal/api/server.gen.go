@@ -1022,6 +1022,19 @@ func (siw *ServerInterfaceWrapper) ListTimespans(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// ------------- Optional query parameter "interval" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "interval", r.URL.Query(), &params.Interval, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "interval"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "interval", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListTimespans(w, r, params)
 	}))
@@ -1969,6 +1982,14 @@ type ListTimespans400Response struct {
 
 func (response ListTimespans400Response) VisitListTimespansResponse(w http.ResponseWriter) error {
 	w.WriteHeader(400)
+	return nil
+}
+
+type ListTimespans422Response struct {
+}
+
+func (response ListTimespans422Response) VisitListTimespansResponse(w http.ResponseWriter) error {
+	w.WriteHeader(422)
 	return nil
 }
 
