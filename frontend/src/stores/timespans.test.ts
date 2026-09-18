@@ -26,6 +26,7 @@ describe("timespans store", () => {
     api = {
       listTimespans: vi.fn(),
       listTimespansPaginated: vi.fn(),
+      listTimespansInInterval: vi.fn(),
       getTimespan: vi.fn(),
       createTimespan: vi.fn(),
       updateTimespan: vi.fn(),
