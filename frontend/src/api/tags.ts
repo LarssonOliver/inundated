@@ -3,6 +3,7 @@ import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum, type StatsMetric } from
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 import { tagStatsMapper } from "./mappers/tagStatsMapper";
+import { fetchAllPages } from "./pagination";
 
 export interface PaginationMetadata {
   limit: number;
@@ -22,6 +23,7 @@ export interface TagsApi {
     offset?: number,
     includeArchived?: boolean,
   ): Promise<PaginatedTagsResponse>;
+  listAllTags(includeArchived?: boolean): Promise<Tag[]>;
   getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
@@ -58,6 +60,23 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
           total: response.pagination.total,
         },
       };
+    },
+
+    /**
+     * Fetches every tag, paging through the full result set rather than a
+     * single page - used by the calendar view, which needs every tag's
+     * color (including archived ones, so a timespan tagged with a
+     * since-archived tag still gets its color) rather than just the most
+     * recent page.
+     */
+    async listAllTags(includeArchived: boolean = false): Promise<Tag[]> {
+      return fetchAllPages(async (limit, offset) => {
+        const response = await api.listTags({ limit, offset, includeArchived });
+        return {
+          data: mapFromApiArray(tagMapper, response.data),
+          pagination: response.pagination,
+        };
+      });
     },
 
     async getTag(id: string, detailed: boolean): Promise<Tag> {

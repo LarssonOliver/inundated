@@ -80,6 +80,7 @@ import { tagsApi } from "@/api/tags";
 import { useSettingsStore } from "@/stores/settings";
 import { resolveTimezone } from "@/helpers/timezones";
 import { formatDatePickerInput, singleDatePickerInputWidthCh } from "@/helpers/dates";
+import { memoizeAsync } from "@/helpers/memoize";
 import { TIMEZONE_BROWSER } from "@/model";
 import type { Tag } from "@/model";
 import {
@@ -87,6 +88,7 @@ import {
   tagsToCalendarColorDefinitions,
   dateRangeToInterval,
   navigateDate,
+  weekStartDayToScheduleXDay,
   formatRangeHeading,
   formatEventTimeRange,
   eventColorStyle,
@@ -97,6 +99,7 @@ import {
   UNTAGGED_CALENDAR_ID,
   type CalendarViewName,
 } from "@/helpers/calendar";
+import { weekStartDayToDateFnsDay } from "@/helpers/statsChart";
 
 const settingsStore = useSettingsStore();
 
@@ -107,8 +110,7 @@ const settingsStore = useSettingsStore();
 const tags = ref<Tag[]>([]);
 
 async function fetchAllTagsForCalendar(): Promise<void> {
-  const result = await tagsApi.listTagsPaginated(100, 0, true);
-  tags.value = result.data;
+  tags.value = await tagsApi.listAllTags(true);
 }
 
 function tagsForEvent(tagIds: readonly string[] | undefined): Tag[] {
@@ -182,8 +184,8 @@ const viewDropdownValue = computed<string>({
 });
 
 const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
-const weekStartsOn = computed<0 | 1>(() =>
-  settingsStore.settings?.weekStartDay === "sunday" ? 0 : 1,
+const weekStartsOn = computed(() =>
+  weekStartDayToDateFnsDay(settingsStore.settings?.weekStartDay ?? "monday"),
 );
 const rangeHeading = computed(() =>
   formatRangeHeading(selectedDate.value, currentView.value, dateFormat.value, weekStartsOn.value),
@@ -232,11 +234,17 @@ type FetchEventsRange = Parameters<
   NonNullable<NonNullable<CalendarConfig["callbacks"]>["fetchEvents"]>
 >[0];
 
-async function fetchEvents(range: FetchEventsRange) {
+// Memoized by interval string: schedule-x calls fetchEvents on every range
+// change, including navigating back to a range already fetched (e.g.
+// today -> next -> prev), which would otherwise re-request identical data
+// from the backend every time. Scoped to this component instance (a fresh
+// closure per mount), so it can never serve another mount's cached events
+// or outlive this one.
+const fetchEvents = memoizeAsync(async (range: FetchEventsRange) => {
   const interval = dateRangeToInterval(range);
   const timespans = await timespansApi.listTimespansInInterval(interval);
   return timespansToCalendarEvents(timespans, resolvedTimezone.value);
-}
+}, dateRangeToInterval);
 
 onMounted(async () => {
   // Tag colors, timezone, first-day-of-week, and 12h/24h locale are all
@@ -251,8 +259,8 @@ onMounted(async () => {
   ]);
   resolvedTimezone.value = resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER);
 
-  const firstDayOfWeek = (
-    settingsStore.settings?.weekStartDay === "sunday" ? 7 : 1
+  const firstDayOfWeek = weekStartDayToScheduleXDay(
+    settingsStore.settings?.weekStartDay ?? "monday",
   ) as CalendarConfig["firstDayOfWeek"];
 
   calendarApp.value = createCalendar(

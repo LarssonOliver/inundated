@@ -7,6 +7,7 @@ import {
   toApiCreateTimespan,
   toApiUpdateTimespan,
 } from "./mappers";
+import { fetchAllPages } from "./pagination";
 
 export interface PaginationMetadata {
   limit: number;
@@ -60,19 +61,13 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
      * than a single page of the most recent items.
      */
     async listTimespansInInterval(interval: string): Promise<Timespan[]> {
-      const limit = 100;
-      let offset = 0;
-      const all: Timespan[] = [];
-
-      while (true) {
+      return fetchAllPages(async (limit, offset) => {
         const response = await api.listTimespans({ interval, limit, offset });
-        all.push(...mapFromApiArray(timespanMapper, response.data));
-
-        offset += response.pagination.limit;
-        if (response.data.length === 0 || offset >= response.pagination.total) break;
-      }
-
-      return all;
+        return {
+          data: mapFromApiArray(timespanMapper, response.data),
+          pagination: response.pagination,
+        };
+      });
     },
 
     async getTimespan(id: string): Promise<Timespan> {

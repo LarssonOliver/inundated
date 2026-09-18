@@ -201,4 +201,32 @@ describe("tags API", () => {
       timezone: "UTC",
     });
   });
+
+  it("listAllTags pages through the full result set instead of stopping at one page", async () => {
+    api.listTags
+      .mockResolvedValueOnce({
+        data: [{ id: "1", name: "A", color: "#111", archived: false }],
+        pagination: { limit: 1, offset: 0, total: 2 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: "2", name: "B", color: "#222", archived: true }],
+        pagination: { limit: 1, offset: 1, total: 2 },
+      });
+
+    const sut = createTagsApi(api);
+    const result = await sut.listAllTags(true);
+
+    expect(result.map((t) => t.id)).toEqual(["1", "2"]);
+    expect(api.listTags).toHaveBeenCalledTimes(2);
+    expect(api.listTags).toHaveBeenNthCalledWith(1, {
+      limit: 100,
+      offset: 0,
+      includeArchived: true,
+    });
+    expect(api.listTags).toHaveBeenNthCalledWith(2, {
+      limit: 100,
+      offset: 1,
+      includeArchived: true,
+    });
+  });
 });

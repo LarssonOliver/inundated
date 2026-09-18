@@ -24,6 +24,7 @@ describe("tags store", () => {
     api = {
       listTags: vi.fn(),
       listTagsPaginated: vi.fn(),
+      listAllTags: vi.fn(),
       getTag: vi.fn(),
       createTag: vi.fn(),
       updateTag: vi.fn(),

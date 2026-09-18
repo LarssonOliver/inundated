@@ -5,6 +5,7 @@ import {
   tagsToCalendarColorDefinitions,
   dateRangeToInterval,
   navigateDate,
+  weekStartDayToScheduleXDay,
   formatRangeHeading,
   localeForTimeFormat,
   loadStoredCalendarView,
@@ -148,6 +149,16 @@ describe("dateRangeToInterval", () => {
   });
 });
 
+describe("weekStartDayToScheduleXDay", () => {
+  it("maps sunday to schedule-x's Sunday (7)", () => {
+    expect(weekStartDayToScheduleXDay("sunday")).toBe(7);
+  });
+
+  it("maps monday to schedule-x's Monday (1)", () => {
+    expect(weekStartDayToScheduleXDay("monday")).toBe(1);
+  });
+});
+
 describe("navigateDate", () => {
   it("moves by one month for the month-grid view", () => {
     const date = new Date(2024, 5, 15); // June 15, 2024
@@ -169,9 +180,10 @@ describe("navigateDate", () => {
 });
 
 describe("formatRangeHeading", () => {
-  it("formats the month-grid heading as a month and year", () => {
+  it("formats the month-grid heading using the app's month+year format", () => {
     const date = new Date(2024, 8, 17); // September 17, 2024
-    expect(formatRangeHeading(date, "month-grid", "iso", 1)).toBe("September 2024");
+    expect(formatRangeHeading(date, "month-grid", "iso", 1)).toBe("2024-09");
+    expect(formatRangeHeading(date, "month-grid", "text", 1)).toBe("Sep 2024");
   });
 
   it("formats the day heading using the app's full-date format", () => {
@@ -179,22 +191,28 @@ describe("formatRangeHeading", () => {
     expect(formatRangeHeading(date, "day", "iso", 1)).toBe("Tuesday, 2024-09-17");
   });
 
-  it("formats a week heading spanning a single month", () => {
+  it("formats a week heading using the app's date format for both boundaries", () => {
     // Sept 17 2024 is a Tuesday; Monday-start week is Sept 16 - 22.
     const date = new Date(2024, 8, 17);
-    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("Sep 16 – 22, 2024");
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("2024-09-16 – 2024-09-22");
+  });
+
+  it("respects the day-before-month order of the eu format, unlike a hardcoded month-first token", () => {
+    // Sept 17 2024 is a Tuesday; Monday-start week is Sept 16 - 22.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "eu", 1)).toBe("16/09/2024 – 22/09/2024");
   });
 
   it("formats a week heading spanning two months", () => {
     // Sept 30 2024 is a Monday; Monday-start week is Sept 30 - Oct 6.
     const date = new Date(2024, 8, 30);
-    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("Sep 30 – Oct 6, 2024");
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("2024-09-30 – 2024-10-06");
   });
 
   it("respects a Sunday-start week", () => {
     // Sept 17 2024 is a Tuesday; Sunday-start week is Sept 15 - 21.
     const date = new Date(2024, 8, 17);
-    expect(formatRangeHeading(date, "week", "iso", 0)).toBe("Sep 15 – 21, 2024");
+    expect(formatRangeHeading(date, "week", "iso", 0)).toBe("2024-09-15 – 2024-09-21");
   });
 });
 

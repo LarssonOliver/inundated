@@ -6,10 +6,11 @@ import {
   startOfWeek,
   endOfWeek,
   format as formatDate,
+  type Day,
 } from "date-fns";
 import { shouldTextBeDarkFromBgColor, mixHexColors } from "@/helpers/colors";
-import { formatFullDate } from "@/helpers/dates";
-import type { Tag, Timespan, DateFormat, TimeFormat } from "@/model";
+import { formatFullDate, DATE_TOKENS, MONTH_TOKENS } from "@/helpers/dates";
+import type { Tag, Timespan, DateFormat, TimeFormat, WeekStartDay } from "@/model";
 import type { CalendarEventExternal, CalendarType } from "@schedule-x/calendar";
 
 /** The subset of schedule-x views the calendar page offers. */
@@ -87,6 +88,20 @@ export function dateRangeToInterval(range: {
 }
 
 /**
+ * Maps the WeekStartDay setting to schedule-x's own firstDayOfWeek
+ * convention (1 = Monday ... 7 = Sunday - schedule-x's WeekDay enum isn't
+ * exported as a runtime value, so this returns the plain numeric literal
+ * callers cast to CalendarConfig["firstDayOfWeek"] themselves). This is
+ * deliberately a separate mapping from date-fns's own 0|1 weekStartsOn
+ * convention (see weekStartDayToDateFnsDay in helpers/statsChart.ts) rather
+ * than one derived from the other, since the two numbering schemes agree on
+ * nothing but which day is "first".
+ */
+export function weekStartDayToScheduleXDay(weekStartDay: WeekStartDay): 1 | 7 {
+  return weekStartDay === "sunday" ? 7 : 1;
+}
+
+/**
  * Computes the new anchor date after moving one unit forward or back in the
  * given view - a month for month-grid, a week for week, a day for day.
  */
@@ -103,29 +118,28 @@ export function navigateDate(date: Date, view: CalendarViewName, direction: 1 | 
 
 /**
  * Formats a human-readable heading for the range a view currently shows,
- * anchored at `date` (e.g. "September 2024", "Sep 16 - 22, 2024").
+ * anchored at `date` (e.g. "2024-09", "2024-09-16 - 2024-09-22" for the iso
+ * DateFormat). Reuses the same DATE_TOKENS/MONTH_TOKENS the rest of the app
+ * formats dates with (day view already did, via formatFullDate) rather than
+ * a month/week-specific prose style, so every DateFormat - including eu's
+ * day-before-month order - is honored consistently across all three views.
  */
 export function formatRangeHeading(
   date: Date,
   view: CalendarViewName,
   dateFormat: DateFormat,
-  weekStartsOn: 0 | 1,
+  weekStartsOn: Day,
 ): string {
   switch (view) {
     case "month-grid":
-      return formatDate(date, "MMMM yyyy");
+      return formatDate(date, MONTH_TOKENS[dateFormat]);
     case "day":
       return formatFullDate(date, dateFormat);
     case "week": {
       const start = startOfWeek(date, { weekStartsOn });
       const end = endOfWeek(date, { weekStartsOn });
-      if (start.getFullYear() !== end.getFullYear()) {
-        return `${formatDate(start, "MMM d, yyyy")} – ${formatDate(end, "MMM d, yyyy")}`;
-      }
-      if (start.getMonth() !== end.getMonth()) {
-        return `${formatDate(start, "MMM d")} – ${formatDate(end, "MMM d, yyyy")}`;
-      }
-      return `${formatDate(start, "MMM d")} – ${formatDate(end, "d, yyyy")}`;
+      const token = DATE_TOKENS[dateFormat];
+      return `${formatDate(start, token)} – ${formatDate(end, token)}`;
     }
   }
 }
