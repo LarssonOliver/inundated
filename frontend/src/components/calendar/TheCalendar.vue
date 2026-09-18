@@ -67,6 +67,8 @@ import {
   navigateDate,
   formatRangeHeading,
   localeForTimeFormat,
+  loadStoredCalendarView,
+  storeCalendarView,
   type CalendarViewName,
 } from "@/helpers/calendar";
 
@@ -76,7 +78,7 @@ const settingsStore = useSettingsStore();
 const calendarApp = shallowRef<CalendarApp>();
 const calendarControls = createCalendarControlsPlugin();
 
-const currentView = ref<CalendarViewName>("month-grid");
+const currentView = ref<CalendarViewName>(loadStoredCalendarView("week"));
 const selectedDate = ref(new Date());
 
 const viewOptions: DropdownOption[] = [
@@ -131,7 +133,10 @@ function goNext() {
 // the v-if above), so calendarControls is always ready by the time either
 // fires.
 watch(selectedDate, (date) => calendarControls.setDate(jsDateToPlainDate(date)));
-watch(currentView, (view) => calendarControls.setView(view));
+watch(currentView, (view) => {
+  calendarControls.setView(view);
+  storeCalendarView(view);
+});
 
 const resolvedTimezone = ref(resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER));
 
@@ -237,6 +242,13 @@ onMounted(async () => {
 
 .view-dropdown {
   width: 8em;
+}
+
+/* schedule-x's sticky week/day header renders at z-index: 100 (its own
+   --sx-z-index-week-header), which otherwise sits above this dropdown's
+   panel when it opens over the calendar body. */
+.view-dropdown :deep(.dropdown-panel) {
+  z-index: 101;
 }
 
 .calendar-body {

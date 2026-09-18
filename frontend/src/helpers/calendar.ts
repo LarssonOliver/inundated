@@ -15,6 +15,36 @@ import type { CalendarEventExternal, CalendarType } from "@schedule-x/calendar";
 /** The subset of schedule-x views the calendar page offers. */
 export type CalendarViewName = "month-grid" | "week" | "day";
 
+const CALENDAR_VIEW_STORAGE_KEY = "inundated:calendarView";
+const KNOWN_VIEWS: readonly CalendarViewName[] = ["month-grid", "week", "day"];
+
+/**
+ * Reads the last-selected calendar view from localStorage, so it survives
+ * navigating away and back. Falls back to `defaultView` when nothing is
+ * stored, the stored value isn't a known view, or localStorage throws (e.g.
+ * disabled storage or private browsing).
+ */
+export function loadStoredCalendarView(defaultView: CalendarViewName): CalendarViewName {
+  try {
+    const stored = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY);
+    if (stored && (KNOWN_VIEWS as readonly string[]).includes(stored)) {
+      return stored as CalendarViewName;
+    }
+  } catch {
+    // Storage unavailable - fall through to the default.
+  }
+  return defaultView;
+}
+
+/** Persists the given view for loadStoredCalendarView. Best-effort. */
+export function storeCalendarView(view: CalendarViewName): void {
+  try {
+    localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Storage unavailable - nothing more to do.
+  }
+}
+
 /** calendarId used for a timespan with no tags - see tagsToCalendarColorDefinitions. */
 export const UNTAGGED_CALENDAR_ID = "untagged";
 
