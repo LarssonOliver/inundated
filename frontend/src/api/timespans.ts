@@ -22,6 +22,7 @@ export interface PaginatedTimespansResponse {
 export interface TimespansApi {
   listTimespans(): Promise<Timespan[]>;
   listTimespansPaginated(limit?: number, offset?: number): Promise<PaginatedTimespansResponse>;
+  listTimespansInInterval(interval: string): Promise<Timespan[]>;
   getTimespan(id: string): Promise<Timespan>;
   createTimespan(timespan: Omit<Timespan, "id">): Promise<Timespan>;
   updateTimespan(id: string, timespan: Partial<Omit<Timespan, "id">>): Promise<Timespan>;
@@ -50,6 +51,28 @@ function createTimespansApi(api: GeneratedTimespansApi = defaultGeneratedApi): T
           total: response.pagination.total,
         },
       };
+    },
+
+    /**
+     * Fetches every timespan overlapping an ISO 8601 interval (the shape
+     * `{start}/{end}`), paging through the full result set - used by the
+     * calendar view, which needs everything visible in a date range rather
+     * than a single page of the most recent items.
+     */
+    async listTimespansInInterval(interval: string): Promise<Timespan[]> {
+      const limit = 100;
+      let offset = 0;
+      const all: Timespan[] = [];
+
+      while (true) {
+        const response = await api.listTimespans({ interval, limit, offset });
+        all.push(...mapFromApiArray(timespanMapper, response.data));
+
+        offset += response.pagination.limit;
+        if (response.data.length === 0 || offset >= response.pagination.total) break;
+      }
+
+      return all;
     },
 
     async getTimespan(id: string): Promise<Timespan> {

@@ -49,6 +49,7 @@ export interface GetTimespanRequest {
 export interface ListTimespansRequest {
     limit?: number;
     offset?: number;
+    interval?: string;
 }
 
 export interface UpdateTimespanRequest {
@@ -211,6 +212,10 @@ export class TimespansApi extends runtime.BaseAPI {
             queryParameters['offset'] = requestParameters['offset'];
         }
 
+        if (requestParameters['interval'] != null) {
+            queryParameters['interval'] = requestParameters['interval'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -225,6 +230,7 @@ export class TimespansApi extends runtime.BaseAPI {
     }
 
     /**
+     * Returns a paginated list of time spans, most recent first. When `interval` is given, only time spans that overlap it are returned; omit it to list the full, unbounded history. 
      * List time spans
      */
     async listTimespansRaw(requestParameters: ListTimespansRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedTimespans>> {
@@ -235,6 +241,7 @@ export class TimespansApi extends runtime.BaseAPI {
     }
 
     /**
+     * Returns a paginated list of time spans, most recent first. When `interval` is given, only time spans that overlap it are returned; omit it to list the full, unbounded history. 
      * List time spans
      */
     async listTimespans(requestParameters: ListTimespansRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedTimespans> {

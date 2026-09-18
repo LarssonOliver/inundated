@@ -29,6 +29,37 @@ function luminance(r: number, g: number, b: number): number {
   return 0.2126 * sR + 0.7152 * sG + 0.0722 * sB;
 }
 
+function normalizeHex(color: string): string {
+  let hex = color.replace("#", "");
+  if (hex.length === 3) {
+    hex = hex
+      .split("")
+      .map((char) => char + char)
+      .join("");
+  }
+  return hex;
+}
+
+/**
+ * Blends two hex colors channel-by-channel, weighted toward `colorA` by
+ * `weightA` (0 = pure colorB, 1 = pure colorA). Used to derive a muted,
+ * background-tinted variant of a color rather than a single flat tone for
+ * every color.
+ */
+export function mixHexColors(colorA: string, colorB: string, weightA: number): string {
+  const a = normalizeHex(colorA);
+  const b = normalizeHex(colorB);
+
+  const mixChannel = (start: number, end: number) => {
+    const va = parseInt(a.slice(start, end), 16);
+    const vb = parseInt(b.slice(start, end), 16);
+    const mixed = Math.round(va * weightA + vb * (1 - weightA));
+    return Math.max(0, Math.min(255, mixed)).toString(16).padStart(2, "0");
+  };
+
+  return `#${mixChannel(0, 2)}${mixChannel(2, 4)}${mixChannel(4, 6)}`;
+}
+
 export function stringToHexColor(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
