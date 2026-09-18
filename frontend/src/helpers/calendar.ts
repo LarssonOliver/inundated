@@ -7,7 +7,7 @@ import {
   endOfWeek,
   format as formatDate,
 } from "date-fns";
-import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
+import { shouldTextBeDarkFromBgColor, mixHexColors } from "@/helpers/colors";
 import { formatFullDate } from "@/helpers/dates";
 import type { Tag, Timespan, DateFormat, TimeFormat } from "@/model";
 import type { CalendarEventExternal, CalendarType } from "@schedule-x/calendar";
@@ -49,7 +49,12 @@ export function storeCalendarView(view: CalendarViewName): void {
 export const UNTAGGED_CALENDAR_ID = "untagged";
 
 const NORD8_PRIMARY_ACCENT = "#88c0d0";
-const NORD1_CONTAINER = "#3b4252";
+// Container background base: events' background is this, tinted toward each
+// tag's own color (see colorDefinitionFor), rather than either a flat shared
+// color or the tag's full-saturation color, which read as too loud for a
+// large event block.
+const CONTAINER_BASE = "#3b4252";
+const CONTAINER_TAG_WEIGHT = 0.35;
 
 function toZonedDateTime(date: Date, timezone: string): Temporal.ZonedDateTime {
   return Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timezone);
@@ -60,10 +65,11 @@ function contrastingText(bgColor: string): string {
 }
 
 function colorDefinitionFor(hexColor: string): CalendarType["lightColors"] {
+  const container = mixHexColors(hexColor, CONTAINER_BASE, CONTAINER_TAG_WEIGHT);
   return {
     main: hexColor,
-    container: NORD1_CONTAINER,
-    onContainer: contrastingText(NORD1_CONTAINER),
+    container,
+    onContainer: contrastingText(container),
   };
 }
 
@@ -138,22 +144,65 @@ export function localeForTimeFormat(timeFormat: TimeFormat): string {
 /**
  * Maps timespans to schedule-x calendar events. Each event's calendarId is
  * its first tag, or {@link UNTAGGED_CALENDAR_ID} when it has none - paired
- * with a color definition from tagsToCalendarColorDefinitions.
+ * with a color definition from tagsToCalendarColorDefinitions. The full list
+ * of tag ids also rides along on the event (schedule-x's event type allows
+ * arbitrary extra fields), for rendering tag pills in a custom event slot.
  */
 export function timespansToCalendarEvents(
   timespans: readonly Timespan[],
   timezone: string,
 ): CalendarEventExternal[] {
   return timespans.map((timespan) => {
-    const [firstTagId] = timespan.tagIds;
+    const tagIds = [...timespan.tagIds];
+    const [firstTagId] = tagIds;
     return {
       id: timespan.id,
       title: timespan.name || "",
       start: toZonedDateTime(timespan.startTime, timezone),
       end: toZonedDateTime(timespan.endTime, timezone),
       calendarId: firstTagId ?? UNTAGGED_CALENDAR_ID,
+      tagIds,
     };
   });
+}
+
+/**
+ * Formats a start-end time range the same way schedule-x's own default
+ * event content does (a single time when start and end are the same
+ * instant, otherwise "start – end") - used by custom event slots, which
+ * replace that default content entirely and so must reproduce it.
+ */
+export function formatEventTimeRange(
+  start: Temporal.ZonedDateTime,
+  end: Temporal.ZonedDateTime,
+  locale: string,
+): string {
+  const options: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "numeric" };
+  const startText = start.toLocaleString(locale, options);
+  if (Temporal.ZonedDateTime.compare(start, end) === 0) {
+    return startText;
+  }
+  return `${startText} – ${end.toLocaleString(locale, options)}`;
+}
+
+/**
+ * Inline-style color properties for a custom event slot, from the same
+ * --sx-color-<calendarId>[-container] custom properties schedule-x itself
+ * generates from the `calendars` config (see colorDefinitionFor). schedule-x
+ * only wires these up automatically for its own default event content, not
+ * for custom component slots - so a slot that replaces that content has to
+ * apply them itself.
+ */
+export function eventColorStyle(calendarId: string): {
+  backgroundColor: string;
+  color: string;
+  borderInlineStart: string;
+} {
+  return {
+    backgroundColor: `var(--sx-color-${calendarId}-container)`,
+    color: `var(--sx-color-on-${calendarId}-container)`,
+    borderInlineStart: `4px solid var(--sx-color-${calendarId})`,
+  };
 }
 
 /**

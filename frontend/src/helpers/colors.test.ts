@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { stringToHexColor, shouldTextBeDarkFromBgColor } from "@/helpers/colors";
+import { stringToHexColor, shouldTextBeDarkFromBgColor, mixHexColors } from "@/helpers/colors";
 
 test("Get color from string", () => {
   expect(stringToHexColor("Testing")).toMatch(/^#[a-f0-9]{6}$/);
@@ -33,4 +33,22 @@ test("shouldTextBeDarkFromBgColor string color names", () => {
   expect(shouldTextBeDarkFromBgColor("red")).toBeFalsy();
   expect(shouldTextBeDarkFromBgColor("white")).toBeFalsy();
   expect(shouldTextBeDarkFromBgColor("black")).toBeFalsy();
+});
+
+test("mixHexColors blends two colors by weight", () => {
+  expect(mixHexColors("#ffffff", "#000000", 0.5)).toBe("#808080");
+  expect(mixHexColors("#ffffff", "#000000", 1)).toBe("#ffffff");
+  expect(mixHexColors("#ffffff", "#000000", 0)).toBe("#000000");
+});
+
+test("mixHexColors mixes per-channel, not just brightness", () => {
+  expect(mixHexColors("#ff0000", "#0000ff", 0.5)).toBe("#800080");
+});
+
+test("mixHexColors supports 3-digit shorthand hex", () => {
+  expect(mixHexColors("#fff", "#000", 0.5)).toBe("#808080");
+});
+
+test("mixHexColors works without a leading #", () => {
+  expect(mixHexColors("ffffff", "000000", 0.5)).toBe("#808080");
 });

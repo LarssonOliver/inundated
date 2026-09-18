@@ -28,7 +28,19 @@
         </div>
       </div>
       <div class="calendar-body">
-        <ScheduleXCalendar :calendar-app="calendarApp" />
+        <ScheduleXCalendar :calendar-app="calendarApp">
+          <template #timeGridEvent="{ calendarEvent }">
+            <div class="custom-event" :style="eventColorStyle(calendarEvent.calendarId ?? '')">
+              <div v-if="calendarEvent.title" class="custom-event-title">
+                {{ calendarEvent.title }}
+              </div>
+              <div class="custom-event-time">{{ eventTimeText(calendarEvent) }}</div>
+              <div v-if="eventTagsFor(calendarEvent).length" class="custom-event-tags">
+                <TagItem v-for="tag in eventTagsFor(calendarEvent)" :key="tag.id" :tag="tag" />
+              </div>
+            </div>
+          </template>
+        </ScheduleXCalendar>
       </div>
     </template>
     <SkeletonLoader v-else variant="rectangular" height="100%" width="100%" />
@@ -46,6 +58,7 @@ import {
   createViewMonthGrid,
   type CalendarApp,
   type CalendarConfig,
+  type CalendarEventExternal,
 } from "@schedule-x/calendar";
 import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
 import "@schedule-x/theme-default/dist/index.css";
@@ -54,26 +67,65 @@ import "@vuepic/vue-datepicker/dist/main.css";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import SelectDropdown, { type DropdownOption } from "@/components/inputs/SelectDropdown.vue";
+import TagItem from "@/components/tags/TagItem.vue";
 import { timespansApi } from "@/api/timespans";
-import { useTagsStore } from "@/stores/tags";
+import { tagsApi } from "@/api/tags";
 import { useSettingsStore } from "@/stores/settings";
 import { resolveTimezone } from "@/helpers/timezones";
 import { formatDatePickerInput, singleDatePickerInputWidthCh } from "@/helpers/dates";
 import { TIMEZONE_BROWSER } from "@/model";
+import type { Tag } from "@/model";
 import {
   timespansToCalendarEvents,
   tagsToCalendarColorDefinitions,
   dateRangeToInterval,
   navigateDate,
   formatRangeHeading,
+  formatEventTimeRange,
+  eventColorStyle,
   localeForTimeFormat,
   loadStoredCalendarView,
   storeCalendarView,
   type CalendarViewName,
 } from "@/helpers/calendar";
 
-const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
+
+// Bypasses the shared tags store deliberately: that store's includeArchived
+// flag also drives the Tags page's own "show archived" checkbox
+// (useArchivableList), so flipping it here to pick up archived tags' colors
+// would leak into that page's UI state. This local list is calendar-only.
+const tags = ref<Tag[]>([]);
+
+async function fetchAllTagsForCalendar(): Promise<void> {
+  const result = await tagsApi.listTagsPaginated(100, 0, true);
+  tags.value = result.data;
+}
+
+function tagsForEvent(tagIds: readonly string[] | undefined): Tag[] {
+  if (!tagIds) return [];
+  return tagIds
+    .map((id) => tags.value.find((tag) => tag.id === id))
+    .filter((tag): tag is Tag => tag !== undefined);
+}
+
+const locale = computed(() => localeForTimeFormat(settingsStore.settings?.timeFormat ?? "24h"));
+
+// The timeGridEvent slot below replaces schedule-x's default event content
+// entirely (it doesn't layer on top of it), so it has to reproduce the
+// start-end time text and per-calendar colors that content would otherwise
+// have gotten automatically.
+function eventTimeText(calendarEvent: CalendarEventExternal): string {
+  return formatEventTimeRange(
+    calendarEvent.start as Temporal.ZonedDateTime,
+    calendarEvent.end as Temporal.ZonedDateTime,
+    locale.value,
+  );
+}
+
+function eventTagsFor(calendarEvent: CalendarEventExternal): Tag[] {
+  return tagsForEvent(calendarEvent.tagIds as string[] | undefined);
+}
 
 const calendarApp = shallowRef<CalendarApp>();
 const calendarControls = createCalendarControlsPlugin();
@@ -160,7 +212,7 @@ onMounted(async () => {
   // already loaded by App.vue before routing even renders, but that has an
   // 8s timeout (see useStartup.ts), so this can't just assume they're ready.
   await Promise.all([
-    tagsStore.fetchTags(),
+    fetchAllTagsForCalendar(),
     settingsStore.settings ? Promise.resolve() : settingsStore.fetchSettings(),
   ]);
   resolvedTimezone.value = resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER);
@@ -176,9 +228,9 @@ onMounted(async () => {
       selectedDate: jsDateToPlainDate(selectedDate.value),
       firstDayOfWeek,
       timezone: resolvedTimezone.value,
-      locale: localeForTimeFormat(settingsStore.settings?.timeFormat ?? "24h"),
+      locale: locale.value,
       isDark: true,
-      calendars: tagsToCalendarColorDefinitions(tagsStore.tags),
+      calendars: tagsToCalendarColorDefinitions(tags.value),
       callbacks: {
         fetchEvents,
       },
@@ -260,6 +312,50 @@ onMounted(async () => {
 .calendar-body {
   flex: 1;
   min-height: 0;
+}
+
+/* Content for the timeGridEvent slot (week/day views). schedule-x renders
+   this inside its own positioned/sized/clipped event wrapper, so this only
+   needs to lay out the content - not repeat that positioning. */
+.custom-event {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.15em 0.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05em;
+  overflow: hidden;
+  font-size: var(--sx-font-extra-small, 0.75em);
+  line-height: 1.25;
+}
+
+.custom-event-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.custom-event-time {
+  white-space: nowrap;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.custom-event-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2em;
+  margin-top: 0.05em;
+  overflow: hidden;
+}
+
+.custom-event-tags :deep(.tag-container) {
+  margin: 0;
+  padding: 0.05em 0.35em;
+  font-size: 0.8em;
+  box-shadow: none;
 }
 </style>
 
