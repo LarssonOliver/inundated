@@ -34,7 +34,10 @@
               <div v-if="calendarEvent.title" class="custom-event-title">
                 {{ calendarEvent.title }}
               </div>
-              <div class="custom-event-time">{{ eventTimeText(calendarEvent) }}</div>
+              <div class="custom-event-time">
+                <MaterialIcon icon="access_time" size="1em" />
+                {{ eventTimeText(calendarEvent) }}
+              </div>
               <div v-if="eventTagsFor(calendarEvent).length" class="custom-event-tags">
                 <TagItem v-for="tag in eventTagsFor(calendarEvent)" :key="tag.id" :tag="tag" />
               </div>
@@ -323,10 +326,14 @@ onMounted(async () => {
   padding: 0.15em 0.4em;
   display: flex;
   flex-direction: column;
-  gap: 0.05em;
+  gap: 0.15em;
   overflow: hidden;
-  font-size: var(--sx-font-extra-small, 0.75em);
+  font-size: var(--sx-font-small, 0.75em);
   line-height: 1.25;
+  /* A hairline gap in the page background color, so adjacent/concurrent
+     events read as distinct blocks instead of a single fused strip. */
+  border-top: 1px solid var(--sx-color-background);
+  border-left: 1px solid var(--sx-color-background);
 }
 
 .custom-event-title {
@@ -335,18 +342,22 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 0;
+  font-size: 1.2em;
 }
 
 .custom-event-time {
   white-space: nowrap;
   opacity: 0.85;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
 }
 
 .custom-event-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2em;
+  gap: 0.15em;
   margin-top: 0.05em;
   overflow: hidden;
 }
@@ -354,8 +365,8 @@ onMounted(async () => {
 .custom-event-tags :deep(.tag-container) {
   margin: 0;
   padding: 0.05em 0.35em;
-  font-size: 0.8em;
   box-shadow: none;
+  border-radius: var(--radius-sm);
 }
 </style>
 

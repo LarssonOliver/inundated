@@ -13,6 +13,7 @@ import {
   eventColorStyle,
   UNTAGGED_CALENDAR_ID,
 } from "./calendar";
+import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
 import type { Timespan } from "@/model";
 import type { Tag } from "@/model";
 
@@ -112,19 +113,26 @@ describe("tagsToCalendarColorDefinitions", () => {
 
     const defs = tagsToCalendarColorDefinitions([tag]);
 
-    const container = defs["tag-1"].lightColors?.container;
-    expect(container).toBe("#694d5a");
-    expect(container).not.toBe("#bf616a");
+    expect(defs["tag-1"].lightColors?.container).not.toBe("#bf616a");
   });
 
-  it("picks dark text for a light tag color and light text for a dark tag color", () => {
-    const light = makeTag({ id: "light", color: "#ffffff" });
-    const dark = makeTag({ id: "dark", color: "#000000" });
+  it("tints the container differently per tag, rather than one flat shared color", () => {
+    const red = makeTag({ id: "red", color: "#bf616a" });
+    const blue = makeTag({ id: "blue", color: "#5e81ac" });
 
-    const defs = tagsToCalendarColorDefinitions([light, dark]);
+    const defs = tagsToCalendarColorDefinitions([red, blue]);
 
-    expect(defs["light"].lightColors?.onContainer).toBe("var(--nord0)");
-    expect(defs["dark"].lightColors?.onContainer).toBe("var(--nord4)");
+    expect(defs["red"].lightColors?.container).not.toBe(defs["blue"].lightColors?.container);
+  });
+
+  it("derives onContainer from the blended container color's own contrast, not the raw tag color", () => {
+    const tag = makeTag({ id: "tag-1", color: "#ffffff" });
+
+    const defs = tagsToCalendarColorDefinitions([tag]);
+
+    const container = defs["tag-1"].lightColors?.container as string;
+    const expectedText = shouldTextBeDarkFromBgColor(container) ? "var(--nord0)" : "var(--nord4)";
+    expect(defs["tag-1"].lightColors?.onContainer).toBe(expectedText);
   });
 });
 

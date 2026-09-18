@@ -53,8 +53,8 @@ const NORD8_PRIMARY_ACCENT = "#88c0d0";
 // tag's own color (see colorDefinitionFor), rather than either a flat shared
 // color or the tag's full-saturation color, which read as too loud for a
 // large event block.
-const CONTAINER_BASE = "#3b4252";
-const CONTAINER_TAG_WEIGHT = 0.35;
+const CONTAINER_BASE = "#2e3440";
+const CONTAINER_TAG_WEIGHT = 0.15;
 
 function toZonedDateTime(date: Date, timezone: string): Temporal.ZonedDateTime {
   return Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timezone);
