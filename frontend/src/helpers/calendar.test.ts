@@ -9,6 +9,8 @@ import {
   localeForTimeFormat,
   loadStoredCalendarView,
   storeCalendarView,
+  formatEventTimeRange,
+  eventColorStyle,
   UNTAGGED_CALENDAR_ID,
 } from "./calendar";
 import type { Timespan } from "@/model";
@@ -41,12 +43,12 @@ describe("timespansToCalendarEvents", () => {
     expect(end.timeZoneId).toBe("Europe/Stockholm");
   });
 
-  it("falls back to a placeholder title when the timespan has no name", () => {
+  it("leaves the title empty when the timespan has no name", () => {
     const timespan = makeTimespan({ name: "" });
 
     const [event] = timespansToCalendarEvents([timespan], "UTC");
 
-    expect(event.title).toBe("(untitled)");
+    expect(event.title).toBe("");
   });
 
   it("uses the first tag as the calendarId when tags are present", () => {
@@ -55,6 +57,14 @@ describe("timespansToCalendarEvents", () => {
     const [event] = timespansToCalendarEvents([timespan], "UTC");
 
     expect(event.calendarId).toBe("tag-a");
+  });
+
+  it("carries every tag id on the event, for rendering tag pills", () => {
+    const timespan = makeTimespan({ tagIds: new Set(["tag-a", "tag-b"]) });
+
+    const [event] = timespansToCalendarEvents([timespan], "UTC");
+
+    expect(event.tagIds).toEqual(["tag-a", "tag-b"]);
   });
 
   it("falls back to the untagged calendar when there are no tags", () => {
@@ -95,6 +105,16 @@ describe("tagsToCalendarColorDefinitions", () => {
     expect(defs["tag-1"].colorName).toBe("tag-1");
     expect(defs["tag-1"].lightColors?.main).toBe("#bf616a");
     expect(defs["tag-1"].darkColors?.main).toBe("#bf616a");
+  });
+
+  it("dims the container color toward the background instead of using the raw tag color", () => {
+    const tag = makeTag({ id: "tag-1", color: "#bf616a" });
+
+    const defs = tagsToCalendarColorDefinitions([tag]);
+
+    const container = defs["tag-1"].lightColors?.container;
+    expect(container).toBe("#694d5a");
+    expect(container).not.toBe("#bf616a");
   });
 
   it("picks dark text for a light tag color and light text for a dark tag color", () => {
@@ -218,6 +238,33 @@ describe("loadStoredCalendarView / storeCalendarView", () => {
 
     it("storeCalendarView doesn't throw", () => {
       expect(() => storeCalendarView("day")).not.toThrow();
+    });
+  });
+});
+
+describe("formatEventTimeRange", () => {
+  const start = Temporal.ZonedDateTime.from("2024-06-01T09:00:00+00:00[UTC]");
+  const end = Temporal.ZonedDateTime.from("2024-06-01T10:30:00+00:00[UTC]");
+
+  it("formats a start-end range in 24-hour form for en-GB", () => {
+    expect(formatEventTimeRange(start, end, "en-GB")).toBe("09:00 – 10:30");
+  });
+
+  it("formats a start-end range in 12-hour AM/PM form for en-US", () => {
+    expect(formatEventTimeRange(start, end, "en-US")).toBe("9:00 AM – 10:30 AM");
+  });
+
+  it("returns a single time when start and end are the same instant", () => {
+    expect(formatEventTimeRange(start, start, "en-GB")).toBe("09:00");
+  });
+});
+
+describe("eventColorStyle", () => {
+  it("builds inline-style color properties from schedule-x's generated per-calendar CSS variables", () => {
+    expect(eventColorStyle("tag-1")).toEqual({
+      backgroundColor: "var(--sx-color-tag-1-container)",
+      color: "var(--sx-color-on-tag-1-container)",
+      borderInlineStart: "4px solid var(--sx-color-tag-1)",
     });
   });
 });
