@@ -138,7 +138,7 @@ watch(currentView, (view) => {
   storeCalendarView(view);
 });
 
-const resolvedTimezone = ref(resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER));
+const resolvedTimezone = ref("");
 
 // DateRange isn't part of @schedule-x/calendar's public type exports, so it's
 // derived from the fetchEvents callback's own parameter instead of redeclared.
@@ -153,10 +153,16 @@ async function fetchEvents(range: FetchEventsRange) {
 }
 
 onMounted(async () => {
-  // Tag colors are baked into the calendar's config at creation time (schedule-x
-  // doesn't expose a way to update them afterwards), so tags must be loaded
-  // before the calendar is built - hence the skeleton loader above.
-  await tagsStore.fetchTags();
+  // Tag colors, timezone, first-day-of-week, and 12h/24h locale are all
+  // baked into the calendar's config at creation time (schedule-x doesn't
+  // expose a way to update them afterwards), so tags and settings must both
+  // be loaded first - hence the skeleton loader above. Settings are normally
+  // already loaded by App.vue before routing even renders, but that has an
+  // 8s timeout (see useStartup.ts), so this can't just assume they're ready.
+  await Promise.all([
+    tagsStore.fetchTags(),
+    settingsStore.settings ? Promise.resolve() : settingsStore.fetchSettings(),
+  ]);
   resolvedTimezone.value = resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER);
 
   const firstDayOfWeek = (
