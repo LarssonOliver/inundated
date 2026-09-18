@@ -116,9 +116,19 @@ func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTim
 		paginationParams.Offset = *request.Params.Offset
 	}
 
-	page, err := p.svc.ListTimespans(ctx, paginationParams)
+	var intervalRaw *string
+	if request.Params.Interval != nil {
+		value := string(*request.Params.Interval)
+		intervalRaw = &value
+	}
 
-	if err != nil {
+	page, err := p.svc.ListTimespans(ctx, paginationParams, intervalRaw)
+
+	if errors.Is(err, model.ErrInvalidArgument) {
+		return api.ListTimespans400Response{}, nil
+	} else if errors.Is(err, model.ErrUnprocessable) {
+		return api.ListTimespans422Response{}, nil
+	} else if err != nil {
 		return nil, err
 	}
 

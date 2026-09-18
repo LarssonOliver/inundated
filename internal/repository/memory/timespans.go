@@ -61,15 +61,22 @@ func (t *MemoryStore) GetTimespan(ctx context.Context, scope model.OwnerScope, i
 }
 
 // ListTimespans implements [repository.TimespanRepository].
-func (t *MemoryStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+func (t *MemoryStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	all := make([]model.Timespan, 0, len(t.timespans))
 	for _, ts := range t.timespans {
-		if matchesScope(ts.UserId, scope) {
-			all = append(all, ts)
+		if !matchesScope(ts.UserId, scope) {
+			continue
 		}
+		if params.From != nil && !ts.EndTime.After(*params.From) {
+			continue
+		}
+		if params.To != nil && !ts.StartTime.Before(*params.To) {
+			continue
+		}
+		all = append(all, ts)
 	}
 	slices.SortFunc(all, func(a, b model.Timespan) int {
 		return -a.StartTime.Compare(b.StartTime) // Negate to sort in descending order

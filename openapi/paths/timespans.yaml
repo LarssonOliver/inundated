@@ -3,9 +3,14 @@ timespans:
     tags: [timespans]
     summary: List time spans
     operationId: listTimespans
+    description: >
+      Returns a paginated list of time spans, most recent first. When
+      `interval` is given, only time spans that overlap it are returned;
+      omit it to list the full, unbounded history.
     parameters:
       - $ref: "../parameters/shared.yaml#/limit"
       - $ref: "../parameters/shared.yaml#/offset"
+      - $ref: "../parameters/shared.yaml#/interval"
     responses:
       '200':
         description: Paginated list of time spans
@@ -15,6 +20,8 @@ timespans:
               $ref: "../schemas/timespans.yaml#/PaginatedTimespans"
       '400':
         description: Bad request
+      '422':
+        description: Unprocessable request — e.g. the interval's end is not after its start.
   post:
     tags: [timespans]
     summary: Create time span

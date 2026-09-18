@@ -103,7 +103,7 @@ func (m *MockRepository) GetTimespan(ctx context.Context, scope model.OwnerScope
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
-func (m *MockRepository) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+func (m *MockRepository) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Timespan]), args.Error(1)
 }

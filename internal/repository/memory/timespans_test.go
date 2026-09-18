@@ -24,7 +24,7 @@ func TestMemoryStore_Timespan_ScopeIsolation(t *testing.T) {
 	_, err = store.GetTimespan(ctx, b, ts.Id)
 	require.ErrorIs(t, err, model.ErrNotFound)
 
-	page, err := store.ListTimespans(ctx, b, model.DefaultPaginationParams())
+	page, err := store.ListTimespans(ctx, b, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 	require.NoError(t, err)
 	require.Empty(t, page.Data)
 	require.Equal(t, 0, page.TotalCount)
@@ -248,7 +248,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 	tests := []struct {
 		name            string
 		insertTimespans []model.Timespan
-		params          model.PaginationParams
+		params          model.TimespanListParams
 		wantLen         int
 		wantTotal       int
 		wantErr         bool
@@ -260,21 +260,21 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour), TagIds: []uuid.UUID{tagIds[0]}},
 				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
 			},
-			params:    model.DefaultPaginationParams(),
+			params:    model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()},
 			wantLen:   2,
 			wantTotal: 2,
 		},
 		{
 			name:            "Test ListTimespans with no entries",
 			insertTimespans: []model.Timespan{},
-			params:          model.DefaultPaginationParams(),
+			params:          model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()},
 			wantLen:         0,
 			wantTotal:       0,
 		},
 		{
 			name:            "Test ListTimespans with one entry",
 			insertTimespans: []model.Timespan{{Name: "OnlyTimespan", StartTime: baseTime, EndTime: baseTime.Add(30 * time.Minute)}},
-			params:          model.DefaultPaginationParams(),
+			params:          model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()},
 			wantLen:         1,
 			wantTotal:       1,
 		},
@@ -285,7 +285,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
 				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
 			},
-			params:    model.PaginationParams{Limit: 2, Offset: 0},
+			params:    model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 2, Offset: 0}},
 			wantLen:   2,
 			wantTotal: 3,
 		},
@@ -296,7 +296,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
 				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
 			},
-			params:    model.PaginationParams{Limit: 10, Offset: 2},
+			params:    model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 2}},
 			wantLen:   1,
 			wantTotal: 3,
 		},
@@ -305,7 +305,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			insertTimespans: []model.Timespan{
 				{Name: "Timespan1", StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			},
-			params:    model.PaginationParams{Limit: 10, Offset: 100},
+			params:    model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 100}},
 			wantLen:   0,
 			wantTotal: 1,
 		},
@@ -316,7 +316,7 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 				{Name: "Timespan2", StartTime: baseTime.Add(2 * time.Hour), EndTime: baseTime.Add(3 * time.Hour)},
 				{Name: "Timespan3", StartTime: baseTime.Add(4 * time.Hour), EndTime: baseTime.Add(5 * time.Hour)},
 			},
-			params:    model.PaginationParams{Limit: 1, Offset: 0},
+			params:    model.TimespanListParams{PaginationParams: model.PaginationParams{Limit: 1, Offset: 0}},
 			wantLen:   1,
 			wantTotal: 3,
 		},
@@ -357,6 +357,75 @@ func TestTimespanStore_ListTimespans(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimespanStore_ListTimespans_IntervalFilter(t *testing.T) {
+	ctx := context.Background()
+	base := time.Now()
+
+	// Window under test: [base+3h, base+6h).
+	from := base.Add(3 * time.Hour)
+	to := base.Add(6 * time.Hour)
+
+	spans := map[string]model.Timespan{
+		"before":        {Name: "before", StartTime: base, EndTime: base.Add(time.Hour)},                               // [0,1) - fully before
+		"touchesFrom":   {Name: "touchesFrom", StartTime: base.Add(time.Hour), EndTime: from},                          // [1,3) - ends exactly at From
+		"overlapsStart": {Name: "overlapsStart", StartTime: base.Add(2 * time.Hour), EndTime: base.Add(4 * time.Hour)}, // [2,4) - overlaps window start
+		"inside":        {Name: "inside", StartTime: base.Add(4 * time.Hour), EndTime: base.Add(5 * time.Hour)},        // [4,5) - fully inside
+		"overlapsEnd":   {Name: "overlapsEnd", StartTime: base.Add(5 * time.Hour), EndTime: base.Add(7 * time.Hour)},   // [5,7) - overlaps window end
+		"touchesTo":     {Name: "touchesTo", StartTime: to, EndTime: base.Add(7 * time.Hour)},                          // [6,7) - starts exactly at To
+		"after":         {Name: "after", StartTime: base.Add(8 * time.Hour), EndTime: base.Add(9 * time.Hour)},         // [8,9) - fully after
+	}
+
+	store := memory.NewMemoryStore()
+	for _, ts := range spans {
+		_, err := store.CreateTimespan(ctx, testScope, ts)
+		require.NoError(t, err)
+	}
+
+	t.Run("From and To both set", func(t *testing.T) {
+		page, err := store.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			From:             &from,
+			To:               &to,
+		})
+		require.NoError(t, err)
+
+		gotNames := make([]string, 0, len(page.Data))
+		for _, ts := range page.Data {
+			gotNames = append(gotNames, ts.Name)
+		}
+		require.ElementsMatch(t, []string{"overlapsStart", "inside", "overlapsEnd"}, gotNames)
+		require.Equal(t, 3, page.TotalCount)
+	})
+
+	t.Run("From only - open-ended upper bound", func(t *testing.T) {
+		page, err := store.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			From:             &from,
+		})
+		require.NoError(t, err)
+
+		gotNames := make([]string, 0, len(page.Data))
+		for _, ts := range page.Data {
+			gotNames = append(gotNames, ts.Name)
+		}
+		require.ElementsMatch(t, []string{"overlapsStart", "inside", "overlapsEnd", "touchesTo", "after"}, gotNames)
+	})
+
+	t.Run("To only - open-ended lower bound", func(t *testing.T) {
+		page, err := store.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			To:               &to,
+		})
+		require.NoError(t, err)
+
+		gotNames := make([]string, 0, len(page.Data))
+		for _, ts := range page.Data {
+			gotNames = append(gotNames, ts.Name)
+		}
+		require.ElementsMatch(t, []string{"before", "touchesFrom", "overlapsStart", "inside", "overlapsEnd"}, gotNames)
+	})
 }
 
 func TestTimespanStore_UpdateTimespan(t *testing.T) {

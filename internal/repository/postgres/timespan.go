@@ -39,23 +39,49 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 	return ts, nil
 }
 
-func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
+func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+	// intervalFilterSQL returns the "AND end_time > $n AND start_time < $m"
+	// fragment for whichever of From/To are set, appending their values to
+	// args and using the placeholder numbers that follow.
+	//
+	// Placeholder numbers are positional, derived from len(args) at the time
+	// each value is appended - so callers must pass in every arg that's
+	// already bound ahead of the interval values (e.g. limit/offset), and
+	// must in turn pass this call's returned args into ownerPredicate so its
+	// own placeholder continues the same sequence. Adding another filter
+	// later must follow the same append-then-number pattern, in the same
+	// order used in the query text below.
+	intervalFilterSQL := func(args []any) (string, []any) {
+		sql := ""
+		if params.From != nil {
+			args = append(args, *params.From)
+			sql += fmt.Sprintf(" AND end_time > $%d", len(args))
+		}
+		if params.To != nil {
+			args = append(args, *params.To)
+			sql += fmt.Sprintf(" AND start_time < $%d", len(args))
+		}
+		return sql, args
+	}
+
+	countIntervalSQL, countArgs := intervalFilterSQL(nil)
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, countArgs)
 	countQ := `
 		SELECT COUNT(*)
 		FROM timespans
-		WHERE deleted_at IS NULL AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL` + countIntervalSQL + ` AND ` + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
+	dataIntervalSQL, dataArgs := intervalFilterSQL([]any{params.Limit, params.Offset})
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, dataArgs)
 	dataQ := `
 		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
-		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL` + dataIntervalSQL + ` AND ` + dataOwnerSQL + `
 		ORDER BY start_time DESC
 		LIMIT $1 OFFSET $2`
 

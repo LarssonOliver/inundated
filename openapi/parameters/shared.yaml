@@ -29,8 +29,6 @@ interval:
     Datetime values must be full RFC 3339 timestamps including timezone
     (for example `...Z` or `...+01:00`). Duration/duration intervals are
     not supported.
-
-    Defaults to `P30D/{now}` (the last 30 days) if omitted.
   schema:
     type: string
     pattern: >-
