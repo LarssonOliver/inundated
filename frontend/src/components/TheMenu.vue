@@ -62,6 +62,7 @@ const toggleSidebar = () => {
 
 const links = [
   { to: "/", label: "Timesheet", icon: "schedule" },
+  { to: "/calendar", label: "Calendar", icon: "calendar_month" },
   { to: "/projects", label: "Projects", icon: "folder" },
   { to: "/tags", label: "Tags", icon: "sell" },
 ];
