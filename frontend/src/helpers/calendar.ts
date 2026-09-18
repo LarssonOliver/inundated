@@ -48,10 +48,8 @@ export function storeCalendarView(view: CalendarViewName): void {
 /** calendarId used for a timespan with no tags - see tagsToCalendarColorDefinitions. */
 export const UNTAGGED_CALENDAR_ID = "untagged";
 
-// The primary accent color from nord.css, used for the untagged fallback
-// calendar. Duplicated here (rather than read from a CSS variable) because
-// shouldTextBeDarkFromBgColor needs a literal hex value to compute contrast.
 const NORD8_PRIMARY_ACCENT = "#88c0d0";
+const NORD1_CONTAINER = "#3b4252";
 
 function toZonedDateTime(date: Date, timezone: string): Temporal.ZonedDateTime {
   return Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timezone);
@@ -64,8 +62,8 @@ function contrastingText(bgColor: string): string {
 function colorDefinitionFor(hexColor: string): CalendarType["lightColors"] {
   return {
     main: hexColor,
-    container: hexColor,
-    onContainer: contrastingText(hexColor),
+    container: NORD1_CONTAINER,
+    onContainer: contrastingText(NORD1_CONTAINER),
   };
 }
 
@@ -150,7 +148,7 @@ export function timespansToCalendarEvents(
     const [firstTagId] = timespan.tagIds;
     return {
       id: timespan.id,
-      title: timespan.name || "(untitled)",
+      title: timespan.name || "",
       start: toZonedDateTime(timespan.startTime, timezone),
       end: toZonedDateTime(timespan.endTime, timezone),
       calendarId: firstTagId ?? UNTAGGED_CALENDAR_ID,
