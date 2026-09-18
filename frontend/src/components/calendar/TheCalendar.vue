@@ -307,4 +307,21 @@ onMounted(async () => {
   --sx-color-outline-variant: var(--nord2);
   --sx-color-surface-tint: var(--nord8);
 }
+
+/* Dims the leading/trailing days from adjacent months in month view, so the
+   currently-viewed month stands out. schedule-x marks these with a plain
+   .is-leading-or-trailing modifier (no built-in styling for the month grid -
+   the theme only styles the equivalent class on its own date-picker). */
+.sx__month-grid-day.is-leading-or-trailing {
+  /* A translucent overlay rather than a fixed color: nord0 (the base
+     surface) is already close to the darkest tone in the palette, so a
+     flat swap barely reads as different - this darkens it relative to
+     whatever it's layered on instead. */
+  background-color: rgb(0 0 0 / 25%);
+}
+
+.sx__month-grid-day.is-leading-or-trailing .sx__month-grid-day__header-date,
+.sx__month-grid-day.is-leading-or-trailing .sx__month-grid-day__header-day-name {
+  color: var(--sx-color-neutral-variant);
+}
 </style>
