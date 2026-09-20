@@ -224,9 +224,11 @@ example().catch(console.error);
 
 ## listTimespans
 
-> PaginatedTimespans listTimespans(limit, offset)
+> PaginatedTimespans listTimespans(limit, offset, interval)
 
 List time spans
+
+Returns a paginated list of time spans, most recent first. When &#x60;interval&#x60; is given, only time spans that overlap it are returned; omit it to list the full, unbounded history. 
 
 ### Example
 
@@ -250,6 +252,8 @@ async function example() {
     limit: 50,
     // number | Number of items to skip from the beginning (zero-indexed). (optional)
     offset: 0,
+    // string | The time range to query as an ISO 8601 interval. Supports all three forms: - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z` Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.  (optional)
+    interval: 2024-01-01T00:00:00Z/2024-03-31T23:59:59Z,
   } satisfies ListTimespansRequest;
 
   try {
@@ -271,6 +275,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **limit** | `number` | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  | [Optional] [Defaults to `25`] |
 | **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
+| **interval** | `string` | The time range to query as an ISO 8601 interval. Supports all three forms: - &#x60;{start}/{end}&#x60; — explicit start and end datetimes: &#x60;2024-01-01T00:00:00Z/2024-03-31T23:59:59Z&#x60; - &#x60;{start}/{duration}&#x60; — start datetime and a duration: &#x60;2024-01-01T00:00:00Z/P3M&#x60; - &#x60;{duration}/{end}&#x60; — a duration ending at a datetime: &#x60;P30D/2024-03-31T23:59:59Z&#x60; Datetime values must be full RFC 3339 timestamps including timezone (for example &#x60;...Z&#x60; or &#x60;...+01:00&#x60;). Duration/duration intervals are not supported.  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -291,6 +296,7 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **200** | Paginated list of time spans |  -  |
 | **400** | Bad request |  -  |
+| **422** | Unprocessable request — e.g. the interval\&#39;s end is not after its start. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

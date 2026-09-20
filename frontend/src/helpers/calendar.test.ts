@@ -1,0 +1,314 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Temporal } from "temporal-polyfill";
+import {
+  timespansToCalendarEvents,
+  tagsToCalendarColorDefinitions,
+  dateRangeToInterval,
+  navigateDate,
+  weekStartDayToScheduleXDay,
+  formatRangeHeading,
+  localeForTimeFormat,
+  loadStoredCalendarView,
+  storeCalendarView,
+  formatEventTimeRange,
+  eventColorStyle,
+  concurrentEventBorderOverrideCss,
+  UNTAGGED_CALENDAR_ID,
+} from "./calendar";
+import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
+import type { Timespan } from "@/model";
+import type { Tag } from "@/model";
+
+function makeTimespan(overrides: Partial<Timespan> = {}): Timespan {
+  return {
+    id: "ts-1",
+    name: "Deep work",
+    startTime: new Date("2024-06-01T09:00:00Z"),
+    endTime: new Date("2024-06-01T10:30:00Z"),
+    tagIds: new Set(),
+    ...overrides,
+  };
+}
+
+describe("timespansToCalendarEvents", () => {
+  it("maps id, title, and start/end converted to the given timezone", () => {
+    const timespan = makeTimespan();
+
+    const [event] = timespansToCalendarEvents([timespan], "Europe/Stockholm");
+    const start = event.start as Temporal.ZonedDateTime;
+    const end = event.end as Temporal.ZonedDateTime;
+
+    expect(event.id).toBe("ts-1");
+    expect(event.title).toBe("Deep work");
+    expect(start.epochMilliseconds).toBe(timespan.startTime.getTime());
+    expect(start.timeZoneId).toBe("Europe/Stockholm");
+    expect(end.epochMilliseconds).toBe(timespan.endTime.getTime());
+    expect(end.timeZoneId).toBe("Europe/Stockholm");
+  });
+
+  it("leaves the title empty when the timespan has no name", () => {
+    const timespan = makeTimespan({ name: "" });
+
+    const [event] = timespansToCalendarEvents([timespan], "UTC");
+
+    expect(event.title).toBe("");
+  });
+
+  it("uses the first tag as the calendarId when tags are present", () => {
+    const timespan = makeTimespan({ tagIds: new Set(["tag-a", "tag-b"]) });
+
+    const [event] = timespansToCalendarEvents([timespan], "UTC");
+
+    expect(event.calendarId).toBe("tag-a");
+  });
+
+  it("carries every tag id on the event, for rendering tag pills", () => {
+    const timespan = makeTimespan({ tagIds: new Set(["tag-a", "tag-b"]) });
+
+    const [event] = timespansToCalendarEvents([timespan], "UTC");
+
+    expect(event.tagIds).toEqual(["tag-a", "tag-b"]);
+  });
+
+  it("falls back to the untagged calendar when there are no tags", () => {
+    const timespan = makeTimespan({ tagIds: new Set() });
+
+    const [event] = timespansToCalendarEvents([timespan], "UTC");
+
+    expect(event.calendarId).toBe(UNTAGGED_CALENDAR_ID);
+  });
+
+  it("maps every timespan in the input", () => {
+    const events = timespansToCalendarEvents(
+      [makeTimespan({ id: "a" }), makeTimespan({ id: "b" })],
+      "UTC",
+    );
+
+    expect(events.map((e) => e.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("tagsToCalendarColorDefinitions", () => {
+  function makeTag(overrides: Partial<Tag> = {}): Tag {
+    return { id: "tag-1", name: "Work", color: "#88c0d0", archived: false, ...overrides };
+  }
+
+  it("always includes a definition for the untagged fallback calendar", () => {
+    const defs = tagsToCalendarColorDefinitions([]);
+
+    expect(defs[UNTAGGED_CALENDAR_ID]).toBeDefined();
+    expect(defs[UNTAGGED_CALENDAR_ID].colorName).toBe(UNTAGGED_CALENDAR_ID);
+  });
+
+  it("builds one color definition per tag, keyed by tag id", () => {
+    const tag = makeTag({ id: "tag-1", color: "#bf616a" });
+
+    const defs = tagsToCalendarColorDefinitions([tag]);
+
+    expect(defs["tag-1"].colorName).toBe("tag-1");
+    expect(defs["tag-1"].lightColors?.main).toBe("#bf616a");
+    expect(defs["tag-1"].darkColors?.main).toBe("#bf616a");
+  });
+
+  it("dims the container color toward the background instead of using the raw tag color", () => {
+    const tag = makeTag({ id: "tag-1", color: "#bf616a" });
+
+    const defs = tagsToCalendarColorDefinitions([tag]);
+
+    expect(defs["tag-1"].lightColors?.container).not.toBe("#bf616a");
+  });
+
+  it("tints the container differently per tag, rather than one flat shared color", () => {
+    const red = makeTag({ id: "red", color: "#bf616a" });
+    const blue = makeTag({ id: "blue", color: "#5e81ac" });
+
+    const defs = tagsToCalendarColorDefinitions([red, blue]);
+
+    expect(defs["red"].lightColors?.container).not.toBe(defs["blue"].lightColors?.container);
+  });
+
+  it("derives onContainer from the blended container color's own contrast, not the raw tag color", () => {
+    const tag = makeTag({ id: "tag-1", color: "#ffffff" });
+
+    const defs = tagsToCalendarColorDefinitions([tag]);
+
+    const container = defs["tag-1"].lightColors?.container as string;
+    const expectedText = shouldTextBeDarkFromBgColor(container) ? "var(--nord0)" : "var(--nord4)";
+    expect(defs["tag-1"].lightColors?.onContainer).toBe(expectedText);
+  });
+});
+
+describe("dateRangeToInterval", () => {
+  it("formats an RFC 3339 interval string with no bracketed timezone name", () => {
+    const start = Temporal.ZonedDateTime.from("2024-06-01T00:00:00+02:00[Europe/Stockholm]");
+    const end = Temporal.ZonedDateTime.from("2024-07-01T00:00:00+02:00[Europe/Stockholm]");
+
+    const interval = dateRangeToInterval({ start, end });
+
+    expect(interval).toBe("2024-06-01T00:00:00+02:00/2024-07-01T00:00:00+02:00");
+  });
+});
+
+describe("weekStartDayToScheduleXDay", () => {
+  it("maps sunday to schedule-x's Sunday (7)", () => {
+    expect(weekStartDayToScheduleXDay("sunday")).toBe(7);
+  });
+
+  it("maps monday to schedule-x's Monday (1)", () => {
+    expect(weekStartDayToScheduleXDay("monday")).toBe(1);
+  });
+});
+
+describe("navigateDate", () => {
+  it("moves by one month for the month-grid view", () => {
+    const date = new Date(2024, 5, 15); // June 15, 2024
+    expect(navigateDate(date, "month-grid", 1)).toEqual(new Date(2024, 6, 15));
+    expect(navigateDate(date, "month-grid", -1)).toEqual(new Date(2024, 4, 15));
+  });
+
+  it("moves by one week for the week view", () => {
+    const date = new Date(2024, 5, 15);
+    expect(navigateDate(date, "week", 1)).toEqual(new Date(2024, 5, 22));
+    expect(navigateDate(date, "week", -1)).toEqual(new Date(2024, 5, 8));
+  });
+
+  it("moves by one day for the day view", () => {
+    const date = new Date(2024, 5, 15);
+    expect(navigateDate(date, "day", 1)).toEqual(new Date(2024, 5, 16));
+    expect(navigateDate(date, "day", -1)).toEqual(new Date(2024, 5, 14));
+  });
+});
+
+describe("formatRangeHeading", () => {
+  it("formats the month-grid heading using the app's month+year format", () => {
+    const date = new Date(2024, 8, 17); // September 17, 2024
+    expect(formatRangeHeading(date, "month-grid", "iso", 1)).toBe("2024-09");
+    expect(formatRangeHeading(date, "month-grid", "text", 1)).toBe("Sep 2024");
+  });
+
+  it("formats the day heading using the app's full-date format", () => {
+    const date = new Date(2024, 8, 17); // a Tuesday
+    expect(formatRangeHeading(date, "day", "iso", 1)).toBe("Tuesday, 2024-09-17");
+  });
+
+  it("formats a week heading using the app's date format for both boundaries", () => {
+    // Sept 17 2024 is a Tuesday; Monday-start week is Sept 16 - 22.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("2024-09-16 – 2024-09-22");
+  });
+
+  it("respects the day-before-month order of the eu format, unlike a hardcoded month-first token", () => {
+    // Sept 17 2024 is a Tuesday; Monday-start week is Sept 16 - 22.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "eu", 1)).toBe("16/09/2024 – 22/09/2024");
+  });
+
+  it("formats a week heading spanning two months", () => {
+    // Sept 30 2024 is a Monday; Monday-start week is Sept 30 - Oct 6.
+    const date = new Date(2024, 8, 30);
+    expect(formatRangeHeading(date, "week", "iso", 1)).toBe("2024-09-30 – 2024-10-06");
+  });
+
+  it("respects a Sunday-start week", () => {
+    // Sept 17 2024 is a Tuesday; Sunday-start week is Sept 15 - 21.
+    const date = new Date(2024, 8, 17);
+    expect(formatRangeHeading(date, "week", "iso", 0)).toBe("2024-09-15 – 2024-09-21");
+  });
+});
+
+describe("localeForTimeFormat", () => {
+  it("uses en-US (12-hour) for the 12h setting", () => {
+    expect(localeForTimeFormat("12h")).toBe("en-US");
+  });
+
+  it("uses en-GB (24-hour) for the 24h setting", () => {
+    expect(localeForTimeFormat("24h")).toBe("en-GB");
+  });
+});
+
+describe("loadStoredCalendarView / storeCalendarView", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("returns the given default when nothing is stored", () => {
+    expect(loadStoredCalendarView("week")).toBe("week");
+  });
+
+  it("returns a previously stored view", () => {
+    storeCalendarView("day");
+    expect(loadStoredCalendarView("week")).toBe("day");
+  });
+
+  it("falls back to the default when the stored value isn't a known view", () => {
+    localStorage.setItem("inundated:calendarView", "not-a-real-view");
+    expect(loadStoredCalendarView("week")).toBe("week");
+  });
+
+  describe("when localStorage throws", () => {
+    beforeEach(() => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("storage disabled");
+      });
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("storage disabled");
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("loadStoredCalendarView falls back to the default instead of throwing", () => {
+      expect(loadStoredCalendarView("week")).toBe("week");
+    });
+
+    it("storeCalendarView doesn't throw", () => {
+      expect(() => storeCalendarView("day")).not.toThrow();
+    });
+  });
+});
+
+describe("formatEventTimeRange", () => {
+  const start = Temporal.ZonedDateTime.from("2024-06-01T09:00:00+00:00[UTC]");
+  const end = Temporal.ZonedDateTime.from("2024-06-01T10:30:00+00:00[UTC]");
+
+  it("formats a start-end range in 24-hour form for en-GB", () => {
+    expect(formatEventTimeRange(start, end, "en-GB")).toBe("09:00 – 10:30");
+  });
+
+  it("formats a start-end range in 12-hour AM/PM form for en-US", () => {
+    expect(formatEventTimeRange(start, end, "en-US")).toBe("9:00 AM – 10:30 AM");
+  });
+
+  it("returns a single time when start and end are the same instant", () => {
+    expect(formatEventTimeRange(start, start, "en-GB")).toBe("09:00");
+  });
+});
+
+describe("eventColorStyle", () => {
+  it("builds inline-style color properties from schedule-x's generated per-calendar CSS variables", () => {
+    expect(eventColorStyle("tag-1")).toEqual({
+      backgroundColor: "var(--sx-color-tag-1-container)",
+      color: "var(--sx-color-on-tag-1-container)",
+      borderInlineStart: "4px solid var(--sx-color-tag-1)",
+    });
+  });
+});
+
+describe("concurrentEventBorderOverrideCss", () => {
+  it("emits one :has() rule per calendarId, targeting schedule-x's hardcoded border color", () => {
+    const css = concurrentEventBorderOverrideCss(["tag-1", "untagged"]);
+
+    expect(css).toContain(
+      '.sx__time-grid-event:has(.custom-event[data-calendar-id="tag-1"]) { border-color: var(--sx-color-tag-1) !important; }',
+    );
+    expect(css).toContain(
+      '.sx__time-grid-event:has(.custom-event[data-calendar-id="untagged"]) { border-color: var(--sx-color-untagged) !important; }',
+    );
+  });
+
+  it("returns an empty string for no calendar ids", () => {
+    expect(concurrentEventBorderOverrideCss([])).toBe("");
+  });
+});
