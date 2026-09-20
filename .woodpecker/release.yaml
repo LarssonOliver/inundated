@@ -31,12 +31,17 @@ steps:
         from_secret: registry_password
     backend_options: *backend_options
 
+  - name: changelog
+    image: orhunp/git-cliff:latest
+    commands:
+      - git-cliff --latest --strip all -o CHANGELOG-release.md
+
   - name: github-release
     image: woodpeckerci/plugin-release:0.3.1
     settings:
       api-key:
         from_secret: github_release_token
       title: "${CI_COMMIT_TAG}"
-      generate-release-notes: true
+      note: CHANGELOG-release.md
 
 

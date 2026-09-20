@@ -1,0 +1,38 @@
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }}
+{%- endfor %}
+{% endfor %}\
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+tag_pattern = "v[0-9]*"
+sort_commits = "oldest"
+filter_commits = true
+
+# Rewrites the trailing "(#148)" left by squash-merged PRs into a real
+# link. Anchored per-line (?m) rather than to the whole message, since
+# squash-merge commit bodies continue for several paragraphs after the
+# subject line.
+commit_preprocessors = [
+  { pattern = '(?m)\(#(\d+)\)$', replace = "([#${1}](https://github.com/LarssonOliver/inundated/pull/${1}))" },
+]
+
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Refactor" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^chore\\(deps\\)", group = "Dependencies" },
+  { message = "^chore|^test|^ci|^style", skip = true },
+]
