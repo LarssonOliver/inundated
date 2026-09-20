@@ -126,3 +126,48 @@ func TestTimespan_List_Pagination(t *testing.T) {
 	require.Equal(t, int(offset), paramsData.Pagination.Offset)
 	require.LessOrEqual(t, len(paramsData.Data), int(limit))
 }
+
+func TestTimespan_List_IntervalFilter(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	// Far in the past so this window can't collide with timespans other
+	// tests create around time.Now().
+	base := time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC)
+	name := "Interval filter test"
+
+	createResp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		Name:      &name,
+		StartTime: base,
+		EndTime:   base.Add(time.Hour),
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, createResp.StatusCode())
+
+	overlapping := Interval(fmt.Sprintf("%s/%s", base.Add(-time.Hour).Format(time.RFC3339), base.Add(2*time.Hour).Format(time.RFC3339)))
+	overlapResp, err := client.ListTimespansWithResponse(ctx, &ListTimespansParams{Interval: &overlapping})
+	require.NoError(t, err)
+	require.Equal(t, 200, overlapResp.StatusCode())
+
+	found := false
+	for _, ts := range overlapResp.JSON200.Data {
+		if ts.Id == createResp.JSON201.Id {
+			found = true
+		}
+	}
+	require.True(t, found, "timespan should be returned by an overlapping interval")
+
+	nonOverlapping := Interval(fmt.Sprintf("%s/%s", base.Add(-24*time.Hour).Format(time.RFC3339), base.Add(-2*time.Hour).Format(time.RFC3339)))
+	nonOverlapResp, err := client.ListTimespansWithResponse(ctx, &ListTimespansParams{Interval: &nonOverlapping})
+	require.NoError(t, err)
+	require.Equal(t, 200, nonOverlapResp.StatusCode())
+
+	for _, ts := range nonOverlapResp.JSON200.Data {
+		require.NotEqual(t, createResp.JSON201.Id, ts.Id, "timespan should not be returned by a non-overlapping interval")
+	}
+
+	invalid := Interval(fmt.Sprintf("%s/%s", base.Add(time.Hour).Format(time.RFC3339), base.Format(time.RFC3339)))
+	invalidResp, err := client.ListTimespansWithResponse(ctx, &ListTimespansParams{Interval: &invalid})
+	require.NoError(t, err)
+	require.Equal(t, 422, invalidResp.StatusCode())
+}

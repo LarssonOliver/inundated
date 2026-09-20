@@ -109,7 +109,7 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 	expectTimespanTagsQuery(mock, ts1.Id, ts1.TagIds)
 	expectTimespanTagsQuery(mock, ts2.Id, ts2.TagIds)
 
-	page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
+	page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 
 	require.NoError(t, err)
 
@@ -139,10 +139,10 @@ func TestListTimespans_WithPaginationParams(t *testing.T) {
 
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	page, err := repo.ListTimespans(ctx, testScope, model.PaginationParams{
+	page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.PaginationParams{
 		Limit:  1,
 		Offset: 1,
-	})
+	}})
 
 	require.NoError(t, err)
 
@@ -169,12 +169,100 @@ func TestListTimespans_Empty(t *testing.T) {
 			pgxmock.NewRows(timespanCols),
 		)
 
-	page, err := repo.ListTimespans(ctx, testScope, model.DefaultPaginationParams())
+	page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 
 	require.NoError(t, err)
 
 	assert.Empty(t, page.Data)
 	assert.Equal(t, 0, page.TotalCount)
+}
+
+func TestListTimespans_WithIntervalFilter(t *testing.T) {
+	t.Run("From and To both set", func(t *testing.T) {
+		ctx := context.Background()
+		repo, mock := newMock(t)
+
+		ts := aTimespan()
+		from := time.Now().Add(-time.Hour)
+		to := time.Now()
+
+		mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND end_time > \$1 AND start_time < \$2 AND user_id = \$3`).
+			WithArgs(from, to, *testScope.UserID()).
+			WillReturnRows(
+				pgxmock.NewRows([]string{"count"}).
+					AddRow(1),
+			)
+
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND start_time < \$4 AND user_id = \$5 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+			WithArgs(25, 0, from, to, *testScope.UserID()).
+			WillReturnRows(
+				pgxmock.NewRows(timespanCols).
+					AddRow(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()),
+			)
+
+		expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
+
+		page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			From:             &from,
+			To:               &to,
+		})
+
+		require.NoError(t, err)
+		assert.Len(t, page.Data, 1)
+	})
+
+	t.Run("From only", func(t *testing.T) {
+		ctx := context.Background()
+		repo, mock := newMock(t)
+
+		from := time.Now().Add(-time.Hour)
+
+		mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND end_time > \$1 AND user_id = \$2`).
+			WithArgs(from, *testScope.UserID()).
+			WillReturnRows(
+				pgxmock.NewRows([]string{"count"}).
+					AddRow(0),
+			)
+
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND user_id = \$4 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+			WithArgs(25, 0, from, *testScope.UserID()).
+			WillReturnRows(pgxmock.NewRows(timespanCols))
+
+		page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			From:             &from,
+		})
+
+		require.NoError(t, err)
+		assert.Empty(t, page.Data)
+	})
+
+	t.Run("To only", func(t *testing.T) {
+		ctx := context.Background()
+		repo, mock := newMock(t)
+
+		to := time.Now()
+
+		mock.ExpectQuery(`SELECT COUNT\(\*\) FROM timespans WHERE deleted_at IS NULL AND start_time < \$1 AND user_id = \$2`).
+			WithArgs(to, *testScope.UserID()).
+			WillReturnRows(
+				pgxmock.NewRows([]string{"count"}).
+					AddRow(0),
+			)
+
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND start_time < \$3 AND user_id = \$4 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+			WithArgs(25, 0, to, *testScope.UserID()).
+			WillReturnRows(pgxmock.NewRows(timespanCols))
+
+		page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{
+			PaginationParams: model.DefaultPaginationParams(),
+			To:               &to,
+		})
+
+		require.NoError(t, err)
+		assert.Empty(t, page.Data)
+	})
 }
 
 func TestListTimespans_UnownedScope(t *testing.T) {
@@ -199,7 +287,7 @@ func TestListTimespans_UnownedScope(t *testing.T) {
 
 	expectTimespanTagsQuery(mock, ts.Id, ts.TagIds)
 
-	page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+	page, err := repo.ListTimespans(ctx, model.UnownedScope(), model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 	require.NoError(t, err)
 
 	assert.Len(t, page.Data, 1)

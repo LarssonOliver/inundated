@@ -99,7 +99,8 @@ projects-id-stats:
     description: >
       Returns aggregated timeseries data for a given metric on a project.
       Data is bucketed by the requested interval granularity within the
-      specified time range.
+      specified time range. Defaults to `P30D/{now}` (the last 30 days)
+      if `interval` is omitted.
     parameters:
       - $ref: "../parameters/shared.yaml#/projectIdPath"
       - $ref: "../parameters/shared.yaml#/statsMetric"

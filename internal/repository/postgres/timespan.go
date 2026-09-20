@@ -39,23 +39,40 @@ func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope,
 	return ts, nil
 }
 
-func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
+func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
+	// addIntervalConditions adds the "AND end_time > $n" / "AND start_time <
+	// $m" conditions for whichever of From/To are set. Placeholder numbers
+	// come from the builder itself, so - unlike computing $N by hand - a
+	// third filter added later here needs nothing beyond another b.add call.
+	addIntervalConditions := func(b *sqlConditionBuilder) {
+		if params.From != nil {
+			b.add("end_time >", *params.From)
+		}
+		if params.To != nil {
+			b.add("start_time <", *params.To)
+		}
+	}
+
+	countBuilder := newSQLConditionBuilder(nil)
+	addIntervalConditions(countBuilder)
+	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, countBuilder.Args())
 	countQ := `
 		SELECT COUNT(*)
 		FROM timespans
-		WHERE deleted_at IS NULL AND ` + countOwnerSQL
+		WHERE deleted_at IS NULL` + countBuilder.SQL() + ` AND ` + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans count: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
+	dataBuilder := newSQLConditionBuilder([]any{params.Limit, params.Offset})
+	addIntervalConditions(dataBuilder)
+	dataOwnerSQL, args := ownerPredicate("user_id", scope, dataBuilder.Args())
 	dataQ := `
 		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
-		WHERE deleted_at IS NULL AND ` + dataOwnerSQL + `
+		WHERE deleted_at IS NULL` + dataBuilder.SQL() + ` AND ` + dataOwnerSQL + `
 		ORDER BY start_time DESC
 		LIMIT $1 OFFSET $2`
 

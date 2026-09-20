@@ -468,7 +468,6 @@ type GetProjectStatsParams struct {
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
 	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
-	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 
 	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
@@ -507,7 +506,6 @@ type GetTagStatsParams struct {
 	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
 	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
 	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
-	// Defaults to `P30D/{now}` (the last 30 days) if omitted.
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 
 	// Granularity The bucket size for each data point, expressed as an ISO 8601 duration. Common values: `PT1M` (minute), `PT1H` (hour), `P1D` (day), `P1W` (week), `P1M` (month). Defaults to `P1D`.
@@ -524,6 +522,11 @@ type ListTimespansParams struct {
 
 	// Offset Number of items to skip from the beginning (zero-indexed).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Interval The time range to query as an ISO 8601 interval. Supports all three forms:
+	// - `{start}/{end}` — explicit start and end datetimes: `2024-01-01T00:00:00Z/2024-03-31T23:59:59Z` - `{start}/{duration}` — start datetime and a duration: `2024-01-01T00:00:00Z/P3M` - `{duration}/{end}` — a duration ending at a datetime: `P30D/2024-03-31T23:59:59Z`
+	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
+	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 }
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.

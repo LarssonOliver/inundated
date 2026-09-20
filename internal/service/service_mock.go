@@ -11,7 +11,7 @@ type TimespanServiceMock struct {
 	CreateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteFn func(ctx context.Context, id uuid.UUID) error
 	GetFn    func(ctx context.Context, id uuid.UUID) (model.Timespan, error)
-	ListFn   func(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error)
+	ListFn   func(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error)
 	UpdateFn func(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 }
 
@@ -33,8 +33,8 @@ func (m *TimespanServiceMock) GetTimespan(ctx context.Context, id uuid.UUID) (mo
 }
 
 // ListTimespans implements [service.TimespanService].
-func (m *TimespanServiceMock) ListTimespans(ctx context.Context, params model.PaginationParams) (model.Page[model.Timespan], error) {
-	return m.ListFn(ctx, params)
+func (m *TimespanServiceMock) ListTimespans(ctx context.Context, params model.PaginationParams, intervalRaw *string) (model.Page[model.Timespan], error) {
+	return m.ListFn(ctx, params, intervalRaw)
 }
 
 // UpdateTimespan implements [service.TimespanService].

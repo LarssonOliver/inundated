@@ -33,7 +33,7 @@ type RepoMock struct {
 	CreateTimespanFn         func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespanFn         func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 	GetTimespanFn            func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
-	ListTimespanFn           func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error)
+	ListTimespanFn           func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
 	UpdateTimespanFn         func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	GetTotalDurationByTagsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 
@@ -159,7 +159,7 @@ func (t *RepoMock) GetTimespan(ctx context.Context, scope model.OwnerScope, id u
 }
 
 // ListTimespans implements repository.TimespanRepository.
-func (t *RepoMock) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Timespan], error) {
+func (t *RepoMock) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 	return t.ListTimespanFn(ctx, scope, params)
 }
 
