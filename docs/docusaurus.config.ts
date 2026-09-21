@@ -41,7 +41,7 @@ const nordPrismLightTheme: PrismTheme = {
 };
 
 const config: Config = {
-  title: 'inundated',
+  title: 'Inundated',
   tagline: 'A personal time and task management system.',
   favicon: 'img/favicon.ico',
 
@@ -82,12 +82,12 @@ const config: Config = {
     colorMode: {
       defaultMode: 'dark',
       disableSwitch: false,
-      respectPrefersColorScheme: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'inundated',
+      title: 'Inundated',
       logo: {
-        alt: 'inundated',
+        alt: 'Inundated',
         src: 'img/logo.svg',
       },
       items: [
@@ -105,27 +105,7 @@ const config: Config = {
       ],
     },
     footer: {
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Introduction',
-              to: '/docs/intro',
-            },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/LarssonOliver/inundated',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Oliver Larsson. Built with Docusaurus.`,
+      copyright: `© ${new Date().getFullYear()} Oliver Larsson. Built with Docusaurus.`,
     },
     prism: {
       theme: nordPrismLightTheme,
