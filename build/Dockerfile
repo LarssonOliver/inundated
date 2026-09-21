@@ -16,7 +16,7 @@ RUN sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" package.json
 
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine AS backend-builder
 
 ARG VERSION
 

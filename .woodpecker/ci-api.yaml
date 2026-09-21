@@ -38,7 +38,7 @@ steps:
     depends_on: []
 
   - name: test
-    image: golang:1.25.5-alpine
+    image: golang:1.27.1-alpine
     commands:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
@@ -50,7 +50,7 @@ steps:
     depends_on: []
 
   - name: build
-    image: golang:1.25.5-alpine
+    image: golang:1.27.1-alpine
     commands:
       - go build -o inundated cmd/server/main.go
     backend_options: *backend_options
