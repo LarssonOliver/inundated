@@ -3,3 +3,53 @@ sidebar_position: 4
 ---
 
 # Reverse Proxy
+
+inundated does not terminate TLS or emit HSTS itself. Any deployment reachable
+over the network — beyond `localhost` — should sit behind a proxy (Caddy,
+nginx, Traefik, …) that:
+
+- terminates HTTPS and sets `Strict-Transport-Security`;
+- sets `X-Forwarded-For` to the real client address **and strips any
+  client-supplied copies** — the built-in per-IP rate limits (100 req/min
+  general, 10 req/min on `/api/auth/*`) key off that value;
+- forwards to the app's `HOST:PORT`.
+
+## Client-IP resolution
+
+Set `TRUSTED_PROXIES` to the proxy's address(es) — a comma-separated list of
+CIDRs or bare IPs (e.g. `10.0.0.0/8,192.168.1.10`). inundated only reads the
+forwarded-for header when the request's direct TCP peer is in that list;
+otherwise it rate-limits by the raw connection address, so a client that can
+reach the app directly (or over a shared pod network) can't spoof its IP with
+a forged header.
+
+Leave `TRUSTED_PROXIES` unset and the header is ignored entirely —
+**including on an existing deployment**, where every request will then share
+one rate-limit bucket until you set it.
+
+By default only `X-Forwarded-For` is trusted (walked right-to-left, skipping
+trusted hops). If your proxy publishes the client address under a different
+header, set `TRUSTED_PROXY_HEADERS` (priority-ordered), e.g.:
+
+```bash
+export TRUSTED_PROXY_HEADERS="X-Real-IP,X-Forwarded-For"
+```
+
+Only `X-Forwarded-For`, `X-Real-IP`, and `True-Client-IP` are accepted;
+whichever you list, the proxy must set it and strip any inbound copies from
+clients.
+
+## Public origin
+
+Also set `PUBLIC_BASE_URL` to the external `https://` origin. It's
+registered as a trusted origin so the cross-origin request check keeps
+working for older browsers when the proxy rewrites the `Host` header — and
+it's required for OIDC; see [Authentication](/docs/configuration/authentication).
+
+## Request limits
+
+API request bodies are capped at **1 MiB**, independent of any limit your
+proxy enforces.
+
+See [Environment Variables](/docs/configuration/environment-variables) for
+the full flag/env-var reference.

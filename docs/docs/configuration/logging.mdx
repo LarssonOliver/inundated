@@ -3,3 +3,32 @@ sidebar_position: 2
 ---
 
 # Logging
+
+Logging is controlled by two settings — see
+[Environment Variables](/docs/configuration/environment-variables) for the
+full flag/env-var forms:
+
+```bash
+export LOG_LEVEL="debug"      # debug|info|warn|error (default: info)
+export LOG_FORMAT="json"      # text|json (default: text)
+```
+
+- **`LOG_LEVEL`** — which records are emitted. Use `debug` for detailed
+  diagnostics, `warn` to see only warnings and errors, or `error` for errors
+  only.
+- **`LOG_FORMAT`** — `text` produces human-readable output for local
+  development; `json` emits structured JSON lines suitable for production
+  log aggregators.
+
+All log output — startup messages and per-request lines alike — goes to
+**stdout**.
+
+## Asynchronous writes
+
+Log records are handed to a background writer rather than written inline, so
+a slow or stalled log destination (a blocking container log driver, a paused
+`docker logs`) can never add latency to request handling. If the destination
+stops draining for long enough to fill the in-memory buffer, records are
+dropped and a `logging: dropped N records` line is emitted once it recovers
+— so a burst of `dropped` lines is a signal your log pipeline (not the app)
+is falling behind.

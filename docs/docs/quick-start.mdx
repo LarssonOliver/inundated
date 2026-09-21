@@ -4,4 +4,73 @@ sidebar_position: 2
 
 # Quick Start
 
-Test
+The minimal path to a running, production-style inundated instance: a Postgres
+database and the app pointed at it. No authentication required — inundated
+runs in **userless mode** (single shared workspace, no login) until you
+configure OIDC.
+
+## 1. Provision Postgres
+
+Any reachable PostgreSQL server works. For a quick local one:
+
+```bash
+docker run -d --name inundated-db \
+  -e POSTGRES_USER=inundated \
+  -e POSTGRES_PASSWORD=inundated \
+  -e POSTGRES_DB=inundated \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
+
+inundated applies its own schema migrations on startup — you don't need to
+create any tables yourself.
+
+## 2. Get the app
+
+**Option A — build the Docker image:**
+
+```bash
+git clone https://github.com/LarssonOliver/inundated.git
+cd inundated
+docker build -f build/Dockerfile -t inundated .
+```
+
+**Option B — build a binary** (requires [Go](https://go.dev/) and
+[Node.js](https://nodejs.org/)):
+
+```bash
+git clone https://github.com/LarssonOliver/inundated.git
+cd inundated
+make build
+```
+
+This produces `./bin/inundated`, a single self-contained binary with the
+frontend assets embedded.
+
+## 3. Run it
+
+Point `DATABASE_URL` at your Postgres instance and start the app:
+
+```bash
+# Docker
+docker run -d --name inundated \
+  -e DATABASE_URL="postgresql://inundated:inundated@host.docker.internal:5432/inundated" \
+  -p 8080:8080 \
+  inundated
+
+# Binary
+export DATABASE_URL="postgresql://inundated:inundated@localhost:5432/inundated"
+./bin/inundated
+```
+
+Open `http://localhost:8080` — you should see the timesheet, empty and ready
+to use.
+
+That's the whole minimal setup. Everything else is optional hardening:
+
+- Put a TLS-terminating reverse proxy in front of it before exposing it
+  beyond localhost — see [Reverse Proxy](/docs/configuration/reverse-proxy).
+- Add per-user accounts via OIDC — see
+  [Authentication](/docs/configuration/authentication).
+- The full set of flags and environment variables (host/port, logging, etc.)
+  is in [Environment Variables](/docs/configuration/environment-variables).
