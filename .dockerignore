@@ -6,6 +6,8 @@ test/
 
 **/node_modules/
 frontend/dist/
+docs/build/
+docs/.docusaurus/
 
 .dockerignore
 .gitignore
