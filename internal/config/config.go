@@ -23,6 +23,7 @@ type Config struct {
 	DisableUserRegistration bool
 	TrustedProxies          []netip.Prefix
 	TrustedProxyHeaders     []string
+	DemoMode                bool
 }
 
 type OIDCConfig struct {
@@ -158,6 +159,9 @@ func (l *loader) load() (*Config, error) {
 	trustedProxyHeaders := fs.String("trusted-proxy-headers", l.envOr("TRUSTED_PROXY_HEADERS", ""),
 		"Comma-separated forwarded-for headers to trust from a proxy, in priority order: X-Forwarded-For (default), X-Real-IP, True-Client-IP (env: TRUSTED_PROXY_HEADERS)")
 
+	demoMode := fs.Bool("demo-mode", l.envOrBool("DEMO_MODE", false),
+		"Seed realistic sample data on startup; only takes effect with database-url=in-memory and OIDC disabled (env: DEMO_MODE)")
+
 	// ------------------------------------------------------------------ //
 
 	fs.Usage = func() { printHelp(fs) }
@@ -198,6 +202,7 @@ func (l *loader) load() (*Config, error) {
 		DisableUserRegistration: *disableUserRegistration,
 		TrustedProxies:          parsedProxies,
 		TrustedProxyHeaders:     parsedProxyHeaders,
+		DemoMode:                *demoMode,
 	}
 
 	if err := cfg.validate(); err != nil {

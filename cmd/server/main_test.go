@@ -43,6 +43,40 @@ func sameOriginPost(method, path, body string) *http.Request {
 	return req
 }
 
+func TestDemoSeedDecision(t *testing.T) {
+	t.Run("demo mode off never seeds", func(t *testing.T) {
+		cfg := &config.Config{DemoMode: false, DatabaseURL: "in-memory"}
+		seed, reason := demoSeedDecision(cfg)
+		assert.False(t, seed)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("demo mode with in-memory db and no OIDC seeds", func(t *testing.T) {
+		cfg := &config.Config{DemoMode: true, DatabaseURL: "in-memory"}
+		seed, reason := demoSeedDecision(cfg)
+		assert.True(t, seed)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("demo mode with a real database is ignored", func(t *testing.T) {
+		cfg := &config.Config{DemoMode: true, DatabaseURL: "postgresql://user:pass@host/db"}
+		seed, reason := demoSeedDecision(cfg)
+		assert.False(t, seed)
+		assert.NotEmpty(t, reason)
+	})
+
+	t.Run("demo mode with OIDC enabled is ignored", func(t *testing.T) {
+		cfg := &config.Config{
+			DemoMode:    true,
+			DatabaseURL: "in-memory",
+			OIDC:        config.OIDCConfig{IssuerURL: "https://issuer.example.com"},
+		}
+		seed, reason := demoSeedDecision(cfg)
+		assert.False(t, seed)
+		assert.NotEmpty(t, reason)
+	})
+}
+
 func TestDerivedRedirectURIIsAPublicRoute(t *testing.T) {
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(func(k string) (string, bool) {
 		return map[string]string{
