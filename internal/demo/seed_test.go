@@ -15,6 +15,7 @@ import (
 )
 
 var largePage = model.PaginationParams{Limit: 10000}
+var largeTimespanPage = model.TimespanListParams{PaginationParams: largePage}
 
 func TestSeed_CreatesTagsProjectsAndTimespans(t *testing.T) {
 	repo := memory.NewMemoryStore()
@@ -30,7 +31,7 @@ func TestSeed_CreatesTagsProjectsAndTimespans(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, projects.Data)
 
-	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 	assert.NotEmpty(t, timespans.Data)
 }
@@ -46,7 +47,7 @@ func TestSeed_DataIsUnowned(t *testing.T) {
 		assert.Nil(t, tag.UserId)
 	}
 
-	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 	for _, ts := range timespans.Data {
 		assert.Nil(t, ts.UserId)
@@ -87,7 +88,7 @@ func TestSeed_TimespansReferenceExistingTags(t *testing.T) {
 		knownTags[tag.Id] = true
 	}
 
-	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 	require.NotEmpty(t, timespans.Data)
 	for _, ts := range timespans.Data {
@@ -105,7 +106,7 @@ func TestSeed_TimespansAreWithinSixWeekWindowRelativeToNow(t *testing.T) {
 
 	windowStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -6*7)
 
-	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespans, err := repo.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 	require.NotEmpty(t, timespans.Data)
 	for _, ts := range timespans.Data {
@@ -120,12 +121,12 @@ func TestSeed_IsDeterministicForAGivenNow(t *testing.T) {
 
 	repoA := memory.NewMemoryStore()
 	require.NoError(t, demo.Seed(context.Background(), repoA, now))
-	timespansA, err := repoA.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespansA, err := repoA.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 
 	repoB := memory.NewMemoryStore()
 	require.NoError(t, demo.Seed(context.Background(), repoB, now))
-	timespansB, err := repoB.ListTimespans(context.Background(), model.UnownedScope(), largePage)
+	timespansB, err := repoB.ListTimespans(context.Background(), model.UnownedScope(), largeTimespanPage)
 	require.NoError(t, err)
 
 	assert.Equal(t, timespansA.TotalCount, timespansB.TotalCount)
