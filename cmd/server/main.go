@@ -20,6 +20,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/config"
 	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
+	"github.com/larssonoliver/inundated/internal/demo"
 	"github.com/larssonoliver/inundated/internal/logging"
 	"github.com/larssonoliver/inundated/internal/repository"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
@@ -63,6 +64,24 @@ func setupRepositories(ctx context.Context, databaseUrl string) (
 	}
 	fatal("unsupported database url", "url", databaseUrl)
 	return nil, nil, nil
+}
+
+// demoSeedDecision reports whether demo data should be seeded for cfg, and
+// if not (but demo-mode was requested), a reason to log instead of seeding
+// silently. Demo data only makes sense against a scratch in-memory store in
+// userless mode - seeding a persistent database or a multi-user instance
+// would plant fake data no one asked for.
+func demoSeedDecision(cfg *config.Config) (seed bool, reason string) {
+	if !cfg.DemoMode {
+		return false, ""
+	}
+	if cfg.DatabaseURL != "in-memory" {
+		return false, "demo-mode is set but database-url is not in-memory; ignoring"
+	}
+	if cfg.OIDC.Enabled() {
+		return false, "demo-mode is set but OIDC is enabled; ignoring (demo data only seeds userless mode)"
+	}
+	return true, ""
 }
 
 func shouldUseSecureCookies(cfg *config.Config) bool {
@@ -156,6 +175,16 @@ func main() {
 	ctx := context.Background()
 
 	repo, loginStateRepo, sessionRepo := setupRepositories(ctx, cfg.DatabaseURL)
+
+	if seedDemo, reason := demoSeedDecision(cfg); seedDemo {
+		slog.Info("demo-mode enabled; seeding sample data")
+		if err := demo.Seed(ctx, repo, time.Now()); err != nil {
+			fatal("failed to seed demo data", "error", err)
+		}
+	} else if reason != "" {
+		slog.Warn(reason)
+	}
+
 	svc := service.NewService(repo, service.WithRegistrationDisabled(cfg.DisableUserRegistration))
 
 	if err := service.EnsureAuthConfigConsistent(ctx, repo, cfg.OIDC.Enabled()); err != nil {

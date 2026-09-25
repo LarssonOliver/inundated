@@ -32,6 +32,7 @@ see this list from the binary itself.
 | `DISABLE_USER_REGISTRATION` | `-disable-user-registration` | `false` | Once set, logins from OIDC identities without an existing account are rejected instead of auto-creating one. See [Authentication](/docs/configuration/authentication). |
 | `TRUSTED_PROXIES` | `-trusted-proxies` | *(empty)* | Comma-separated CIDRs/IPs of reverse proxies whose forwarded client-IP headers to trust. Empty means forwarded headers are ignored entirely. See [Reverse Proxy](/docs/configuration/reverse-proxy). |
 | `TRUSTED_PROXY_HEADERS` | `-trusted-proxy-headers` | `X-Forwarded-For` | Comma-separated, priority-ordered list of headers to trust for the client IP: `X-Forwarded-For`, `X-Real-IP`, `True-Client-IP`. See [Reverse Proxy](/docs/configuration/reverse-proxy). |
+| `DEMO_MODE` | `-demo-mode` | `false` | Seed realistic sample projects, tags, and time entries on startup, dated relative to the current time. Only takes effect with `DATABASE_URL=in-memory` and OIDC disabled — any other combination logs a warning and starts without seeding. |
 
 ## Validation at startup
 

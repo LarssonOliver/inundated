@@ -79,6 +79,27 @@ func TestHelpFlag(t *testing.T) {
 	assert.ErrorIs(t, err, flag.ErrHelp)
 }
 
+func TestDemoModeDisabledByDefault(t *testing.T) {
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
+	assert.NoError(t, err)
+	assert.False(t, cfg.DemoMode)
+}
+
+func TestDemoModeFromEnv(t *testing.T) {
+	env := map[string]string{"DEMO_MODE": "true"}
+	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.True(t, cfg.DemoMode)
+}
+
+func TestDemoModeCLIFlagOverridesEnv(t *testing.T) {
+	env := map[string]string{"DEMO_MODE": "true"}
+	args := []string{"-demo-mode=false"}
+	cfg, err := config.Load(config.WithArgs(args), config.WithEnvLookup(fakeEnv(env)))
+	assert.NoError(t, err)
+	assert.False(t, cfg.DemoMode)
+}
+
 func TestOIDCDisabledByDefault(t *testing.T) {
 	cfg, err := config.Load(config.WithArgs(nil), config.WithEnvLookup(fakeEnv(nil)))
 	assert.NoError(t, err)
