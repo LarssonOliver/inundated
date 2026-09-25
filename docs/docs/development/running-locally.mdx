@@ -1,0 +1,84 @@
+---
+sidebar_position: 1
+---
+
+# Running Locally
+
+This covers working on inundated's source. For running a built instance in
+production, see [Quick Start](/docs/quick-start).
+
+## Prerequisites
+
+- [Go](https://go.dev/)
+- [Node.js](https://nodejs.org/)
+- [PostgreSQL](https://www.postgresql.org/) — optional; the backend falls
+  back to an in-memory store when no `DATABASE_URL` is set, which is enough
+  for most day-to-day frontend/backend work.
+
+## Backend
+
+```bash
+git clone https://github.com/LarssonOliver/inundated.git
+cd inundated
+make dev
+```
+
+`make dev` runs `go run cmd/server/main.go` with defaults — in-memory store,
+`text`-format `info` logging, userless auth, listening on `0.0.0.0:8080`.
+
+## Frontend
+
+In a separate terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend dev server opens at `http://localhost:5173` and proxies API
+requests to the backend.
+
+## Connecting to a real Postgres database
+
+Set `DATABASE_URL` before starting the server — migrations are applied
+automatically on startup:
+
+```bash
+export DATABASE_URL="postgresql://user:password@localhost/inundated"
+make dev
+```
+
+## Testing the OIDC login flow
+
+`make dev` runs userless. To exercise the full authenticated flow locally
+against a mock provider, see
+[Local Auth Testing](/docs/development/local-auth-testing).
+
+## Building for production
+
+Build a single self-contained binary (frontend assets embedded):
+
+```bash
+make build
+./bin/inundated
+```
+
+Or build and push a multi-arch Docker image via buildx:
+
+```bash
+make image-push
+```
+
+## Testing and linting
+
+```bash
+make test            # backend + frontend
+make test-backend
+make test-frontend
+
+make lint             # backend + frontend
+make lint-backend
+make lint-frontend
+make lint-openapi     # lints openapi/inundated.yaml with redocly
+```

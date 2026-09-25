@@ -1,0 +1,57 @@
+---
+sidebar_position: 1
+---
+
+# Time Tracking
+
+Time in inundated is recorded as **time entries** on the Timesheet, and
+organized using **tags** and **projects**.
+
+## Time entries
+
+A time entry (internally a "timespan") is a manual record with:
+
+- a **name**,
+- a **start** and **end** time, and
+- zero or more **tags**.
+
+The Timesheet view lists entries newest-first, grouped by day, and lets you
+add a new one from a form at the top — pick tags, set a name and time range,
+and submit. There's no running/live timer: entries are logged with an
+explicit start and end (typically added right after finishing a stretch of
+work, or backfilled).
+
+## Tags
+
+Tags are the actual unit time gets attributed to. Each tag has a name and a
+color, and accumulates a total duration from every time entry that carries
+it. A single time entry can carry multiple tags, so time can count toward
+more than one thing at once (e.g. a client tag and a work-type tag).
+
+## Projects
+
+A project is a named, colored grouping of tags, with an optional **time
+budget**. A project's total time is the sum of the duration of every time
+entry carrying any of its tags — a project doesn't own time entries
+directly, it's a lens over the tags assigned to it. This lets you reorganize
+which tags roll up into which project without touching any historical time
+entries.
+
+Projects and tags can each be archived independently, which hides them from
+pickers without deleting their history.
+
+## Display settings
+
+Per-scope settings (under **Settings** in the app) control how times and
+dates are rendered — they don't affect what's stored:
+
+| Setting | Options |
+|---|---|
+| Week start day | Monday, Sunday |
+| Timezone | Any IANA zone, or "browser" (use the client's local zone) |
+| Duration format | Long (`1h 30m`), decimal (`1.5h`), clock (`1:30`) |
+| Time format | 12h, 24h |
+| Date format | ISO, US, EU, or text |
+
+All times are stored and computed in UTC on the backend; these settings only
+change presentation.

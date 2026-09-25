@@ -1,0 +1,77 @@
+---
+sidebar_position: 3
+---
+
+# OpenAPI Code Generation
+
+The REST API is spec-first: `openapi/inundated.yaml` is the root document,
+splitting `paths/`, `schemas/`, and `parameters/` into per-resource files
+(`projects.yaml`, `tags.yaml`, `timespans.yaml`, `users.yaml`,
+`settings.yaml`, `auth.yaml`). Both the backend request/response types and
+the frontend API client are generated from it — you should never hand-edit
+generated code.
+
+## The pipeline
+
+```bash
+make generate
+```
+
+runs, in order:
+
+1. **Bundle.** `openapi/dist/inundated.yaml` is built from the split spec
+   with [Redocly CLI](https://redocly.com/docs/cli/):
+
+   ```bash
+   docker run --rm -v ${PWD}/openapi:/local/openapi redocly/cli:<version> \
+     bundle /local/openapi/inundated.yaml -o /local/openapi/dist/inundated.yaml
+   ```
+
+   This step reruns automatically whenever any file under `openapi/`
+   changes.
+
+2. **Backend.** `go generate ./...` invokes
+   [`oapi-codegen`](https://github.com/oapi-codegen/oapi-codegen) against the
+   bundled spec, driven by `//go:generate` directives:
+
+   - `internal/api/api.go` generates request/response models and the server
+     interface (`oapi-codegen/model.cfg.yaml`, `oapi-codegen/server.cfg.yaml`).
+   - `test/e2e/main_test.go` generates a typed client used by the end-to-end
+     tests (`oapi-codegen/client.cfg.yaml`).
+
+3. **Frontend.** [`openapi-generator-cli`](https://openapi-generator.tech/)
+   generates a `typescript-fetch` client into
+   `frontend/src/api/generated/`:
+
+   ```bash
+   docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:<version> \
+     generate -i /local/openapi/dist/inundated.yaml -g typescript-fetch \
+     --additional-properties=supportsES6=true -o /local/frontend/src/api/generated
+   ```
+
+Both generator steps depend on `openapi/dist/inundated.yaml`, so editing any
+spec file and running `make generate` regenerates everything downstream.
+
+## Workflow for an API change
+
+1. Edit the relevant file(s) under `openapi/paths/`, `openapi/schemas/`, or
+   `openapi/parameters/`.
+2. `make lint-openapi` — lints the spec with Redocly before you generate
+   anything from it.
+3. `make generate` — regenerates backend models/server interface and the
+   frontend client.
+4. Implement against the regenerated server interface in
+   `internal/api/handlers/`, and consume the regenerated client from
+   `frontend/src/api/`.
+
+## Individual targets
+
+If you only need one side regenerated:
+
+```bash
+make generate-backend-api    # oapi-codegen only
+make generate-frontend-api   # openapi-generator-cli only
+```
+
+Both still depend on `openapi/dist/inundated.yaml` and will rebuild it first
+if the spec changed.

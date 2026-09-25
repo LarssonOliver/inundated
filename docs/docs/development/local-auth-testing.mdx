@@ -1,0 +1,56 @@
+---
+sidebar_position: 2
+---
+
+# Local Auth Testing
+
+`make dev` runs userless by default, so exercising the real OIDC login flow
+needs an issuer to talk to. `docker-compose.yml` at the repo root brings up
+PostgreSQL and a mock OIDC provider
+([mock-oauth2-server](https://github.com/navikt/mock-oauth2-server)) for
+exactly that.
+
+Run the app itself on the host (not in Compose) so it shares `localhost`
+with your browser and the issuer URL.
+
+```bash
+docker compose up -d
+
+# terminal 1 — backend
+make dev-auth
+
+# terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+`make dev-auth` starts the backend with matching flags baked in — Postgres
+from Compose, the mock issuer, and a `public-base-url` of
+`http://localhost:5173` (the frontend dev server, since that's what the
+browser talks to):
+
+```bash
+go run cmd/server/main.go \
+  -database-url="postgresql://inundated:inundated@localhost:5432/inundated?sslmode=disable" \
+  -oidc-issuer-url="http://localhost:9090/default" \
+  -oidc-client-id="inundated" \
+  -oidc-client-secret="inundated-secret" \
+  -public-base-url="http://localhost:5173" \
+  -log-level="debug"
+```
+
+Open `http://localhost:5173` and follow a login link. The mock provider
+shows a form where you enter any username and, optionally, a `claims` JSON
+blob to mint the ID token, e.g.:
+
+```json
+{"email": "alice@example.com", "name": "Alice"}
+```
+
+The first account to log in adopts any pre-existing resources — see
+[Authentication](/docs/configuration/authentication).
+
+When you're done:
+
+```bash
+docker compose down -v   # stop and wipe the database
+```

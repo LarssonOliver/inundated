@@ -1,0 +1,43 @@
+---
+sidebar_position: 1
+---
+
+# Environment Variables
+
+Every setting is a CLI flag with a matching environment variable. Resolution
+order, highest priority first:
+
+1. CLI flag (e.g. `-port=9090`)
+2. Environment variable (e.g. `PORT=9090`)
+3. Built-in default
+
+Run `inundated -help` (or `go run cmd/server/main.go -help` from source) to
+see this list from the binary itself.
+
+## Reference
+
+| Variable | Flag | Default | Description |
+|---|---|---|---|
+| `HOST` | `-host` | `0.0.0.0` | Server listen host. |
+| `PORT` | `-port` | `8080` | Server listen port. |
+| `DATABASE_URL` | `-database-url` | `in-memory` | PostgreSQL connection string, e.g. `postgresql://user:password@host/db`. The literal value `in-memory` uses a non-persistent in-process store — fine for local tinkering, not for anything you want to keep. |
+| `LOG_LEVEL` | `-log-level` | `info` | `debug`, `info`, `warn`, or `error`. See [Logging](/docs/configuration/logging). |
+| `LOG_FORMAT` | `-log-format` | `text` | `text` or `json`. See [Logging](/docs/configuration/logging). |
+| `PUBLIC_BASE_URL` | `-public-base-url` | *(empty)* | The app's public origin (scheme + bare host, no path), e.g. `https://inundated.example.com`. Required once OIDC is enabled; also governs session-cookie security and trusted-origin checks. See [Authentication](/docs/configuration/authentication) and [Reverse Proxy](/docs/configuration/reverse-proxy). |
+| `OIDC_ISSUER_URL` | `-oidc-issuer-url` | *(empty)* | OIDC provider issuer URL. Setting this enables authentication (userless mode otherwise). See [Authentication](/docs/configuration/authentication). |
+| `OIDC_CLIENT_ID` | `-oidc-client-id` | *(empty)* | OIDC client ID. Required when `OIDC_ISSUER_URL` is set. |
+| `OIDC_CLIENT_SECRET` | `-oidc-client-secret` | *(empty)* | OIDC client secret. Required when `OIDC_ISSUER_URL` is set. |
+| `OIDC_SCOPES` | `-oidc-scopes` | `openid,profile,email` | Comma-separated scopes to request. Must include `openid` and `email`. |
+| `OIDC_HTTP_TIMEOUT` | `-oidc-http-timeout` | `10s` | Timeout (Go duration syntax) for OIDC discovery, JWKS, and token requests. |
+| `DISABLE_USER_REGISTRATION` | `-disable-user-registration` | `false` | Once set, logins from OIDC identities without an existing account are rejected instead of auto-creating one. See [Authentication](/docs/configuration/authentication). |
+| `TRUSTED_PROXIES` | `-trusted-proxies` | *(empty)* | Comma-separated CIDRs/IPs of reverse proxies whose forwarded client-IP headers to trust. Empty means forwarded headers are ignored entirely. See [Reverse Proxy](/docs/configuration/reverse-proxy). |
+| `TRUSTED_PROXY_HEADERS` | `-trusted-proxy-headers` | `X-Forwarded-For` | Comma-separated, priority-ordered list of headers to trust for the client IP: `X-Forwarded-For`, `X-Real-IP`, `True-Client-IP`. See [Reverse Proxy](/docs/configuration/reverse-proxy). |
+
+## Validation at startup
+
+inundated validates configuration before serving traffic and refuses to
+start on an invalid combination — for example, `PUBLIC_BASE_URL` missing
+while OIDC is configured, an out-of-range `PORT`, or a `TRUSTED_PROXIES`
+entry that would trust every address (`0.0.0.0/0`). Errors are printed to
+the log and the process exits non-zero, so misconfiguration fails fast
+rather than serving with a silently wrong setting.

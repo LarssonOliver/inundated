@@ -1,0 +1,113 @@
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+@import '@fontsource/pt-sans/400.css';
+@import '@fontsource/pt-sans/700.css';
+
+:root {
+  --nord0: #2e3440;
+  --nord1: #3b4252;
+  --nord2: #434c5e;
+  --nord3: #4c566a;
+  --nord4: #d8dee9;
+  --nord5: #e5e9f0;
+  --nord6: #eceff4;
+  --nord7: #8fbcbb;
+  --nord8: #88c0d0;
+  --nord9: #91a1c1;
+  --nord10: #5e81ac;
+  --nord11: #bf616a;
+  --nord12: #d08770;
+  --nord13: #ebcb8b;
+  --nord14: #a3be8c;
+  --nord15: #b48ead;
+  --nord-c0: #292e39;
+  --nord-c1: #abb9cf;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-color: 46, 52, 64;
+  --shadow-sm: 0 1px 2px rgba(var(--shadow-color), 0.45);
+  --shadow-md:
+    0 6px 16px -4px rgba(var(--shadow-color), 0.55), 0 2px 6px -2px rgba(var(--shadow-color), 0.4);
+  --shadow-lg:
+    0 16px 40px -12px rgba(var(--shadow-color), 0.65),
+    0 6px 16px -4px rgba(var(--shadow-color), 0.5);
+
+  --ifm-color-primary: var(--nord8);
+  --ifm-color-primary-dark: color-mix(in srgb, var(--ifm-color-primary) 85%, black);
+  --ifm-color-primary-darker: color-mix(in srgb, var(--ifm-color-primary) 75%, black);
+  --ifm-color-primary-darkest: color-mix(in srgb, var(--ifm-color-primary) 60%, black);
+  --ifm-color-primary-light: color-mix(in srgb, var(--ifm-color-primary) 85%, white);
+  --ifm-color-primary-lighter: color-mix(in srgb, var(--ifm-color-primary) 75%, white);
+  --ifm-color-primary-lightest: color-mix(in srgb, var(--ifm-color-primary) 60%, white);
+
+  --ifm-color-info: var(--nord9);
+  --ifm-color-success: var(--nord14);
+  --ifm-color-warning: var(--nord13);
+  --ifm-color-danger: var(--nord11);
+
+  --ifm-background-color: var(--nord-c0);
+  --ifm-background-surface-color: var(--nord0);
+  --ifm-font-color-base: var(--nord4);
+  --ifm-heading-color: var(--nord6);
+
+  --ifm-navbar-background-color: var(--nord0);
+  --ifm-footer-background-color: var(--nord0);
+  --ifm-footer-color: var(--nord4);
+  --ifm-footer-link-color: var(--nord7);
+
+  --ifm-toc-border-color: var(--nord1);
+  --ifm-hr-border-color: var(--nord1);
+  --ifm-table-border-color: var(--nord1);
+  --ifm-code-background: var(--nord1);
+
+  --ifm-menu-color-background-active: var(--nord2);
+  --ifm-menu-color-background-hover: var(--nord1);
+
+  --ifm-global-radius: var(--radius-md);
+  --ifm-code-border-radius: var(--radius-xs);
+  --ifm-button-border-radius: var(--radius-sm);
+  --ifm-alert-border-radius: var(--radius-md);
+
+  --ifm-global-shadow-lw: var(--shadow-sm);
+  --ifm-global-shadow-md: var(--shadow-md);
+  --ifm-global-shadow-tl: var(--shadow-lg);
+
+  --ifm-font-family-base: 'Roboto', sans-serif;
+  --ifm-heading-font-family: 'PT Sans', sans-serif;
+
+  --docusaurus-highlighted-code-line-bg: rgba(76, 86, 106, 0.5);
+}
+
+[data-theme='light'] {
+  --ifm-color-primary: var(--nord10);
+
+  --ifm-background-color: var(--nord6);
+  --ifm-background-surface-color: var(--nord5);
+  --ifm-font-color-base: var(--nord0);
+  --ifm-heading-color: var(--nord0);
+
+  --ifm-navbar-background-color: var(--nord5);
+  --ifm-footer-background-color: var(--nord4);
+  --ifm-footer-color: var(--nord0);
+  --ifm-footer-link-color: var(--nord10);
+
+  --ifm-toc-border-color: var(--nord4);
+  --ifm-hr-border-color: var(--nord4);
+  --ifm-table-border-color: var(--nord4);
+  --ifm-code-background: var(--nord5);
+
+  --ifm-menu-color-background-active: var(--nord4);
+  --ifm-menu-color-background-hover: var(--nord5);
+
+  --docusaurus-highlighted-code-line-bg: rgba(216, 222, 233, 0.6);
+}
+
+.navbar__brand .navbar__title {
+  font-family: 'PT Sans', sans-serif;
+  font-weight: 700;
+}

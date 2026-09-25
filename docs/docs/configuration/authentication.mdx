@@ -1,0 +1,69 @@
+---
+sidebar_position: 3
+---
+
+# Authentication
+
+By default inundated runs in **userless mode**: no login, and every resource
+is shared. This is the state you get from the [Quick Start](/docs/quick-start)
+with no further configuration.
+
+To put it behind an OpenID Connect provider instead, set the issuer URL,
+client credentials, and the app's public origin:
+
+```bash
+export OIDC_ISSUER_URL="https://accounts.example.com"
+export OIDC_CLIENT_ID="inundated"
+export OIDC_CLIENT_SECRET="…"
+export PUBLIC_BASE_URL="https://inundated.example.com"
+
+# optional:
+export OIDC_SCOPES="openid,profile,email"   # default; must include openid and email
+export OIDC_HTTP_TIMEOUT="10s"              # default
+```
+
+See [Environment Variables](/docs/configuration/environment-variables) for
+the equivalent CLI flags.
+
+## Redirect URI
+
+The redirect URI is derived from `PUBLIC_BASE_URL` as
+`$PUBLIC_BASE_URL/api/auth/callback` — register exactly that with your
+provider.
+
+## Cookie security
+
+`PUBLIC_BASE_URL` also controls session cookie security: when it's an
+`https://` origin, the session cookie is marked `Secure`. Set it to your
+real `https://` origin in any deployment reachable over HTTPS — including
+userless ones — otherwise the browser will accept the cookie over plain
+HTTP too.
+
+## First login and switching modes
+
+The first user to log in adopts all pre-existing resources (projects, tags,
+and time entries created while the instance was userless). Once any user
+account exists, the server refuses to start without OIDC configured, so
+authentication can't be silently switched back off and leave those
+resources unowned.
+
+## Closing registration
+
+By default, any identity your OIDC provider authenticates gets an account on
+first login. Once every expected user has logged in at least once, close the
+door:
+
+```bash
+export DISABLE_USER_REGISTRATION=true   # or -disable-user-registration
+```
+
+With this set, a login from an identity with no existing account is
+rejected — no account is created and no resources are adopted. Existing
+users are unaffected. Leave it unset for the very first login so you (and
+anyone else expected) can enroll.
+
+## Trying it locally
+
+For a local OIDC setup you can actually click through — Docker Compose with
+Postgres and a mock provider — see
+[Local Auth Testing](/docs/development/local-auth-testing).

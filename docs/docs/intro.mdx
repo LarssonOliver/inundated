@@ -1,0 +1,35 @@
+---
+sidebar_position: 1
+---
+
+# Introduction
+
+**inundated** is a lightweight, self-hosted app for tracking time across projects. It's
+built to run as a single binary (or container) against Postgres, with no required
+dependencies beyond a database.
+
+## What it does today
+
+- **[Time tracking](/docs/features/time-tracking)** — log time entries against
+  tags, and group tags into projects with optional time budgets.
+- **Multi-user via OIDC** — runs standalone with no login ("userless mode") by
+  default, or behind any OpenID Connect provider once you want per-user
+  accounts. See [Authentication](/docs/configuration/authentication).
+
+Task management (to-do items, not just time entries) is planned but not yet
+built.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Go |
+| Frontend | Vue 3 + Pinia + TypeScript + Vite |
+| Database | PostgreSQL (or an in-memory store for local dev) |
+| API spec | OpenAPI 3 |
+
+## Where to go next
+
+- New to running inundated? Start with [Quick Start](/docs/quick-start) to get
+  it up against a Postgres database.
+- Hacking on inundated itself? See [Running Locally](/docs/development/running-locally).
