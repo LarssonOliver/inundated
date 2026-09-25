@@ -43,7 +43,7 @@ const nordPrismLightTheme: PrismTheme = {
 const config: Config = {
   title: 'Inundated',
   tagline: 'A personal time and task management system.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   future: {
     v4: true,

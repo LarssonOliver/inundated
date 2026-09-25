@@ -38,7 +38,7 @@ const features: Feature[] = [
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   const logo = useBaseUrl('img/logo.svg');
-  const screenshot = useBaseUrl('img/screenshot.png');
+  const screenshot = useBaseUrl('img/screenshot.jpeg');
   return (
     <header className={styles.heroBanner}>
       <div className={clsx('container', styles.heroInner)}>
