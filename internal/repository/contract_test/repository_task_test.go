@@ -602,6 +602,34 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidArgument)
 		})
 
+		t.Run(repoName+"DeleteRacesTimespanSafely", func(t *testing.T) {
+			repo := newRepo(t)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			for range 20 {
+				task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t"})
+				require.NoError(t, err)
+
+				// Deleting a task and logging time on it at once: one must
+				// lose, or time ends up logged on a deleted task.
+				var wg sync.WaitGroup
+				var errDelete, errLog error
+				wg.Go(func() { errDelete = repo.DeleteTask(ctx, testScope, task.Id) })
+				wg.Go(func() {
+					_, errLog = repo.CreateTimespan(ctx, testScope, model.Timespan{
+						StartTime: start, EndTime: start.Add(time.Hour), TagIds: []uuid.UUID{task.TagId},
+					})
+				})
+				wg.Wait()
+
+				if errDelete == nil {
+					require.ErrorIs(t, errLog, model.ErrInvalidReference)
+				} else {
+					require.ErrorIs(t, errDelete, model.ErrConflict)
+					require.NoError(t, errLog)
+				}
+			}
+		})
+
 		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
 			repo := newRepo(t)
 			scopeA := model.UserScope(uuid.New())

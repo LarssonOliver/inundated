@@ -245,10 +245,12 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 			return fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
 		}
 		tagIds = utils.DedupeUUIDs(task.TagIds)
-		if err := r.checkTaskTags(ctx, q, scope, tagIds, func() ([]uuid.UUID, error) {
-			return existing.TagIds, nil
-		}); err != nil {
-			return fmt.Errorf("UpdateTask: %w", err)
+		if patch.TagIds != nil {
+			if err := r.checkTaskTags(ctx, q, scope, tagIds, func() ([]uuid.UUID, error) {
+				return existing.TagIds, nil
+			}); err != nil {
+				return fmt.Errorf("UpdateTask: %w", err)
+			}
 		}
 
 		var reason *string
@@ -296,8 +298,13 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 			}
 		}
 
-		if _, err := q.Exec(ctx, `UPDATE tags SET name = $2 WHERE id = $1`, updated.TagId, updated.Name); err != nil {
-			return fmt.Errorf("UpdateTask tag: %w", err)
+		if updated.Name != existing.Name {
+			if _, err := q.Exec(ctx, `UPDATE tags SET name = $2 WHERE id = $1`, updated.TagId, updated.Name); err != nil {
+				return fmt.Errorf("UpdateTask tag: %w", err)
+			}
+		}
+		if patch.TagIds == nil {
+			return nil
 		}
 		return r.setTaskTags(ctx, q, updated.Id, tagIds)
 	})
@@ -422,6 +429,15 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 				SELECT c.id, c.tag_id FROM tasks c JOIN sub ON c.parent_id = sub.id
 				WHERE c.deleted_at IS NULL
 			)`
+
+		// Lock the subtree's task tags before checking for logged time: a
+		// timespan attaching one of them share-locks it (see tagsInScope),
+		// so it either commits first and shows up below, or waits and then
+		// finds the tag deleted.
+		if _, err := q.Exec(ctx, subtree+`
+			SELECT id FROM tags WHERE id IN (SELECT tag_id FROM sub) ORDER BY id FOR UPDATE`, id); err != nil {
+			return fmt.Errorf("DeleteTask lock tags: %w", err)
+		}
 
 		var logged bool
 		if err := q.QueryRow(ctx, subtree+`

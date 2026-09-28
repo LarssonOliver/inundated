@@ -144,7 +144,7 @@ func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id
 		return model.Task{}, model.ErrInvalidArgument
 	}
 	tagIds := utils.DedupeUUIDs(task.TagIds)
-	if !t.tagsUsable(scope, tagIds, t.tasks[idx].TagIds) || t.anyTaskTag(tagIds) {
+	if patch.TagIds != nil && (!t.tagsUsable(scope, tagIds, t.tasks[idx].TagIds) || t.anyTaskTag(tagIds)) {
 		return model.Task{}, model.ErrInvalidReference
 	}
 

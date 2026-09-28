@@ -12,20 +12,13 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-// tagsExist reports whether every id refers to a live tag owned by scope.
+// tagsUsable reports whether every id refers to a live tag owned by scope.
 // An archived tag is only acceptable if it's already in alreadyAssociated
-// (i.e. it was attached to this project/timespan before this call) - that
-// keeps existing associations with a since-archived tag intact across
-// unrelated edits, while still blocking a fresh attachment of an archived
-// tag that a picker would never surface.
-func (t *MemoryStore) tagsExist(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.tagsUsable(scope, tagIds, alreadyAssociated)
-}
-
-// tagsUsable is tagsExist for callers that already hold t.mu, so the check
-// and the write that relies on it see the same state.
+// (i.e. it was attached before this call) - that keeps existing
+// associations with a since-archived tag intact across unrelated edits,
+// while still blocking a fresh attachment of an archived tag that a picker
+// would never surface. Callers must hold t.mu for writing, so the check and
+// the write that relies on it see the same state.
 func (t *MemoryStore) tagsUsable(scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
 	if len(tagIds) == 0 {
 		return true

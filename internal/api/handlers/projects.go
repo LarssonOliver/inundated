@@ -34,7 +34,11 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 	}
 
 	if request.Body.TimeBudgetHours != nil {
-		project.TimeBudget = utils.FloatHoursToDuration(request.Body.TimeBudgetHours)
+		budget, err := utils.FloatHoursToDuration(request.Body.TimeBudgetHours)
+		if err != nil {
+			return api.CreateProject400Response{}, nil
+		}
+		project.TimeBudget = budget
 	}
 
 	if request.Body.TagIds != nil {
@@ -187,7 +191,11 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 	}
 
 	if request.Body.TimeBudgetHours != nil {
-		project.TimeBudget = utils.FloatHoursToDuration(request.Body.TimeBudgetHours)
+		budget, err := utils.FloatHoursToDuration(request.Body.TimeBudgetHours)
+		if err != nil {
+			return api.UpdateProject400Response{}, nil
+		}
+		project.TimeBudget = budget
 	}
 
 	if request.Body.TagIds != nil {

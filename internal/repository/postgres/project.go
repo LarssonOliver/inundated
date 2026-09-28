@@ -259,6 +259,12 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 	if regularOnly {
 		query += ` AND k.id IS NULL`
 	}
+	// Share-lock the tags until the caller's transaction ends, so a
+	// concurrent delete (of the tag, or of the task owning a task tag)
+	// either waits for this write or has already happened and fails the
+	// deleted_at check above. Locking in id order avoids deadlocking with
+	// DeleteTask, which locks its task tags the same way.
+	query += ` ORDER BY t.id FOR SHARE OF t`
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)

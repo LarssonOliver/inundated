@@ -300,3 +300,20 @@ func TestTask_NilIdWritesAreNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 404, tagResp.StatusCode())
 }
+
+func TestTask_HugeEstimateIsRejected(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+	huge := 1e7
+
+	createResp, err := client.CreateTaskWithResponse(ctx, CreateTaskJSONRequestBody{Name: "huge", EstimateHours: &huge})
+	require.NoError(t, err)
+	require.Equal(t, 400, createResp.StatusCode())
+
+	createResp, err = client.CreateTaskWithResponse(ctx, CreateTaskJSONRequestBody{Name: "fine"})
+	require.NoError(t, err)
+	require.Equal(t, 201, createResp.StatusCode())
+	updateResp, err := client.UpdateTaskWithResponse(ctx, createResp.JSON201.Id, UpdateTaskJSONRequestBody{EstimateHours: &huge})
+	require.NoError(t, err)
+	require.Equal(t, 400, updateResp.StatusCode())
+}

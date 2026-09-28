@@ -27,11 +27,15 @@ func NewTaskHandler(svc service.TaskService) *TaskHandler {
 
 // CreateTask implements [api.TaskHandler].
 func (h *TaskHandler) CreateTask(ctx context.Context, request api.CreateTaskRequestObject) (api.CreateTaskResponseObject, error) {
+	estimate, err := utils.FloatHoursToDuration(request.Body.EstimateHours)
+	if err != nil {
+		return api.CreateTask400Response{}, nil
+	}
 	task := model.Task{
 		Name:     request.Body.Name,
 		ParentId: request.Body.ParentId,
 		DueDate:  dateToTime(request.Body.DueDate),
-		Estimate: utils.FloatHoursToDuration(request.Body.EstimateHours),
+		Estimate: estimate,
 	}
 	if request.Body.TagIds != nil {
 		task.TagIds = *request.Body.TagIds
@@ -128,12 +132,16 @@ func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksReques
 // UpdateTask implements [api.TaskHandler].
 func (h *TaskHandler) UpdateTask(ctx context.Context, request api.UpdateTaskRequestObject) (api.UpdateTaskResponseObject, error) {
 	body := request.Body
+	estimate, err := utils.FloatHoursToDuration(body.EstimateHours)
+	if err != nil {
+		return api.UpdateTask400Response{}, nil
+	}
 	patch := model.TaskPatch{
 		Name:          body.Name,
 		TagIds:        body.TagIds,
 		DueDate:       dateToTime(body.DueDate),
 		ClearDueDate:  body.ClearDueDate != nil && *body.ClearDueDate,
-		Estimate:      utils.FloatHoursToDuration(body.EstimateHours),
+		Estimate:      estimate,
 		ClearEstimate: body.ClearEstimate != nil && *body.ClearEstimate,
 		Closed:        body.Closed,
 	}
