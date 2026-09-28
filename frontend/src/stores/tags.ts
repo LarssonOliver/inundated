@@ -1,4 +1,5 @@
 import { tagsApi, type TagKind, type TagsApi } from "@/api";
+import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
@@ -158,7 +159,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns The matching tag, or undefined if none exists.
      */
     async function findTagByName(normalizedName: string): Promise<Tag | undefined> {
-      const matches = await api.searchTags(normalizedName, "label", true, 100);
+      const matches = await fetchAllPages((limit, offset) =>
+        api.searchTagsPaginated(normalizedName, "label", true, limit, offset),
+      );
       return matches.find((tag) => tag.name === normalizedName);
     }
 

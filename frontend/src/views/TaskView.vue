@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ResponseError } from "@/api/generated";
 import type { Project, Tag, Task } from "@/model";
@@ -138,20 +138,25 @@ const task = ref<Task | null>(null);
 const taskTag = ref<Tag | null>(null);
 const parent = ref<Task | null>(null);
 const projects = ref<Project[]>([]);
+const subtasks = ref<Task[]>([]);
 const notFound = ref(false);
 const errorMessage = ref("");
 const showDeletionConfirmation = ref(false);
 const newSubtaskName = ref("");
 const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: "", tagIds: new Set() });
 
-const subtasks = computed(() =>
-  tasksStore.tasks
-    .filter((t) => task.value && t.parentId === task.value.id)
-    .sort((a, b) => (a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : 0)),
-);
-
 function formatMs(ms: number): string {
   return formatDuration(ms, settingsStore.settings?.durationFormat ?? "long");
+}
+
+function applyTask(loaded: Task) {
+  task.value = loaded;
+  draft.value = {
+    name: loaded.name,
+    dueDate: loaded.dueDate ?? "",
+    estimateHours: loaded.estimateHours ?? "",
+    tagIds: new Set(loaded.tagIds),
+  };
 }
 
 async function load(id: string) {
@@ -164,25 +169,20 @@ async function load(id: string) {
     return;
   }
   notFound.value = false;
-  task.value = loaded;
-  draft.value = {
-    name: loaded.name,
-    dueDate: loaded.dueDate ?? "",
-    estimateHours: loaded.estimateHours ?? "",
-    tagIds: new Set(loaded.tagIds),
-  };
+  applyTask(loaded);
 
-  const [tag, parentTask] = await Promise.all([
+  const [tag, parentTask, subtaskList] = await Promise.all([
     tagsStore.fetchTagById(loaded.tagId).catch(() => null),
     loaded.parentId
       ? (tasksStore.getTaskById(loaded.parentId) ??
         tasksStore.fetchDetailedTaskById(loaded.parentId).catch(() => null))
       : null,
-    tasksStore.fetchTasks(),
+    tasksStore.fetchSubtasks(id),
     projectsStore.fetchProjects(),
   ]);
   taskTag.value = tag;
   parent.value = parentTask;
+  subtasks.value = subtaskList;
   projects.value = [...(loaded.projectIds ?? [])]
     .map((projectId) => projectsStore.getProjectById(projectId))
     .filter((project): project is Project => !!project);
@@ -199,25 +199,51 @@ watch(
 async function save() {
   if (!task.value) return;
   const estimate = draft.value.estimateHours;
-  await tasksStore.updateTask(task.value.id, {
+  const updated = await tasksStore.updateTask(task.value.id, {
     name: draft.value.name.trim(),
     tagIds: draft.value.tagIds,
     dueDate: draft.value.dueDate || null,
     estimateHours: estimate === "" ? null : Number(estimate),
   });
-  await load(task.value.id);
+  // Editing never changes closed state, parent, tag or projects, so merge
+  // the response over the existing task rather than reloading everything.
+  applyTask({
+    ...updated,
+    totalTimeMs: task.value.totalTimeMs,
+    projectIds: task.value.projectIds,
+  });
+}
+
+/**
+ * Refreshes this task and its subtasks after a close/reopen, which can
+ * cascade to subtasks or the parent on the server.
+ */
+async function refreshAfterStatusChange() {
+  if (!task.value) return;
+  const id = task.value.id;
+  const [loaded, subtaskList] = await Promise.all([
+    tasksStore.fetchDetailedTaskById(id),
+    tasksStore.fetchSubtasks(id),
+  ]);
+  applyTask(loaded);
+  subtasks.value = subtaskList;
+  if (loaded.parentId) {
+    parent.value =
+      tasksStore.getTaskById(loaded.parentId) ??
+      (await tasksStore.fetchDetailedTaskById(loaded.parentId).catch(() => null));
+  }
 }
 
 async function close(reason: "done" | "ignored") {
   if (!task.value) return;
   await tasksStore.closeTask(task.value.id, reason);
-  await load(task.value.id);
+  await refreshAfterStatusChange();
 }
 
 async function reopen() {
   if (!task.value) return;
   await tasksStore.reopenTask(task.value.id);
-  await load(task.value.id);
+  await refreshAfterStatusChange();
 }
 
 async function toggleSubtask(child: Task) {
@@ -226,12 +252,16 @@ async function toggleSubtask(child: Task) {
   } else {
     await tasksStore.closeTask(child.id, "done");
   }
+  if (task.value) {
+    subtasks.value = await tasksStore.fetchSubtasks(task.value.id);
+  }
 }
 
 async function addSubtask() {
   if (!task.value || !newSubtaskName.value.trim()) return;
   await tasksStore.createTaskFromName(newSubtaskName.value, task.value.id);
   newSubtaskName.value = "";
+  subtasks.value = await tasksStore.fetchSubtasks(task.value.id);
 }
 
 async function deleteTask() {

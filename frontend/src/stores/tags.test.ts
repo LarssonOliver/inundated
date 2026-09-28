@@ -26,6 +26,7 @@ describe("tags store", () => {
       listTagsPaginated: vi.fn(),
       listAllTags: vi.fn(),
       searchTags: vi.fn(),
+      searchTagsPaginated: vi.fn(),
       getTag: vi.fn(),
       createTag: vi.fn(),
       updateTag: vi.fn(),
@@ -86,7 +87,10 @@ describe("tags store", () => {
 
   it("creates a new tag if name does not exist", async () => {
     const created = makeTag({ name: "New" });
-    api.searchTags.mockResolvedValue([makeTag({ name: "Newer" })]);
+    api.searchTagsPaginated.mockResolvedValue({
+      data: [makeTag({ name: "Newer" })],
+      pagination: { limit: 100, offset: 0, total: 1 },
+    });
     api.createTag.mockResolvedValue(created);
 
     const store = useStore();
@@ -118,7 +122,7 @@ describe("tags store", () => {
     // server has), so searching the API again for a name match would be
     // redundant.
     expect(api.listTagsPaginated).not.toHaveBeenCalled();
-    expect(api.searchTags).not.toHaveBeenCalled();
+    expect(api.searchTagsPaginated).not.toHaveBeenCalled();
     expect(api.createTag).toHaveBeenCalledOnce();
     expect(result).toEqual(created);
   });
@@ -130,13 +134,16 @@ describe("tags store", () => {
     // The local cache excludes archived tags by default (includeArchived is
     // false until the user opts in), so the store must fall back to
     // searching the API directly to find it.
-    api.searchTags.mockResolvedValue([archivedTag]);
+    api.searchTagsPaginated.mockResolvedValue({
+      data: [archivedTag],
+      pagination: { limit: 100, offset: 0, total: 1 },
+    });
     api.updateTag.mockResolvedValue(revived);
 
     const store = useStore();
     const result = await store.createTagFromName("Focus");
 
-    expect(api.searchTags).toHaveBeenCalledWith("Focus", "label", true, 100);
+    expect(api.searchTagsPaginated).toHaveBeenCalledWith("Focus", "label", true, 100, 0);
     // A caller creating/using a tag by name needs an ID it can actually
     // attach to something; an archived match must be unarchived rather than
     // handed back unusable (the backend rejects freshly attaching an
@@ -149,6 +156,27 @@ describe("tags store", () => {
     expect(api.createTag).not.toHaveBeenCalled();
     expect(result).toEqual(revived);
     expect(result.archived).toBe(false);
+  });
+
+  it("finds an existing tag by name beyond the first page of search results", async () => {
+    const archivedTag = makeTag({ id: "archived-2", name: "Focus", archived: true });
+    const revived = { ...archivedTag, archived: false };
+    const firstPage = Array.from({ length: 100 }, (_, i) => makeTag({ name: `Focused ${i}` }));
+
+    api.searchTagsPaginated.mockImplementation(
+      async (_query, _kind, _includeArchived, limit, offset) =>
+        offset === 0
+          ? { data: firstPage, pagination: { limit, offset: 0, total: 101 } }
+          : { data: [archivedTag], pagination: { limit, offset, total: 101 } },
+    );
+    api.updateTag.mockResolvedValue(revived);
+
+    const store = useStore();
+    const result = await store.createTagFromName("Focus");
+
+    expect(api.searchTagsPaginated).toHaveBeenCalledWith("Focus", "label", true, 100, 0);
+    expect(api.searchTagsPaginated).toHaveBeenCalledWith("Focus", "label", true, 100, 100);
+    expect(result).toEqual(revived);
   });
 
   it("returns a defensive copy", async () => {

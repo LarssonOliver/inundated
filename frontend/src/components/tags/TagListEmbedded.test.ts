@@ -1,4 +1,4 @@
-import { test, expect, vi, beforeEach } from "vitest";
+import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
 import TagListEmbedded from "./TagListEmbedded.vue";
@@ -28,6 +28,7 @@ function tag(overrides: Partial<Tag>): Tag {
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  vi.useFakeTimers();
   listTagsPaginated.mockReset();
   getTag.mockReset();
   searchTags.mockReset();
@@ -36,6 +37,16 @@ beforeEach(() => {
   listAllTasks.mockResolvedValue([]);
   createTask.mockReset();
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+/** Advances past the tag search's debounce, then flushes the resulting fetch. */
+async function settleSearch() {
+  await vi.advanceTimersByTimeAsync(200);
+  await flushPromises();
+}
 
 test("excludes archived tags from search results", async () => {
   const active = tag({ id: "1", name: "active-tag" });
@@ -52,7 +63,7 @@ test("excludes archived tags from search results", async () => {
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("tag");
-  await flushPromises();
+  await settleSearch();
 
   expect(wrapper.text()).toContain("active-tag");
   expect(wrapper.text()).not.toContain("archived-tag");
@@ -124,12 +135,38 @@ test("finds tags beyond the cached page by searching the server", async () => {
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("far");
-  await flushPromises();
+  await settleSearch();
 
   expect(searchTags).toHaveBeenLastCalledWith("far", "all");
   expect(wrapper.text()).toContain("far-away");
   // Task tags show with a leading "#".
   expect(wrapper.text()).toContain("#far task");
+});
+
+test("debounces server search and does not refetch tasks on every keystroke", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "far", name: "far-away" })]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("f");
+  await input.setValue("fa");
+  await input.setValue("far");
+  // Mid-typing, no debounce window has elapsed yet, so nothing was searched.
+  expect(searchTags).not.toHaveBeenCalled();
+
+  await settleSearch();
+  expect(searchTags).toHaveBeenCalledOnce();
+  expect(listAllTasks).toHaveBeenCalledOnce();
+
+  await input.setValue("far ");
+  await settleSearch();
+  // The task list is (and stays) empty, but it's only fetched once, not on
+  // every subsequent search.
+  expect(listAllTasks).toHaveBeenCalledOnce();
 });
 
 test("a leading # searches tasks only and offers to create a task", async () => {
@@ -141,7 +178,7 @@ test("a leading # searches tasks only and offers to create a task", async () => 
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("#Write report");
-  await flushPromises();
+  await settleSearch();
 
   expect(searchTags).toHaveBeenLastCalledWith("Write report", "task");
   expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create task "Write report"');
@@ -165,7 +202,7 @@ test("# plus enter creates a task and adds its task tag", async () => {
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("#Write report");
-  await flushPromises();
+  await settleSearch();
   await input.trigger("keydown", { key: "Enter" });
   await flushPromises();
 
@@ -186,7 +223,7 @@ test("labelsOnly leaves task tags out and treats # as part of the name", async (
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("#hash");
-  await flushPromises();
+  await settleSearch();
 
   expect(searchTags).toHaveBeenLastCalledWith("#hash", "label");
   expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');

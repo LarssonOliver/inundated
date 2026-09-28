@@ -71,6 +71,11 @@ function taskNameFromQuery(query: string): string | null {
 // Guards against overlapping searches: a slower response for an older query
 // must not replace the results for the newer one.
 let searchToken = 0;
+// Loaded once so task options can show their parent's name; tracked
+// separately from tasksStore.tasks.length, which stays 0 forever (and would
+// otherwise re-trigger a fetch on every keystroke) when there really are no
+// tasks yet.
+let tasksLoadAttempted = false;
 
 async function search(query: string) {
   const token = ++searchToken;
@@ -82,8 +87,8 @@ async function search(query: string) {
   const taskName = taskNameFromQuery(query);
   const kind = labelsOnly ? "label" : taskName !== null ? "task" : "all";
   const results = await tagsStore.searchTagsOnServer(taskName ?? query, kind);
-  if (kind !== "label" && tasksStore.tasks.length === 0 && !tasksStore.isLoading) {
-    // Loaded once, so task options can show their parent's name.
+  if (kind !== "label" && !tasksLoadAttempted) {
+    tasksLoadAttempted = true;
     void tasksStore.fetchTasks().catch(() => undefined);
   }
   if (token !== searchToken) return;
@@ -92,6 +97,14 @@ async function search(query: string) {
     .filter((tag) => !tag.archived && !model.value.has(tag.id))
     .filter((tag) => !labelsOnly || !tag.taskId)
     .slice(0, 8);
+}
+
+const SEARCH_DEBOUNCE_MS = 200;
+let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+function debouncedSearch(query: string) {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => void search(query), SEARCH_DEBOUNCE_MS);
 }
 
 function parentName(tag: Tag): string | undefined {
@@ -132,8 +145,13 @@ async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
   }
 }
 
-async function onTagSearch(query: string) {
-  await search(query);
+function onTagSearch(query: string) {
+  if (!query.trim()) {
+    clearTimeout(searchDebounceTimer);
+    tagSearchResult.value = [];
+    return;
+  }
+  debouncedSearch(query);
 }
 
 function onTagSelect(tag: Tag) {

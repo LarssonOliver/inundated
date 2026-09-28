@@ -19,6 +19,11 @@ export interface TaskRow {
   depth: number;
 }
 
+/** Orders sibling tasks by rank. */
+export function compareByRank(a: Task, b: Task): number {
+  return a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : 0;
+}
+
 /**
  * Orders tasks as a depth-first tree, each parent followed by its subtasks,
  * siblings by rank. A task whose parent isn't in the list is shown at the
@@ -34,7 +39,7 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
     children.set(parent, siblings);
   }
   for (const siblings of children.values()) {
-    siblings.sort((a, b) => (a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : 0));
+    siblings.sort(compareByRank);
   }
 
   const rows: TaskRow[] = [];
@@ -97,6 +102,15 @@ function createTasksStore(api: TasksApi) {
       const task = await api.getTask(id, true);
       individuallyFetchedTasks.value.set(id, task);
       return copyTask(task);
+    }
+
+    /**
+     * Fetches a task's direct subtasks, closed ones included, bypassing the
+     * list's includeClosed filter.
+     */
+    async function fetchSubtasks(parentId: string): Promise<Task[]> {
+      const subtasks = await api.listAllTasks({ parentId, includeClosed: true });
+      return subtasks.map(copyTask).sort(compareByRank);
     }
 
     async function createTask(task: NewTask): Promise<Task> {
@@ -188,6 +202,7 @@ function createTasksStore(api: TasksApi) {
       fetchTasks,
       getTaskById,
       fetchDetailedTaskById,
+      fetchSubtasks,
       createTask,
       createTaskFromName,
       updateTask,

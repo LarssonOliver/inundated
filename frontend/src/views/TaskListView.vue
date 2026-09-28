@@ -79,7 +79,10 @@ function formatMs(ms: number): string {
 }
 
 function isOverdue(task: Task): boolean {
-  return !task.closed && !!task.dueDate && task.dueDate < new Date().toISOString().slice(0, 10);
+  if (task.closed || !task.dueDate) return false;
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return task.dueDate < localToday;
 }
 
 async function addTask() {
