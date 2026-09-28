@@ -270,7 +270,9 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, q Querier, timespan
 // timespanHasEffectiveTagSQL is a condition that holds when the timespan
 // with id timespanId has any of the tags in the uuid[] tagIds among its
 // effective tags: the tags it carries, plus the effective tags of every task
-// whose task tag it carries (see task_effective_tags).
+// whose task tag it carries (see task_effective_tags). tagIds must be live
+// tags: task_effective_tags can hold rows for deleted ones (see
+// refreshEffectiveTags), which this doesn't filter out.
 func timespanHasEffectiveTagSQL(timespanId, tagIds string) string {
 	return `EXISTS (
 		SELECT 1 FROM timespan_tags tt
@@ -311,6 +313,51 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 	}
 
 	return *duration, nil
+}
+
+// GetTotalDurationPerTag implements [repository.Repository].
+func (r *PostgresStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+	out := map[uuid.UUID]time.Duration{}
+	if len(tagIds) == 0 {
+		return out, nil
+	}
+
+	// hits pairs each timespan with every requested tag among its effective
+	// tags (see timespanHasEffectiveTagSQL); UNION counts a timespan once
+	// per tag however many ways it reaches it.
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
+	q := `
+		WITH hits AS (
+			SELECT tt.timespan_id, tt.tag_id
+			FROM timespan_tags tt
+			WHERE tt.tag_id = ANY($1)
+			UNION
+			SELECT tt.timespan_id, te.tag_id
+			FROM timespan_tags tt
+			JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
+			JOIN task_effective_tags te ON te.task_id = k.id
+			WHERE te.tag_id = ANY($1)
+		)
+		SELECT h.tag_id, SUM(t.end_time - t.start_time)
+		FROM hits h
+		JOIN timespans t ON t.id = h.timespan_id
+		WHERE t.deleted_at IS NULL AND ` + ownerSQL + `
+		GROUP BY h.tag_id`
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("GetTotalDurationPerTag: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tagId uuid.UUID
+		var duration time.Duration
+		if err := rows.Scan(&tagId, &duration); err != nil {
+			return nil, fmt.Errorf("GetTotalDurationPerTag scan: %w", err)
+		}
+		out[tagId] = duration
+	}
+	return out, rows.Err()
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].

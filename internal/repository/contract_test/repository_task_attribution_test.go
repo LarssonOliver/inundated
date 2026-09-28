@@ -87,6 +87,17 @@ func TestTaskAttributionContract(t *testing.T) {
 			require.Equal(t, 30*time.Minute, total(acme.Id))
 			require.Equal(t, 3*time.Hour+30*time.Minute, total(website.TagIds...), "each timespan counts once per project")
 
+			// The batch form gives each tag the same total, in one call.
+			unused := tag("unused")
+			perTag, err := repo.GetTotalDurationPerTag(ctx, testScope, []uuid.UUID{hero.TagId, landing.TagId, design.Id, acme.Id, unused.Id})
+			require.NoError(t, err)
+			require.Equal(t, map[uuid.UUID]time.Duration{
+				hero.TagId:    2 * time.Hour,
+				landing.TagId: 3 * time.Hour,
+				design.Id:     3 * time.Hour,
+				acme.Id:       30 * time.Minute,
+			}, perTag)
+
 			series, err := repo.AggregateTimeSpentByTagsAndBuckets(ctx, testScope, []uuid.UUID{design.Id}, []model.BucketRange{
 				{Start: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), End: time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)},
 				{Start: time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC), End: time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)},
@@ -146,6 +157,47 @@ func TestTaskAttributionContract(t *testing.T) {
 			other, err := repo.ListTaskProjectIds(ctx, model.UnownedScope(), []uuid.UUID{landing.Id})
 			require.NoError(t, err)
 			require.Empty(t, other)
+		})
+
+		t.Run(repoName+"NoOpChangesKeepEffectiveTags", func(t *testing.T) {
+			repo := newRepo(t)
+			a, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "a", Color: "#88c0d0"})
+			require.NoError(t, err)
+			b, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "b", Color: "#88c0d0"})
+			require.NoError(t, err)
+			parent, err := repo.CreateTask(ctx, testScope, model.Task{Name: "parent", TagIds: []uuid.UUID{a.Id, b.Id}})
+			require.NoError(t, err)
+			first, err := repo.CreateTask(ctx, testScope, model.Task{Name: "first", ParentId: &parent.Id})
+			require.NoError(t, err)
+			second, err := repo.CreateTask(ctx, testScope, model.Task{Name: "second", ParentId: &parent.Id})
+			require.NoError(t, err)
+			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "p", Color: "#5e81ac", TagIds: []uuid.UUID{b.Id}})
+			require.NoError(t, err)
+			allInProject := func() {
+				t.Helper()
+				ids, err := repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{parent.Id, first.Id, second.Id})
+				require.NoError(t, err)
+				for _, id := range []uuid.UUID{parent.Id, first.Id, second.Id} {
+					require.Equal(t, []uuid.UUID{project.Id}, ids[id])
+				}
+			}
+			allInProject()
+
+			// Sending the same tags in another order, and reordering the
+			// subtasks under the same parent, change nothing they inherit.
+			updated, err := repo.UpdateTask(ctx, testScope, parent.Id, model.TaskPatch{TagIds: &[]uuid.UUID{b.Id, a.Id, b.Id}})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []uuid.UUID{a.Id, b.Id}, updated.TagIds)
+			_, err = repo.MoveTask(ctx, testScope, second.Id, &parent.Id, nil)
+			require.NoError(t, err)
+			allInProject()
+
+			// A real change still takes effect.
+			_, err = repo.UpdateTask(ctx, testScope, parent.Id, model.TaskPatch{TagIds: &[]uuid.UUID{a.Id}})
+			require.NoError(t, err)
+			ids, err := repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{parent.Id, first.Id, second.Id})
+			require.NoError(t, err)
+			require.Empty(t, ids)
 		})
 
 		t.Run(repoName+"DeletedTagNoLongerLinksTaskAndProject", func(t *testing.T) {

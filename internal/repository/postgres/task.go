@@ -254,7 +254,10 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 			return fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
 		}
 		tagIds = utils.DedupeUUIDs(task.TagIds)
-		if patch.TagIds != nil {
+		// Only a change to the tag set touches task_tags and the effective
+		// tags; sending the current set back is a no-op.
+		tagsChanged := patch.TagIds != nil && !utils.SameUUIDSet(tagIds, existing.TagIds)
+		if tagsChanged {
 			if err := r.checkTaskTags(ctx, q, scope, tagIds, func() ([]uuid.UUID, error) {
 				return existing.TagIds, nil
 			}); err != nil {
@@ -312,7 +315,7 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 				return fmt.Errorf("UpdateTask tag: %w", err)
 			}
 		}
-		if patch.TagIds == nil {
+		if !tagsChanged {
 			return nil
 		}
 		if err := r.setTaskTags(ctx, q, updated.Id, tagIds); err != nil {
@@ -411,8 +414,12 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 		} else if _, err := q.Exec(ctx, `UPDATE tasks SET rank = $2 WHERE id = $1`, id, rank); err != nil {
 			return fmt.Errorf("MoveTask: %w", err)
 		}
-		if err := r.refreshEffectiveTags(ctx, q, id); err != nil {
-			return err
+		// Effective tags follow the parent, so a reorder among the same
+		// siblings leaves them as they are.
+		if !sameParent(task.ParentId, parentId) {
+			if err := r.refreshEffectiveTags(ctx, q, id); err != nil {
+				return err
+			}
 		}
 
 		moved, err = r.getTask(ctx, q, scope, id, false)
@@ -553,6 +560,15 @@ func lockTaskTree(ctx context.Context, q Querier, scope model.OwnerScope) error 
 	return nil
 }
 
+// sameParent reports whether a and b name the same parent (nil for the top
+// level).
+func sameParent(a, b *uuid.UUID) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 type rankedTask struct {
 	id   uuid.UUID
 	rank string
@@ -626,6 +642,12 @@ func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uui
 // refreshEffectiveTags rewrites the task_effective_tags rows of taskId and
 // every live task below it. Call it after anything that feeds them changes:
 // a task's regular tags, or where it sits in the tree.
+//
+// It leaves out tags that are already deleted, but deleting a tag later
+// doesn't touch the table (doing so could race a concurrent refresh), so
+// rows for deleted tags can remain. Readers that join these rows to
+// something other than a caller's live tag ids must check the tag is live;
+// see taskProjectJoinSQL.
 func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, taskId uuid.UUID) error {
 	const subtree = `
 		WITH RECURSIVE sub AS (
@@ -654,7 +676,8 @@ func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, tas
 		UNION
 		SELECT a.task_id, tt.tag_id
 		FROM ancestry a
-		JOIN task_tags tt ON tt.task_id = a.ancestor_id`, taskId); err != nil {
+		JOIN task_tags tt ON tt.task_id = a.ancestor_id
+		JOIN tags lt ON lt.id = tt.tag_id AND lt.deleted_at IS NULL`, taskId); err != nil {
 		return fmt.Errorf("refreshEffectiveTags insert: %w", err)
 	}
 	return nil

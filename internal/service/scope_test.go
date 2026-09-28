@@ -132,7 +132,7 @@ func scopedMethods() []scopedMethod {
 			return err
 		}, 1},
 		// GetTask with includes must pass the SAME scope to GetTask,
-		// GetTotalDurationByTags and ListTaskProjectIds.
+		// GetTotalDurationPerTag and ListTaskProjectIds.
 		{"GetTaskWithIncludes", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.GetTask(ctx, uuid.New(), &service.TaskServiceIncludes{TotalTime: true, ProjectIds: true})
 			return err
@@ -277,6 +277,10 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 		GetTotalDurationByTagsFn: func(_ context.Context, scope model.OwnerScope, _ []uuid.UUID) (time.Duration, error) {
 			record(scope)
 			return 0, nil
+		},
+		GetTotalDurationPerTagFn: func(_ context.Context, scope model.OwnerScope, _ []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+			record(scope)
+			return map[uuid.UUID]time.Duration{}, nil
 		},
 
 		GetSettingsFn: func(_ context.Context, scope model.OwnerScope) (model.Settings, error) {

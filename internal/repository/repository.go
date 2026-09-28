@@ -103,6 +103,10 @@ type TimespanRepository interface {
 	UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 	GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
+	// GetTotalDurationPerTag totals each of tagIds on its own, as
+	// GetTotalDurationByTags would for that one tag, in a single pass.
+	// Tags with no time are left out of the map.
+	GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error)
 }
 
 type ProjectStatsRepository interface {

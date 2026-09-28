@@ -211,6 +211,47 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 	return values, nil
 }
 
+// GetTotalDurationPerTag implements [repository.TimespanRepository].
+func (t *MemoryStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+	out := map[uuid.UUID]time.Duration{}
+	if len(tagIds) == 0 {
+		return out, nil
+	}
+	wanted := make(map[uuid.UUID]bool, len(tagIds))
+	for _, id := range tagIds {
+		wanted[id] = true
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	effective := make(map[uuid.UUID]map[uuid.UUID]struct{}, len(t.tasks))
+	for _, task := range t.tasks {
+		effective[task.TagId] = t.taskEffectiveTags(task)
+	}
+	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) {
+			continue
+		}
+		// Count the timespan once per requested tag it reaches.
+		hits := map[uuid.UUID]bool{}
+		for _, tagId := range timespan.TagIds {
+			if wanted[tagId] {
+				hits[tagId] = true
+			}
+			for tag := range effective[tagId] {
+				if wanted[tag] {
+					hits[tag] = true
+				}
+			}
+		}
+		for tagId := range hits {
+			out[tagId] += timespan.EndTime.Sub(timespan.StartTime)
+		}
+	}
+	return out, nil
+}
+
 // timespanHasAnyTag reports whether any of the requested tags is among the
 // timespan's effective tags: the tags it carries, plus the effective tags of
 // every task whose task tag it carries. Callers must hold t.mu.

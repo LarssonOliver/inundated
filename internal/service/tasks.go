@@ -59,11 +59,16 @@ func (s *ServiceImpl) addTaskIncludes(ctx context.Context, scope model.OwnerScop
 	}
 
 	if includes.TotalTime {
+		tagIds := make([]uuid.UUID, len(tasks))
+		for i, task := range tasks {
+			tagIds[i] = task.TagId
+		}
+		totals, err := s.repository.GetTotalDurationPerTag(ctx, scope, tagIds)
+		if err != nil {
+			return err
+		}
 		for i := range tasks {
-			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, []uuid.UUID{tasks[i].TagId})
-			if err != nil {
-				return err
-			}
+			totalTime := totals[tasks[i].TagId]
 			tasks[i].TotalTime = &totalTime
 		}
 	}
