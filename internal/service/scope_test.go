@@ -128,11 +128,17 @@ func scopedMethods() []scopedMethod {
 		}, 2},
 
 		{"GetTask", func(ctx context.Context, s *service.ServiceImpl) error {
-			_, err := s.GetTask(ctx, uuid.New())
+			_, err := s.GetTask(ctx, uuid.New(), nil)
 			return err
 		}, 1},
+		// GetTask with includes must pass the SAME scope to GetTask,
+		// GetTotalDurationByTags and ListTaskProjectIds.
+		{"GetTaskWithIncludes", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetTask(ctx, uuid.New(), &service.TaskServiceIncludes{TotalTime: true, ProjectIds: true})
+			return err
+		}, 3},
 		{"ListTasks", func(ctx context.Context, s *service.ServiceImpl) error {
-			_, err := s.ListTasks(ctx, model.TaskListParams{PaginationParams: model.DefaultPaginationParams()})
+			_, err := s.ListTasks(ctx, model.TaskListParams{PaginationParams: model.DefaultPaginationParams()}, nil)
 			return err
 		}, 1},
 		{"CreateTask", func(ctx context.Context, s *service.ServiceImpl) error {
@@ -263,6 +269,14 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 		DeleteTaskFn: func(_ context.Context, scope model.OwnerScope, _ uuid.UUID) error {
 			record(scope)
 			return nil
+		},
+		ListTaskProjectIdsFn: func(_ context.Context, scope model.OwnerScope, _ []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+			record(scope)
+			return map[uuid.UUID][]uuid.UUID{}, nil
+		},
+		GetTotalDurationByTagsFn: func(_ context.Context, scope model.OwnerScope, _ []uuid.UUID) (time.Duration, error) {
+			record(scope)
+			return 0, nil
 		},
 
 		GetSettingsFn: func(_ context.Context, scope model.OwnerScope) (model.Settings, error) {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -69,7 +70,7 @@ func (h *TaskHandler) DeleteTask(ctx context.Context, request api.DeleteTaskRequ
 
 // GetTask implements [api.TaskHandler].
 func (h *TaskHandler) GetTask(ctx context.Context, request api.GetTaskRequestObject) (api.GetTaskResponseObject, error) {
-	reply, err := h.svc.GetTask(ctx, request.TaskId)
+	reply, err := h.svc.GetTask(ctx, request.TaskId, taskIncludes(request.Params.Include))
 
 	if errors.Is(err, model.ErrNotFound) {
 		return api.GetTask404Response{}, nil
@@ -103,10 +104,11 @@ func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksReques
 	}
 	params.ParentId = request.Params.ParentId
 	params.TagId = request.Params.TagId
+	params.ProjectId = request.Params.ProjectId
 	params.DueFrom = dateToTime(request.Params.DueFrom)
 	params.DueTo = dateToTime(request.Params.DueTo)
 
-	page, err := h.svc.ListTasks(ctx, params)
+	page, err := h.svc.ListTasks(ctx, params, taskIncludes(request.Params.Include))
 
 	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.ListTasks400Response{}, nil
@@ -199,7 +201,24 @@ func toAPITask(task model.Task) api.Task {
 		reason := api.CloseReason(*task.CloseReason)
 		apiTask.CloseReason = &reason
 	}
+	if task.TotalTime != nil {
+		totalTimeMs := int(task.TotalTime.Milliseconds())
+		apiTask.TotalTimeMs = &totalTimeMs
+	}
+	if task.ProjectIds != nil {
+		apiTask.ProjectIds = &task.ProjectIds
+	}
 	return apiTask
+}
+
+func taskIncludes(include *api.TaskInclude) *service.TaskServiceIncludes {
+	if include == nil {
+		return nil
+	}
+	return &service.TaskServiceIncludes{
+		TotalTime:  slices.Contains(*include, string(api.GetTaskParamsIncludeTotalTimeMs)),
+		ProjectIds: slices.Contains(*include, string(api.GetTaskParamsIncludeProjectIds)),
+	}
 }
 
 func dateToTime(d *openapi_types.Date) *time.Time {

@@ -66,6 +66,11 @@ type TaskRepository interface {
 	// DeleteTask deletes the task, its descendants and their task tags. It
 	// fails with model.ErrConflict when any of them has logged time.
 	DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	// ListTaskProjectIds maps each of taskIds to the projects in scope
+	// whose tags meet the task's effective tags: its task tag, its regular
+	// tags, and those of its ancestors. Tasks with no projects are left
+	// out.
+	ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 }
 
 type UserRepository interface {

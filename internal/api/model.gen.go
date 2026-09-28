@@ -199,6 +199,42 @@ func (e GetTagParamsInclude) Valid() bool {
 	}
 }
 
+// Defines values for ListTasksParamsInclude.
+const (
+	ListTasksParamsIncludeProjectIds  ListTasksParamsInclude = "projectIds"
+	ListTasksParamsIncludeTotalTimeMs ListTasksParamsInclude = "totalTimeMs"
+)
+
+// Valid indicates whether the value is a known member of the ListTasksParamsInclude enum.
+func (e ListTasksParamsInclude) Valid() bool {
+	switch e {
+	case ListTasksParamsIncludeProjectIds:
+		return true
+	case ListTasksParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetTaskParamsInclude.
+const (
+	GetTaskParamsIncludeProjectIds  GetTaskParamsInclude = "projectIds"
+	GetTaskParamsIncludeTotalTimeMs GetTaskParamsInclude = "totalTimeMs"
+)
+
+// Valid indicates whether the value is a known member of the GetTaskParamsInclude enum.
+func (e GetTaskParamsInclude) Valid() bool {
+	switch e {
+	case GetTaskParamsIncludeProjectIds:
+		return true
+	case GetTaskParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
 // CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
 type CloseReason string
 
@@ -416,12 +452,18 @@ type Task struct {
 	// ParentId The parent task, when this is a subtask.
 	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
 
+	// ProjectIds Projects the task belongs to, whether assigned directly, through a parent task, or by sharing one of the project's regular tags. Only set with include=projectIds.
+	ProjectIds *[]openapi_types.UUID `json:"projectIds,omitempty"`
+
 	// Rank Read-only. Sort key among the task's siblings. Tasks with the same parent sort by comparing ranks as plain byte strings.
 	Rank string `json:"rank"`
 
 	// TagId Read-only. The task's own task tag. Adding it to a timespan logs that time on the task, and adding it to a project assigns the task to the project.
 	TagId  openapi_types.UUID `json:"tagId"`
 	TagIds *TagIdList         `json:"tagIds,omitempty"`
+
+	// TotalTimeMs Time logged on the task and its subtasks. Only set with include=totalTimeMs.
+	TotalTimeMs *int `json:"totalTimeMs,omitempty"`
 }
 
 // TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
@@ -549,6 +591,9 @@ type Offset = int
 // ParentId defines model for parentId.
 type ParentId = openapi_types.UUID
 
+// ProjectIdFilter defines model for projectIdFilter.
+type ProjectIdFilter = openapi_types.UUID
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -572,6 +617,9 @@ type TagSearchQuery = string
 
 // TaskIdPath defines model for taskIdPath.
 type TaskIdPath = openapi_types.UUID
+
+// TaskInclude defines model for taskInclude.
+type TaskInclude = []string
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
@@ -699,12 +747,30 @@ type ListTasksParams struct {
 	// TagId Only list tasks carrying this regular tag.
 	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`
 
+	// ProjectId Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.
+	ProjectId *ProjectIdFilter `form:"projectId,omitempty" json:"projectId,omitempty"`
+
 	// DueFrom Only list tasks due on or after this day.
 	DueFrom *DueFrom `form:"dueFrom,omitempty" json:"dueFrom,omitempty"`
 
 	// DueTo Only list tasks due on or before this day.
 	DueTo *DueTo `form:"dueTo,omitempty" json:"dueTo,omitempty"`
+
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds
+	Include *TaskInclude `form:"include,omitempty" json:"include,omitempty"`
 }
+
+// ListTasksParamsInclude defines parameters for ListTasks.
+type ListTasksParamsInclude string
+
+// GetTaskParams defines parameters for GetTask.
+type GetTaskParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds
+	Include *TaskInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetTaskParamsInclude defines parameters for GetTask.
+type GetTaskParamsInclude string
 
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {

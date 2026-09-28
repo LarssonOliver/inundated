@@ -267,6 +267,25 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, q Querier, timespan
 	return nil
 }
 
+// timespanHasEffectiveTagSQL is a condition that holds when the timespan
+// with id timespanId has any of the tags in the uuid[] tagIds among its
+// effective tags: the tags it carries, plus the effective tags of every task
+// whose task tag it carries (see task_effective_tags).
+func timespanHasEffectiveTagSQL(timespanId, tagIds string) string {
+	return `EXISTS (
+		SELECT 1 FROM timespan_tags tt
+		WHERE tt.timespan_id = ` + timespanId + `
+			AND (
+				tt.tag_id = ANY(` + tagIds + `)
+				OR EXISTS (
+					SELECT 1 FROM tasks k
+					JOIN task_effective_tags te ON te.task_id = k.id
+					WHERE k.tag_id = tt.tag_id AND k.deleted_at IS NULL AND te.tag_id = ANY(` + tagIds + `)
+				)
+			)
+	)`
+}
+
 // GetTotalDurationByTags implements [repository.Repository].
 func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
 	if len(tagIds) == 0 {
@@ -280,10 +299,7 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 		FROM timespans t
 		WHERE t.deleted_at IS NULL
 			AND ` + ownerSQL + `
-			AND EXISTS (
-			SELECT 1 FROM timespan_tags tt
-			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
-		)`
+			AND ` + timespanHasEffectiveTagSQL("t.id", "$1")
 
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, args...).Scan(&duration)
@@ -338,10 +354,8 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			CROSS JOIN bucket_window bw
 			WHERE t.deleted_at IS NULL
 				AND ` + ownerSQL + `
-				AND EXISTS (
-				SELECT 1 FROM timespan_tags tt
-				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
-			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
+				AND ` + timespanHasEffectiveTagSQL("t.id", "$1") + `
+				AND t.start_time < bw.max_end AND t.end_time > bw.min_start
 		)
 		SELECT
 			ib.b_start AS bucket_start,

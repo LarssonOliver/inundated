@@ -46,6 +46,20 @@ Task:
       type: string
       format: date-time
       readOnly: true
+    totalTimeMs:
+      type: integer
+      readOnly: true
+      description: Time logged on the task and its subtasks. Only set with
+        include=totalTimeMs.
+    projectIds:
+      type: array
+      readOnly: true
+      items:
+        type: string
+        format: uuid
+      description: Projects the task belongs to, whether assigned directly, through
+        a parent task, or by sharing one of the project's regular tags. Only
+        set with include=projectIds.
 
 CreateTask:
   type: object

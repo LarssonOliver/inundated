@@ -143,26 +143,20 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, scope model.Ow
 		return 0, nil
 	}
 
+	tagSet := make(map[uuid.UUID]struct{}, len(tagIds))
+	for _, tagID := range tagIds {
+		tagSet[tagID] = struct{}{}
+	}
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespanIds := []uuid.UUID{}
-	for _, inputTagId := range tagIds {
-		for _, timespan := range t.timespans {
-			if !matchesScope(timespan.UserId, scope) {
-				continue
-			}
-			if slices.Contains(timespan.TagIds, inputTagId) && !slices.Contains(timespanIds, timespan.Id) {
-				timespanIds = append(timespanIds, timespan.Id)
-			}
-		}
-	}
-
 	totalDuration := time.Duration(0)
-	for _, timespanId := range timespanIds {
-		idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == timespanId })
-		ts := t.timespans[idx]
-		totalDuration += ts.EndTime.Sub(ts.StartTime)
+	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) || !t.timespanHasAnyTag(timespan, tagSet) {
+			continue
+		}
+		totalDuration += timespan.EndTime.Sub(timespan.StartTime)
 	}
 
 	return totalDuration, nil
@@ -200,7 +194,7 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 		if !matchesScope(timespan.UserId, scope) {
 			continue
 		}
-		if !timespanHasAnyTag(timespan.TagIds, tagSet) {
+		if !t.timespanHasAnyTag(timespan, tagSet) {
 			continue
 		}
 
@@ -217,10 +211,22 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 	return values, nil
 }
 
-func timespanHasAnyTag(timespanTagIDs []uuid.UUID, requestedTagSet map[uuid.UUID]struct{}) bool {
-	for _, tagID := range timespanTagIDs {
+// timespanHasAnyTag reports whether any of the requested tags is among the
+// timespan's effective tags: the tags it carries, plus the effective tags of
+// every task whose task tag it carries. Callers must hold t.mu.
+func (t *MemoryStore) timespanHasAnyTag(timespan model.Timespan, requestedTagSet map[uuid.UUID]struct{}) bool {
+	for _, tagID := range timespan.TagIds {
 		if _, ok := requestedTagSet[tagID]; ok {
 			return true
+		}
+		idx := slices.IndexFunc(t.tasks, func(task model.Task) bool { return task.TagId == tagID })
+		if idx == -1 {
+			continue
+		}
+		for effective := range t.taskEffectiveTags(t.tasks[idx]) {
+			if _, ok := requestedTagSet[effective]; ok {
+				return true
+			}
 		}
 	}
 

@@ -12,8 +12,10 @@ tasks:
       - $ref: "../parameters/tasks.yaml#/includeClosed"
       - $ref: "../parameters/tasks.yaml#/parentId"
       - $ref: "../parameters/tasks.yaml#/tagIdFilter"
+      - $ref: "../parameters/tasks.yaml#/projectIdFilter"
       - $ref: "../parameters/tasks.yaml#/dueFrom"
       - $ref: "../parameters/tasks.yaml#/dueTo"
+      - $ref: "../parameters/tasks.yaml#/taskInclude"
     responses:
       "200":
         description: Paginated list of tasks
@@ -56,6 +58,8 @@ tasks-id:
     tags: [tasks]
     summary: Get task
     operationId: getTask
+    parameters:
+      - $ref: "../parameters/tasks.yaml#/taskInclude"
     responses:
       "200":
         description: Task

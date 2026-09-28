@@ -233,3 +233,8 @@ func (m *MockRepository) DeleteTask(ctx context.Context, scope model.OwnerScope,
 	args := m.Called(ctx, scope, id)
 	return args.Error(0)
 }
+
+func (m *MockRepository) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	args := m.Called(ctx, scope, taskIds)
+	return args.Get(0).(map[uuid.UUID][]uuid.UUID), args.Error(1)
+}

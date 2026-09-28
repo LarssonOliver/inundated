@@ -137,6 +137,14 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 		b.args = append(b.args, *params.TagId)
 		fmt.Fprintf(&b.sql, " AND id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $%d)", len(b.args))
 	}
+	if params.ProjectId != nil {
+		b.args = append(b.args, *params.ProjectId)
+		fmt.Fprintf(&b.sql, ` AND id IN (
+			SELECT te.task_id FROM task_effective_tags te
+			JOIN project_tags pt ON pt.tag_id = te.tag_id
+			JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL
+			WHERE pt.project_id = $%d)`, len(b.args))
+	}
 	if params.DueFrom != nil {
 		b.add("due_date >=", *params.DueFrom)
 	}
@@ -213,7 +221,10 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		if err != nil {
 			return fmt.Errorf("CreateTask: %w", err)
 		}
-		return r.setTaskTags(ctx, q, created.Id, tagIds)
+		if err := r.setTaskTags(ctx, q, created.Id, tagIds); err != nil {
+			return err
+		}
+		return r.refreshEffectiveTags(ctx, q, created.Id)
 	})
 	if err != nil {
 		return model.Task{}, err
@@ -306,7 +317,10 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 		if patch.TagIds == nil {
 			return nil
 		}
-		return r.setTaskTags(ctx, q, updated.Id, tagIds)
+		if err := r.setTaskTags(ctx, q, updated.Id, tagIds); err != nil {
+			return err
+		}
+		return r.refreshEffectiveTags(ctx, q, updated.Id)
 	})
 	if err != nil {
 		return model.Task{}, err
@@ -399,6 +413,9 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 		} else if _, err := q.Exec(ctx, `UPDATE tasks SET rank = $2 WHERE id = $1`, id, rank); err != nil {
 			return fmt.Errorf("MoveTask: %w", err)
 		}
+		if err := r.refreshEffectiveTags(ctx, q, id); err != nil {
+			return err
+		}
 
 		moved, err = r.getTask(ctx, q, scope, id, false)
 		return err
@@ -458,12 +475,45 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 			),
 			deleted_tags AS (
 				UPDATE tags SET deleted_at = now() WHERE id IN (SELECT tag_id FROM sub)
+			),
+			deleted_effective_tags AS (
+				DELETE FROM task_effective_tags WHERE task_id IN (SELECT id FROM sub)
 			)
 			DELETE FROM project_tags WHERE tag_id IN (SELECT tag_id FROM sub)`, id); err != nil {
 			return fmt.Errorf("DeleteTask: %w", err)
 		}
 		return nil
 	})
+}
+
+func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	out := map[uuid.UUID][]uuid.UUID{}
+	if len(taskIds) == 0 {
+		return out, nil
+	}
+
+	ownerSQL, args := ownerPredicate("p.user_id", scope, []any{taskIds})
+	query := `
+		SELECT DISTINCT te.task_id, p.id
+		FROM task_effective_tags te
+		JOIN project_tags pt ON pt.tag_id = te.tag_id
+		JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL
+		WHERE te.task_id = ANY($1) AND ` + ownerSQL + `
+		ORDER BY te.task_id, p.id`
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ListTaskProjectIds: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskId, projectId uuid.UUID
+		if err := rows.Scan(&taskId, &projectId); err != nil {
+			return nil, fmt.Errorf("ListTaskProjectIds scan: %w", err)
+		}
+		out[taskId] = append(out[taskId], projectId)
+	}
+	return out, rows.Err()
 }
 
 // checkTaskTags reports model.ErrInvalidReference unless every id is a
@@ -565,6 +615,43 @@ func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uui
 		out[taskId] = append(out[taskId], tagId)
 	}
 	return out, rows.Err()
+}
+
+// refreshEffectiveTags rewrites the task_effective_tags rows of taskId and
+// every live task below it. Call it after anything that feeds them changes:
+// a task's regular tags, or where it sits in the tree.
+func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, taskId uuid.UUID) error {
+	const subtree = `
+		WITH RECURSIVE sub AS (
+			SELECT id FROM tasks WHERE id = $1
+			UNION
+			SELECT c.id FROM tasks c JOIN sub ON c.parent_id = sub.id
+			WHERE c.deleted_at IS NULL
+		)`
+	if _, err := q.Exec(ctx, subtree+`
+		DELETE FROM task_effective_tags WHERE task_id IN (SELECT id FROM sub)`, taskId); err != nil {
+		return fmt.Errorf("refreshEffectiveTags delete: %w", err)
+	}
+	if _, err := q.Exec(ctx, subtree+`,
+		ancestry(task_id, ancestor_id) AS (
+			SELECT id, id FROM sub
+			UNION
+			SELECT a.task_id, p.parent_id
+			FROM ancestry a
+			JOIN tasks p ON p.id = a.ancestor_id
+			WHERE p.parent_id IS NOT NULL
+		)
+		INSERT INTO task_effective_tags (task_id, tag_id)
+		SELECT a.task_id, k.tag_id
+		FROM ancestry a
+		JOIN tasks k ON k.id = a.ancestor_id
+		UNION
+		SELECT a.task_id, tt.tag_id
+		FROM ancestry a
+		JOIN task_tags tt ON tt.task_id = a.ancestor_id`, taskId); err != nil {
+		return fmt.Errorf("refreshEffectiveTags insert: %w", err)
+	}
+	return nil
 }
 
 // setTaskTags replaces a task's regular tags.

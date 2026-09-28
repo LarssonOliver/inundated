@@ -17,6 +17,8 @@ Name | Type
 `closed` | boolean
 `closeReason` | [CloseReason](CloseReason.md)
 `closedAt` | Date
+`totalTimeMs` | number
+`projectIds` | Array&lt;string&gt;
 
 ## Example
 
@@ -36,6 +38,8 @@ const example = {
   "closed": null,
   "closeReason": null,
   "closedAt": null,
+  "totalTimeMs": null,
+  "projectIds": null,
 } satisfies Task
 
 console.log(example)

@@ -82,7 +82,7 @@ type ServerInterface interface {
 	DeleteTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath)
 	// Get task
 	// (GET /api/tasks/{taskId})
-	GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath)
+	GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath, params GetTaskParams)
 	// Update task
 	// (PATCH /api/tasks/{taskId})
 	UpdateTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath)
@@ -238,7 +238,7 @@ func (_ Unimplemented) DeleteTask(w http.ResponseWriter, r *http.Request, taskId
 
 // Get task
 // (GET /api/tasks/{taskId})
-func (_ Unimplemented) GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath) {
+func (_ Unimplemented) GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath, params GetTaskParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1141,6 +1141,19 @@ func (siw *ServerInterfaceWrapper) ListTasks(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// ------------- Optional query parameter "projectId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "projectId", r.URL.Query(), &params.ProjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "projectId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "dueFrom" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "dueFrom", r.URL.Query(), &params.DueFrom, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
@@ -1163,6 +1176,19 @@ func (siw *ServerInterfaceWrapper) ListTasks(w http.ResponseWriter, r *http.Requ
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "dueTo"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "dueTo", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
 		}
 		return
 	}
@@ -1251,8 +1277,24 @@ func (siw *ServerInterfaceWrapper) GetTask(w http.ResponseWriter, r *http.Reques
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTaskParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetTask(w, r, taskId)
+		siw.Handler.GetTask(w, r, taskId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2420,6 +2462,7 @@ func (response DeleteTask409Response) VisitDeleteTaskResponse(w http.ResponseWri
 
 type GetTaskRequestObject struct {
 	TaskId TaskIdPath `json:"taskId"`
+	Params GetTaskParams
 }
 
 type GetTaskResponseObject interface {
@@ -3386,10 +3429,11 @@ func (sh *strictHandler) DeleteTask(w http.ResponseWriter, r *http.Request, task
 }
 
 // GetTask operation middleware
-func (sh *strictHandler) GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath) {
+func (sh *strictHandler) GetTask(w http.ResponseWriter, r *http.Request, taskId TaskIdPath, params GetTaskParams) {
 	var request GetTaskRequestObject
 
 	request.TaskId = taskId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetTask(ctx, request.(GetTaskRequestObject))

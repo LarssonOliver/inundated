@@ -208,6 +208,42 @@ func (e GetTagParamsInclude) Valid() bool {
 	}
 }
 
+// Defines values for ListTasksParamsInclude.
+const (
+	ListTasksParamsIncludeProjectIds  ListTasksParamsInclude = "projectIds"
+	ListTasksParamsIncludeTotalTimeMs ListTasksParamsInclude = "totalTimeMs"
+)
+
+// Valid indicates whether the value is a known member of the ListTasksParamsInclude enum.
+func (e ListTasksParamsInclude) Valid() bool {
+	switch e {
+	case ListTasksParamsIncludeProjectIds:
+		return true
+	case ListTasksParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetTaskParamsInclude.
+const (
+	GetTaskParamsIncludeProjectIds  GetTaskParamsInclude = "projectIds"
+	GetTaskParamsIncludeTotalTimeMs GetTaskParamsInclude = "totalTimeMs"
+)
+
+// Valid indicates whether the value is a known member of the GetTaskParamsInclude enum.
+func (e GetTaskParamsInclude) Valid() bool {
+	switch e {
+	case GetTaskParamsIncludeProjectIds:
+		return true
+	case GetTaskParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
 // CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
 type CloseReason string
 
@@ -425,12 +461,18 @@ type Task struct {
 	// ParentId The parent task, when this is a subtask.
 	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
 
+	// ProjectIds Projects the task belongs to, whether assigned directly, through a parent task, or by sharing one of the project's regular tags. Only set with include=projectIds.
+	ProjectIds *[]openapi_types.UUID `json:"projectIds,omitempty"`
+
 	// Rank Read-only. Sort key among the task's siblings. Tasks with the same parent sort by comparing ranks as plain byte strings.
 	Rank string `json:"rank"`
 
 	// TagId Read-only. The task's own task tag. Adding it to a timespan logs that time on the task, and adding it to a project assigns the task to the project.
 	TagId  openapi_types.UUID `json:"tagId"`
 	TagIds *TagIdList         `json:"tagIds,omitempty"`
+
+	// TotalTimeMs Time logged on the task and its subtasks. Only set with include=totalTimeMs.
+	TotalTimeMs *int `json:"totalTimeMs,omitempty"`
 }
 
 // TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
@@ -558,6 +600,9 @@ type Offset = int
 // ParentId defines model for parentId.
 type ParentId = openapi_types.UUID
 
+// ProjectIdFilter defines model for projectIdFilter.
+type ProjectIdFilter = openapi_types.UUID
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -581,6 +626,9 @@ type TagSearchQuery = string
 
 // TaskIdPath defines model for taskIdPath.
 type TaskIdPath = openapi_types.UUID
+
+// TaskInclude defines model for taskInclude.
+type TaskInclude = []string
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
@@ -708,12 +756,30 @@ type ListTasksParams struct {
 	// TagId Only list tasks carrying this regular tag.
 	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`
 
+	// ProjectId Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.
+	ProjectId *ProjectIdFilter `form:"projectId,omitempty" json:"projectId,omitempty"`
+
 	// DueFrom Only list tasks due on or after this day.
 	DueFrom *DueFrom `form:"dueFrom,omitempty" json:"dueFrom,omitempty"`
 
 	// DueTo Only list tasks due on or before this day.
 	DueTo *DueTo `form:"dueTo,omitempty" json:"dueTo,omitempty"`
+
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds
+	Include *TaskInclude `form:"include,omitempty" json:"include,omitempty"`
 }
+
+// ListTasksParamsInclude defines parameters for ListTasks.
+type ListTasksParamsInclude string
+
+// GetTaskParams defines parameters for GetTask.
+type GetTaskParams struct {
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds
+	Include *TaskInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetTaskParamsInclude defines parameters for GetTask.
+type GetTaskParamsInclude string
 
 // ListTimespansParams defines parameters for ListTimespans.
 type ListTimespansParams struct {
@@ -908,7 +974,7 @@ type ClientInterface interface {
 	DeleteTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTask request
-	GetTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTask(ctx context.Context, taskId TaskIdPath, params *GetTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTaskWithBody request with any body
 	UpdateTaskWithBody(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1264,8 +1330,8 @@ func (c *Client) DeleteTask(ctx context.Context, taskId TaskIdPath, reqEditors .
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTaskRequest(c.Server, taskId)
+func (c *Client) GetTask(ctx context.Context, taskId TaskIdPath, params *GetTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskRequest(c.Server, taskId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2476,6 +2542,18 @@ func NewListTasksRequest(server string, params *ListTasksParams) (*http.Request,
 
 		}
 
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.DueFrom != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dueFrom", *params.DueFrom, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date"}); err != nil {
@@ -2491,6 +2569,18 @@ func NewListTasksRequest(server string, params *ListTasksParams) (*http.Request,
 		if params.DueTo != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dueTo", *params.DueTo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2589,7 +2679,7 @@ func NewDeleteTaskRequest(server string, taskId TaskIdPath) (*http.Request, erro
 }
 
 // NewGetTaskRequest generates requests for GetTask
-func NewGetTaskRequest(server string, taskId TaskIdPath) (*http.Request, error) {
+func NewGetTaskRequest(server string, taskId TaskIdPath, params *GetTaskParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2612,6 +2702,33 @@ func NewGetTaskRequest(server string, taskId TaskIdPath) (*http.Request, error) 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3068,7 +3185,7 @@ type ClientWithResponsesInterface interface {
 	DeleteTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*DeleteTaskResponse, error)
 
 	// GetTaskWithResponse request
-	GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*GetTaskResponse, error)
+	GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, params *GetTaskParams, reqEditors ...RequestEditorFn) (*GetTaskResponse, error)
 
 	// UpdateTaskWithBodyWithResponse request with any body
 	UpdateTaskWithBodyWithResponse(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTaskResponse, error)
@@ -4201,8 +4318,8 @@ func (c *ClientWithResponses) DeleteTaskWithResponse(ctx context.Context, taskId
 }
 
 // GetTaskWithResponse request returning *GetTaskResponse
-func (c *ClientWithResponses) GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*GetTaskResponse, error) {
-	rsp, err := c.GetTask(ctx, taskId, reqEditors...)
+func (c *ClientWithResponses) GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, params *GetTaskParams, reqEditors ...RequestEditorFn) (*GetTaskResponse, error) {
+	rsp, err := c.GetTask(ctx, taskId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

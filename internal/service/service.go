@@ -100,12 +100,19 @@ type TimespanService interface {
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
 }
 
+// TaskServiceIncludes selects the computed fields GetTask and ListTasks fill
+// in: Task.TotalTime and Task.ProjectIds.
+type TaskServiceIncludes struct {
+	TotalTime  bool
+	ProjectIds bool
+}
+
 // TaskService manages tasks. Each task owns a task tag, created and deleted
 // with it; see [repository.TaskRepository] for how closing, moving and
 // deleting ripple through a task's subtasks.
 type TaskService interface {
-	GetTask(ctx context.Context, id uuid.UUID) (model.Task, error)
-	ListTasks(ctx context.Context, params model.TaskListParams) (model.Page[model.Task], error)
+	GetTask(ctx context.Context, id uuid.UUID, includes *TaskServiceIncludes) (model.Task, error)
+	ListTasks(ctx context.Context, params model.TaskListParams, includes *TaskServiceIncludes) (model.Page[model.Task], error)
 	CreateTask(ctx context.Context, task model.Task) (model.Task, error)
 	UpdateTask(ctx context.Context, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
 	MoveTask(ctx context.Context, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)

@@ -41,6 +41,9 @@ func (t *MemoryStore) ListTasks(ctx context.Context, scope model.OwnerScope, par
 		if params.TagId != nil && !slices.Contains(task.TagIds, *params.TagId) {
 			continue
 		}
+		if params.ProjectId != nil && !slices.Contains(t.taskProjectIds(scope, task), *params.ProjectId) {
+			continue
+		}
 		if params.DueFrom != nil && (task.DueDate == nil || task.DueDate.Before(*params.DueFrom)) {
 			continue
 		}
@@ -341,6 +344,67 @@ func (t *MemoryStore) respace(idxs []int) {
 // t.mu.
 func (t *MemoryStore) anyTaskTag(ids []uuid.UUID) bool {
 	return slices.ContainsFunc(ids, t.isTaskTag)
+}
+
+// ListTaskProjectIds implements [repository.TaskRepository].
+func (t *MemoryStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	out := map[uuid.UUID][]uuid.UUID{}
+	for _, id := range taskIds {
+		idx := t.taskIndex(scope, id)
+		if idx == -1 {
+			continue
+		}
+		if projectIds := t.taskProjectIds(scope, t.tasks[idx]); len(projectIds) > 0 {
+			out[id] = projectIds
+		}
+	}
+	return out, nil
+}
+
+// taskProjectIds returns the projects in scope whose tags meet the task's
+// effective tags, ordered by id. Callers must hold t.mu.
+func (t *MemoryStore) taskProjectIds(scope model.OwnerScope, task model.Task) []uuid.UUID {
+	effective := t.taskEffectiveTags(task)
+	var out []uuid.UUID
+	for _, project := range t.projects {
+		if !matchesScope(project.UserId, scope) {
+			continue
+		}
+		if slices.ContainsFunc(project.TagIds, func(tagId uuid.UUID) bool {
+			_, ok := effective[tagId]
+			return ok
+		}) {
+			out = append(out, project.Id)
+		}
+	}
+	slices.SortFunc(out, func(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) })
+	return out
+}
+
+// taskEffectiveTags returns a task's effective tags: its task tag, its
+// regular tags, and the effective tags of its parent. Callers must hold t.mu.
+func (t *MemoryStore) taskEffectiveTags(task model.Task) map[uuid.UUID]struct{} {
+	out := map[uuid.UUID]struct{}{}
+	seen := map[uuid.UUID]bool{}
+	for !seen[task.Id] {
+		seen[task.Id] = true
+		out[task.TagId] = struct{}{}
+		for _, tagId := range task.TagIds {
+			out[tagId] = struct{}{}
+		}
+		if task.ParentId == nil {
+			break
+		}
+		idx := slices.IndexFunc(t.tasks, func(p model.Task) bool { return p.Id == *task.ParentId })
+		if idx == -1 {
+			break
+		}
+		task = t.tasks[idx]
+	}
+	return out
 }
 
 func compareParents(a, b *uuid.UUID) int {

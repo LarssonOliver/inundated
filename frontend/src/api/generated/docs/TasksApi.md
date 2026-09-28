@@ -160,7 +160,7 @@ example().catch(console.error);
 
 ## getTask
 
-> Task getTask(taskId)
+> Task getTask(taskId, include)
 
 Get task
 
@@ -184,6 +184,8 @@ async function example() {
   const body = {
     // string
     taskId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Set<'totalTimeMs' | 'projectIds'> | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds  (optional)
+    include: ...,
   } satisfies GetTaskRequest;
 
   try {
@@ -204,6 +206,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **taskId** | `string` |  | [Defaults to `undefined`] |
+| **include** | `totalTimeMs`, `projectIds` | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds  | [Optional] [Enum: totalTimeMs, projectIds] |
 
 ### Return type
 
@@ -230,7 +233,7 @@ example().catch(console.error);
 
 ## listTasks
 
-> PaginatedTasks listTasks(limit, offset, includeClosed, parentId, tagId, dueFrom, dueTo)
+> PaginatedTasks listTasks(limit, offset, includeClosed, parentId, tagId, projectId, dueFrom, dueTo, include)
 
 List tasks
 
@@ -264,10 +267,14 @@ async function example() {
     parentId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // string | Only list tasks carrying this regular tag. (optional)
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.  (optional)
+    projectId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // Date | Only list tasks due on or after this day. (optional)
     dueFrom: 2013-10-20,
     // Date | Only list tasks due on or before this day. (optional)
     dueTo: 2013-10-20,
+    // Set<'totalTimeMs' | 'projectIds'> | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds  (optional)
+    include: ...,
   } satisfies ListTasksRequest;
 
   try {
@@ -292,8 +299,10 @@ example().catch(console.error);
 | **includeClosed** | `boolean` | Whether to include closed tasks in the results. Defaults to false.  | [Optional] [Defaults to `false`] |
 | **parentId** | `string` | Only list direct subtasks of this task. | [Optional] [Defaults to `undefined`] |
 | **tagId** | `string` | Only list tasks carrying this regular tag. | [Optional] [Defaults to `undefined`] |
+| **projectId** | `string` | Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.  | [Optional] [Defaults to `undefined`] |
 | **dueFrom** | `Date` | Only list tasks due on or after this day. | [Optional] [Defaults to `undefined`] |
 | **dueTo** | `Date` | Only list tasks due on or before this day. | [Optional] [Defaults to `undefined`] |
+| **include** | `totalTimeMs`, `projectIds` | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, projectIds  | [Optional] [Enum: totalTimeMs, projectIds] |
 
 ### Return type
 

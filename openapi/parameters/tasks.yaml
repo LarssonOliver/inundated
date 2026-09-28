@@ -51,3 +51,32 @@ dueTo:
   schema:
     type: string
     format: date
+
+projectIdFilter:
+  name: projectId
+  in: query
+  required: false
+  description: >
+    Only list tasks that belong to this project: tasks assigned to it, their
+    subtasks, and tasks sharing one of its regular tags.
+  schema:
+    type: string
+    format: uuid
+
+taskInclude:
+  name: include
+  in: query
+  description: >
+    Comma-separated list of optional computed fields to include.
+    Supported values: totalTimeMs, projectIds
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      type: string
+      enum:
+        - totalTimeMs
+        - projectIds
+    uniqueItems: true

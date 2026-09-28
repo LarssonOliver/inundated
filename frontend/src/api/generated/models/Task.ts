@@ -93,6 +93,18 @@ export interface Task {
      * @memberof Task
      */
     readonly closedAt?: Date;
+    /**
+     * Time logged on the task and its subtasks. Only set with include=totalTimeMs.
+     * @type {number}
+     * @memberof Task
+     */
+    readonly totalTimeMs?: number;
+    /**
+     * Projects the task belongs to, whether assigned directly, through a parent task, or by sharing one of the project's regular tags. Only set with include=projectIds.
+     * @type {Array<string>}
+     * @memberof Task
+     */
+    readonly projectIds?: Array<string>;
 }
 
 
@@ -130,6 +142,8 @@ export function TaskFromJSONTyped(json: any, ignoreDiscriminator: boolean): Task
         'closed': json['closed'],
         'closeReason': json['closeReason'] == null ? undefined : CloseReasonFromJSON(json['closeReason']),
         'closedAt': json['closedAt'] == null ? undefined : (new Date(json['closedAt'])),
+        'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
+        'projectIds': json['projectIds'] == null ? undefined : json['projectIds'],
     };
 }
 
@@ -137,7 +151,7 @@ export function TaskToJSON(json: any): Task {
     return TaskToJSONTyped(json, false);
 }
 
-export function TaskToJSONTyped(value?: Omit<Task, 'closedAt'> | null, ignoreDiscriminator: boolean = false): any {
+export function TaskToJSONTyped(value?: Omit<Task, 'closedAt'|'totalTimeMs'|'projectIds'> | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
