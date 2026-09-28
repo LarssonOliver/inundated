@@ -305,11 +305,15 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, args...).Scan(&duration)
-	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, nil
 	}
 	if err != nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags: %w", err)
+	}
+	if duration == nil {
+		// SUM over no timespans.
+		return 0, nil
 	}
 
 	return *duration, nil

@@ -548,6 +548,21 @@ func TestGetTotalDurationByTags_InvalidTag(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetTotalDurationByTags_QueryError(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+
+	ids := []uuid.UUID{uuid.New()}
+	dbErr := errors.New("canceling statement due to statement timeout")
+	mock.ExpectQuery("SELECT .+ FROM timespans t .* t.deleted_at IS NULL").
+		WithArgs(ids, *testScope.UserID()).
+		WillReturnError(dbErr)
+
+	// A failed query must not pass for "no time logged".
+	_, err := repo.GetTotalDurationByTags(ctx, testScope, ids)
+	require.ErrorIs(t, err, dbErr)
+}
+
 func TestGetTotalDurationByTags_EmptyList(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := newMock(t)

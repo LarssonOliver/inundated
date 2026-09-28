@@ -644,8 +644,9 @@ func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uui
 // a task's regular tags, or where it sits in the tree.
 //
 // It leaves out tags that are already deleted, but deleting a tag later
-// doesn't touch the table (doing so could race a concurrent refresh), so
-// rows for deleted tags can remain. Readers that join these rows to
+// doesn't touch the table (doing so could race a concurrent refresh), and
+// migration 0014's backfill didn't filter them, so rows for deleted tags
+// can remain. Readers that join these rows to
 // something other than a caller's live tag ids must check the tag is live;
 // see taskProjectJoinSQL.
 func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, taskId uuid.UUID) error {
