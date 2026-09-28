@@ -130,7 +130,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 
 	var created model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, noAssociatedTags)
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, false, noAssociatedTags)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 
 	var updated model.Timespan
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, func() ([]uuid.UUID, error) {
+		ok, err := r.tagsInScope(ctx, q, scope, timespan.TagIds, false, func() ([]uuid.UUID, error) {
 			return r.timespanTagIds(ctx, q, timespan.Id)
 		})
 		if err != nil {
@@ -222,15 +222,17 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerSco
 	return nil
 }
 
-// timespanTagIds returns all tag IDs linked to a time span. Callers pass
+// timespanTagIds returns the live tag IDs linked to a time span, skipping
+// deleted tags as projectTagIds does. Callers pass
 // r.db for a standalone read, or the transaction's Querier to read within
 // it (e.g. alongside a concurrent tagsInScope check).
 func (r *PostgresStore) timespanTagIds(ctx context.Context, q Querier, timespanId uuid.UUID) ([]uuid.UUID, error) {
 	const query = `
-		SELECT tag_id
-		FROM timespan_tags
-		WHERE timespan_id = $1
-		ORDER BY tag_id`
+		SELECT tt.tag_id
+		FROM timespan_tags tt
+		JOIN tags t ON t.id = tt.tag_id AND t.deleted_at IS NULL
+		WHERE tt.timespan_id = $1
+		ORDER BY tt.tag_id`
 
 	rows, err := q.Query(ctx, query, timespanId)
 	if err != nil {

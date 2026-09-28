@@ -23,7 +23,9 @@ type TagRepository interface {
 	// GetTag and ListTags report a task tag with its TaskId set, and with
 	// its color and archived state derived from its task: archived while
 	// the task is closed, and colored like the task's first regular tag by
-	// name (or model.DefaultTaskTagColor).
+	// name (or model.DefaultTaskTagColor). ListTags puts regular tags
+	// first, then orders by name case-insensitively, then by name bytes,
+	// then by id.
 	ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	// UpdateTag replaces the tag's mutable fields (including Archived)
@@ -31,6 +33,10 @@ type TagRepository interface {
 	// Callers must fetch the current tag first and copy forward any field
 	// they don't intend to change, or that field resets to its zero value
 	// (e.g. an omitted/false Archived unarchives the tag).
+	//
+	// UpdateTag and DeleteTag refuse task tags, which follow their task,
+	// with model.ErrInvalidArgument. Deleting a tag drops it from the
+	// TagIds of every task, project and timespan.
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }

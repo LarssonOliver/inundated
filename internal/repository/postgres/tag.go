@@ -18,6 +18,10 @@ import (
 // first regular tag by name, or model.DefaultTaskTagColor. These fragments
 // read tags that way; they expect tags aliased t and the owning task (if
 // any) LEFT JOINed as k, which tagFromSQL provides.
+//
+// Tag names sort case-insensitively, then by bytes, then by id, under the
+// "C" collation rather than the database's own, so the order doesn't hang
+// on how the database was set up and the memory store can match it.
 const (
 	tagFromSQL = `tags t LEFT JOIN tasks k ON k.tag_id = t.id AND k.deleted_at IS NULL`
 
@@ -27,7 +31,7 @@ const (
 			SELECT rt.color FROM task_tags kt
 			JOIN tags rt ON rt.id = kt.tag_id AND rt.deleted_at IS NULL
 			WHERE kt.task_id = k.id
-			ORDER BY rt.name, rt.id
+			ORDER BY lower(rt.name) COLLATE "C", rt.name COLLATE "C", rt.id
 			LIMIT 1
 		), '` + model.DefaultTaskTagColor + `') END`
 
@@ -111,7 +115,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 		SELECT ` + tagColumnsSQL + `
 		FROM ` + tagFromSQL + `
 		WHERE t.deleted_at IS NULL AND ` + dataFilterSQL + dataOwnerSQL + `
-		ORDER BY k.id IS NOT NULL, t.name
+		ORDER BY k.id IS NOT NULL, lower(t.name) COLLATE "C", t.name COLLATE "C", t.id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, q, args...)
@@ -177,7 +181,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		UPDATE tags
 		SET name = $2, color = $3,
 			archived_at = CASE WHEN $4 THEN COALESCE(archived_at, now()) ELSE NULL END
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
+		WHERE id = $1 AND ` + notTaskTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL + `
 		RETURNING id, name, color, user_id, archived_at`
 
 	var updated model.Tag
@@ -185,7 +189,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 	err := r.db.QueryRow(ctx, q, args...).
 		Scan(&updated.Id, &updated.Name, &updated.Color, &updated.UserId, &archivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, model.ErrNotFound)
+		return model.Tag{}, fmt.Errorf("UpdateTag %s: %w", tag.Id, r.tagWriteMiss(ctx, scope, tag.Id))
 	}
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("UpdateTag: %w", err)
@@ -203,14 +207,38 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 	q := `
 		UPDATE tags
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
+		WHERE id = $1 AND ` + notTaskTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL
 
 	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("DeleteTag: %w", err)
 	}
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("DeleteTag %s: %w", id, model.ErrNotFound)
+		return fmt.Errorf("DeleteTag %s: %w", id, r.tagWriteMiss(ctx, scope, id))
 	}
 	return nil
+}
+
+// notTaskTagSQL keeps UpdateTag and DeleteTag off task tags, which follow
+// their task and can't be changed directly.
+const notTaskTagSQL = `NOT EXISTS (SELECT 1 FROM tasks k WHERE k.tag_id = tags.id)`
+
+// tagWriteMiss explains why UpdateTag or DeleteTag matched no row:
+// model.ErrInvalidArgument if id is a task tag in scope, otherwise
+// model.ErrNotFound.
+func (r *PostgresStore) tagWriteMiss(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{id})
+	q := `
+		SELECT EXISTS (
+			SELECT 1 FROM tags t JOIN tasks k ON k.tag_id = t.id
+			WHERE t.id = $1 AND t.deleted_at IS NULL AND ` + ownerSQL + `
+		)`
+	var taskTag bool
+	if err := r.db.QueryRow(ctx, q, args...).Scan(&taskTag); err != nil {
+		return fmt.Errorf("tagWriteMiss: %w", err)
+	}
+	if taskTag {
+		return fmt.Errorf("tag belongs to a task: %w", model.ErrInvalidArgument)
+	}
+	return model.ErrNotFound
 }

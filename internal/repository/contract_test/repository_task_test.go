@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -443,6 +444,130 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Empty(t, got.TagIds)
 
 			require.ErrorIs(t, repo.DeleteTask(ctx, testScope, parent.Id), model.ErrNotFound)
+		})
+
+		t.Run(repoName+"DeletedTagLeavesTask", func(t *testing.T) {
+			repo := newRepo(t)
+			keep, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "keep", Color: "#123456"})
+			require.NoError(t, err)
+			gone, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "gone", Color: "#123456"})
+			require.NoError(t, err)
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{keep.Id, gone.Id}})
+			require.NoError(t, err)
+
+			require.NoError(t, repo.DeleteTag(ctx, testScope, gone.Id))
+
+			got, err := repo.GetTask(ctx, testScope, task.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, got.TagIds)
+			page, err := repo.ListTasks(ctx, testScope, allTasks)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, page.Data[0].TagIds)
+
+			// Writing back what was read still works.
+			got.Name = "renamed"
+			got.CloseReason = reason(model.CloseReasonDone)
+			updated, err := repo.UpdateTask(ctx, testScope, got)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, updated.TagIds)
+		})
+
+		t.Run(repoName+"TaskTagsRefuseDirectEdits", func(t *testing.T) {
+			repo := newRepo(t)
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t"})
+			require.NoError(t, err)
+
+			_, err = repo.UpdateTag(ctx, testScope, model.Tag{Id: task.TagId, Name: "x", Color: "#123456"})
+			require.ErrorIs(t, err, model.ErrInvalidArgument)
+			require.ErrorIs(t, repo.DeleteTag(ctx, testScope, task.TagId), model.ErrInvalidArgument)
+
+			tag, err := repo.GetTag(ctx, testScope, task.TagId)
+			require.NoError(t, err)
+			require.Equal(t, "t", tag.Name)
+
+			// Another user's task tag is simply not found.
+			other := model.UserScope(uuid.New())
+			seedScopeUser(t, ctx, repo, other)
+			_, err = repo.UpdateTag(ctx, other, model.Tag{Id: task.TagId, Name: "x", Color: "#123456"})
+			require.ErrorIs(t, err, model.ErrNotFound)
+			require.ErrorIs(t, repo.DeleteTag(ctx, other, task.TagId), model.ErrNotFound)
+		})
+
+		t.Run(repoName+"TagNamesOrderIgnoringCase", func(t *testing.T) {
+			repo := newRepo(t)
+			banana, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "Banana", Color: "#0000ff"})
+			require.NoError(t, err)
+			apple, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "apple", Color: "#ff0000"})
+			require.NoError(t, err)
+			_, err = repo.CreateTag(ctx, testScope, model.Tag{Name: "cherry", Color: "#00ff00"})
+			require.NoError(t, err)
+
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
+			require.NoError(t, err)
+			var got []string
+			for _, tag := range page.Data {
+				got = append(got, tag.Name)
+			}
+			require.Equal(t, []string{"apple", "Banana", "cherry"}, got)
+
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{banana.Id, apple.Id}})
+			require.NoError(t, err)
+			taskTag, err := repo.GetTag(ctx, testScope, task.TagId)
+			require.NoError(t, err)
+			require.Equal(t, apple.Color, taskTag.Color)
+		})
+
+		t.Run(repoName+"ConcurrentCreatesGetDistinctRanks", func(t *testing.T) {
+			repo := newRepo(t)
+			const n = 20
+			var wg sync.WaitGroup
+			errs := make([]error, n)
+			for i := range n {
+				wg.Go(func() {
+					_, errs[i] = repo.CreateTask(ctx, testScope, model.Task{Name: "t"})
+				})
+			}
+			wg.Wait()
+			for _, err := range errs {
+				require.NoError(t, err)
+			}
+
+			page, err := repo.ListTasks(ctx, testScope, allTasks)
+			require.NoError(t, err)
+			ranks := map[string]bool{}
+			for _, task := range page.Data {
+				ranks[task.Rank] = true
+			}
+			require.Len(t, ranks, n)
+		})
+
+		t.Run(repoName+"ConcurrentMovesCantFormACycle", func(t *testing.T) {
+			repo := newRepo(t)
+			for range 10 {
+				// B > C and A > D. Moving A under C and B under D are each
+				// fine alone, but together they'd make A > C... > D > A.
+				a, err := repo.CreateTask(ctx, testScope, model.Task{Name: "a"})
+				require.NoError(t, err)
+				b, err := repo.CreateTask(ctx, testScope, model.Task{Name: "b"})
+				require.NoError(t, err)
+				c, err := repo.CreateTask(ctx, testScope, model.Task{Name: "c", ParentId: &b.Id})
+				require.NoError(t, err)
+				d, err := repo.CreateTask(ctx, testScope, model.Task{Name: "d", ParentId: &a.Id})
+				require.NoError(t, err)
+
+				var wg sync.WaitGroup
+				var errA, errB error
+				wg.Go(func() { _, errA = repo.MoveTask(ctx, testScope, a.Id, &c.Id, nil) })
+				wg.Go(func() { _, errB = repo.MoveTask(ctx, testScope, b.Id, &d.Id, nil) })
+				wg.Wait()
+
+				require.True(t, (errA == nil) != (errB == nil), "exactly one move must win: %v, %v", errA, errB)
+				for _, err := range []error{errA, errB} {
+					if err != nil {
+						require.ErrorIs(t, err, model.ErrInvalidArgument)
+					}
+				}
+			}
 		})
 
 		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {

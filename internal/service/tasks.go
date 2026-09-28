@@ -73,7 +73,12 @@ func (s *ServiceImpl) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	return s.repository.DeleteTask(ctx, scope, id)
+	err = s.repository.DeleteTask(ctx, scope, id)
+	if errors.Is(err, model.ErrInvalidArgument) {
+		// As in GetTask: a malformed id can never name a real row.
+		return fmt.Errorf("DeleteTask %s: %w", id, model.ErrNotFound)
+	}
+	return err
 }
 
 func validateTask(task model.Task) error {

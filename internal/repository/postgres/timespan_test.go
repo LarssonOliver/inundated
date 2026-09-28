@@ -22,7 +22,7 @@ func expectTimespanTagsQuery(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, ta
 	for _, tid := range tagIds {
 		rows.AddRow(tid)
 	}
-	mock.ExpectQuery(`SELECT tag_id FROM timespan_tags WHERE timespan_id = \$1`).
+	mock.ExpectQuery(`SELECT tt\.tag_id FROM timespan_tags tt JOIN tags t ON t\.id = tt\.tag_id AND t\.deleted_at IS NULL WHERE tt\.timespan_id = \$1`).
 		WithArgs(timespanId).
 		WillReturnRows(rows)
 }

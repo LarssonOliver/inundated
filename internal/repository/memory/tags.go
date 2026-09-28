@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"slices"
@@ -18,17 +19,29 @@ import (
 // unrelated edits, while still blocking a fresh attachment of an archived
 // tag that a picker would never surface.
 func (t *MemoryStore) tagsExist(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.tagsUsable(scope, tagIds, alreadyAssociated)
+}
+
+// tagsUsable is tagsExist for callers that already hold t.mu, so the check
+// and the write that relies on it see the same state.
+func (t *MemoryStore) tagsUsable(scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
+	if len(tagIds) == 0 {
+		return true
+	}
 	allowedArchived := make(map[uuid.UUID]bool, len(alreadyAssociated))
 	for _, id := range alreadyAssociated {
 		allowedArchived[id] = true
 	}
 
+	lookup := t.newTagLookup()
 	for _, tagId := range tagIds {
-		tag, err := t.GetTag(ctx, scope, tagId)
-		if err != nil {
+		stored, ok := lookup.tags[tagId]
+		if !ok || !matchesScope(stored.UserId, scope) {
 			return false
 		}
-		if tag.Archived && !allowedArchived[tagId] {
+		if lookup.view(stored).Archived && !allowedArchived[tagId] {
 			return false
 		}
 	}
@@ -69,32 +82,51 @@ func (t *MemoryStore) GetTag(ctx context.Context, scope model.OwnerScope, id uui
 		return model.Tag{}, model.ErrNotFound
 	}
 
-	return t.viewTag(t.tags[idx]), nil
+	return t.newTagLookup().view(t.tags[idx]), nil
 }
 
-// viewTag returns tag as readers see it: a task tag takes its archived state
-// and color from its task. Callers must hold t.mu.
-func (t *MemoryStore) viewTag(tag model.Tag) model.Tag {
+// tagLookup indexes tags and tasks by id, so viewing many tags doesn't
+// rescan both slices for each one.
+type tagLookup struct {
+	tags  map[uuid.UUID]model.Tag
+	tasks map[uuid.UUID]model.Task
+}
+
+// newTagLookup indexes t's tags and tasks. Callers must hold t.mu.
+func (t *MemoryStore) newTagLookup() tagLookup {
+	l := tagLookup{
+		tags:  make(map[uuid.UUID]model.Tag, len(t.tags)),
+		tasks: make(map[uuid.UUID]model.Task, len(t.tasks)),
+	}
+	for _, tag := range t.tags {
+		l.tags[tag.Id] = tag
+	}
+	for _, task := range t.tasks {
+		l.tasks[task.Id] = task
+	}
+	return l
+}
+
+// view returns tag as readers see it: a task tag takes its archived state
+// and color from its task.
+func (l tagLookup) view(tag model.Tag) model.Tag {
 	if tag.TaskId == nil {
 		return tag
 	}
-	idx := slices.IndexFunc(t.tasks, func(task model.Task) bool { return task.Id == *tag.TaskId })
-	if idx == -1 {
+	task, ok := l.tasks[*tag.TaskId]
+	if !ok {
 		return tag
 	}
-	task := t.tasks[idx]
 	tag.Archived = task.Closed()
 	tag.Color = model.DefaultTaskTagColor
 	var first *model.Tag
 	for _, id := range task.TagIds {
-		i := slices.IndexFunc(t.tags, func(regular model.Tag) bool { return regular.Id == id })
-		if i == -1 {
+		regular, ok := l.tags[id]
+		if !ok {
 			continue
 		}
-		candidate := t.tags[i]
-		if first == nil || candidate.Name < first.Name ||
-			(candidate.Name == first.Name && strings.Compare(candidate.Id.String(), first.Id.String()) < 0) {
-			first = &candidate
+		if first == nil || compareTagNames(regular, *first) < 0 {
+			first = &regular
 		}
 	}
 	if first != nil {
@@ -103,15 +135,26 @@ func (t *MemoryStore) viewTag(tag model.Tag) model.Tag {
 	return tag
 }
 
+// compareTagNames orders tags case-insensitively by name, then by name
+// bytes, then by id, as the Postgres store does.
+func compareTagNames(a, b model.Tag) int {
+	return cmp.Or(
+		strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),
+		strings.Compare(a.Name, b.Name),
+		bytes.Compare(a.Id[:], b.Id[:]),
+	)
+}
+
 // ListTags implements [repository.TagRepository].
 func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	query := strings.ToLower(params.Query)
+	lookup := t.newTagLookup()
 	all := make([]model.Tag, 0, len(t.tags))
 	for _, stored := range t.tags {
-		tag := t.viewTag(stored)
+		tag := lookup.view(stored)
 		if !matchesScope(tag.UserId, scope) || (!params.IncludeArchived && tag.Archived) {
 			continue
 		}
@@ -136,7 +179,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 	slices.SortStableFunc(all, func(a, b model.Tag) int {
 		return cmp.Or(
 			cmp.Compare(boolRank(a.TaskId != nil), boolRank(b.TaskId != nil)),
-			strings.Compare(a.Name, b.Name),
+			compareTagNames(a, b),
 		)
 	})
 
@@ -167,11 +210,14 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag
 	if idx == -1 {
 		return model.Tag{}, model.ErrNotFound
 	}
+	if t.tags[idx].TaskId != nil {
+		return model.Tag{}, model.ErrInvalidArgument
+	}
 
 	tag.UserId = t.tags[idx].UserId
-	tag.TaskId = t.tags[idx].TaskId
+	tag.TaskId = nil
 	t.tags[idx] = tag
-	return t.viewTag(tag), nil
+	return tag, nil
 }
 
 // DeleteTag implements [repository.TagRepository].
@@ -185,8 +231,21 @@ func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id 
 	if idx == -1 {
 		return model.ErrNotFound
 	}
+	if t.tags[idx].TaskId != nil {
+		return model.ErrInvalidArgument
+	}
 
 	t.tags = slices.Delete(t.tags, idx, idx+1)
+	isDeleted := func(tagId uuid.UUID) bool { return tagId == id }
+	for i := range t.tasks {
+		t.tasks[i].TagIds = slices.DeleteFunc(t.tasks[i].TagIds, isDeleted)
+	}
+	for i := range t.projects {
+		t.projects[i].TagIds = slices.DeleteFunc(t.projects[i].TagIds, isDeleted)
+	}
+	for i := range t.timespans {
+		t.timespans[i].TagIds = slices.DeleteFunc(t.timespans[i].TagIds, isDeleted)
+	}
 	return nil
 }
 

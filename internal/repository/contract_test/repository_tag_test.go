@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -105,6 +106,39 @@ func TestTagRepositoryContract(t *testing.T) {
 
 			_, err = repo.GetTag(ctx, testScope, created.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+
+		t.Run(repoName+"DeleteDropsTagFromProjectsAndTimespans", func(t *testing.T) {
+			repo := newRepo(t)
+			keep, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "keep", Color: "#123456"})
+			require.NoError(t, err)
+			gone, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "gone", Color: "#123456"})
+			require.NoError(t, err)
+			both := []uuid.UUID{keep.Id, gone.Id}
+
+			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "p", Color: "#123456", TagIds: both})
+			require.NoError(t, err)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			span, err := repo.CreateTimespan(ctx, testScope, model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), TagIds: both})
+			require.NoError(t, err)
+
+			require.NoError(t, repo.DeleteTag(ctx, testScope, gone.Id))
+
+			// Reads leave the deleted tag out, and writing back what was
+			// read still works.
+			gotProject, err := repo.GetProject(ctx, testScope, project.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, gotProject.TagIds)
+			gotProject.Name = "renamed"
+			_, err = repo.UpdateProject(ctx, testScope, gotProject)
+			require.NoError(t, err)
+
+			gotSpan, err := repo.GetTimespan(ctx, testScope, span.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, gotSpan.TagIds)
+			gotSpan.Name = "renamed"
+			_, err = repo.UpdateTimespan(ctx, testScope, gotSpan)
+			require.NoError(t, err)
 		})
 
 		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {

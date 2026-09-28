@@ -28,7 +28,7 @@ func expectProjectTagsQuery(mock pgxmock.PgxPoolIface, projectId uuid.UUID, tagI
 	for _, tid := range tagIds {
 		rows.AddRow(tid)
 	}
-	mock.ExpectQuery(`SELECT tag_id FROM project_tags WHERE project_id = \$1`).
+	mock.ExpectQuery(`SELECT pt\.tag_id FROM project_tags pt JOIN tags t ON t\.id = pt\.tag_id AND t\.deleted_at IS NULL WHERE pt\.project_id = \$1`).
 		WithArgs(projectId).
 		WillReturnRows(rows)
 }

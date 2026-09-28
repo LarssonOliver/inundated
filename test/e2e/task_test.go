@@ -243,3 +243,43 @@ func TestTag_TaskTagsInList(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 400, deleteResp.StatusCode())
 }
+
+func TestTask_SurvivesDeletedTag(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	labelResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{Name: "task-deleted-label", Color: "#A3BE8C"})
+	require.NoError(t, err)
+	require.Equal(t, 201, labelResp.StatusCode())
+	labelId := labelResp.JSON201.Id
+
+	createResp, err := client.CreateTaskWithResponse(ctx, CreateTaskJSONRequestBody{
+		Name:   "Tagged then untagged",
+		TagIds: &[]openapi_types.UUID{labelId},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, createResp.StatusCode())
+	task := createResp.JSON201
+
+	deleteResp, err := client.DeleteTagWithResponse(ctx, labelId)
+	require.NoError(t, err)
+	require.Equal(t, 204, deleteResp.StatusCode())
+
+	getResp, err := client.GetTaskWithResponse(ctx, task.Id)
+	require.NoError(t, err)
+	require.Equal(t, 200, getResp.StatusCode())
+	require.Nil(t, getResp.JSON200.TagIds)
+
+	// A partial update that leaves tagIds alone must not trip over the
+	// deleted tag.
+	updateResp, err := client.UpdateTaskWithResponse(ctx, task.Id, UpdateTaskJSONRequestBody{Closed: new(true)})
+	require.NoError(t, err)
+	require.Equal(t, 200, updateResp.StatusCode())
+	require.True(t, updateResp.JSON200.Closed)
+}
+
+func TestTask_DeleteNilIdIsNotFound(t *testing.T) {
+	resp, err := newClient().DeleteTaskWithResponse(context.Background(), openapi_types.UUID{})
+	require.NoError(t, err)
+	require.Equal(t, 404, resp.StatusCode())
+}

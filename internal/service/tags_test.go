@@ -236,7 +236,6 @@ func TestTagService_UpdateTag(t *testing.T) {
 		name     string
 		tag      model.Tag
 		updateFn func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
-		taskTag  bool
 		want     model.Tag
 		wantErr  bool
 	}{
@@ -258,21 +257,10 @@ func TestTagService_UpdateTag(t *testing.T) {
 			want:    model.Tag{},
 			wantErr: true,
 		},
-		{
-			name:    "task tags can't be edited",
-			tag:     model.Tag{Id: tagId, Name: "Updated Tag", Color: "#654321"},
-			taskTag: true,
-			updateFn: func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
-				t.Fatal("UpdateTag must not reach the repository for a task tag")
-				return tag, nil
-			},
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
-				GetTagFn:    getTagFn(tt.taskTag),
 				UpdateTagFn: tt.updateFn,
 			}
 			s := service.NewService(repo)
@@ -294,7 +282,6 @@ func TestTagService_DeleteTag(t *testing.T) {
 	tests := []struct {
 		name     string
 		deleteFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
-		taskTag  bool
 		wantErr  bool
 	}{
 		{
@@ -311,45 +298,19 @@ func TestTagService_DeleteTag(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name:    "task tags can't be deleted",
-			taskTag: true,
-			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
-				t.Fatal("DeleteTag must not reach the repository for a task tag")
-				return nil
-			},
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
-				GetTagFn:    getTagFn(tt.taskTag),
 				DeleteTagFn: tt.deleteFn,
 			}
 			s := service.NewService(repo)
 			gotErr := s.DeleteTag(context.Background(), uuid.New())
 			if tt.wantErr {
 				require.Error(t, gotErr)
-				if tt.taskTag {
-					require.ErrorIs(t, gotErr, model.ErrInvalidArgument)
-				}
 				return
 			}
 			require.NoError(t, gotErr)
 		})
-	}
-}
-
-// getTagFn returns a GetTag stub for the task tag guard in UpdateTag and
-// DeleteTag; taskTag makes every looked-up tag belong to a task.
-func getTagFn(taskTag bool) func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
-	return func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
-		tag := model.Tag{Id: id, Name: "t", Color: "#abcdef"}
-		if taskTag {
-			taskId := uuid.New()
-			tag.TaskId = &taskId
-		}
-		return tag, nil
 	}
 }

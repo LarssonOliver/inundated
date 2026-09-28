@@ -116,7 +116,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 
 	var created model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, noAssociatedTags)
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, false, noAssociatedTags)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 
 	var updated model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, func() ([]uuid.UUID, error) {
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, false, func() ([]uuid.UUID, error) {
 			return r.projectTagIds(ctx, q, project.Id)
 		})
 		if err != nil {
@@ -208,15 +208,18 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	return nil
 }
 
-// projectTagIds returns all tag IDs linked to a project. Callers pass r.db
+// projectTagIds returns the live tag IDs linked to a project; links to
+// deleted tags are kept (tag deletion is soft) but never read back, so a
+// read-modify-write never sends one back. Callers pass r.db
 // for a standalone read, or the transaction's Querier to read within it
 // (e.g. alongside a concurrent tagsInScope check).
 func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId uuid.UUID) ([]uuid.UUID, error) {
 	const query = `
-		SELECT tag_id
-		FROM project_tags
-		WHERE project_id = $1
-		ORDER BY tag_id`
+		SELECT pt.tag_id
+		FROM project_tags pt
+		JOIN tags t ON t.id = pt.tag_id AND t.deleted_at IS NULL
+		WHERE pt.project_id = $1
+		ORDER BY pt.tag_id`
 
 	rows, err := q.Query(ctx, query, projectId)
 	if err != nil {
@@ -235,7 +238,8 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId 
 	return ids, rows.Err()
 }
 
-// tagsInScope reports whether every id refers to a live tag owned by scope.
+// tagsInScope reports whether every id refers to a live tag owned by scope
+// (and, with regularOnly, not to a task tag).
 // An archived tag is only acceptable if it's already in the set alreadyAssociated
 // returns (i.e. it was attached to this project/timespan before this call) -
 // that keeps existing associations with a since-archived tag intact across
@@ -243,7 +247,7 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId 
 // tag that a picker would never surface. alreadyAssociated is called at most
 // once, and only if an archived tag is actually encountered, since the vast
 // majority of calls reference no archived tags at all.
-func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated func() ([]uuid.UUID, error)) (bool, error) {
+func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, regularOnly bool, alreadyAssociated func() ([]uuid.UUID, error)) (bool, error) {
 	if len(tagIds) == 0 {
 		return true, nil
 	}
@@ -252,6 +256,9 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 	query := `
 		SELECT t.id, ` + tagArchivedAtSQL + ` FROM ` + tagFromSQL + `
 		WHERE t.id = ANY($1) AND t.deleted_at IS NULL AND ` + ownerSQL
+	if regularOnly {
+		query += ` AND k.id IS NULL`
+	}
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)

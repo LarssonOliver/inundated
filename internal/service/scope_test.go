@@ -54,10 +54,10 @@ func scopedMethods() []scopedMethod {
 		{"UpdateTag", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.UpdateTag(ctx, model.Tag{Id: uuid.New(), Name: "t", Color: "#abcdef"})
 			return err
-		}, 2}, // GetTag (task tag guard) + UpdateTag
+		}, 1},
 		{"DeleteTag", func(ctx context.Context, s *service.ServiceImpl) error {
 			return s.DeleteTag(ctx, uuid.New())
-		}, 2}, // GetTag (task tag guard) + DeleteTag
+		}, 1},
 
 		// GetTagStats must pass the SAME scope to both GetTag and
 		// AggregateTimeSpentByTagsAndBuckets (spec Testing section).

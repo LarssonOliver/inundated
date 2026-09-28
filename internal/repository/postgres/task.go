@@ -53,10 +53,11 @@ func (r *PostgresStore) getTask(ctx context.Context, q Querier, scope model.Owne
 		return model.Task{}, fmt.Errorf("GetTask: %w", err)
 	}
 
-	t.TagIds, err = r.taskTagIds(ctx, q, id)
+	tagIds, err := r.taskTagIds(ctx, q, []uuid.UUID{id})
 	if err != nil {
 		return model.Task{}, err
 	}
+	t.TagIds = tagIds[id]
 	return t, nil
 }
 
@@ -81,7 +82,7 @@ func (r *PostgresStore) ListTasks(ctx context.Context, scope model.OwnerScope, p
 		SELECT ` + taskColumnsSQL + `
 		FROM tasks
 		WHERE deleted_at IS NULL` + dataClosedSQL + dataBuilder.SQL() + ` AND ` + dataOwnerSQL + `
-		ORDER BY parent_id NULLS FIRST, rank
+		ORDER BY parent_id NULLS FIRST, rank, id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, dataQ, args...)
@@ -102,11 +103,16 @@ func (r *PostgresStore) ListTasks(ctx context.Context, scope model.OwnerScope, p
 		return model.Page[model.Task]{}, fmt.Errorf("ListTasks rows: %w", err)
 	}
 
+	ids := make([]uuid.UUID, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.Id
+	}
+	tagIds, err := r.taskTagIds(ctx, r.db, ids)
+	if err != nil {
+		return model.Page[model.Task]{}, err
+	}
 	for i := range tasks {
-		tasks[i].TagIds, err = r.taskTagIds(ctx, r.db, tasks[i].Id)
-		if err != nil {
-			return model.Page[model.Task]{}, err
-		}
+		tasks[i].TagIds = tagIds[tasks[i].Id]
 	}
 	if tasks == nil {
 		tasks = []model.Task{}
@@ -151,6 +157,9 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 
 	var created model.Task
 	err := r.withTx(ctx, func(q Querier) error {
+		if err := lockTaskTree(ctx, q, scope); err != nil {
+			return err
+		}
 		if err := r.checkTaskTags(ctx, q, scope, tagIds, noAssociatedTags); err != nil {
 			return fmt.Errorf("CreateTask: %w", err)
 		}
@@ -227,6 +236,9 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 
 	var updated model.Task
 	err := r.withTx(ctx, func(q Querier) error {
+		if err := lockTaskTree(ctx, q, scope); err != nil {
+			return err
+		}
 		existing, err := r.getTask(ctx, q, scope, task.Id, true)
 		if err != nil {
 			return err
@@ -301,6 +313,9 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 
 	var moved model.Task
 	err := r.withTx(ctx, func(q Querier) error {
+		if err := lockTaskTree(ctx, q, scope); err != nil {
+			return err
+		}
 		task, err := r.getTask(ctx, q, scope, id, true)
 		if err != nil {
 			return err
@@ -391,6 +406,9 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 	}
 
 	return r.withTx(ctx, func(q Querier) error {
+		if err := lockTaskTree(ctx, q, scope); err != nil {
+			return err
+		}
 		if _, err := r.getTask(ctx, q, scope, id, true); err != nil {
 			return err
 		}
@@ -434,23 +452,29 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 // usable regular tag in scope (see tagsInScope); a task's own tags can
 // never include task tags.
 func (r *PostgresStore) checkTaskTags(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated func() ([]uuid.UUID, error)) error {
-	if len(tagIds) == 0 {
-		return nil
-	}
-	ok, err := r.tagsInScope(ctx, q, scope, tagIds, alreadyAssociated)
+	ok, err := r.tagsInScope(ctx, q, scope, tagIds, true, alreadyAssociated)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return model.ErrInvalidReference
 	}
+	return nil
+}
 
-	var taskTags bool
-	if err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tasks WHERE tag_id = ANY($1))`, tagIds).Scan(&taskTags); err != nil {
-		return fmt.Errorf("checkTaskTags: %w", err)
+// lockTaskTree serialises changes to scope's task tree until the
+// transaction ends. Row locks alone can't: a move's cycle check reads the
+// whole ancestor chain, a create's rank reads every sibling, and closing
+// or deleting walks a whole subtree, so concurrent edits that lock
+// disjoint rows could still leave a parent cycle, duplicate sibling ranks
+// or live tasks under deleted ones. Callers take it before any row lock.
+func lockTaskTree(ctx context.Context, q Querier, scope model.OwnerScope) error {
+	key := ""
+	if id := scope.UserID(); id != nil {
+		key = id.String()
 	}
-	if taskTags {
-		return model.ErrInvalidReference
+	if _, err := q.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('tasks:' || $1, 0))`, key); err != nil {
+		return fmt.Errorf("lockTaskTree: %w", err)
 	}
 	return nil
 }
@@ -495,23 +519,34 @@ func (r *PostgresStore) respaceTasks(ctx context.Context, q Querier, tasks []ran
 	return nil
 }
 
-// taskTagIds returns the regular tag IDs on a task.
-func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskId uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.Query(ctx, `SELECT tag_id FROM task_tags WHERE task_id = $1 ORDER BY tag_id`, taskId)
+// taskTagIds returns the live regular tag IDs on each of taskIds, keyed by
+// task. Links to deleted tags are kept (tag deletion is soft) but never
+// read back.
+func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	out := make(map[uuid.UUID][]uuid.UUID, len(taskIds))
+	if len(taskIds) == 0 {
+		return out, nil
+	}
+	const query = `
+		SELECT kt.task_id, kt.tag_id
+		FROM task_tags kt
+		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
+		WHERE kt.task_id = ANY($1)
+		ORDER BY kt.task_id, kt.tag_id`
+	rows, err := q.Query(ctx, query, taskIds)
 	if err != nil {
 		return nil, fmt.Errorf("taskTagIds: %w", err)
 	}
 	defer rows.Close()
 
-	var ids []uuid.UUID
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var taskId, tagId uuid.UUID
+		if err := rows.Scan(&taskId, &tagId); err != nil {
 			return nil, fmt.Errorf("taskTagIds scan: %w", err)
 		}
-		ids = append(ids, id)
+		out[taskId] = append(out[taskId], tagId)
 	}
-	return ids, rows.Err()
+	return out, rows.Err()
 }
 
 // setTaskTags replaces a task's regular tags.

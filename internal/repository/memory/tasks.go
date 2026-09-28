@@ -51,9 +51,9 @@ func (t *MemoryStore) ListTasks(ctx context.Context, scope model.OwnerScope, par
 	}
 
 	// Top-level tasks first, then grouped by parent, then by rank - the
-	// order Postgres gives for "ORDER BY parent_id NULLS FIRST, rank".
+	// order Postgres gives for "ORDER BY parent_id NULLS FIRST, rank, id".
 	slices.SortStableFunc(all, func(a, b model.Task) int {
-		return cmp.Or(compareParents(a.ParentId, b.ParentId), strings.Compare(a.Rank, b.Rank))
+		return cmp.Or(compareParents(a.ParentId, b.ParentId), strings.Compare(a.Rank, b.Rank), bytes.Compare(a.Id[:], b.Id[:]))
 	})
 
 	total := len(all)
@@ -74,14 +74,11 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 		return model.Task{}, model.ErrInvalidArgument
 	}
 	tagIds := utils.DedupeUUIDs(task.TagIds)
-	if !t.tagsExist(ctx, scope, tagIds, nil) {
-		return model.Task{}, model.ErrInvalidReference
-	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.anyTaskTag(tagIds) {
+	if !t.tagsUsable(scope, tagIds, nil) || t.anyTaskTag(tagIds) {
 		return model.Task{}, model.ErrInvalidReference
 	}
 	if task.ParentId != nil {
@@ -139,24 +136,17 @@ func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, ta
 		return model.Task{}, model.ErrInvalidArgument
 	}
 
-	existing, err := t.GetTask(ctx, scope, task.Id)
-	if err != nil {
-		return model.Task{}, err
-	}
 	tagIds := utils.DedupeUUIDs(task.TagIds)
-	if !t.tagsExist(ctx, scope, tagIds, existing.TagIds) {
-		return model.Task{}, model.ErrInvalidReference
-	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.anyTaskTag(tagIds) {
-		return model.Task{}, model.ErrInvalidReference
-	}
 	idx := t.taskIndex(scope, task.Id)
 	if idx == -1 {
 		return model.Task{}, model.ErrNotFound
+	}
+	if !t.tagsUsable(scope, tagIds, t.tasks[idx].TagIds) || t.anyTaskTag(tagIds) {
+		return model.Task{}, model.ErrInvalidReference
 	}
 
 	stored := &t.tasks[idx]

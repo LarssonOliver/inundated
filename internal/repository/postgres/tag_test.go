@@ -95,7 +95,7 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, t\.name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -125,7 +125,7 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, t\.name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -156,7 +156,7 @@ func TestListTags_Empty(t *testing.T) {
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, t\.name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead),
@@ -183,7 +183,7 @@ func TestListTags_UnownedScope(t *testing.T) {
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id IS NULL ORDER BY k\.id IS NOT NULL, t\.name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END IS NULL AND k\.id IS NULL AND t\.user_id IS NULL ORDER BY k\.id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -208,7 +208,7 @@ func TestListTags_IncludeArchived(t *testing.T) {
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(1))
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, t\.name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.deleted_at IS NULL AND k\.id IS NULL AND t\.user_id = \$3 ORDER BY k\.id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(tagColsRead).
 			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt, nil))
@@ -308,10 +308,25 @@ func TestUpdateTag_NotFound(t *testing.T) {
 	mock.ExpectQuery(`UPDATE tags .+ WHERE .+ deleted_at IS NULL AND user_id = \$5 RETURNING id, name, color, user_id, archived_at`).
 		WithArgs(tag.Id, tag.Name, tag.Color, tag.Archived, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(tagColsArchived))
+	expectTagWriteMiss(mock, tag.Id, false)
 
 	_, err := repo.UpdateTag(ctx, testScope, tag)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
+}
+
+func TestUpdateTag_TaskTag(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	tag := aTag()
+
+	mock.ExpectQuery(`UPDATE tags .+ WHERE id = \$1 AND NOT EXISTS \(SELECT 1 FROM tasks k WHERE k\.tag_id = tags\.id\) AND deleted_at IS NULL AND user_id = \$5 RETURNING`).
+		WithArgs(tag.Id, tag.Name, tag.Color, tag.Archived, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows(tagColsArchived))
+	expectTagWriteMiss(mock, tag.Id, true)
+
+	_, err := repo.UpdateTag(ctx, testScope, tag)
+	require.ErrorIs(t, err, model.ErrInvalidArgument)
 }
 
 func TestUpdateTag_NilId(t *testing.T) {
@@ -354,10 +369,24 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id = \$2`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+	expectTagWriteMiss(mock, id, false)
 
 	err := repo.DeleteTag(ctx, testScope, id)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrNotFound))
+}
+
+func TestDeleteTag_TaskTag(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	id := uuid.New()
+
+	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE id = \$1 AND NOT EXISTS \(SELECT 1 FROM tasks k WHERE k\.tag_id = tags\.id\) AND deleted_at IS NULL AND user_id = \$2`).
+		WithArgs(id, *testScope.UserID()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+	expectTagWriteMiss(mock, id, true)
+
+	require.ErrorIs(t, repo.DeleteTag(ctx, testScope, id), model.ErrInvalidArgument)
 }
 
 func TestDeleteTag_NilId(t *testing.T) {
@@ -365,4 +394,12 @@ func TestDeleteTag_NilId(t *testing.T) {
 	err := repo.DeleteTag(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+}
+
+// expectTagWriteMiss expects the lookup UpdateTag and DeleteTag make after
+// matching no row, which tells a task tag from a missing one.
+func expectTagWriteMiss(mock pgxmock.PgxPoolIface, id uuid.UUID, taskTag bool) {
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM tags t JOIN tasks k ON k\.tag_id = t\.id WHERE t\.id = \$1 AND t\.deleted_at IS NULL AND t\.user_id = \$2 \)`).
+		WithArgs(id, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(taskTag))
 }
