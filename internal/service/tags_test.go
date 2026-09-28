@@ -111,14 +111,14 @@ func TestTagService_ListTags(t *testing.T) {
 	tests := []struct {
 		name    string
 		params  model.PaginationParams
-		listFn  func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error)
+		listFn  func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 		want    model.Page[model.Tag]
 		wantErr bool
 	}{
 		{
 			name:   "successful list",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: tags, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Tag]{Data: tags, TotalCount: 2},
@@ -127,7 +127,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "repository error",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{}, errors.New("database error")
 			},
 			wantErr: true,
@@ -135,7 +135,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "pagination params are forwarded",
 			params: model.PaginationParams{Limit: 1, Offset: 1},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				require.Equal(t, 1, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Tag]{Data: tags[1:], TotalCount: 2}, nil
@@ -146,7 +146,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "empty page",
 			params: model.PaginationParams{Limit: 10, Offset: 100},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 2},
@@ -160,7 +160,7 @@ func TestTagService_ListTags(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.ListTags(context.Background(), tt.params)
+			got, gotErr := s.ListTags(context.Background(), model.TagListParams{PaginationParams: tt.params})
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
@@ -236,6 +236,7 @@ func TestTagService_UpdateTag(t *testing.T) {
 		name     string
 		tag      model.Tag
 		updateFn func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
+		taskTag  bool
 		want     model.Tag
 		wantErr  bool
 	}{
@@ -257,10 +258,21 @@ func TestTagService_UpdateTag(t *testing.T) {
 			want:    model.Tag{},
 			wantErr: true,
 		},
+		{
+			name:    "task tags can't be edited",
+			tag:     model.Tag{Id: tagId, Name: "Updated Tag", Color: "#654321"},
+			taskTag: true,
+			updateFn: func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
+				t.Fatal("UpdateTag must not reach the repository for a task tag")
+				return tag, nil
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
+				GetTagFn:    getTagFn(tt.taskTag),
 				UpdateTagFn: tt.updateFn,
 			}
 			s := service.NewService(repo)
@@ -282,6 +294,7 @@ func TestTagService_DeleteTag(t *testing.T) {
 	tests := []struct {
 		name     string
 		deleteFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+		taskTag  bool
 		wantErr  bool
 	}{
 		{
@@ -298,19 +311,45 @@ func TestTagService_DeleteTag(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:    "task tags can't be deleted",
+			taskTag: true,
+			deleteFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+				t.Fatal("DeleteTag must not reach the repository for a task tag")
+				return nil
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &repository.RepoMock{
+				GetTagFn:    getTagFn(tt.taskTag),
 				DeleteTagFn: tt.deleteFn,
 			}
 			s := service.NewService(repo)
 			gotErr := s.DeleteTag(context.Background(), uuid.New())
 			if tt.wantErr {
 				require.Error(t, gotErr)
+				if tt.taskTag {
+					require.ErrorIs(t, gotErr, model.ErrInvalidArgument)
+				}
 				return
 			}
 			require.NoError(t, gotErr)
 		})
+	}
+}
+
+// getTagFn returns a GetTag stub for the task tag guard in UpdateTag and
+// DeleteTag; taskTag makes every looked-up tag belong to a task.
+func getTagFn(taskTag bool) func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
+	return func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
+		tag := model.Tag{Id: id, Name: "t", Color: "#abcdef"}
+		if taskTag {
+			taskId := uuid.New()
+			tag.TaskId = &taskId
+		}
+		return tag, nil
 	}
 }

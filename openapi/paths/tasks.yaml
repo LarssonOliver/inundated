@@ -1,0 +1,138 @@
+tasks:
+  get:
+    tags: [tasks]
+    summary: List tasks
+    description: >
+      Lists tasks ordered by parent, then by rank among siblings. Closed tasks
+      are hidden unless includeClosed is set.
+    operationId: listTasks
+    parameters:
+      - $ref: "../parameters/shared.yaml#/limit"
+      - $ref: "../parameters/shared.yaml#/offset"
+      - $ref: "../parameters/tasks.yaml#/includeClosed"
+      - $ref: "../parameters/tasks.yaml#/parentId"
+      - $ref: "../parameters/tasks.yaml#/tagIdFilter"
+      - $ref: "../parameters/tasks.yaml#/dueFrom"
+      - $ref: "../parameters/tasks.yaml#/dueTo"
+    responses:
+      "200":
+        description: Paginated list of tasks
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tasks.yaml#/PaginatedTasks"
+      "400":
+        description: Bad request
+  post:
+    tags: [tasks]
+    summary: Create task
+    description: >
+      Creates a task along with its task tag. The task is placed last among
+      its siblings.
+    operationId: createTask
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/tasks.yaml#/CreateTask"
+    responses:
+      "201":
+        description: Task created
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tasks.yaml#/Task"
+      "400":
+        description: >
+          Bad request, e.g. an unknown parent or tag, or a task tag in tagIds.
+
+tasks-id:
+  parameters:
+    - $ref: "../parameters/tasks.yaml#/taskIdPath"
+  get:
+    tags: [tasks]
+    summary: Get task
+    operationId: getTask
+    responses:
+      "200":
+        description: Task
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tasks.yaml#/Task"
+      "404":
+        description: Not found
+  patch:
+    tags: [tasks]
+    summary: Update task
+    operationId: updateTask
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/tasks.yaml#/UpdateTask"
+    responses:
+      "200":
+        description: Updated task
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tasks.yaml#/Task"
+      "400":
+        description: Bad request
+      "404":
+        description: Not found
+  delete:
+    tags: [tasks]
+    summary: Delete task
+    description: >
+      Deletes a task and its subtasks, along with their task tags. Tasks
+      with logged time can't be deleted; close them instead.
+    operationId: deleteTask
+    security:
+      - sessionCookie: []
+    responses:
+      "204":
+        description: Deleted
+      "404":
+        description: Not found
+      "409":
+        description: The task or one of its subtasks has logged time.
+
+tasks-id-move:
+  parameters:
+    - $ref: "../parameters/tasks.yaml#/taskIdPath"
+  post:
+    tags: [tasks]
+    summary: Move task
+    description: >
+      Moves a task to a new position, optionally under a new parent. The
+      task keeps its subtasks.
+    operationId: moveTask
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/tasks.yaml#/MoveTask"
+    responses:
+      "200":
+        description: Moved task
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/tasks.yaml#/Task"
+      "400":
+        description: >
+          Bad request, e.g. a parent that is the task itself or one of its
+          subtasks, or an afterTaskId that isn't a sibling under the new parent.
+      "404":
+        description: Not found

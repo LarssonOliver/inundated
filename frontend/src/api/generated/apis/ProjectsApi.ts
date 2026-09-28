@@ -272,7 +272,7 @@ export class ProjectsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. Defaults to `P30D/{now}` (the last 30 days) if `interval` is omitted. 
      * Get timeseries stats for a project
      */
     async getProjectStatsRaw(requestParameters: GetProjectStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProjectStats>> {
@@ -283,7 +283,7 @@ export class ProjectsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. Defaults to `P30D/{now}` (the last 30 days) if `interval` is omitted. 
      * Get timeseries stats for a project
      */
     async getProjectStats(requestParameters: GetProjectStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProjectStats> {

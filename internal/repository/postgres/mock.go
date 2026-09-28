@@ -55,7 +55,7 @@ func (m *MockRepository) GetTag(ctx context.Context, scope model.OwnerScope, id 
 	return args.Get(0).(model.Tag), args.Error(1)
 }
 
-func (m *MockRepository) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (m *MockRepository) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Tag]), args.Error(1)
 }
@@ -201,5 +201,35 @@ func (m *MockRepository) GetLoginState(ctx context.Context, id uuid.UUID) (model
 // DeleteAllExpiredLoginStates implements [repository.LoginStateRepository].
 func (m *MockRepository) DeleteAllExpiredLoginStates(ctx context.Context) error {
 	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockRepository) GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error) {
+	args := m.Called(ctx, scope, id)
+	return args.Get(0).(model.Task), args.Error(1)
+}
+
+func (m *MockRepository) ListTasks(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error) {
+	args := m.Called(ctx, scope, params)
+	return args.Get(0).(model.Page[model.Task]), args.Error(1)
+}
+
+func (m *MockRepository) CreateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+	args := m.Called(ctx, scope, task)
+	return args.Get(0).(model.Task), args.Error(1)
+}
+
+func (m *MockRepository) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+	args := m.Called(ctx, scope, task)
+	return args.Get(0).(model.Task), args.Error(1)
+}
+
+func (m *MockRepository) MoveTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error) {
+	args := m.Called(ctx, scope, id, parentId, afterId)
+	return args.Get(0).(model.Task), args.Error(1)
+}
+
+func (m *MockRepository) DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	args := m.Called(ctx, scope, id)
 	return args.Error(0)
 }

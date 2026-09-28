@@ -248,10 +248,10 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 		return true, nil
 	}
 
-	ownerSQL, args := ownerPredicate("user_id", scope, []any{tagIds})
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
 	query := `
-		SELECT id, archived_at FROM tags
-		WHERE id = ANY($1) AND deleted_at IS NULL AND ` + ownerSQL
+		SELECT t.id, ` + tagArchivedAtSQL + ` FROM ` + tagFromSQL + `
+		WHERE t.id = ANY($1) AND t.deleted_at IS NULL AND ` + ownerSQL
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)

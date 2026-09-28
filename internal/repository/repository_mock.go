@@ -20,8 +20,15 @@ type RepoMock struct {
 	CreateTagFn func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTagFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 	GetTagFn    func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
-	ListTagFn   func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error)
+	ListTagFn   func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
+
+	GetTaskFn    func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
+	ListTasksFn  func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
+	CreateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	UpdateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	MoveTaskFn   func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
+	DeleteTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 
 	GetUserFn                   func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn              func(ctx context.Context, sub string) (model.User, error)
@@ -104,8 +111,38 @@ func (t *RepoMock) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.U
 }
 
 // ListTags implements repository.TagRepository.
-func (t *RepoMock) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (t *RepoMock) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 	return t.ListTagFn(ctx, scope, params)
+}
+
+// GetTask implements repository.TaskRepository.
+func (t *RepoMock) GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error) {
+	return t.GetTaskFn(ctx, scope, id)
+}
+
+// ListTasks implements repository.TaskRepository.
+func (t *RepoMock) ListTasks(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error) {
+	return t.ListTasksFn(ctx, scope, params)
+}
+
+// CreateTask implements repository.TaskRepository.
+func (t *RepoMock) CreateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+	return t.CreateTaskFn(ctx, scope, task)
+}
+
+// UpdateTask implements repository.TaskRepository.
+func (t *RepoMock) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+	return t.UpdateTaskFn(ctx, scope, task)
+}
+
+// MoveTask implements repository.TaskRepository.
+func (t *RepoMock) MoveTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error) {
+	return t.MoveTaskFn(ctx, scope, id, parentId, afterId)
+}
+
+// DeleteTask implements repository.TaskRepository.
+func (t *RepoMock) DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return t.DeleteTaskFn(ctx, scope, id)
 }
 
 // UpdateTag implements repository.TagRepository.

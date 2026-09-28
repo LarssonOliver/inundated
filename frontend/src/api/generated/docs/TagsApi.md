@@ -148,6 +148,7 @@ example().catch(console.error);
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **204** | Deleted |  -  |
+| **400** | Task tags can\&#39;t be deleted; delete the task instead. |  -  |
 | **404** | Not found |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -232,7 +233,7 @@ example().catch(console.error);
 
 Get timeseries stats for a tag
 
-Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. 
+Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. Defaults to &#x60;P30D/{now}&#x60; (the last 30 days) if &#x60;interval&#x60; is omitted. 
 
 ### Example
 
@@ -314,7 +315,7 @@ example().catch(console.error);
 
 ## listTags
 
-> PaginatedTags listTags(limit, offset, includeArchived)
+> PaginatedTags listTags(limit, offset, includeArchived, q, kind)
 
 List tags
 
@@ -342,6 +343,10 @@ async function example() {
     offset: 0,
     // boolean | Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.  (optional)
     includeArchived: true,
+    // string | Only return tags whose name contains this text, ignoring case.  (optional)
+    q: q_example,
+    // 'label' | 'task' | 'all' | Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.  (optional)
+    kind: kind_example,
   } satisfies ListTagsRequest;
 
   try {
@@ -364,6 +369,8 @@ example().catch(console.error);
 | **limit** | `number` | Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.  | [Optional] [Defaults to `25`] |
 | **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
 | **includeArchived** | `boolean` | Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.  | [Optional] [Defaults to `false`] |
+| **q** | `string` | Only return tags whose name contains this text, ignoring case.  | [Optional] [Defaults to `undefined`] |
+| **kind** | `label`, `task`, `all` | Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.  | [Optional] [Defaults to `&#39;label&#39;`] [Enum: label, task, all] |
 
 ### Return type
 
@@ -382,7 +389,7 @@ example().catch(console.error);
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-| **200** | Paginated list of tags |  -  |
+| **200** | Paginated list of tags, regular tags before task tags |  -  |
 | **400** | Bad request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -456,7 +463,7 @@ example().catch(console.error);
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Updated tag |  -  |
-| **400** | Bad request |  -  |
+| **400** | Bad request, including any change to a task tag |  -  |
 | **404** | Not found |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

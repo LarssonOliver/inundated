@@ -44,6 +44,12 @@ export interface Tag {
      */
     totalTimeMs?: number;
     /**
+     * Set when this is a task tag, naming the task that owns it. A task tag's name, color and archived state follow its task, so it can't be changed through the tag API.
+     * @type {string}
+     * @memberof Tag
+     */
+    readonly taskId?: string;
+    /**
      * Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
      * @type {boolean}
      * @memberof Tag
@@ -76,6 +82,7 @@ export function TagFromJSONTyped(json: any, ignoreDiscriminator: boolean): Tag {
         'name': json['name'],
         'color': json['color'],
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
+        'taskId': json['taskId'] == null ? undefined : json['taskId'],
         'archived': json['archived'],
     };
 }
@@ -84,7 +91,7 @@ export function TagToJSON(json: any): Tag {
     return TagToJSONTyped(json, false);
 }
 
-export function TagToJSONTyped(value?: Tag | null, ignoreDiscriminator: boolean = false): any {
+export function TagToJSONTyped(value?: Omit<Tag, 'taskId'> | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

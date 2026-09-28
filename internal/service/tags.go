@@ -41,7 +41,7 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	return tag, nil
 }
 
-func (s *ServiceImpl) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (s *ServiceImpl) ListTags(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Page[model.Tag]{}, err
@@ -63,6 +63,9 @@ func (s *ServiceImpl) UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, 
 	if err != nil {
 		return model.Tag{}, err
 	}
+	if err := s.rejectTaskTag(ctx, scope, tag.Id); err != nil {
+		return model.Tag{}, err
+	}
 	return s.repository.UpdateTag(ctx, scope, tag)
 }
 
@@ -71,5 +74,25 @@ func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	if err := s.rejectTaskTag(ctx, scope, id); err != nil {
+		return err
+	}
 	return s.repository.DeleteTag(ctx, scope, id)
+}
+
+// rejectTaskTag fails with model.ErrInvalidArgument when id names a task
+// tag, which follows its task and can't be changed directly. A missing tag
+// passes, leaving the caller's own lookup to report it.
+func (s *ServiceImpl) rejectTaskTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	stored, err := s.repository.GetTag(ctx, scope, id)
+	if errors.Is(err, model.ErrNotFound) || errors.Is(err, model.ErrInvalidArgument) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if stored.TaskId != nil {
+		return fmt.Errorf("tag %s belongs to task %s: %w", id, *stored.TaskId, model.ErrInvalidArgument)
+	}
+	return nil
 }

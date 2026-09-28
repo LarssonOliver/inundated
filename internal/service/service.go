@@ -38,6 +38,7 @@ type Service interface {
 	TagService
 	ProjectService
 	TimespanService
+	TaskService
 	SettingsService
 }
 
@@ -53,7 +54,7 @@ type TagServiceGetIncludes struct {
 
 type TagService interface {
 	GetTag(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error)
-	ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
+	ListTags(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	UpdateTag(ctx context.Context, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
@@ -97,6 +98,18 @@ type TimespanService interface {
 	CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error)
 	DeleteTimespan(ctx context.Context, id uuid.UUID) error
+}
+
+// TaskService manages tasks. Each task owns a task tag, created and deleted
+// with it; see [repository.TaskRepository] for how closing, moving and
+// deleting ripple through a task's subtasks.
+type TaskService interface {
+	GetTask(ctx context.Context, id uuid.UUID) (model.Task, error)
+	ListTasks(ctx context.Context, params model.TaskListParams) (model.Page[model.Task], error)
+	CreateTask(ctx context.Context, task model.Task) (model.Task, error)
+	UpdateTask(ctx context.Context, task model.Task) (model.Task, error)
+	MoveTask(ctx context.Context, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
+	DeleteTask(ctx context.Context, id uuid.UUID) error
 }
 
 // SettingsService manages the current scope's settings singleton. GetSettings

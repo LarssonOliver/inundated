@@ -44,7 +44,7 @@ func expectTagsInScope(mock pgxmock.PgxPoolIface, tagIds []uuid.UUID) {
 	for _, tid := range tagIds {
 		rows.AddRow(tid, nil)
 	}
-	mock.ExpectQuery(`SELECT id, archived_at FROM tags WHERE id = ANY\(\$1\) AND deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectQuery(`SELECT t\.id, CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.id = ANY\(\$1\) AND t\.deleted_at IS NULL AND t\.user_id = \$2`).
 		WithArgs(tagIds, *testScope.UserID()).
 		WillReturnRows(rows)
 }
@@ -375,7 +375,7 @@ func TestCreateProject_ForeignTagRejected(t *testing.T) {
 	for _, tid := range p.TagIds[:len(p.TagIds)-1] {
 		rows.AddRow(tid, nil)
 	}
-	mock.ExpectQuery(`SELECT id, archived_at FROM tags WHERE id = ANY\(\$1\) AND deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectQuery(`SELECT t\.id, CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.id = ANY\(\$1\) AND t\.deleted_at IS NULL AND t\.user_id = \$2`).
 		WithArgs(p.TagIds, *testScope.UserID()).
 		WillReturnRows(rows)
 	mock.ExpectRollback()

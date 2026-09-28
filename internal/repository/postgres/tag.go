@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,50 +13,105 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
+// A task tag's archived state and color aren't stored on its row: it's
+// archived while its task is closed, and it takes the color of the task's
+// first regular tag by name, or model.DefaultTaskTagColor. These fragments
+// read tags that way; they expect tags aliased t and the owning task (if
+// any) LEFT JOINed as k, which tagFromSQL provides.
+const (
+	tagFromSQL = `tags t LEFT JOIN tasks k ON k.tag_id = t.id AND k.deleted_at IS NULL`
+
+	tagArchivedAtSQL = `CASE WHEN k.id IS NULL THEN t.archived_at ELSE k.closed_at END`
+
+	tagColorSQL = `CASE WHEN k.id IS NULL THEN t.color ELSE COALESCE((
+			SELECT rt.color FROM task_tags kt
+			JOIN tags rt ON rt.id = kt.tag_id AND rt.deleted_at IS NULL
+			WHERE kt.task_id = k.id
+			ORDER BY rt.name, rt.id
+			LIMIT 1
+		), '` + model.DefaultTaskTagColor + `') END`
+
+	tagColumnsSQL = `t.id, t.name, ` + tagColorSQL + `, t.user_id, ` + tagArchivedAtSQL + `, k.id`
+)
+
+func scanTag(row pgx.Row) (model.Tag, error) {
+	var t model.Tag
+	var archivedAt *time.Time
+	if err := row.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt, &t.TaskId); err != nil {
+		return model.Tag{}, err
+	}
+	t.Archived = archivedAt != nil
+	return t, nil
+}
+
+// tagListFilterSQL returns the WHERE conditions, each with a trailing
+// "AND ", that ListTags adds for params, with any value they bind appended
+// to args.
+func tagListFilterSQL(params model.TagListParams, args []any) (string, []any) {
+	var sql strings.Builder
+	if !params.IncludeArchived {
+		sql.WriteString(tagArchivedAtSQL + " IS NULL AND ")
+	}
+	switch params.Kind {
+	case model.TagKindAll:
+	case model.TagKindTask:
+		sql.WriteString("k.id IS NOT NULL AND ")
+	default:
+		sql.WriteString("k.id IS NULL AND ")
+	}
+	if params.Query != "" {
+		args = append(args, "%"+escapeLike(params.Query)+"%")
+		fmt.Fprintf(&sql, `t.name ILIKE $%d ESCAPE '\' AND `, len(args))
+	}
+	return sql.String(), args
+}
+
+// escapeLike escapes LIKE wildcards in s, using '\' as the escape character.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 	if id == uuid.Nil {
 		return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
 	}
 
-	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{id})
 	q := `
-		SELECT id, name, color, user_id, archived_at
-		FROM tags
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
+		SELECT ` + tagColumnsSQL + `
+		FROM ` + tagFromSQL + `
+		WHERE t.id = $1 AND t.deleted_at IS NULL AND ` + ownerSQL
 
-	var t model.Tag
-	var archivedAt *time.Time
-	err := r.db.QueryRow(ctx, q, args...).Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt)
+	t, err := scanTag(r.db.QueryRow(ctx, q, args...))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
 	}
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("GetTag: %w", err)
 	}
-	t.Archived = archivedAt != nil
 	return t, nil
 }
 
-func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
-	archivedSQL := archivedFilter(params.IncludeArchived)
-
-	countOwnerSQL, countArgs := ownerPredicate("user_id", scope, nil)
+func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
+	countFilterSQL, countArgs := tagListFilterSQL(params, nil)
+	countOwnerSQL, countArgs := ownerPredicate("t.user_id", scope, countArgs)
 	countQ := `
 		SELECT COUNT(*)
-		FROM tags
-		WHERE deleted_at IS NULL AND ` + archivedSQL + countOwnerSQL
+		FROM ` + tagFromSQL + `
+		WHERE t.deleted_at IS NULL AND ` + countFilterSQL + countOwnerSQL
 
 	var totalCount int
 	if err := r.db.QueryRow(ctx, countQ, countArgs...).Scan(&totalCount); err != nil {
 		return model.Page[model.Tag]{}, fmt.Errorf("count tags: %w", err)
 	}
 
-	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
+	dataFilterSQL, args := tagListFilterSQL(params, []any{params.Limit, params.Offset})
+	dataOwnerSQL, args := ownerPredicate("t.user_id", scope, args)
 	q := `
-		SELECT id, name, color, user_id, archived_at
-		FROM tags
-		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
-		ORDER BY name
+		SELECT ` + tagColumnsSQL + `
+		FROM ` + tagFromSQL + `
+		WHERE t.deleted_at IS NULL AND ` + dataFilterSQL + dataOwnerSQL + `
+		ORDER BY k.id IS NOT NULL, t.name
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, q, args...)
@@ -66,12 +122,10 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 
 	var tags []model.Tag
 	for rows.Next() {
-		var t model.Tag
-		var archivedAt *time.Time
-		if err := rows.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt); err != nil {
+		t, err := scanTag(rows)
+		if err != nil {
 			return model.Page[model.Tag]{}, fmt.Errorf("ListTags scan: %w", err)
 		}
-		t.Archived = archivedAt != nil
 		tags = append(tags, t)
 	}
 	if err := rows.Err(); err != nil {

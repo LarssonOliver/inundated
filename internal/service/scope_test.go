@@ -44,7 +44,7 @@ func scopedMethods() []scopedMethod {
 			return err
 		}, 1},
 		{"ListTags", func(ctx context.Context, s *service.ServiceImpl) error {
-			_, err := s.ListTags(ctx, model.DefaultPaginationParams())
+			_, err := s.ListTags(ctx, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 			return err
 		}, 1},
 		{"CreateTag", func(ctx context.Context, s *service.ServiceImpl) error {
@@ -54,10 +54,10 @@ func scopedMethods() []scopedMethod {
 		{"UpdateTag", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.UpdateTag(ctx, model.Tag{Id: uuid.New(), Name: "t", Color: "#abcdef"})
 			return err
-		}, 1},
+		}, 2}, // GetTag (task tag guard) + UpdateTag
 		{"DeleteTag", func(ctx context.Context, s *service.ServiceImpl) error {
 			return s.DeleteTag(ctx, uuid.New())
-		}, 1},
+		}, 2}, // GetTag (task tag guard) + DeleteTag
 
 		// GetTagStats must pass the SAME scope to both GetTag and
 		// AggregateTimeSpentByTagsAndBuckets (spec Testing section).
@@ -127,6 +127,30 @@ func scopedMethods() []scopedMethod {
 			return err
 		}, 2},
 
+		{"GetTask", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.GetTask(ctx, uuid.New())
+			return err
+		}, 1},
+		{"ListTasks", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.ListTasks(ctx, model.TaskListParams{PaginationParams: model.DefaultPaginationParams()})
+			return err
+		}, 1},
+		{"CreateTask", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.CreateTask(ctx, model.Task{Name: "task"})
+			return err
+		}, 1},
+		{"UpdateTask", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.UpdateTask(ctx, model.Task{Id: uuid.New(), Name: "task"})
+			return err
+		}, 1},
+		{"MoveTask", func(ctx context.Context, s *service.ServiceImpl) error {
+			_, err := s.MoveTask(ctx, uuid.New(), nil, nil)
+			return err
+		}, 1},
+		{"DeleteTask", func(ctx context.Context, s *service.ServiceImpl) error {
+			return s.DeleteTask(ctx, uuid.New())
+		}, 1},
+
 		{"GetSettings", func(ctx context.Context, s *service.ServiceImpl) error {
 			_, err := s.GetSettings(ctx)
 			return err
@@ -148,7 +172,7 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 			record(scope)
 			return model.Tag{Id: id, Name: "t", Color: "#abcdef"}, nil
 		},
-		ListTagFn: func(_ context.Context, scope model.OwnerScope, _ model.PaginationParams) (model.Page[model.Tag], error) {
+		ListTagFn: func(_ context.Context, scope model.OwnerScope, _ model.TagListParams) (model.Page[model.Tag], error) {
 			record(scope)
 			return model.Page[model.Tag]{}, nil
 		},
@@ -214,6 +238,31 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 				out[i] = model.BucketValue{Bucket: b, Value: 0}
 			}
 			return out, nil
+		},
+
+		GetTaskFn: func(_ context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error) {
+			record(scope)
+			return model.Task{Id: id, Name: "task"}, nil
+		},
+		ListTasksFn: func(_ context.Context, scope model.OwnerScope, _ model.TaskListParams) (model.Page[model.Task], error) {
+			record(scope)
+			return model.Page[model.Task]{}, nil
+		},
+		CreateTaskFn: func(_ context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+			record(scope)
+			return task, nil
+		},
+		UpdateTaskFn: func(_ context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+			record(scope)
+			return task, nil
+		},
+		MoveTaskFn: func(_ context.Context, scope model.OwnerScope, id uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) (model.Task, error) {
+			record(scope)
+			return model.Task{Id: id, Name: "task"}, nil
+		},
+		DeleteTaskFn: func(_ context.Context, scope model.OwnerScope, _ uuid.UUID) error {
+			record(scope)
+			return nil
 		},
 
 		GetSettingsFn: func(_ context.Context, scope model.OwnerScope) (model.Settings, error) {

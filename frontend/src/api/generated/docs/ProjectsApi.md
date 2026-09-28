@@ -232,7 +232,7 @@ example().catch(console.error);
 
 Get timeseries stats for a project
 
-Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. 
+Returns aggregated timeseries data for a given metric on a project. Data is bucketed by the requested interval granularity within the specified time range. Defaults to &#x60;P30D/{now}&#x60; (the last 30 days) if &#x60;interval&#x60; is omitted. 
 
 ### Example
 

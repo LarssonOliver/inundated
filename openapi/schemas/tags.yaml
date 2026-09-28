@@ -12,6 +12,13 @@ Tag:
       $ref: "./shared.yaml#/HexColor"
     totalTimeMs:
       type: integer
+    taskId:
+      type: string
+      format: uuid
+      readOnly: true
+      description: Set when this is a task tag, naming the task that owns it.
+        A task tag's name, color and archived state follow its task, so it
+        can't be changed through the tag API.
     archived:
       type: boolean
       description: Whether this tag is archived. Archived tags are hidden from

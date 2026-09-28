@@ -193,7 +193,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		listFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
+		listFn     func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error)
 		initParams func() *api.ListTagsParams
 		wantData   []api.Tag
 		wantLimit  int
@@ -202,7 +202,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 	}{
 		{
 			name: "success with multiple tags and no params",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{tag1, tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListTagsParams { return nil },
@@ -215,7 +215,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "success with pagination params",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				require.Equal(t, 10, params.Limit)
 				require.Equal(t, 0, params.Offset)
 				return model.Page[model.Tag]{Data: []model.Tag{tag1, tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
@@ -232,7 +232,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "success with offset",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				require.Equal(t, 25, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Tag]{Data: []model.Tag{tag2}, TotalCount: 2, Limit: params.Limit, Offset: params.Offset}, nil
@@ -246,7 +246,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "success with empty list",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
 			},
 			initParams: func() *api.ListTagsParams { return nil },
@@ -256,7 +256,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "limit too low returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Tag]{}, nil
 			},
@@ -266,7 +266,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "limit too high returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Tag]{}, nil
 			},
@@ -276,7 +276,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "negative offset returns 400",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				t.Fatal("service should not be called")
 				return model.Page[model.Tag]{}, nil
 			},
@@ -286,7 +286,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "service returns error",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{}, errors.New("database unavailable")
 			},
 			initParams: func() *api.ListTagsParams { return nil },
@@ -294,7 +294,7 @@ func TestTagHandler_ListTags(t *testing.T) {
 		},
 		{
 			name: "includeArchived forwarded to service",
-			listFn: func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 				require.True(t, params.IncludeArchived)
 				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 0, Limit: params.Limit, Offset: params.Offset}, nil
 			},

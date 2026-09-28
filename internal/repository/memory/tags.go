@@ -1,8 +1,10 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -67,20 +69,76 @@ func (t *MemoryStore) GetTag(ctx context.Context, scope model.OwnerScope, id uui
 		return model.Tag{}, model.ErrNotFound
 	}
 
-	return t.tags[idx], nil
+	return t.viewTag(t.tags[idx]), nil
+}
+
+// viewTag returns tag as readers see it: a task tag takes its archived state
+// and color from its task. Callers must hold t.mu.
+func (t *MemoryStore) viewTag(tag model.Tag) model.Tag {
+	if tag.TaskId == nil {
+		return tag
+	}
+	idx := slices.IndexFunc(t.tasks, func(task model.Task) bool { return task.Id == *tag.TaskId })
+	if idx == -1 {
+		return tag
+	}
+	task := t.tasks[idx]
+	tag.Archived = task.Closed()
+	tag.Color = model.DefaultTaskTagColor
+	var first *model.Tag
+	for _, id := range task.TagIds {
+		i := slices.IndexFunc(t.tags, func(regular model.Tag) bool { return regular.Id == id })
+		if i == -1 {
+			continue
+		}
+		candidate := t.tags[i]
+		if first == nil || candidate.Name < first.Name ||
+			(candidate.Name == first.Name && strings.Compare(candidate.Id.String(), first.Id.String()) < 0) {
+			first = &candidate
+		}
+	}
+	if first != nil {
+		tag.Color = first.Color
+	}
+	return tag
 }
 
 // ListTags implements [repository.TagRepository].
-func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	query := strings.ToLower(params.Query)
 	all := make([]model.Tag, 0, len(t.tags))
-	for _, tag := range t.tags {
-		if matchesScope(tag.UserId, scope) && (params.IncludeArchived || !tag.Archived) {
-			all = append(all, tag)
+	for _, stored := range t.tags {
+		tag := t.viewTag(stored)
+		if !matchesScope(tag.UserId, scope) || (!params.IncludeArchived && tag.Archived) {
+			continue
 		}
+		switch params.Kind {
+		case model.TagKindAll:
+		case model.TagKindTask:
+			if tag.TaskId == nil {
+				continue
+			}
+		default:
+			if tag.TaskId != nil {
+				continue
+			}
+		}
+		if query != "" && !strings.Contains(strings.ToLower(tag.Name), query) {
+			continue
+		}
+		all = append(all, tag)
 	}
+
+	// Regular tags first, then by name, as the Postgres store orders them.
+	slices.SortStableFunc(all, func(a, b model.Tag) int {
+		return cmp.Or(
+			cmp.Compare(boolRank(a.TaskId != nil), boolRank(b.TaskId != nil)),
+			strings.Compare(a.Name, b.Name),
+		)
+	})
 
 	total := len(all)
 	start := min(params.Offset, total)
@@ -111,8 +169,9 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag
 	}
 
 	tag.UserId = t.tags[idx].UserId
+	tag.TaskId = t.tags[idx].TaskId
 	t.tags[idx] = tag
-	return tag, nil
+	return t.viewTag(tag), nil
 }
 
 // DeleteTag implements [repository.TagRepository].
@@ -129,4 +188,17 @@ func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id 
 
 	t.tags = slices.Delete(t.tags, idx, idx+1)
 	return nil
+}
+
+func boolRank(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// isTaskTag reports whether id names a task tag. Callers must hold t.mu.
+func (t *MemoryStore) isTaskTag(id uuid.UUID) bool {
+	idx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == id })
+	return idx != -1 && t.tags[idx].TaskId != nil
 }

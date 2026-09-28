@@ -280,6 +280,38 @@ func TestIndividualMigrations(t *testing.T) {
 				assertIndexNotExists(t, ctx, pool, "idx_timespans_user_id_start_time")
 			},
 		},
+		{
+			name:        "0013_create_tasks",
+			fromVersion: 12,
+			toVersion:   13,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "tasks")
+				assertTableNotExists(t, ctx, pool, "task_tags")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "tasks")
+				assertColumnExists(t, ctx, pool, "tasks", "id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "tasks", "tag_id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "tasks", "parent_id", sptr("uuid"))
+				assertColumnExists(t, ctx, pool, "tasks", "due_date", sptr("date"))
+				assertColumnExists(t, ctx, pool, "tasks", "estimate", sptr("interval"))
+				assertColumnExists(t, ctx, pool, "tasks", "rank", sptr("text"))
+				assertColumnExists(t, ctx, pool, "tasks", "close_reason", sptr("text"))
+				assertColumnExists(t, ctx, pool, "tasks", "closed_at", sptr("timestamp with time zone"))
+				assertForeignKeyExists(t, ctx, pool, "tasks", "tasks_user_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "tasks", "tasks_tag_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "tasks", "tasks_parent_id_fkey")
+				assertIndexExists(t, ctx, pool, "idx_tasks_siblings")
+
+				assertTableExists(t, ctx, pool, "task_tags")
+				assertForeignKeyExists(t, ctx, pool, "task_tags", "task_tags_task_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "task_tags", "task_tags_tag_id_fkey")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "tasks")
+				assertTableNotExists(t, ctx, pool, "task_tags")
+			},
+		},
 	}
 
 	for _, tc := range tests {

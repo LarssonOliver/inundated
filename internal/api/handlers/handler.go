@@ -13,6 +13,7 @@ type Handler struct {
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+	TaskHandler
 	SettingsHandler
 }
 
@@ -24,6 +25,7 @@ func NewHandler(authSvc service.AuthService, svc service.Service, secureCookies 
 		TagHandler:      *NewTagHandler(svc),
 		ProjectHandler:  *NewProjectHandler(svc),
 		TimespanHandler: *NewTimespanHandler(svc),
+		TaskHandler:     *NewTaskHandler(svc),
 		SettingsHandler: *NewSettingsHandler(svc),
 
 		AuthHandler: *NewAuthHandler(authSvc, secureCookies),

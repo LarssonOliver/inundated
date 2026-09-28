@@ -1,0 +1,53 @@
+taskIdPath:
+  name: taskId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+
+includeClosed:
+  name: includeClosed
+  in: query
+  required: false
+  description: >
+    Whether to include closed tasks in the results. Defaults to false.
+  schema:
+    type: boolean
+    default: false
+
+parentId:
+  name: parentId
+  in: query
+  required: false
+  description: Only list direct subtasks of this task.
+  schema:
+    type: string
+    format: uuid
+
+tagIdFilter:
+  name: tagId
+  in: query
+  required: false
+  description: Only list tasks carrying this regular tag.
+  schema:
+    type: string
+    format: uuid
+
+dueFrom:
+  name: dueFrom
+  in: query
+  required: false
+  description: Only list tasks due on or after this day.
+  schema:
+    type: string
+    format: date
+
+dueTo:
+  name: dueTo
+  in: query
+  required: false
+  description: Only list tasks due on or before this day.
+  schema:
+    type: string
+    format: date

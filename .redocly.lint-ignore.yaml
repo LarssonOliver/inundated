@@ -22,3 +22,11 @@ openapi/paths/timespans.yaml:
     - '#/timespans-id/get'
     - '#/timespans-id/delete'
     - '#/timespans-id/patch'
+openapi/paths/tasks.yaml:
+  security-defined:
+    - '#/tasks/get'
+    - '#/tasks/post'
+    - '#/tasks-id/get'
+    - '#/tasks-id/delete'
+    - '#/tasks-id/patch'
+    - '#/tasks-id-move/post'

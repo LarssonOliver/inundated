@@ -13,6 +13,24 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
+// Defines values for CloseReason.
+const (
+	Done    CloseReason = "done"
+	Ignored CloseReason = "ignored"
+)
+
+// Valid indicates whether the value is a known member of the CloseReason enum.
+func (e CloseReason) Valid() bool {
+	switch e {
+	case Done:
+		return true
+	case Ignored:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DateFormat.
 const (
 	Eu   DateFormat = "eu"
@@ -109,6 +127,27 @@ func (e WeekStartDay) Valid() bool {
 	}
 }
 
+// Defines values for TagKindQuery.
+const (
+	TagKindQueryAll   TagKindQuery = "all"
+	TagKindQueryLabel TagKindQuery = "label"
+	TagKindQueryTask  TagKindQuery = "task"
+)
+
+// Valid indicates whether the value is a known member of the TagKindQuery enum.
+func (e TagKindQuery) Valid() bool {
+	switch e {
+	case TagKindQueryAll:
+		return true
+	case TagKindQueryLabel:
+		return true
+	case TagKindQueryTask:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetProjectParamsInclude.
 const (
 	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
@@ -118,6 +157,27 @@ const (
 func (e GetProjectParamsInclude) Valid() bool {
 	switch e {
 	case GetProjectParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListTagsParamsKind.
+const (
+	ListTagsParamsKindAll   ListTagsParamsKind = "all"
+	ListTagsParamsKindLabel ListTagsParamsKind = "label"
+	ListTagsParamsKindTask  ListTagsParamsKind = "task"
+)
+
+// Valid indicates whether the value is a known member of the ListTagsParamsKind enum.
+func (e ListTagsParamsKind) Valid() bool {
+	switch e {
+	case ListTagsParamsKindAll:
+		return true
+	case ListTagsParamsKindLabel:
+		return true
+	case ListTagsParamsKindTask:
 		return true
 	default:
 		return false
@@ -139,6 +199,9 @@ func (e GetTagParamsInclude) Valid() bool {
 	}
 }
 
+// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+type CloseReason string
+
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
 	Color           HexColor   `json:"color"`
@@ -151,6 +214,15 @@ type CreateProject struct {
 type CreateTag struct {
 	Color HexColor `json:"color"`
 	Name  string   `json:"name"`
+}
+
+// CreateTask defines model for CreateTask.
+type CreateTask struct {
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Name          string              `json:"name"`
+	ParentId      *openapi_types.UUID `json:"parentId,omitempty"`
+	TagIds        *TagIdList          `json:"tagIds,omitempty"`
 }
 
 // CreateTimespan defines model for CreateTimespan.
@@ -173,6 +245,15 @@ type HexColor = string
 // Location defines model for Location.
 type Location = string
 
+// MoveTask defines model for MoveTask.
+type MoveTask struct {
+	// AfterTaskId The sibling to place the task after. Omit to place it first among its new siblings.
+	AfterTaskId *openapi_types.UUID `json:"afterTaskId,omitempty"`
+
+	// ParentId The new parent. Omit to move the task to the top level.
+	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
+}
+
 // PaginatedProjects defines model for PaginatedProjects.
 type PaginatedProjects struct {
 	// Data Array of items in this page
@@ -186,6 +267,15 @@ type PaginatedProjects struct {
 type PaginatedTags struct {
 	// Data Array of items in this page
 	Data []Tag `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTasks defines model for PaginatedTasks.
+type PaginatedTasks struct {
+	// Data Array of items in this page
+	Data []Task `json:"data"`
 
 	// Pagination Pagination metadata
 	Pagination PaginationDetails `json:"pagination"`
@@ -278,11 +368,14 @@ type StatsMetric string
 // Tag defines model for Tag.
 type Tag struct {
 	// Archived Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
-	Archived    bool               `json:"archived"`
-	Color       HexColor           `json:"color"`
-	Id          openapi_types.UUID `json:"id"`
-	Name        string             `json:"name"`
-	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
+	Archived bool               `json:"archived"`
+	Color    HexColor           `json:"color"`
+	Id       openapi_types.UUID `json:"id"`
+	Name     string             `json:"name"`
+
+	// TaskId Set when this is a task tag, naming the task that owns it. A task tag's name, color and archived state follow its task, so it can't be changed through the tag API.
+	TaskId      *openapi_types.UUID `json:"taskId,omitempty"`
+	TotalTimeMs *int                `json:"totalTimeMs,omitempty"`
 }
 
 // TagIdList defines model for TagIdList.
@@ -307,6 +400,28 @@ type TagStats struct {
 
 	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
 	Unit string `json:"unit"`
+}
+
+// Task defines model for Task.
+type Task struct {
+	// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+	CloseReason   *CloseReason        `json:"closeReason,omitempty"`
+	Closed        bool                `json:"closed"`
+	ClosedAt      *time.Time          `json:"closedAt,omitempty"`
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Id            openapi_types.UUID  `json:"id"`
+	Name          string              `json:"name"`
+
+	// ParentId The parent task, when this is a subtask.
+	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
+
+	// Rank Read-only. Sort key among the task's siblings. Tasks with the same parent sort by comparing ranks as plain byte strings.
+	Rank string `json:"rank"`
+
+	// TagId Read-only. The task's own task tag. Adding it to a timespan logs that time on the task, and adding it to a project assigns the task to the project.
+	TagId  openapi_types.UUID `json:"tagId"`
+	TagIds *TagIdList         `json:"tagIds,omitempty"`
 }
 
 // TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
@@ -353,6 +468,25 @@ type UpdateTag struct {
 	Name     *string   `json:"name,omitempty"`
 }
 
+// UpdateTask defines model for UpdateTask.
+type UpdateTask struct {
+	// ClearDueDate Removes the due date. Can't be combined with dueDate.
+	ClearDueDate *bool `json:"clearDueDate,omitempty"`
+
+	// ClearEstimate Removes the estimate. Can't be combined with estimateHours.
+	ClearEstimate *bool `json:"clearEstimate,omitempty"`
+
+	// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+	CloseReason *CloseReason `json:"closeReason,omitempty"`
+
+	// Closed Closing a task also closes its open subtasks with the same reason. Reopening a task also reopens its closed ancestors.
+	Closed        *bool               `json:"closed,omitempty"`
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Name          *string             `json:"name,omitempty"`
+	TagIds        *TagIdList          `json:"tagIds,omitempty"`
+}
+
 // UpdateTimespan defines model for UpdateTimespan.
 type UpdateTimespan struct {
 	EndTime   *time.Time `json:"endTime,omitempty"`
@@ -382,11 +516,20 @@ type WeekStartDay string
 // Code defines model for code.
 type Code = string
 
+// DueFrom defines model for dueFrom.
+type DueFrom = openapi_types.Date
+
+// DueTo defines model for dueTo.
+type DueTo = openapi_types.Date
+
 // Granularity defines model for granularity.
 type Granularity = string
 
 // IncludeArchivedQuery defines model for includeArchivedQuery.
 type IncludeArchivedQuery = bool
+
+// IncludeClosed defines model for includeClosed.
+type IncludeClosed = bool
 
 // IncludeQuery defines model for includeQuery.
 type IncludeQuery = []string
@@ -403,6 +546,9 @@ type LoginBinding = string
 // Offset defines model for offset.
 type Offset = int
 
+// ParentId defines model for parentId.
+type ParentId = openapi_types.UUID
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -412,8 +558,20 @@ type Redirect = string
 // State defines model for state.
 type State = string
 
+// TagIdFilter defines model for tagIdFilter.
+type TagIdFilter = openapi_types.UUID
+
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
+
+// TagKindQuery defines model for tagKindQuery.
+type TagKindQuery string
+
+// TagSearchQuery defines model for tagSearchQuery.
+type TagSearchQuery = string
+
+// TaskIdPath defines model for taskIdPath.
+type TaskIdPath = openapi_types.UUID
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
@@ -487,7 +645,16 @@ type ListTagsParams struct {
 
 	// IncludeArchived Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.
 	IncludeArchived *IncludeArchivedQuery `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+
+	// Q Only return tags whose name contains this text, ignoring case.
+	Q *TagSearchQuery `form:"q,omitempty" json:"q,omitempty"`
+
+	// Kind Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.
+	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
 }
+
+// ListTagsParamsKind defines parameters for ListTags.
+type ListTagsParamsKind string
 
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
@@ -513,6 +680,30 @@ type GetTagStatsParams struct {
 
 	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
 	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
+
+// ListTasksParams defines parameters for ListTasks.
+type ListTasksParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// IncludeClosed Whether to include closed tasks in the results. Defaults to false.
+	IncludeClosed *IncludeClosed `form:"includeClosed,omitempty" json:"includeClosed,omitempty"`
+
+	// ParentId Only list direct subtasks of this task.
+	ParentId *ParentId `form:"parentId,omitempty" json:"parentId,omitempty"`
+
+	// TagId Only list tasks carrying this regular tag.
+	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`
+
+	// DueFrom Only list tasks due on or after this day.
+	DueFrom *DueFrom `form:"dueFrom,omitempty" json:"dueFrom,omitempty"`
+
+	// DueTo Only list tasks due on or before this day.
+	DueTo *DueTo `form:"dueTo,omitempty" json:"dueTo,omitempty"`
 }
 
 // ListTimespansParams defines parameters for ListTimespans.
@@ -543,6 +734,15 @@ type CreateTagJSONRequestBody = CreateTag
 
 // UpdateTagJSONRequestBody defines body for UpdateTag for application/json ContentType.
 type UpdateTagJSONRequestBody = UpdateTag
+
+// CreateTaskJSONRequestBody defines body for CreateTask for application/json ContentType.
+type CreateTaskJSONRequestBody = CreateTask
+
+// UpdateTaskJSONRequestBody defines body for UpdateTask for application/json ContentType.
+type UpdateTaskJSONRequestBody = UpdateTask
+
+// MoveTaskJSONRequestBody defines body for MoveTask for application/json ContentType.
+type MoveTaskJSONRequestBody = MoveTask
 
 // CreateTimespanJSONRequestBody defines body for CreateTimespan for application/json ContentType.
 type CreateTimespanJSONRequestBody = CreateTimespan
