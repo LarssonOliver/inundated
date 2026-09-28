@@ -45,7 +45,7 @@ func TestTask_CRUD(t *testing.T) {
 	require.Equal(t, "#A3BE8C", tagResp.JSON200.Color)
 
 	// READ
-	getResp, err := client.GetTaskWithResponse(ctx, task.Id)
+	getResp, err := client.GetTaskWithResponse(ctx, task.Id, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, getResp.StatusCode())
 	require.Equal(t, task, *getResp.JSON200)
@@ -82,7 +82,7 @@ func TestTask_CRUD(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
 
-	getResp, err = client.GetTaskWithResponse(ctx, task.Id)
+	getResp, err = client.GetTaskWithResponse(ctx, task.Id, nil)
 	require.NoError(t, err)
 	require.Equal(t, 404, getResp.StatusCode())
 	tagResp, err = client.GetTagWithResponse(ctx, task.TagId, nil)
@@ -163,7 +163,7 @@ func TestTask_SubtasksAndMove(t *testing.T) {
 	updateResp, err := client.UpdateTaskWithResponse(ctx, parent.Id, UpdateTaskJSONRequestBody{CloseReason: &reason})
 	require.NoError(t, err)
 	require.Equal(t, 200, updateResp.StatusCode())
-	getResp, err := client.GetTaskWithResponse(ctx, b.Id)
+	getResp, err := client.GetTaskWithResponse(ctx, b.Id, nil)
 	require.NoError(t, err)
 	require.True(t, getResp.JSON200.Closed)
 
@@ -175,7 +175,7 @@ func TestTask_SubtasksAndMove(t *testing.T) {
 	deleteResp, err := client.DeleteTaskWithResponse(ctx, parent.Id)
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
-	getResp, err = client.GetTaskWithResponse(ctx, a.Id)
+	getResp, err = client.GetTaskWithResponse(ctx, a.Id, nil)
 	require.NoError(t, err)
 	require.Equal(t, 404, getResp.StatusCode())
 }
@@ -201,7 +201,7 @@ func TestTask_DeleteWithLoggedTimeIsRefused(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 409, deleteResp.StatusCode())
 
-	getResp, err := client.GetTaskWithResponse(ctx, task.Id)
+	getResp, err := client.GetTaskWithResponse(ctx, task.Id, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, getResp.StatusCode())
 }
@@ -265,7 +265,7 @@ func TestTask_SurvivesDeletedTag(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 204, deleteResp.StatusCode())
 
-	getResp, err := client.GetTaskWithResponse(ctx, task.Id)
+	getResp, err := client.GetTaskWithResponse(ctx, task.Id, nil)
 	require.NoError(t, err)
 	require.Equal(t, 200, getResp.StatusCode())
 	require.Nil(t, getResp.JSON200.TagIds)
@@ -316,4 +316,61 @@ func TestTask_HugeEstimateIsRejected(t *testing.T) {
 	updateResp, err := client.UpdateTaskWithResponse(ctx, createResp.JSON201.Id, UpdateTaskJSONRequestBody{EstimateHours: &huge})
 	require.NoError(t, err)
 	require.Equal(t, 400, updateResp.StatusCode())
+}
+
+func TestTask_TimeAndProjects(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	parentResp, err := client.CreateTaskWithResponse(ctx, CreateTaskJSONRequestBody{Name: "attribution-parent"})
+	require.NoError(t, err)
+	require.Equal(t, 201, parentResp.StatusCode())
+	parent := *parentResp.JSON201
+	childResp, err := client.CreateTaskWithResponse(ctx, CreateTaskJSONRequestBody{Name: "attribution-child", ParentId: &parent.Id})
+	require.NoError(t, err)
+	require.Equal(t, 201, childResp.StatusCode())
+	child := *childResp.JSON201
+
+	// Assign the parent to a project and log time on the child.
+	projectResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+		Name: "attribution-project", Color: "#5E81AC", TagIds: &[]TagIdPath{parent.TagId},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, projectResp.StatusCode())
+	projectId := projectResp.JSON201.Id
+
+	start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+	spanResp, err := client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		StartTime: start, EndTime: start.Add(90 * time.Minute), TagIds: &[]TagIdPath{child.TagId},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, spanResp.StatusCode())
+
+	include := TaskInclude{"totalTimeMs", "projectIds"}
+	getResp, err := client.GetTaskWithResponse(ctx, parent.Id, &GetTaskParams{Include: &include})
+	require.NoError(t, err)
+	require.Equal(t, 200, getResp.StatusCode())
+	require.Equal(t, 90*60*1000, *getResp.JSON200.TotalTimeMs, "subtask time rolls up")
+	require.Equal(t, []openapi_types.UUID{projectId}, *getResp.JSON200.ProjectIds)
+
+	// Without include the computed fields are left out.
+	plainResp, err := client.GetTaskWithResponse(ctx, parent.Id, nil)
+	require.NoError(t, err)
+	require.Nil(t, plainResp.JSON200.TotalTimeMs)
+	require.Nil(t, plainResp.JSON200.ProjectIds)
+
+	listResp, err := client.ListTasksWithResponse(ctx, &ListTasksParams{ProjectId: &projectId, Include: &include})
+	require.NoError(t, err)
+	require.Equal(t, 200, listResp.StatusCode())
+	require.Len(t, listResp.JSON200.Data, 2)
+	for _, task := range listResp.JSON200.Data {
+		require.Equal(t, 90*60*1000, *task.TotalTimeMs)
+		require.Equal(t, []openapi_types.UUID{projectId}, *task.ProjectIds)
+	}
+
+	// The project total counts the subtask's time.
+	projectInclude := IncludeQuery{"totalTimeMs"}
+	projectGet, err := client.GetProjectWithResponse(ctx, projectId, &GetProjectParams{Include: &projectInclude})
+	require.NoError(t, err)
+	require.Equal(t, 90*60*1000, *projectGet.JSON200.TotalTimeMs)
 }

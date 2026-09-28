@@ -267,6 +267,27 @@ func (r *PostgresStore) setTimespanTags(ctx context.Context, q Querier, timespan
 	return nil
 }
 
+// timespanHasEffectiveTagSQL is a condition that holds when the timespan
+// with id timespanId has any of the tags in the uuid[] tagIds among its
+// effective tags: the tags it carries, plus the effective tags of every task
+// whose task tag it carries (see task_effective_tags). tagIds must be live
+// tags: task_effective_tags can hold rows for deleted ones (see
+// refreshEffectiveTags), which this doesn't filter out.
+func timespanHasEffectiveTagSQL(timespanId, tagIds string) string {
+	return `EXISTS (
+		SELECT 1 FROM timespan_tags tt
+		WHERE tt.timespan_id = ` + timespanId + `
+			AND (
+				tt.tag_id = ANY(` + tagIds + `)
+				OR EXISTS (
+					SELECT 1 FROM tasks k
+					JOIN task_effective_tags te ON te.task_id = k.id
+					WHERE k.tag_id = tt.tag_id AND k.deleted_at IS NULL AND te.tag_id = ANY(` + tagIds + `)
+				)
+			)
+	)`
+}
+
 // GetTotalDurationByTags implements [repository.Repository].
 func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
 	if len(tagIds) == 0 {
@@ -280,21 +301,67 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 		FROM timespans t
 		WHERE t.deleted_at IS NULL
 			AND ` + ownerSQL + `
-			AND EXISTS (
-			SELECT 1 FROM timespan_tags tt
-			WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
-		)`
+			AND ` + timespanHasEffectiveTagSQL("t.id", "$1")
 
 	var duration *time.Duration
 	err := r.db.QueryRow(ctx, q, args...).Scan(&duration)
-	if errors.Is(err, pgx.ErrNoRows) || duration == nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, nil
 	}
 	if err != nil {
 		return 0, fmt.Errorf("GetTotalDurationByTags: %w", err)
 	}
+	if duration == nil {
+		// SUM over no timespans.
+		return 0, nil
+	}
 
 	return *duration, nil
+}
+
+// GetTotalDurationPerTag implements [repository.Repository].
+func (r *PostgresStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+	out := map[uuid.UUID]time.Duration{}
+	if len(tagIds) == 0 {
+		return out, nil
+	}
+
+	// hits pairs each timespan with every requested tag among its effective
+	// tags (see timespanHasEffectiveTagSQL); UNION counts a timespan once
+	// per tag however many ways it reaches it.
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
+	q := `
+		WITH hits AS (
+			SELECT tt.timespan_id, tt.tag_id
+			FROM timespan_tags tt
+			WHERE tt.tag_id = ANY($1)
+			UNION
+			SELECT tt.timespan_id, te.tag_id
+			FROM timespan_tags tt
+			JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
+			JOIN task_effective_tags te ON te.task_id = k.id
+			WHERE te.tag_id = ANY($1)
+		)
+		SELECT h.tag_id, SUM(t.end_time - t.start_time)
+		FROM hits h
+		JOIN timespans t ON t.id = h.timespan_id
+		WHERE t.deleted_at IS NULL AND ` + ownerSQL + `
+		GROUP BY h.tag_id`
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("GetTotalDurationPerTag: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tagId uuid.UUID
+		var duration time.Duration
+		if err := rows.Scan(&tagId, &duration); err != nil {
+			return nil, fmt.Errorf("GetTotalDurationPerTag scan: %w", err)
+		}
+		out[tagId] = duration
+	}
+	return out, rows.Err()
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements [repository.ProjectStatsRepository].
@@ -338,10 +405,8 @@ func (r *PostgresStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, 
 			CROSS JOIN bucket_window bw
 			WHERE t.deleted_at IS NULL
 				AND ` + ownerSQL + `
-				AND EXISTS (
-				SELECT 1 FROM timespan_tags tt
-				WHERE tt.timespan_id = t.id AND tt.tag_id = ANY($1)
-			) AND t.start_time < bw.max_end AND t.end_time > bw.min_start
+				AND ` + timespanHasEffectiveTagSQL("t.id", "$1") + `
+				AND t.start_time < bw.max_end AND t.end_time > bw.min_start
 		)
 		SELECT
 			ib.b_start AS bucket_start,

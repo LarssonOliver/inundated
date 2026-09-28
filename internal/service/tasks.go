@@ -9,7 +9,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-func (s *ServiceImpl) GetTask(ctx context.Context, id uuid.UUID) (model.Task, error) {
+func (s *ServiceImpl) GetTask(ctx context.Context, id uuid.UUID, includes *TaskServiceIncludes) (model.Task, error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Task{}, err
@@ -21,10 +21,18 @@ func (s *ServiceImpl) GetTask(ctx context.Context, id uuid.UUID) (model.Task, er
 		// (e.g. the zero UUID); it can never name a real row, so it's a miss.
 		return model.Task{}, fmt.Errorf("GetTask %s: %w", id, model.ErrNotFound)
 	}
-	return task, err
+	if err != nil {
+		return model.Task{}, err
+	}
+
+	tasks := []model.Task{task}
+	if err := s.addTaskIncludes(ctx, scope, tasks, includes); err != nil {
+		return model.Task{}, err
+	}
+	return tasks[0], nil
 }
 
-func (s *ServiceImpl) ListTasks(ctx context.Context, params model.TaskListParams) (model.Page[model.Task], error) {
+func (s *ServiceImpl) ListTasks(ctx context.Context, params model.TaskListParams, includes *TaskServiceIncludes) (model.Page[model.Task], error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Page[model.Task]{}, err
@@ -32,7 +40,56 @@ func (s *ServiceImpl) ListTasks(ctx context.Context, params model.TaskListParams
 	if params.DueFrom != nil && params.DueTo != nil && params.DueFrom.After(*params.DueTo) {
 		return model.Page[model.Task]{}, fmt.Errorf("ListTasks: dueFrom is after dueTo: %w", model.ErrInvalidArgument)
 	}
-	return s.repository.ListTasks(ctx, scope, params)
+	page, err := s.repository.ListTasks(ctx, scope, params)
+	if err != nil {
+		return model.Page[model.Task]{}, err
+	}
+	if err := s.addTaskIncludes(ctx, scope, page.Data, includes); err != nil {
+		return model.Page[model.Task]{}, err
+	}
+	return page, nil
+}
+
+// addTaskIncludes fills in the computed fields includes asks for, in place.
+// A task's total time is the time on its task tag, which rolls up its
+// subtasks because they inherit that tag.
+func (s *ServiceImpl) addTaskIncludes(ctx context.Context, scope model.OwnerScope, tasks []model.Task, includes *TaskServiceIncludes) error {
+	if includes == nil || len(tasks) == 0 {
+		return nil
+	}
+
+	if includes.TotalTime {
+		tagIds := make([]uuid.UUID, len(tasks))
+		for i, task := range tasks {
+			tagIds[i] = task.TagId
+		}
+		totals, err := s.repository.GetTotalDurationPerTag(ctx, scope, tagIds)
+		if err != nil {
+			return err
+		}
+		for i := range tasks {
+			totalTime := totals[tasks[i].TagId]
+			tasks[i].TotalTime = &totalTime
+		}
+	}
+
+	if includes.ProjectIds {
+		ids := make([]uuid.UUID, len(tasks))
+		for i, task := range tasks {
+			ids[i] = task.Id
+		}
+		projectIds, err := s.repository.ListTaskProjectIds(ctx, scope, ids)
+		if err != nil {
+			return err
+		}
+		for i := range tasks {
+			tasks[i].ProjectIds = projectIds[tasks[i].Id]
+			if tasks[i].ProjectIds == nil {
+				tasks[i].ProjectIds = []uuid.UUID{}
+			}
+		}
+	}
+	return nil
 }
 
 func (s *ServiceImpl) CreateTask(ctx context.Context, task model.Task) (model.Task, error) {

@@ -127,6 +127,11 @@ func (m *MockRepository) GetTotalDurationByTags(ctx context.Context, scope model
 	return args.Get(0).(time.Duration), args.Error(1)
 }
 
+func (m *MockRepository) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+	args := m.Called(ctx, scope, tagIds)
+	return args.Get(0).(map[uuid.UUID]time.Duration), args.Error(1)
+}
+
 func (m *MockRepository) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error) {
 	args := m.Called(ctx, scope, tagIds, buckets)
 	return args.Get(0).([]model.BucketValue), args.Error(1)
@@ -232,4 +237,9 @@ func (m *MockRepository) MoveTask(ctx context.Context, scope model.OwnerScope, i
 func (m *MockRepository) DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	args := m.Called(ctx, scope, id)
 	return args.Error(0)
+}
+
+func (m *MockRepository) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	args := m.Called(ctx, scope, taskIds)
+	return args.Get(0).(map[uuid.UUID][]uuid.UUID), args.Error(1)
 }

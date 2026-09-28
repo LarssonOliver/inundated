@@ -17,3 +17,20 @@ func DedupeUUIDs(ids []uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// SameUUIDSet reports whether a and b hold the same ids, ignoring order and
+// duplicates.
+func SameUUIDSet(a, b []uuid.UUID) bool {
+	inA := make(map[uuid.UUID]bool, len(a))
+	for _, id := range a {
+		inA[id] = true
+	}
+	inB := make(map[uuid.UUID]bool, len(b))
+	for _, id := range b {
+		if !inA[id] {
+			return false
+		}
+		inB[id] = true
+	}
+	return len(inA) == len(inB)
+}

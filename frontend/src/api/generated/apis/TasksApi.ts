@@ -49,6 +49,7 @@ export interface DeleteTaskRequest {
 
 export interface GetTaskRequest {
     taskId: string;
+    include?: Set<GetTaskIncludeEnum>;
 }
 
 export interface ListTasksRequest {
@@ -57,8 +58,10 @@ export interface ListTasksRequest {
     includeClosed?: boolean;
     parentId?: string;
     tagId?: string;
+    projectId?: string;
     dueFrom?: Date;
     dueTo?: Date;
+    include?: Set<ListTasksIncludeEnum>;
 }
 
 export interface MoveTaskRequest {
@@ -184,6 +187,10 @@ export class TasksApi extends runtime.BaseAPI {
 
         const queryParameters: any = {};
 
+        if (requestParameters['include'] != null) {
+            queryParameters['include'] = Array.from(requestParameters['include'])!.join(runtime.COLLECTION_FORMATS["csv"]);
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -242,12 +249,20 @@ export class TasksApi extends runtime.BaseAPI {
             queryParameters['tagId'] = requestParameters['tagId'];
         }
 
+        if (requestParameters['projectId'] != null) {
+            queryParameters['projectId'] = requestParameters['projectId'];
+        }
+
         if (requestParameters['dueFrom'] != null) {
             queryParameters['dueFrom'] = (requestParameters['dueFrom'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['dueTo'] != null) {
             queryParameters['dueTo'] = (requestParameters['dueTo'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['include'] != null) {
+            queryParameters['include'] = Array.from(requestParameters['include'])!.join(runtime.COLLECTION_FORMATS["csv"]);
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -396,3 +411,20 @@ export class TasksApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const GetTaskIncludeEnum = {
+    TotalTimeMs: 'totalTimeMs',
+    ProjectIds: 'projectIds'
+} as const;
+export type GetTaskIncludeEnum = typeof GetTaskIncludeEnum[keyof typeof GetTaskIncludeEnum];
+/**
+ * @export
+ */
+export const ListTasksIncludeEnum = {
+    TotalTimeMs: 'totalTimeMs',
+    ProjectIds: 'projectIds'
+} as const;
+export type ListTasksIncludeEnum = typeof ListTasksIncludeEnum[keyof typeof ListTasksIncludeEnum];

@@ -40,6 +40,13 @@ type Task struct {
 	CloseReason *CloseReason
 	ClosedAt    *time.Time
 	UserId      *uuid.UUID
+
+	// TotalTime and ProjectIds are only filled in when requested.
+	// TotalTime is the time logged on the task and its subtasks.
+	// ProjectIds are the projects whose tags meet the task's effective
+	// tags, whether it was assigned directly or shares a regular tag.
+	TotalTime  *time.Duration
+	ProjectIds []uuid.UUID
 }
 
 func (t Task) Closed() bool {
@@ -104,8 +111,11 @@ type TaskListParams struct {
 	IncludeClosed bool
 	ParentId      *uuid.UUID
 	TagId         *uuid.UUID
-	DueFrom       *time.Time
-	DueTo         *time.Time
+	// ProjectId keeps the tasks that belong to the project; see
+	// Task.ProjectIds.
+	ProjectId *uuid.UUID
+	DueFrom   *time.Time
+	DueTo     *time.Time
 }
 
 // TagKind selects regular tags, task tags, or both in ListTags.

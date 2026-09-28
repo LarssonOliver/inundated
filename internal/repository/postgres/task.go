@@ -137,6 +137,12 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 		b.args = append(b.args, *params.TagId)
 		fmt.Fprintf(&b.sql, " AND id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $%d)", len(b.args))
 	}
+	if params.ProjectId != nil {
+		b.args = append(b.args, *params.ProjectId)
+		fmt.Fprintf(&b.sql, ` AND id IN (
+			SELECT te.task_id FROM task_effective_tags te`+taskProjectJoinSQL+`
+			WHERE pt.project_id = $%d)`, len(b.args))
+	}
 	if params.DueFrom != nil {
 		b.add("due_date >=", *params.DueFrom)
 	}
@@ -213,7 +219,10 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		if err != nil {
 			return fmt.Errorf("CreateTask: %w", err)
 		}
-		return r.setTaskTags(ctx, q, created.Id, tagIds)
+		if err := r.setTaskTags(ctx, q, created.Id, tagIds); err != nil {
+			return err
+		}
+		return r.refreshEffectiveTags(ctx, q, created.Id)
 	})
 	if err != nil {
 		return model.Task{}, err
@@ -245,7 +254,10 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 			return fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
 		}
 		tagIds = utils.DedupeUUIDs(task.TagIds)
-		if patch.TagIds != nil {
+		// Only a change to the tag set touches task_tags and the effective
+		// tags; sending the current set back is a no-op.
+		tagsChanged := patch.TagIds != nil && !utils.SameUUIDSet(tagIds, existing.TagIds)
+		if tagsChanged {
 			if err := r.checkTaskTags(ctx, q, scope, tagIds, func() ([]uuid.UUID, error) {
 				return existing.TagIds, nil
 			}); err != nil {
@@ -303,10 +315,13 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 				return fmt.Errorf("UpdateTask tag: %w", err)
 			}
 		}
-		if patch.TagIds == nil {
+		if !tagsChanged {
 			return nil
 		}
-		return r.setTaskTags(ctx, q, updated.Id, tagIds)
+		if err := r.setTaskTags(ctx, q, updated.Id, tagIds); err != nil {
+			return err
+		}
+		return r.refreshEffectiveTags(ctx, q, updated.Id)
 	})
 	if err != nil {
 		return model.Task{}, err
@@ -399,6 +414,13 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 		} else if _, err := q.Exec(ctx, `UPDATE tasks SET rank = $2 WHERE id = $1`, id, rank); err != nil {
 			return fmt.Errorf("MoveTask: %w", err)
 		}
+		// Effective tags follow the parent, so a reorder among the same
+		// siblings leaves them as they are.
+		if !sameParent(task.ParentId, parentId) {
+			if err := r.refreshEffectiveTags(ctx, q, id); err != nil {
+				return err
+			}
+		}
 
 		moved, err = r.getTask(ctx, q, scope, id, false)
 		return err
@@ -458,12 +480,53 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 			),
 			deleted_tags AS (
 				UPDATE tags SET deleted_at = now() WHERE id IN (SELECT tag_id FROM sub)
+			),
+			deleted_effective_tags AS (
+				DELETE FROM task_effective_tags WHERE task_id IN (SELECT id FROM sub)
 			)
 			DELETE FROM project_tags WHERE tag_id IN (SELECT tag_id FROM sub)`, id); err != nil {
 			return fmt.Errorf("DeleteTask: %w", err)
 		}
 		return nil
 	})
+}
+
+// taskProjectJoinSQL joins a task's effective tags (te) to the live
+// projects (p) carrying one of them, through project_tags (pt). Tag
+// deletion is soft and leaves links to the tag in place, so the tag itself
+// must be live too, or a task and a project that both carried a
+// since-deleted tag would still meet.
+const taskProjectJoinSQL = `
+	JOIN tags lt ON lt.id = te.tag_id AND lt.deleted_at IS NULL
+	JOIN project_tags pt ON pt.tag_id = te.tag_id
+	JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL`
+
+func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	out := map[uuid.UUID][]uuid.UUID{}
+	if len(taskIds) == 0 {
+		return out, nil
+	}
+
+	ownerSQL, args := ownerPredicate("p.user_id", scope, []any{taskIds})
+	query := `
+		SELECT DISTINCT te.task_id, p.id
+		FROM task_effective_tags te` + taskProjectJoinSQL + `
+		WHERE te.task_id = ANY($1) AND ` + ownerSQL + `
+		ORDER BY te.task_id, p.id`
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ListTaskProjectIds: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskId, projectId uuid.UUID
+		if err := rows.Scan(&taskId, &projectId); err != nil {
+			return nil, fmt.Errorf("ListTaskProjectIds scan: %w", err)
+		}
+		out[taskId] = append(out[taskId], projectId)
+	}
+	return out, rows.Err()
 }
 
 // checkTaskTags reports model.ErrInvalidReference unless every id is a
@@ -495,6 +558,15 @@ func lockTaskTree(ctx context.Context, q Querier, scope model.OwnerScope) error 
 		return fmt.Errorf("lockTaskTree: %w", err)
 	}
 	return nil
+}
+
+// sameParent reports whether a and b name the same parent (nil for the top
+// level).
+func sameParent(a, b *uuid.UUID) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 type rankedTask struct {
@@ -565,6 +637,51 @@ func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uui
 		out[taskId] = append(out[taskId], tagId)
 	}
 	return out, rows.Err()
+}
+
+// refreshEffectiveTags rewrites the task_effective_tags rows of taskId and
+// every live task below it. Call it after anything that feeds them changes:
+// a task's regular tags, or where it sits in the tree.
+//
+// It leaves out tags that are already deleted, but deleting a tag later
+// doesn't touch the table (doing so could race a concurrent refresh), and
+// migration 0014's backfill didn't filter them, so rows for deleted tags
+// can remain. Readers that join these rows to
+// something other than a caller's live tag ids must check the tag is live;
+// see taskProjectJoinSQL.
+func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, taskId uuid.UUID) error {
+	const subtree = `
+		WITH RECURSIVE sub AS (
+			SELECT id FROM tasks WHERE id = $1
+			UNION
+			SELECT c.id FROM tasks c JOIN sub ON c.parent_id = sub.id
+			WHERE c.deleted_at IS NULL
+		)`
+	if _, err := q.Exec(ctx, subtree+`
+		DELETE FROM task_effective_tags WHERE task_id IN (SELECT id FROM sub)`, taskId); err != nil {
+		return fmt.Errorf("refreshEffectiveTags delete: %w", err)
+	}
+	if _, err := q.Exec(ctx, subtree+`,
+		ancestry(task_id, ancestor_id) AS (
+			SELECT id, id FROM sub
+			UNION
+			SELECT a.task_id, p.parent_id
+			FROM ancestry a
+			JOIN tasks p ON p.id = a.ancestor_id
+			WHERE p.parent_id IS NOT NULL
+		)
+		INSERT INTO task_effective_tags (task_id, tag_id)
+		SELECT a.task_id, k.tag_id
+		FROM ancestry a
+		JOIN tasks k ON k.id = a.ancestor_id
+		UNION
+		SELECT a.task_id, tt.tag_id
+		FROM ancestry a
+		JOIN task_tags tt ON tt.task_id = a.ancestor_id
+		JOIN tags lt ON lt.id = tt.tag_id AND lt.deleted_at IS NULL`, taskId); err != nil {
+		return fmt.Errorf("refreshEffectiveTags insert: %w", err)
+	}
+	return nil
 }
 
 // setTaskTags replaces a task's regular tags.

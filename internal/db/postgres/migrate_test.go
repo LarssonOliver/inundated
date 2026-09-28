@@ -312,6 +312,58 @@ func TestIndividualMigrations(t *testing.T) {
 				assertTableNotExists(t, ctx, pool, "task_tags")
 			},
 		},
+		{
+			name:        "0014_task_effective_tags",
+			fromVersion: 13,
+			toVersion:   14,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "task_effective_tags")
+
+				// A parent task tagged "label" with one subtask, to check the
+				// backfill.
+				_, err := pool.Exec(ctx, `
+					INSERT INTO tags (id, name, color) VALUES
+						('00000000-0000-0000-0000-00000000000a', 'label', '#000000'),
+						('00000000-0000-0000-0000-00000000000b', 'parent', '#000000'),
+						('00000000-0000-0000-0000-00000000000c', 'child', '#000000');
+					INSERT INTO tasks (id, tag_id, parent_id, name, rank) VALUES
+						('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000b', NULL, 'parent', 'V'),
+						('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-000000000001', 'child', 'V');
+					INSERT INTO task_tags (task_id, tag_id) VALUES
+						('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a');`)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableExists(t, ctx, pool, "task_effective_tags")
+				assertForeignKeyExists(t, ctx, pool, "task_effective_tags", "task_effective_tags_task_id_fkey")
+				assertForeignKeyExists(t, ctx, pool, "task_effective_tags", "task_effective_tags_tag_id_fkey")
+				assertIndexExists(t, ctx, pool, "idx_task_effective_tags_tag_id")
+
+				var childTags []string
+				require.NoError(t, pool.QueryRow(ctx, `
+					SELECT array_agg(tag.name ORDER BY tag.name)
+					FROM task_effective_tags te JOIN tags tag ON tag.id = te.tag_id
+					WHERE te.task_id = '00000000-0000-0000-0000-000000000002'`).Scan(&childTags))
+				require.Equal(t, []string{"child", "label", "parent"}, childTags)
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertTableNotExists(t, ctx, pool, "task_effective_tags")
+			},
+		},
+		{
+			name:        "0015_timespan_tags_tag_id_index",
+			fromVersion: 14,
+			toVersion:   15,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexNotExists(t, ctx, pool, "idx_timespan_tags_tag_id")
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexExists(t, ctx, pool, "idx_timespan_tags_tag_id")
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertIndexNotExists(t, ctx, pool, "idx_timespan_tags_tag_id")
+			},
+		},
 	}
 
 	for _, tc := range tests {

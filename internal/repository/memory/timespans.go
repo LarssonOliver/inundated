@@ -143,26 +143,20 @@ func (t *MemoryStore) GetTotalDurationByTags(ctx context.Context, scope model.Ow
 		return 0, nil
 	}
 
+	tagSet := make(map[uuid.UUID]struct{}, len(tagIds))
+	for _, tagID := range tagIds {
+		tagSet[tagID] = struct{}{}
+	}
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	timespanIds := []uuid.UUID{}
-	for _, inputTagId := range tagIds {
-		for _, timespan := range t.timespans {
-			if !matchesScope(timespan.UserId, scope) {
-				continue
-			}
-			if slices.Contains(timespan.TagIds, inputTagId) && !slices.Contains(timespanIds, timespan.Id) {
-				timespanIds = append(timespanIds, timespan.Id)
-			}
-		}
-	}
-
 	totalDuration := time.Duration(0)
-	for _, timespanId := range timespanIds {
-		idx := slices.IndexFunc(t.timespans, func(ts model.Timespan) bool { return ts.Id == timespanId })
-		ts := t.timespans[idx]
-		totalDuration += ts.EndTime.Sub(ts.StartTime)
+	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) || !t.timespanHasAnyTag(timespan, tagSet) {
+			continue
+		}
+		totalDuration += timespan.EndTime.Sub(timespan.StartTime)
 	}
 
 	return totalDuration, nil
@@ -200,7 +194,7 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 		if !matchesScope(timespan.UserId, scope) {
 			continue
 		}
-		if !timespanHasAnyTag(timespan.TagIds, tagSet) {
+		if !t.timespanHasAnyTag(timespan, tagSet) {
 			continue
 		}
 
@@ -217,10 +211,63 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 	return values, nil
 }
 
-func timespanHasAnyTag(timespanTagIDs []uuid.UUID, requestedTagSet map[uuid.UUID]struct{}) bool {
-	for _, tagID := range timespanTagIDs {
+// GetTotalDurationPerTag implements [repository.TimespanRepository].
+func (t *MemoryStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
+	out := map[uuid.UUID]time.Duration{}
+	if len(tagIds) == 0 {
+		return out, nil
+	}
+	wanted := make(map[uuid.UUID]bool, len(tagIds))
+	for _, id := range tagIds {
+		wanted[id] = true
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	effective := make(map[uuid.UUID]map[uuid.UUID]struct{}, len(t.tasks))
+	for _, task := range t.tasks {
+		effective[task.TagId] = t.taskEffectiveTags(task)
+	}
+	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) {
+			continue
+		}
+		// Count the timespan once per requested tag it reaches.
+		hits := map[uuid.UUID]bool{}
+		for _, tagId := range timespan.TagIds {
+			if wanted[tagId] {
+				hits[tagId] = true
+			}
+			for tag := range effective[tagId] {
+				if wanted[tag] {
+					hits[tag] = true
+				}
+			}
+		}
+		for tagId := range hits {
+			out[tagId] += timespan.EndTime.Sub(timespan.StartTime)
+		}
+	}
+	return out, nil
+}
+
+// timespanHasAnyTag reports whether any of the requested tags is among the
+// timespan's effective tags: the tags it carries, plus the effective tags of
+// every task whose task tag it carries. Callers must hold t.mu.
+func (t *MemoryStore) timespanHasAnyTag(timespan model.Timespan, requestedTagSet map[uuid.UUID]struct{}) bool {
+	for _, tagID := range timespan.TagIds {
 		if _, ok := requestedTagSet[tagID]; ok {
 			return true
+		}
+		idx := slices.IndexFunc(t.tasks, func(task model.Task) bool { return task.TagId == tagID })
+		if idx == -1 {
+			continue
+		}
+		for effective := range t.taskEffectiveTags(t.tasks[idx]) {
+			if _, ok := requestedTagSet[effective]; ok {
+				return true
+			}
 		}
 	}
 
