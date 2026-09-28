@@ -71,6 +71,29 @@ describe("tags API", () => {
     expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 0, includeArchived: true });
   });
 
+  it("getTagsByIds asks for any kind of tag by id, 100 ids per request", async () => {
+    api.listTags.mockImplementation(async (request) => ({
+      data: [...(request?.ids ?? [])].map((id) => ({
+        id,
+        name: id,
+        color: "#111",
+        archived: false,
+      })),
+      pagination: { limit: 100, offset: 0, total: request?.ids?.size ?? 0 },
+    }));
+    const ids = Array.from({ length: 150 }, (_, i) => `t${i}`);
+
+    const sut = createTagsApi(api);
+    const result = await sut.getTagsByIds([...ids, "t0"]);
+
+    expect(result.map((tag) => tag.id)).toEqual(ids);
+    expect(api.listTags).toHaveBeenCalledTimes(2);
+    expect(api.listTags).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "all", includeArchived: true, limit: 100 }),
+    );
+    expect(api.listTags.mock.calls[1][0]?.ids?.size).toBe(50);
+  });
+
   it("getTag returns mapped tag when found", async () => {
     api.getTag.mockResolvedValue({
       id: "abc",
@@ -199,34 +222,6 @@ describe("tags API", () => {
       interval: "2023-01-01/2023-01-31",
       granularity: "daily",
       timezone: "UTC",
-    });
-  });
-
-  it("listAllTags pages through the full result set instead of stopping at one page", async () => {
-    api.listTags
-      .mockResolvedValueOnce({
-        data: [{ id: "1", name: "A", color: "#111", archived: false }],
-        pagination: { limit: 1, offset: 0, total: 2 },
-      })
-      .mockResolvedValueOnce({
-        data: [{ id: "2", name: "B", color: "#222", archived: true }],
-        pagination: { limit: 1, offset: 1, total: 2 },
-      });
-
-    const sut = createTagsApi(api);
-    const result = await sut.listAllTags(true);
-
-    expect(result.map((t) => t.id)).toEqual(["1", "2"]);
-    expect(api.listTags).toHaveBeenCalledTimes(2);
-    expect(api.listTags).toHaveBeenNthCalledWith(1, {
-      limit: 100,
-      offset: 0,
-      includeArchived: true,
-    });
-    expect(api.listTags).toHaveBeenNthCalledWith(2, {
-      limit: 100,
-      offset: 1,
-      includeArchived: true,
     });
   });
 });

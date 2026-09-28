@@ -71,6 +71,10 @@ func tagListFilterSQL(params model.TagListParams, args []any) (string, []any) {
 		args = append(args, "%"+escapeLike(params.Query)+"%")
 		fmt.Fprintf(&sql, `t.name ILIKE $%d ESCAPE '\' AND `, len(args))
 	}
+	if params.Ids != nil {
+		args = append(args, params.Ids)
+		fmt.Fprintf(&sql, `t.id = ANY($%d) AND `, len(args))
+	}
 	return sql.String(), args
 }
 

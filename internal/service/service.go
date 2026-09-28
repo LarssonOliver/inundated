@@ -72,6 +72,8 @@ type GetTagStatsInput struct {
 
 type ProjectServiceGetIncludes struct {
 	TotalTime bool
+	// TaskTime fills in Project.TaskTime.
+	TaskTime bool
 }
 
 type ProjectService interface {

@@ -165,6 +165,9 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 		if query != "" && !strings.Contains(strings.ToLower(tag.Name), query) {
 			continue
 		}
+		if params.Ids != nil && !slices.Contains(params.Ids, tag.Id) {
+			continue
+		}
 		all = append(all, tag)
 	}
 

@@ -9,6 +9,7 @@ tags:
       - $ref: "../parameters/shared.yaml#/includeArchivedQuery"
       - $ref: "../parameters/shared.yaml#/tagSearchQuery"
       - $ref: "../parameters/shared.yaml#/tagKindQuery"
+      - $ref: "../parameters/shared.yaml#/tagIdsQuery"
     responses:
       '200':
         description: Paginated list of tags, regular tags before task tags

@@ -15,6 +15,24 @@ includeQuery:
         - totalTimeMs
     uniqueItems: true
 
+projectIncludeQuery:
+  name: include
+  in: query
+  description: >
+    Comma-separated list of optional computed fields to include.
+    Supported values: totalTimeMs, taskTimeMs
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      type: string
+      enum:
+        - totalTimeMs
+        - taskTimeMs
+    uniqueItems: true
+
 interval:
   name: interval
   in: query
@@ -172,6 +190,23 @@ tagSearchQuery:
     Only return tags whose name contains this text, ignoring case.
   schema:
     type: string
+
+tagIdsQuery:
+  name: ids
+  in: query
+  required: false
+  description: >
+    Only return the tags with these ids, comma-separated. The other filters
+    still apply, so pass kind=all to get task tags too.
+  style: form
+  explode: false
+  schema:
+    type: array
+    maxItems: 100
+    items:
+      type: string
+      format: uuid
+    uniqueItems: true
 
 tagKindQuery:
   name: kind

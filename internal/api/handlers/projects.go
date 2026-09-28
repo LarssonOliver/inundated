@@ -87,6 +87,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 	if request.Params.Include != nil {
 		includes.TotalTime = slices.Contains(*request.Params.Include, string(api.GetProjectParamsIncludeTotalTimeMs))
+		includes.TaskTime = slices.Contains(*request.Params.Include, string(api.GetProjectParamsIncludeTaskTimeMs))
 	}
 
 	reply, err := p.svc.GetProject(ctx, request.ProjectId, &includes)
@@ -108,6 +109,11 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 	if includes.TotalTime && reply.TotalTime != nil {
 		TotalTimeMs := int(reply.TotalTime.Milliseconds())
 		apiProject.TotalTimeMs = &TotalTimeMs
+	}
+
+	if includes.TaskTime && reply.TaskTime != nil {
+		taskTimeMs := int(reply.TaskTime.Milliseconds())
+		apiProject.TaskTimeMs = &taskTimeMs
 	}
 
 	if len(reply.TagIds) > 0 {

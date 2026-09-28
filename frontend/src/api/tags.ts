@@ -8,7 +8,6 @@ import {
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 import { tagStatsMapper } from "./mappers/tagStatsMapper";
-import { fetchAllPages } from "./pagination";
 
 export interface PaginationMetadata {
   limit: number;
@@ -31,7 +30,6 @@ export interface TagsApi {
     offset?: number,
     includeArchived?: boolean,
   ): Promise<PaginatedTagsResponse>;
-  listAllTags(includeArchived?: boolean): Promise<Tag[]>;
   /**
    * Searches tags by name on the server (case-insensitive substring match),
    * regular tags first, then by name.
@@ -50,6 +48,11 @@ export interface TagsApi {
     limit: number,
     offset: number,
   ): Promise<PaginatedTagsResponse>;
+  /**
+   * Fetches the tags with these ids, regular and task tags alike, including
+   * archived ones. Ids that name no tag are left out.
+   */
+  getTagsByIds(ids: readonly string[]): Promise<Tag[]>;
   getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
@@ -64,6 +67,9 @@ export interface TagsApi {
 }
 
 const defaultGeneratedApi = new GeneratedTagsApi(ApiConfig);
+
+// The server caps both the ids filter and the page size at 100.
+const MAX_IDS_PER_REQUEST = 100;
 
 function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
   return {
@@ -86,23 +92,6 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
           total: response.pagination.total,
         },
       };
-    },
-
-    /**
-     * Fetches every tag, paging through the full result set rather than a
-     * single page - used by the calendar view, which needs every tag's
-     * color (including archived ones, so a timespan tagged with a
-     * since-archived tag still gets its color) rather than just the most
-     * recent page.
-     */
-    async listAllTags(includeArchived: boolean = false): Promise<Tag[]> {
-      return fetchAllPages(async (limit, offset) => {
-        const response = await api.listTags({ limit, offset, includeArchived });
-        return {
-          data: mapFromApiArray(tagMapper, response.data),
-          pagination: response.pagination,
-        };
-      });
     },
 
     async searchTags(
@@ -143,6 +132,26 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
           total: response.pagination.total,
         },
       };
+    },
+
+    async getTagsByIds(ids: readonly string[]): Promise<Tag[]> {
+      const unique = [...new Set(ids)];
+      const chunks: string[][] = [];
+      for (let i = 0; i < unique.length; i += MAX_IDS_PER_REQUEST) {
+        chunks.push(unique.slice(i, i + MAX_IDS_PER_REQUEST));
+      }
+      const pages = await Promise.all(
+        chunks.map((chunk) =>
+          api.listTags({
+            limit: MAX_IDS_PER_REQUEST,
+            offset: 0,
+            includeArchived: true,
+            kind: ListTagsKindEnum.All,
+            ids: new Set(chunk),
+          }),
+        ),
+      );
+      return pages.flatMap((page) => mapFromApiArray(tagMapper, page.data));
     },
 
     async getTag(id: string, detailed: boolean): Promise<Tag> {

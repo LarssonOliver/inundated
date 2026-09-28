@@ -14,9 +14,13 @@ import {
   eventColorStyle,
   concurrentEventBorderOverrideCss,
   UNTAGGED_CALENDAR_ID,
+  TASK_DUE_EVENT_PREFIX,
+  tasksToDueDateEvents,
+  calendarEventTagIds,
+  dateRangeToDueDates,
 } from "./calendar";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
-import type { Timespan } from "@/model";
+import type { Task, Timespan } from "@/model";
 import type { Tag } from "@/model";
 
 function makeTimespan(overrides: Partial<Timespan> = {}): Timespan {
@@ -310,5 +314,56 @@ describe("concurrentEventBorderOverrideCss", () => {
 
   it("returns an empty string for no calendar ids", () => {
     expect(concurrentEventBorderOverrideCss([])).toBe("");
+  });
+});
+
+describe("tasksToDueDateEvents", () => {
+  const task = (overrides: Partial<Task>): Task => ({
+    id: "k1",
+    name: "Ship it",
+    tagId: "tk1",
+    tagIds: new Set(),
+    rank: "V",
+    closed: false,
+    ...overrides,
+  });
+
+  it("makes an all-day event on each due date, colored by the task tag", () => {
+    const [event] = tasksToDueDateEvents([task({ dueDate: "2026-09-30" })]);
+    expect(event.id).toBe(`${TASK_DUE_EVENT_PREFIX}k1`);
+    expect(event.title).toBe("Ship it");
+    expect(event.start.toString()).toBe("2026-09-30");
+    expect(event.end.toString()).toBe("2026-09-30");
+    expect(event.calendarId).toBe("tk1");
+    expect(event.tagIds).toEqual(["tk1"]);
+  });
+
+  it("skips tasks without a due date", () => {
+    expect(tasksToDueDateEvents([task({})])).toEqual([]);
+  });
+});
+
+describe("calendarEventTagIds", () => {
+  it("collects each tag id once", () => {
+    const events = timespansToCalendarEvents(
+      [
+        makeTimespan({ id: "a", tagIds: new Set(["t1", "t2"]) }),
+        makeTimespan({ id: "b", tagIds: new Set(["t2"]) }),
+        makeTimespan({ id: "c" }),
+      ],
+      "UTC",
+    );
+    expect(calendarEventTagIds(events)).toEqual(["t1", "t2"]);
+  });
+});
+
+describe("dateRangeToDueDates", () => {
+  it("covers the dates of the range in its own timezone", () => {
+    expect(
+      dateRangeToDueDates({
+        start: Temporal.ZonedDateTime.from("2026-09-28T00:00[Europe/Stockholm]"),
+        end: Temporal.ZonedDateTime.from("2026-10-04T23:59:59[Europe/Stockholm]"),
+      }),
+    ).toEqual({ dueFrom: "2026-09-28", dueTo: "2026-10-04" });
   });
 });

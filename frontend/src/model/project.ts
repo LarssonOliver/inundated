@@ -7,6 +7,8 @@ export interface Project {
   timeBudgetHours?: number;
   tagIds: Set<string>;
   totalTimeMs?: number;
+  /** The part of totalTimeMs logged on the project's tasks. */
+  taskTimeMs?: number;
   archived: boolean;
 }
 

@@ -83,7 +83,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 			_, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "Design", Color: "#00ff00"})
 			require.NoError(t, err)
-			_, err = repo.CreateTag(ctx, testScope, model.Tag{Name: "100% done_ish", Color: "#00ff00"})
+			done, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "100% done_ish", Color: "#00ff00"})
 			require.NoError(t, err)
 			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Design review"})
 			require.NoError(t, err)
@@ -114,6 +114,18 @@ func TestTaskRepositoryContract(t *testing.T) {
 			none, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Query: "e_r"})
 			require.NoError(t, err)
 			require.Empty(t, none.Data)
+
+			// Ids keeps only those tags, of the kinds asked for.
+			byId, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindAll, Ids: []uuid.UUID{done.Id, task.TagId}})
+			require.NoError(t, err)
+			require.Equal(t, 2, byId.TotalCount)
+			require.Equal(t, []uuid.UUID{done.Id, task.TagId}, []uuid.UUID{byId.Data[0].Id, byId.Data[1].Id})
+			labelById, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Ids: []uuid.UUID{done.Id, task.TagId}})
+			require.NoError(t, err)
+			require.Len(t, labelById.Data, 1)
+			noIds, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindAll, Ids: []uuid.UUID{}})
+			require.NoError(t, err)
+			require.Empty(t, noIds.Data)
 		})
 
 		t.Run(repoName+"TaskTagColorAndArchivedFollowTask", func(t *testing.T) {

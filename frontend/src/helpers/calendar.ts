@@ -10,7 +10,7 @@ import {
 } from "date-fns";
 import { shouldTextBeDarkFromBgColor, mixHexColors } from "@/helpers/colors";
 import { formatFullDate, DATE_TOKENS, MONTH_TOKENS } from "@/helpers/dates";
-import type { Tag, Timespan, DateFormat, TimeFormat, WeekStartDay } from "@/model";
+import type { Tag, Task, Timespan, DateFormat, TimeFormat, WeekStartDay } from "@/model";
 import type { CalendarEventExternal, CalendarType } from "@schedule-x/calendar";
 
 /** The subset of schedule-x views the calendar page offers. */
@@ -178,6 +178,55 @@ export function timespansToCalendarEvents(
       tagIds,
     };
   });
+}
+
+/** Prefix of the event ids {@link tasksToDueDateEvents} gives due dates. */
+export const TASK_DUE_EVENT_PREFIX = "task-due-";
+
+/**
+ * Maps tasks with a due date to all-day calendar events on that date,
+ * colored like the task's own tag.
+ */
+export function tasksToDueDateEvents(tasks: readonly Task[]): CalendarEventExternal[] {
+  return tasks
+    .filter((task) => task.dueDate)
+    .map((task) => {
+      const day = Temporal.PlainDate.from(task.dueDate as string);
+      return {
+        id: `${TASK_DUE_EVENT_PREFIX}${task.id}`,
+        title: task.name,
+        start: day,
+        end: day,
+        calendarId: task.tagId,
+        tagIds: [task.tagId],
+        taskId: task.id,
+      };
+    });
+}
+
+/**
+ * The tag ids calendar events refer to, for fetching just those tags.
+ */
+export function calendarEventTagIds(events: readonly CalendarEventExternal[]): string[] {
+  const ids = new Set<string>();
+  for (const event of events) {
+    for (const id of (event.tagIds as string[] | undefined) ?? []) ids.add(id);
+  }
+  return [...ids];
+}
+
+/**
+ * The calendar dates (YYYY-MM-DD) a schedule-x range covers, for the task
+ * due date filter.
+ */
+export function dateRangeToDueDates(range: {
+  start: Temporal.ZonedDateTime;
+  end: Temporal.ZonedDateTime;
+}): { dueFrom: string; dueTo: string } {
+  return {
+    dueFrom: range.start.toPlainDate().toString(),
+    dueTo: range.end.toPlainDate().toString(),
+  };
 }
 
 /**

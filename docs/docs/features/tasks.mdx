@@ -1,0 +1,88 @@
+---
+sidebar_position: 2
+---
+
+# Tasks
+
+A task is a to-do item. It has:
+
+- a **name**,
+- an optional **due date** and **estimate** (in hours),
+- zero or more **tags**, and
+- zero or more **subtasks**, kept in the order you give them.
+
+Tasks are listed on the **Tasks** page. Each row can be edited in place
+(name, tags, due date and estimate), and its buttons move a task up or down
+among its siblings, or indent and outdent it to change its parent. A task
+doesn't need a project.
+
+## Task tags
+
+Every task owns a **task tag**, named after the task. Task tags show up in
+every tag field, drawn as an outlined pill starting with `#`, so there is no
+separate task picker:
+
+- Type `#` in a tag field to see only tasks; the parent task's name is shown
+  next to subtasks.
+- Type `#` and a new name, then press Enter, to create a task on the spot.
+
+A time entry carrying a task's tag is time logged on that task. An entry can
+carry several task tags, and its time counts toward each of them.
+
+Task tags take their color from the task's first tag, or a default blue when
+the task has none. They aren't listed on the Tags page, and a task can't be
+tagged with another task's tag. Two tasks may share a name.
+
+## Where task time counts
+
+Each task has **effective tags**: its own task tag, its tags, and those of
+every task above it. A time entry logged on a task counts toward all of
+them. So with this setup:
+
+| | Tags |
+|---|---|
+| Project *Website* | `acme`, `#Build landing page` |
+| Task *Build landing page* | `design` |
+| Subtask *Hero section* | none |
+
+an hour logged on `#Hero section` counts toward *Hero section*, *Build
+landing page*, the `design` tag and the *Website* project. An entry still
+counts only once toward a project, however many of its tags the project has.
+
+A task belongs to a project in two ways:
+
+- **Assigned**: its task tag is one of the project's tags. Adding a task's
+  tag to a project assigns it, and a task can be assigned to many projects.
+- **Shared tag**: it carries one of the project's regular tags, directly or
+  through a parent.
+
+Totals are computed when you look at them, so moving a task, retagging it or
+assigning it to a project changes past totals too.
+
+## On a project
+
+A project's page lists its open tasks and has its own quick-add field, which
+creates a task and assigns it to the project. Next to the list are two
+figures that together make up the project's total:
+
+- **On tasks**: time logged on any of the project's tasks, open or closed.
+- **Additional**: the rest of the project's time, logged on its tags but not
+  on any of its tasks.
+
+## On the calendar
+
+Open tasks with a due date appear as all-day markers on their due date,
+colored like their task tag. Clicking one opens the task.
+
+## Closing and deleting
+
+A task is closed as **done** (its checkbox) or **ignored** (the block
+button next to it). Closed tasks are hidden unless **Show Closed** is on,
+which lists them in their own section, and their task tags are archived
+with them, which hides the tags from pickers while keeping their time.
+
+- Closing a task closes its open subtasks.
+- Reopening a subtask reopens the tasks above it.
+
+A task can only be deleted, with its subtasks, while none of them has
+logged time. Otherwise, close it instead.

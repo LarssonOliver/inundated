@@ -127,6 +127,12 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 		}
 		params.Kind = model.TagKind(*request.Params.Kind)
 	}
+	if request.Params.Ids != nil {
+		if len(*request.Params.Ids) > 100 {
+			return api.ListTags400Response{}, nil
+		}
+		params.Ids = *request.Params.Ids
+	}
 
 	page, err := t.svc.ListTags(ctx, params)
 

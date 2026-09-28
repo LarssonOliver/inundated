@@ -15,6 +15,10 @@ export interface TaskListFilter {
   includeClosed?: boolean;
   parentId?: string;
   projectId?: string;
+  /** Only tasks due on or after this date (YYYY-MM-DD). */
+  dueFrom?: string;
+  /** Only tasks due on or before this date (YYYY-MM-DD). */
+  dueTo?: string;
 }
 
 export interface TasksApi {
@@ -34,11 +38,14 @@ const defaultGeneratedApi = new GeneratedTasksApi(ApiConfig);
 function createTasksApi(api: GeneratedTasksApi = defaultGeneratedApi): TasksApi {
   return {
     async listAllTasks(filter: TaskListFilter = {}): Promise<Task[]> {
+      const { dueFrom, dueTo, ...rest } = filter;
       return fetchAllPages(async (limit, offset) => {
         const response = await api.listTasks({
           limit,
           offset,
-          ...filter,
+          ...rest,
+          ...(dueFrom && { dueFrom: new Date(dueFrom) }),
+          ...(dueTo && { dueTo: new Date(dueTo) }),
           include: new Set([ListTasksIncludeEnum.TotalTimeMs]),
         });
         return { data: response.data.map(taskFromApi), pagination: response.pagination };

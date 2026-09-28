@@ -71,6 +71,7 @@ export interface ListTagsRequest {
     includeArchived?: boolean;
     q?: string;
     kind?: ListTagsKindEnum;
+    ids?: Set<string>;
 }
 
 export interface UpdateTagRequest {
@@ -317,6 +318,10 @@ export class TagsApi extends runtime.BaseAPI {
 
         if (requestParameters['kind'] != null) {
             queryParameters['kind'] = requestParameters['kind'];
+        }
+
+        if (requestParameters['ids'] != null) {
+            queryParameters['ids'] = Array.from(requestParameters['ids'])!.join(runtime.COLLECTION_FORMATS["csv"]);
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

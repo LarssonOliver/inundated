@@ -14,6 +14,7 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       timeBudgetHours: apiModel.timeBudgetHours,
       tagIds: new Set(apiModel.tagIds || []),
       totalTimeMs: apiModel.totalTimeMs,
+      ...(apiModel.taskTimeMs !== undefined && { taskTimeMs: apiModel.taskTimeMs }),
       archived: apiModel.archived,
     };
   },

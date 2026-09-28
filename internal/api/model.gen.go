@@ -150,12 +150,15 @@ func (e TagKindQuery) Valid() bool {
 
 // Defines values for GetProjectParamsInclude.
 const (
+	GetProjectParamsIncludeTaskTimeMs  GetProjectParamsInclude = "taskTimeMs"
 	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
 )
 
 // Valid indicates whether the value is a known member of the GetProjectParamsInclude enum.
 func (e GetProjectParamsInclude) Valid() bool {
 	switch e {
+	case GetProjectParamsIncludeTaskTimeMs:
+		return true
 	case GetProjectParamsIncludeTotalTimeMs:
 		return true
 	default:
@@ -341,13 +344,16 @@ type PaginationDetails struct {
 // Project defines model for Project.
 type Project struct {
 	// Archived Whether this project is archived. Archived projects are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
-	Archived        bool               `json:"archived"`
-	Color           HexColor           `json:"color"`
-	Id              openapi_types.UUID `json:"id"`
-	Name            string             `json:"name"`
-	TagIds          *TagIdList         `json:"tagIds,omitempty"`
-	TimeBudgetHours *float64           `json:"timeBudgetHours,omitempty"`
-	TotalTimeMs     *int               `json:"totalTimeMs,omitempty"`
+	Archived bool               `json:"archived"`
+	Color    HexColor           `json:"color"`
+	Id       openapi_types.UUID `json:"id"`
+	Name     string             `json:"name"`
+	TagIds   *TagIdList         `json:"tagIds,omitempty"`
+
+	// TaskTimeMs Time logged on the project's tasks, open or closed. Each time span counts once. totalTimeMs minus this is the project's time that is not on any of its tasks.
+	TaskTimeMs      *int     `json:"taskTimeMs,omitempty"`
+	TimeBudgetHours *float64 `json:"timeBudgetHours,omitempty"`
+	TotalTimeMs     *int     `json:"totalTimeMs,omitempty"`
 }
 
 // ProjectStats defines model for ProjectStats.
@@ -597,6 +603,9 @@ type ProjectIdFilter = openapi_types.UUID
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
+// ProjectIncludeQuery defines model for projectIncludeQuery.
+type ProjectIncludeQuery = []string
+
 // Redirect defines model for redirect.
 type Redirect = string
 
@@ -608,6 +617,9 @@ type TagIdFilter = openapi_types.UUID
 
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
+
+// TagIdsQuery defines model for tagIdsQuery.
+type TagIdsQuery = []openapi_types.UUID
 
 // TagKindQuery defines model for tagKindQuery.
 type TagKindQuery string
@@ -659,8 +671,8 @@ type ListProjectsParams struct {
 
 // GetProjectParams defines parameters for GetProject.
 type GetProjectParams struct {
-	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs
-	Include *IncludeQuery `form:"include,omitempty" json:"include,omitempty"`
+	// Include Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, taskTimeMs
+	Include *ProjectIncludeQuery `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProjectParamsInclude defines parameters for GetProject.
@@ -699,6 +711,9 @@ type ListTagsParams struct {
 
 	// Kind Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.
 	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
+
+	// Ids Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get task tags too.
+	Ids *TagIdsQuery `form:"ids,omitempty" json:"ids,omitempty"`
 }
 
 // ListTagsParamsKind defines parameters for ListTags.

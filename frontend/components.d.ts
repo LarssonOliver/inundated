@@ -14,6 +14,7 @@ declare module 'vue' {
     MaterialIcon: typeof import('./src/components/icons/MaterialIcon.vue')['default']
     ProjectEdit: typeof import('./src/components/project/ProjectEdit.vue')['default']
     ProjectStats: typeof import('./src/components/project/ProjectStats.vue')['default']
+    ProjectTasks: typeof import('./src/components/project/ProjectTasks.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectDropdown: typeof import('./src/components/inputs/SelectDropdown.vue')['default']
