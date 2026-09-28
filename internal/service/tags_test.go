@@ -111,14 +111,14 @@ func TestTagService_ListTags(t *testing.T) {
 	tests := []struct {
 		name    string
 		params  model.PaginationParams
-		listFn  func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error)
+		listFn  func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 		want    model.Page[model.Tag]
 		wantErr bool
 	}{
 		{
 			name:   "successful list",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: tags, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Tag]{Data: tags, TotalCount: 2},
@@ -127,7 +127,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "repository error",
 			params: model.DefaultPaginationParams(),
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{}, errors.New("database error")
 			},
 			wantErr: true,
@@ -135,7 +135,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "pagination params are forwarded",
 			params: model.PaginationParams{Limit: 1, Offset: 1},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				require.Equal(t, 1, params.Limit)
 				require.Equal(t, 1, params.Offset)
 				return model.Page[model.Tag]{Data: tags[1:], TotalCount: 2}, nil
@@ -146,7 +146,7 @@ func TestTagService_ListTags(t *testing.T) {
 		{
 			name:   "empty page",
 			params: model.PaginationParams{Limit: 10, Offset: 100},
-			listFn: func(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error) {
+			listFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 2}, nil
 			},
 			want:    model.Page[model.Tag]{Data: []model.Tag{}, TotalCount: 2},
@@ -160,7 +160,7 @@ func TestTagService_ListTags(t *testing.T) {
 			}
 
 			s := service.NewService(repo)
-			got, gotErr := s.ListTags(context.Background(), tt.params)
+			got, gotErr := s.ListTags(context.Background(), model.TagListParams{PaginationParams: tt.params})
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return

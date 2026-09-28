@@ -69,6 +69,8 @@ export interface ListTagsRequest {
     limit?: number;
     offset?: number;
     includeArchived?: boolean;
+    q?: string;
+    kind?: ListTagsKindEnum;
 }
 
 export interface UpdateTagRequest {
@@ -272,7 +274,7 @@ export class TagsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. Defaults to `P30D/{now}` (the last 30 days) if `interval` is omitted. 
      * Get timeseries stats for a tag
      */
     async getTagStatsRaw(requestParameters: GetTagStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TagStats>> {
@@ -283,7 +285,7 @@ export class TagsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. 
+     * Returns aggregated timeseries data for a given metric on a tag. Data is bucketed by the requested interval granularity within the specified time range. Defaults to `P30D/{now}` (the last 30 days) if `interval` is omitted. 
      * Get timeseries stats for a tag
      */
     async getTagStats(requestParameters: GetTagStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TagStats> {
@@ -307,6 +309,14 @@ export class TagsApi extends runtime.BaseAPI {
 
         if (requestParameters['includeArchived'] != null) {
             queryParameters['includeArchived'] = requestParameters['includeArchived'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['kind'] != null) {
+            queryParameters['kind'] = requestParameters['kind'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -404,3 +414,12 @@ export const GetTagIncludeEnum = {
     TotalTimeMs: 'totalTimeMs'
 } as const;
 export type GetTagIncludeEnum = typeof GetTagIncludeEnum[keyof typeof GetTagIncludeEnum];
+/**
+ * @export
+ */
+export const ListTagsKindEnum = {
+    Label: 'label',
+    Task: 'task',
+    All: 'all'
+} as const;
+export type ListTagsKindEnum = typeof ListTagsKindEnum[keyof typeof ListTagsKindEnum];

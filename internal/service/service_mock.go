@@ -47,7 +47,7 @@ type TagServiceMock struct {
 	DeleteFn   func(ctx context.Context, id uuid.UUID) error
 	GetFn      func(ctx context.Context, id uuid.UUID, includes *TagServiceGetIncludes) (model.Tag, error)
 	GetStatsFn func(ctx context.Context, input GetTagStatsInput) (model.TagStats, error)
-	ListFn     func(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error)
+	ListFn     func(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error)
 	UpdateFn   func(ctx context.Context, tag model.Tag) (model.Tag, error)
 }
 
@@ -69,7 +69,7 @@ func (m *TagServiceMock) GetTag(ctx context.Context, id uuid.UUID, includes *Tag
 }
 
 // ListTags implements [service.TagService].
-func (m *TagServiceMock) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (m *TagServiceMock) ListTags(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 	return m.ListFn(ctx, params)
 }
 

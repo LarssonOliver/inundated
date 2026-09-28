@@ -54,6 +54,8 @@ func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequest
 
 	if errors.Is(err, model.ErrNotFound) {
 		return api.DeleteTag404Response{}, nil
+	} else if errors.Is(err, model.ErrInvalidArgument) {
+		return api.DeleteTag400Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -82,6 +84,7 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 		Name:     reply.Name,
 		Color:    reply.Color,
 		Archived: reply.Archived,
+		TaskId:   reply.TaskId,
 	}
 
 	if includes.TotalTime {
@@ -114,7 +117,18 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 		paginationParams.IncludeArchived = *request.Params.IncludeArchived
 	}
 
-	page, err := t.svc.ListTags(ctx, paginationParams)
+	params := model.TagListParams{PaginationParams: paginationParams, Kind: model.TagKindLabel}
+	if request.Params.Q != nil {
+		params.Query = *request.Params.Q
+	}
+	if request.Params.Kind != nil {
+		if !request.Params.Kind.Valid() {
+			return api.ListTags400Response{}, nil
+		}
+		params.Kind = model.TagKind(*request.Params.Kind)
+	}
+
+	page, err := t.svc.ListTags(ctx, params)
 
 	if err != nil {
 		return nil, err
@@ -127,6 +141,7 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 			Name:     tag.Name,
 			Color:    tag.Color,
 			Archived: tag.Archived,
+			TaskId:   tag.TaskId,
 		}
 		apiTags = append(apiTags, apiTag)
 	}

@@ -10,6 +10,7 @@ Name | Type
 `name` | string
 `color` | string
 `totalTimeMs` | number
+`taskId` | string
 `archived` | boolean
 
 ## Example
@@ -23,6 +24,7 @@ const example = {
   "name": null,
   "color": null,
   "totalTimeMs": null,
+  "taskId": null,
   "archived": null,
 } satisfies Tag
 

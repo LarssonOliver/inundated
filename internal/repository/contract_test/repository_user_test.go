@@ -190,6 +190,26 @@ func TestUserRepositoryContract(t *testing.T) {
 			require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 4}, adoption)
 		})
 
+		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsTasks", func(t *testing.T) {
+			repo := newRepo(t)
+
+			orphan, err := repo.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "orphan"})
+			require.NoError(t, err)
+
+			user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com"}
+			_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
+			require.NoError(t, err)
+			// The task's own task tag is adopted along with it.
+			require.Equal(t, model.OrphanAdoption{Tags: 1, Tasks: 1}, adoption)
+
+			scope := model.UserScope(user.Id)
+			got, err := repo.GetTask(ctx, scope, orphan.Id)
+			require.NoError(t, err)
+			require.Equal(t, user.Id, *got.UserId)
+			_, err = repo.GetTag(ctx, scope, orphan.TagId)
+			require.NoError(t, err)
+		})
+
 		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsExistingSettings", func(t *testing.T) {
 			repo := newRepo(t)
 

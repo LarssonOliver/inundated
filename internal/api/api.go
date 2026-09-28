@@ -124,6 +124,36 @@ func (s *Server) UpdateTimespan(ctx context.Context, request UpdateTimespanReque
 	return s.handler.UpdateTimespan(ctx, request)
 }
 
+// CreateTask implements StrictServerInterface.
+func (s *Server) CreateTask(ctx context.Context, request CreateTaskRequestObject) (CreateTaskResponseObject, error) {
+	return s.handler.CreateTask(ctx, request)
+}
+
+// DeleteTask implements StrictServerInterface.
+func (s *Server) DeleteTask(ctx context.Context, request DeleteTaskRequestObject) (DeleteTaskResponseObject, error) {
+	return s.handler.DeleteTask(ctx, request)
+}
+
+// GetTask implements StrictServerInterface.
+func (s *Server) GetTask(ctx context.Context, request GetTaskRequestObject) (GetTaskResponseObject, error) {
+	return s.handler.GetTask(ctx, request)
+}
+
+// ListTasks implements StrictServerInterface.
+func (s *Server) ListTasks(ctx context.Context, request ListTasksRequestObject) (ListTasksResponseObject, error) {
+	return s.handler.ListTasks(ctx, request)
+}
+
+// UpdateTask implements StrictServerInterface.
+func (s *Server) UpdateTask(ctx context.Context, request UpdateTaskRequestObject) (UpdateTaskResponseObject, error) {
+	return s.handler.UpdateTask(ctx, request)
+}
+
+// MoveTask implements StrictServerInterface.
+func (s *Server) MoveTask(ctx context.Context, request MoveTaskRequestObject) (MoveTaskResponseObject, error) {
+	return s.handler.MoveTask(ctx, request)
+}
+
 // GetSettings implements StrictServerInterface.
 func (s *Server) GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error) {
 	return s.handler.GetSettings(ctx, request)

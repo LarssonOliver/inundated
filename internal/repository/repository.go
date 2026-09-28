@@ -13,21 +13,59 @@ type Repository interface {
 	TagRepository
 	ProjectRepository
 	TimespanRepository
+	TaskRepository
 	ProjectStatsRepository
 	SettingsRepository
 }
 
 type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
-	ListTags(ctx context.Context, scope model.OwnerScope, params model.PaginationParams) (model.Page[model.Tag], error)
+	// GetTag and ListTags report a task tag with its TaskId set, and with
+	// its color and archived state derived from its task: archived while
+	// the task is closed, and colored like the task's first regular tag by
+	// name (or model.DefaultTaskTagColor). ListTags puts regular tags
+	// first, then orders by name case-insensitively, then by name bytes,
+	// then by id.
+	ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	// UpdateTag replaces the tag's mutable fields (including Archived)
 	// wholesale with those on tag - it does not merge with the stored tag.
 	// Callers must fetch the current tag first and copy forward any field
 	// they don't intend to change, or that field resets to its zero value
 	// (e.g. an omitted/false Archived unarchives the tag).
+	//
+	// UpdateTag and DeleteTag refuse task tags, which follow their task,
+	// with model.ErrInvalidArgument. Deleting a tag drops it from the
+	// TagIds of every task, project and timespan.
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+}
+
+type TaskRepository interface {
+	GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
+	// ListTasks orders tasks by parent, then by rank among siblings.
+	ListTasks(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
+	// CreateTask creates the task together with its task tag and places it
+	// last among its siblings. The parent must be an open task in scope,
+	// and TagIds must name regular tags only. Id, TagId, Rank and the
+	// closed fields on task are ignored.
+	CreateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	// UpdateTask applies patch to the stored task within the same write,
+	// so concurrent updates to different fields don't undo each other;
+	// parent and rank only change through MoveTask. Closing an open task
+	// also closes its open descendants with the same reason, and reopening
+	// a task also reopens its closed ancestors. The task tag's name follows
+	// the task's.
+	UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
+	// MoveTask places the task under parentId (nil for the top level),
+	// directly after the sibling afterId (nil for first). A parent that is
+	// the task itself or one of its descendants, a closed parent for an
+	// open task, or an afterId that isn't a sibling under the new parent is
+	// model.ErrInvalidArgument.
+	MoveTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
+	// DeleteTask deletes the task, its descendants and their task tags. It
+	// fails with model.ErrConflict when any of them has logged time.
+	DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }
 
 type UserRepository interface {

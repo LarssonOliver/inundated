@@ -76,6 +76,11 @@ func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user mode
 			WHERE (SELECT v FROM is_first) AND user_id IS NULL
 			RETURNING 1
 		),
+		adopted_tasks AS (
+			UPDATE tasks SET user_id = $1
+			WHERE (SELECT v FROM is_first) AND user_id IS NULL
+			RETURNING 1
+		),
 		adopted_settings AS (
 			UPDATE settings SET user_id = $1
 			WHERE (SELECT v FROM is_first) AND user_id IS NULL
@@ -86,6 +91,7 @@ func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user mode
 			(SELECT count(*) FROM adopted_projects)::int,
 			(SELECT count(*) FROM adopted_tags)::int,
 			(SELECT count(*) FROM adopted_timespans)::int,
+			(SELECT count(*) FROM adopted_tasks)::int,
 			(SELECT count(*) FROM adopted_settings)::int
 		FROM new_user nu`
 
@@ -93,7 +99,7 @@ func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user mode
 	var adoption model.OrphanAdoption
 	err := r.db.QueryRow(ctx, q, user.Id, user.Sub, user.Email, user.Name).
 		Scan(&created.Id, &created.Sub, &created.Email, &created.Name,
-			&adoption.Projects, &adoption.Tags, &adoption.Timespans, &adoption.Settings)
+			&adoption.Projects, &adoption.Tags, &adoption.Timespans, &adoption.Tasks, &adoption.Settings)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: sub already exists: %w", model.ErrAlreadyExists)

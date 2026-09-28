@@ -24,7 +24,7 @@ func TestMemoryStore_Tag_ScopeIsolation(t *testing.T) {
 	_, err = store.GetTag(ctx, b, tag.Id)
 	require.ErrorIs(t, err, model.ErrNotFound)
 
-	page, err := store.ListTags(ctx, b, model.DefaultPaginationParams())
+	page, err := store.ListTags(ctx, b, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 	require.NoError(t, err)
 	require.Empty(t, page.Data)
 }
@@ -261,7 +261,7 @@ func TestTagStore_ListTags(t *testing.T) {
 				insertedIds[createdTag.Id] = true
 			}
 
-			page, gotErr := ta.ListTags(context.Background(), testScope, tt.params)
+			page, gotErr := ta.ListTags(context.Background(), testScope, model.TagListParams{PaginationParams: tt.params})
 			if tt.wantErr {
 				require.Error(t, gotErr)
 				return
@@ -294,7 +294,7 @@ func TestTagStore_ListTags_ArchivedFiltering(t *testing.T) {
 	require.True(t, archived.Archived)
 
 	t.Run("excludes archived by default", func(t *testing.T) {
-		page, err := ta.ListTags(ctx, testScope, model.DefaultPaginationParams())
+		page, err := ta.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 		require.NoError(t, err)
 		require.Len(t, page.Data, 1)
 		require.Equal(t, active.Id, page.Data[0].Id)
@@ -303,7 +303,7 @@ func TestTagStore_ListTags_ArchivedFiltering(t *testing.T) {
 	t.Run("includes archived when requested", func(t *testing.T) {
 		params := model.DefaultPaginationParams()
 		params.IncludeArchived = true
-		page, err := ta.ListTags(ctx, testScope, params)
+		page, err := ta.ListTags(ctx, testScope, model.TagListParams{PaginationParams: params})
 		require.NoError(t, err)
 		require.Len(t, page.Data, 2)
 	})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -59,7 +60,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			_, _ = repo.CreateTag(ctx, testScope, model.Tag{Name: "a", Color: "#ffffff"})
 			_, _ = repo.CreateTag(ctx, testScope, model.Tag{Name: "b", Color: "#000000"})
 
-			page, err := repo.ListTags(ctx, testScope, model.DefaultPaginationParams())
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 2)
 			require.Equal(t, 2, page.TotalCount)
@@ -107,6 +108,39 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
+		t.Run(repoName+"DeleteDropsTagFromProjectsAndTimespans", func(t *testing.T) {
+			repo := newRepo(t)
+			keep, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "keep", Color: "#123456"})
+			require.NoError(t, err)
+			gone, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "gone", Color: "#123456"})
+			require.NoError(t, err)
+			both := []uuid.UUID{keep.Id, gone.Id}
+
+			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "p", Color: "#123456", TagIds: both})
+			require.NoError(t, err)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			span, err := repo.CreateTimespan(ctx, testScope, model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), TagIds: both})
+			require.NoError(t, err)
+
+			require.NoError(t, repo.DeleteTag(ctx, testScope, gone.Id))
+
+			// Reads leave the deleted tag out, and writing back what was
+			// read still works.
+			gotProject, err := repo.GetProject(ctx, testScope, project.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, gotProject.TagIds)
+			gotProject.Name = "renamed"
+			_, err = repo.UpdateProject(ctx, testScope, gotProject)
+			require.NoError(t, err)
+
+			gotSpan, err := repo.GetTimespan(ctx, testScope, span.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{keep.Id}, gotSpan.TagIds)
+			gotSpan.Name = "renamed"
+			_, err = repo.UpdateTimespan(ctx, testScope, gotSpan)
+			require.NoError(t, err)
+		})
+
 		t.Run(repoName+"ListPagination_OffsetAndLimit", func(t *testing.T) {
 			repo := newRepo(t)
 
@@ -117,11 +151,11 @@ func TestTagRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 0})
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 2, Offset: 0}})
 			require.NoError(t, err)
 			assertPage(t, page, 2, 5)
 
-			page2, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 2, Offset: 2})
+			page2, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 2, Offset: 2}})
 			require.NoError(t, err)
 			assertPage(t, page2, 2, 5)
 
@@ -141,7 +175,7 @@ func TestTagRepositoryContract(t *testing.T) {
 
 			_, _ = repo.CreateTag(ctx, testScope, model.Tag{Name: "only", Color: "#000000"})
 
-			page, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 100})
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 100}})
 			require.NoError(t, err)
 			assertPage(t, page, 0, 1) // empty items, but TotalCount still reflects reality
 		})
@@ -156,7 +190,7 @@ func TestTagRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 3, Offset: 3})
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 3, Offset: 3}})
 			require.NoError(t, err)
 			assertPage(t, page, 2, 5) // only 2 items remain
 		})
@@ -164,7 +198,7 @@ func TestTagRepositoryContract(t *testing.T) {
 		t.Run(repoName+"ListPagination_EmptyStore", func(t *testing.T) {
 			repo := newRepo(t)
 
-			page, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 10, Offset: 0})
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 10, Offset: 0}})
 			require.NoError(t, err)
 			assertPage(t, page, 0, 0)
 		})
@@ -179,7 +213,7 @@ func TestTagRepositoryContract(t *testing.T) {
 				})
 			}
 
-			page, err := repo.ListTags(ctx, testScope, model.PaginationParams{Limit: 1, Offset: 0})
+			page, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.PaginationParams{Limit: 1, Offset: 0}})
 			require.NoError(t, err)
 			require.Equal(t, 5, page.TotalCount) // TotalCount is always the full count
 			require.Len(t, page.Data, 1)
@@ -198,7 +232,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 
 			// List is scoped
-			pageA, err := repo.ListTags(ctx, scopeA, model.DefaultPaginationParams())
+			pageA, err := repo.ListTags(ctx, scopeA, model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, pageA.Data, 1)
 			require.Equal(t, 1, pageA.TotalCount)
@@ -233,7 +267,7 @@ func TestTagRepositoryContract(t *testing.T) {
 			unowned, err := repo.CreateTag(ctx, model.UnownedScope(), model.Tag{Name: "unowned", Color: "#222222"})
 			require.NoError(t, err)
 
-			unownedPage, err := repo.ListTags(ctx, model.UnownedScope(), model.DefaultPaginationParams())
+			unownedPage, err := repo.ListTags(ctx, model.UnownedScope(), model.TagListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, unownedPage.Data, 1)
 			require.Equal(t, unowned.Id, unownedPage.Data[0].Id)

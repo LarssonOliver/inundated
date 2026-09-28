@@ -41,7 +41,7 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	return tag, nil
 }
 
-func (s *ServiceImpl) ListTags(ctx context.Context, params model.PaginationParams) (model.Page[model.Tag], error) {
+func (s *ServiceImpl) ListTags(ctx context.Context, params model.TagListParams) (model.Page[model.Tag], error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Page[model.Tag]{}, err
@@ -70,6 +70,10 @@ func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return err
+	}
+	if id == uuid.Nil {
+		// As in GetTag: a malformed id can never name a real row.
+		return fmt.Errorf("DeleteTag %s: %w", id, model.ErrNotFound)
 	}
 	return s.repository.DeleteTag(ctx, scope, id)
 }

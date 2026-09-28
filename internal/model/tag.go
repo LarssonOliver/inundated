@@ -13,4 +13,7 @@ type Tag struct {
 	TotalTime *time.Duration
 	UserId    *uuid.UUID
 	Archived  bool
+	// TaskId is set on task tags. A task tag's name, color and archived
+	// state follow its task.
+	TaskId *uuid.UUID
 }

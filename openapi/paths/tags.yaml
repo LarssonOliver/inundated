@@ -7,9 +7,11 @@ tags:
       - $ref: "../parameters/shared.yaml#/limit"
       - $ref: "../parameters/shared.yaml#/offset"
       - $ref: "../parameters/shared.yaml#/includeArchivedQuery"
+      - $ref: "../parameters/shared.yaml#/tagSearchQuery"
+      - $ref: "../parameters/shared.yaml#/tagKindQuery"
     responses:
       '200':
-        description: Paginated list of tags
+        description: Paginated list of tags, regular tags before task tags
         content:
           application/json:
             schema:
@@ -76,7 +78,7 @@ tags-id:
             schema:
               $ref: "../schemas/tags.yaml#/Tag"
       '400':
-        description: Bad request
+        description: Bad request, including any change to a task tag
       '404':
         description: Not found
   delete:
@@ -88,6 +90,8 @@ tags-id:
     responses:
       '204':
         description: Deleted
+      '400':
+        description: Task tags can't be deleted; delete the task instead.
       '404':
         description: Not found
 

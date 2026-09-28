@@ -15,10 +15,13 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 		return model.Project{}, model.ErrInvalidArgument
 	}
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	var tagIds []uuid.UUID
 
 	if project.TagIds != nil {
-		if !t.tagsExist(ctx, scope, project.TagIds, nil) {
+		if !t.tagsUsable(scope, project.TagIds, nil) {
 			return model.Project{}, model.ErrInvalidReference
 		}
 
@@ -38,9 +41,6 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 		TagIds:     tagIds,
 		UserId:     scope.UserID(),
 	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	t.projects = append(t.projects, newProject)
 	return newProject, nil
@@ -89,17 +89,6 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 		return model.Project{}, model.ErrInvalidArgument
 	}
 
-	if project.TagIds != nil {
-		existing, err := t.GetProject(ctx, scope, project.Id)
-		if err != nil {
-			return model.Project{}, err
-		}
-		if !t.tagsExist(ctx, scope, project.TagIds, existing.TagIds) {
-			return model.Project{}, model.ErrInvalidReference
-		}
-		project.TagIds = utils.DedupeUUIDs(project.TagIds)
-	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -108,6 +97,12 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 	})
 	if idx == -1 {
 		return model.Project{}, model.ErrNotFound
+	}
+	if project.TagIds != nil {
+		if !t.tagsUsable(scope, project.TagIds, t.projects[idx].TagIds) {
+			return model.Project{}, model.ErrInvalidReference
+		}
+		project.TagIds = utils.DedupeUUIDs(project.TagIds)
 	}
 
 	project.UserId = t.projects[idx].UserId

@@ -1,0 +1,121 @@
+CloseReason:
+  type: string
+  description: Why a task was closed. Both reasons hide the task, and its
+    logged time keeps counting either way.
+  enum:
+    - done
+    - ignored
+
+Task:
+  type: object
+  required: [id, name, tagId, rank, closed]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      minLength: 1
+    tagId:
+      type: string
+      format: uuid
+      description: Read-only. The task's own task tag. Adding it to a timespan logs that
+        time on the task, and adding it to a project assigns the task to the
+        project.
+    parentId:
+      type: string
+      format: uuid
+      description: The parent task, when this is a subtask.
+    tagIds:
+      $ref: "./shared.yaml#/TagIdList"
+    dueDate:
+      type: string
+      format: date
+    estimateHours:
+      type: number
+      format: double
+    rank:
+      type: string
+      description: Read-only. Sort key among the task's siblings. Tasks with the same
+        parent sort by comparing ranks as plain byte strings.
+    closed:
+      type: boolean
+    closeReason:
+      $ref: "#/CloseReason"
+    closedAt:
+      type: string
+      format: date-time
+      readOnly: true
+
+CreateTask:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      minLength: 1
+    parentId:
+      type: string
+      format: uuid
+    tagIds:
+      $ref: "./shared.yaml#/TagIdList"
+    dueDate:
+      type: string
+      format: date
+    estimateHours:
+      type: number
+      format: double
+
+UpdateTask:
+  type: object
+  minProperties: 1
+  properties:
+    name:
+      type: string
+      minLength: 1
+    tagIds:
+      $ref: "./shared.yaml#/TagIdList"
+    dueDate:
+      type: string
+      format: date
+    clearDueDate:
+      type: boolean
+      description: Removes the due date. Can't be combined with dueDate.
+    estimateHours:
+      type: number
+      format: double
+    clearEstimate:
+      type: boolean
+      description: Removes the estimate. Can't be combined with estimateHours.
+    closed:
+      type: boolean
+      description: >
+        Closing a task also closes its open subtasks with the same reason.
+        Reopening a task also reopens its closed ancestors.
+    closeReason:
+      $ref: "#/CloseReason"
+
+MoveTask:
+  type: object
+  properties:
+    parentId:
+      type: string
+      format: uuid
+      description: The new parent. Omit to move the task to the top level.
+    afterTaskId:
+      type: string
+      format: uuid
+      description: The sibling to place the task after. Omit to place it
+        first among its new siblings.
+
+PaginatedTasks:
+  type: object
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Task"
+      description: Array of items in this page
+    pagination:
+      $ref: "./shared.yaml#/PaginationDetails"
+  required: [data, pagination]

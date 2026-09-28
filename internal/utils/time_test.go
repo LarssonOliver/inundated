@@ -1,6 +1,8 @@
 package utils_test
 
 import (
+	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -51,10 +53,18 @@ func TestFloatHoursToDuration(t *testing.T) {
 			hours: nil,
 			want:  nil,
 		},
+		{
+			name:  "Largest whole hours that fit",
+			hours: ptrf(2562047),
+			want:  ptrd(2562047 * time.Hour),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := utils.FloatHoursToDuration(tt.hours)
+			got, err := utils.FloatHoursToDuration(tt.hours)
+			if err != nil {
+				t.Fatalf("FloatHoursToDuration() error = %v", err)
+			}
 			if got == nil && tt.want == nil {
 				return
 			}
@@ -62,6 +72,14 @@ func TestFloatHoursToDuration(t *testing.T) {
 				t.Errorf("FloatHoursToDuration() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFloatHoursToDuration_OutOfRange(t *testing.T) {
+	for _, hours := range []float64{1e7, -1e7, 1e300, math.Inf(1), math.NaN()} {
+		if _, err := utils.FloatHoursToDuration(&hours); !errors.Is(err, utils.ErrHoursOutOfRange) {
+			t.Errorf("FloatHoursToDuration(%v) error = %v, want ErrHoursOutOfRange", hours, err)
+		}
 	}
 }
 

@@ -119,3 +119,22 @@ func TestProject_List_Pagination(t *testing.T) {
 	require.Equal(t, int(offset), paramsData.Pagination.Offset)
 	require.LessOrEqual(t, len(paramsData.Data), int(limit))
 }
+
+func TestProject_HugeTimeBudgetIsRejected(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+	huge := 1e7
+
+	createResp, err := client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{
+		Name: "huge", Color: "#FF5733", TimeBudgetHours: &huge,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 400, createResp.StatusCode())
+
+	createResp, err = client.CreateProjectWithResponse(ctx, CreateProjectJSONRequestBody{Name: "fine", Color: "#FF5733"})
+	require.NoError(t, err)
+	require.Equal(t, 201, createResp.StatusCode())
+	updateResp, err := client.UpdateProjectWithResponse(ctx, createResp.JSON201.Id, UpdateProjectJSONRequestBody{TimeBudgetHours: &huge})
+	require.NoError(t, err)
+	require.Equal(t, 400, updateResp.StatusCode())
+}

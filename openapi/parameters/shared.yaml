@@ -163,3 +163,24 @@ redirect:
   schema:
     type: string
 
+
+tagSearchQuery:
+  name: q
+  in: query
+  required: false
+  description: >
+    Only return tags whose name contains this text, ignoring case.
+  schema:
+    type: string
+
+tagKindQuery:
+  name: kind
+  in: query
+  required: false
+  description: >
+    Which tags to return: regular tags (label), task tags (task), or both
+    (all). Defaults to label.
+  schema:
+    type: string
+    enum: [label, task, all]
+    default: label

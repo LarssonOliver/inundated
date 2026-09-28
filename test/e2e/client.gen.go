@@ -22,6 +22,24 @@ const (
 	SessionCookieScopes sessionCookieContextKey = "sessionCookie.Scopes"
 )
 
+// Defines values for CloseReason.
+const (
+	Done    CloseReason = "done"
+	Ignored CloseReason = "ignored"
+)
+
+// Valid indicates whether the value is a known member of the CloseReason enum.
+func (e CloseReason) Valid() bool {
+	switch e {
+	case Done:
+		return true
+	case Ignored:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DateFormat.
 const (
 	Eu   DateFormat = "eu"
@@ -118,6 +136,27 @@ func (e WeekStartDay) Valid() bool {
 	}
 }
 
+// Defines values for TagKindQuery.
+const (
+	TagKindQueryAll   TagKindQuery = "all"
+	TagKindQueryLabel TagKindQuery = "label"
+	TagKindQueryTask  TagKindQuery = "task"
+)
+
+// Valid indicates whether the value is a known member of the TagKindQuery enum.
+func (e TagKindQuery) Valid() bool {
+	switch e {
+	case TagKindQueryAll:
+		return true
+	case TagKindQueryLabel:
+		return true
+	case TagKindQueryTask:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetProjectParamsInclude.
 const (
 	GetProjectParamsIncludeTotalTimeMs GetProjectParamsInclude = "totalTimeMs"
@@ -127,6 +166,27 @@ const (
 func (e GetProjectParamsInclude) Valid() bool {
 	switch e {
 	case GetProjectParamsIncludeTotalTimeMs:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListTagsParamsKind.
+const (
+	ListTagsParamsKindAll   ListTagsParamsKind = "all"
+	ListTagsParamsKindLabel ListTagsParamsKind = "label"
+	ListTagsParamsKindTask  ListTagsParamsKind = "task"
+)
+
+// Valid indicates whether the value is a known member of the ListTagsParamsKind enum.
+func (e ListTagsParamsKind) Valid() bool {
+	switch e {
+	case ListTagsParamsKindAll:
+		return true
+	case ListTagsParamsKindLabel:
+		return true
+	case ListTagsParamsKindTask:
 		return true
 	default:
 		return false
@@ -148,6 +208,9 @@ func (e GetTagParamsInclude) Valid() bool {
 	}
 }
 
+// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+type CloseReason string
+
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
 	Color           HexColor   `json:"color"`
@@ -160,6 +223,15 @@ type CreateProject struct {
 type CreateTag struct {
 	Color HexColor `json:"color"`
 	Name  string   `json:"name"`
+}
+
+// CreateTask defines model for CreateTask.
+type CreateTask struct {
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Name          string              `json:"name"`
+	ParentId      *openapi_types.UUID `json:"parentId,omitempty"`
+	TagIds        *TagIdList          `json:"tagIds,omitempty"`
 }
 
 // CreateTimespan defines model for CreateTimespan.
@@ -182,6 +254,15 @@ type HexColor = string
 // Location defines model for Location.
 type Location = string
 
+// MoveTask defines model for MoveTask.
+type MoveTask struct {
+	// AfterTaskId The sibling to place the task after. Omit to place it first among its new siblings.
+	AfterTaskId *openapi_types.UUID `json:"afterTaskId,omitempty"`
+
+	// ParentId The new parent. Omit to move the task to the top level.
+	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
+}
+
 // PaginatedProjects defines model for PaginatedProjects.
 type PaginatedProjects struct {
 	// Data Array of items in this page
@@ -195,6 +276,15 @@ type PaginatedProjects struct {
 type PaginatedTags struct {
 	// Data Array of items in this page
 	Data []Tag `json:"data"`
+
+	// Pagination Pagination metadata
+	Pagination PaginationDetails `json:"pagination"`
+}
+
+// PaginatedTasks defines model for PaginatedTasks.
+type PaginatedTasks struct {
+	// Data Array of items in this page
+	Data []Task `json:"data"`
 
 	// Pagination Pagination metadata
 	Pagination PaginationDetails `json:"pagination"`
@@ -287,11 +377,14 @@ type StatsMetric string
 // Tag defines model for Tag.
 type Tag struct {
 	// Archived Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
-	Archived    bool               `json:"archived"`
-	Color       HexColor           `json:"color"`
-	Id          openapi_types.UUID `json:"id"`
-	Name        string             `json:"name"`
-	TotalTimeMs *int               `json:"totalTimeMs,omitempty"`
+	Archived bool               `json:"archived"`
+	Color    HexColor           `json:"color"`
+	Id       openapi_types.UUID `json:"id"`
+	Name     string             `json:"name"`
+
+	// TaskId Set when this is a task tag, naming the task that owns it. A task tag's name, color and archived state follow its task, so it can't be changed through the tag API.
+	TaskId      *openapi_types.UUID `json:"taskId,omitempty"`
+	TotalTimeMs *int                `json:"totalTimeMs,omitempty"`
 }
 
 // TagIdList defines model for TagIdList.
@@ -316,6 +409,28 @@ type TagStats struct {
 
 	// Unit The unit of the `value` field in each series point. Allows clients to label axes correctly without hardcoding.
 	Unit string `json:"unit"`
+}
+
+// Task defines model for Task.
+type Task struct {
+	// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+	CloseReason   *CloseReason        `json:"closeReason,omitempty"`
+	Closed        bool                `json:"closed"`
+	ClosedAt      *time.Time          `json:"closedAt,omitempty"`
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Id            openapi_types.UUID  `json:"id"`
+	Name          string              `json:"name"`
+
+	// ParentId The parent task, when this is a subtask.
+	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
+
+	// Rank Read-only. Sort key among the task's siblings. Tasks with the same parent sort by comparing ranks as plain byte strings.
+	Rank string `json:"rank"`
+
+	// TagId Read-only. The task's own task tag. Adding it to a timespan logs that time on the task, and adding it to a project assigns the task to the project.
+	TagId  openapi_types.UUID `json:"tagId"`
+	TagIds *TagIdList         `json:"tagIds,omitempty"`
 }
 
 // TimeFormat Whether clock times are shown 12-hour (with AM/PM) or 24-hour.
@@ -362,6 +477,25 @@ type UpdateTag struct {
 	Name     *string   `json:"name,omitempty"`
 }
 
+// UpdateTask defines model for UpdateTask.
+type UpdateTask struct {
+	// ClearDueDate Removes the due date. Can't be combined with dueDate.
+	ClearDueDate *bool `json:"clearDueDate,omitempty"`
+
+	// ClearEstimate Removes the estimate. Can't be combined with estimateHours.
+	ClearEstimate *bool `json:"clearEstimate,omitempty"`
+
+	// CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
+	CloseReason *CloseReason `json:"closeReason,omitempty"`
+
+	// Closed Closing a task also closes its open subtasks with the same reason. Reopening a task also reopens its closed ancestors.
+	Closed        *bool               `json:"closed,omitempty"`
+	DueDate       *openapi_types.Date `json:"dueDate,omitempty"`
+	EstimateHours *float64            `json:"estimateHours,omitempty"`
+	Name          *string             `json:"name,omitempty"`
+	TagIds        *TagIdList          `json:"tagIds,omitempty"`
+}
+
 // UpdateTimespan defines model for UpdateTimespan.
 type UpdateTimespan struct {
 	EndTime   *time.Time `json:"endTime,omitempty"`
@@ -391,11 +525,20 @@ type WeekStartDay string
 // Code defines model for code.
 type Code = string
 
+// DueFrom defines model for dueFrom.
+type DueFrom = openapi_types.Date
+
+// DueTo defines model for dueTo.
+type DueTo = openapi_types.Date
+
 // Granularity defines model for granularity.
 type Granularity = string
 
 // IncludeArchivedQuery defines model for includeArchivedQuery.
 type IncludeArchivedQuery = bool
+
+// IncludeClosed defines model for includeClosed.
+type IncludeClosed = bool
 
 // IncludeQuery defines model for includeQuery.
 type IncludeQuery = []string
@@ -412,6 +555,9 @@ type LoginBinding = string
 // Offset defines model for offset.
 type Offset = int
 
+// ParentId defines model for parentId.
+type ParentId = openapi_types.UUID
+
 // ProjectIdPath defines model for projectIdPath.
 type ProjectIdPath = openapi_types.UUID
 
@@ -421,8 +567,20 @@ type Redirect = string
 // State defines model for state.
 type State = string
 
+// TagIdFilter defines model for tagIdFilter.
+type TagIdFilter = openapi_types.UUID
+
 // TagIdPath defines model for tagIdPath.
 type TagIdPath = openapi_types.UUID
+
+// TagKindQuery defines model for tagKindQuery.
+type TagKindQuery string
+
+// TagSearchQuery defines model for tagSearchQuery.
+type TagSearchQuery = string
+
+// TaskIdPath defines model for taskIdPath.
+type TaskIdPath = openapi_types.UUID
 
 // TimespanIdPath defines model for timespanIdPath.
 type TimespanIdPath = openapi_types.UUID
@@ -496,7 +654,16 @@ type ListTagsParams struct {
 
 	// IncludeArchived Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.
 	IncludeArchived *IncludeArchivedQuery `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+
+	// Q Only return tags whose name contains this text, ignoring case.
+	Q *TagSearchQuery `form:"q,omitempty" json:"q,omitempty"`
+
+	// Kind Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.
+	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
 }
+
+// ListTagsParamsKind defines parameters for ListTags.
+type ListTagsParamsKind string
 
 // GetTagParams defines parameters for GetTag.
 type GetTagParams struct {
@@ -522,6 +689,30 @@ type GetTagStatsParams struct {
 
 	// Timezone IANA timezone used for bucketing (e.g. `Europe/Stockholm`). Defaults to UTC. Affects how day/week/month boundaries are computed.
 	Timezone *Timezone `form:"timezone,omitempty" json:"timezone,omitempty"`
+}
+
+// ListTasksParams defines parameters for ListTasks.
+type ListTasksParams struct {
+	// Limit Maximum number of items to return per page. Capped at 100 to prevent resource exhaustion.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip from the beginning (zero-indexed).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// IncludeClosed Whether to include closed tasks in the results. Defaults to false.
+	IncludeClosed *IncludeClosed `form:"includeClosed,omitempty" json:"includeClosed,omitempty"`
+
+	// ParentId Only list direct subtasks of this task.
+	ParentId *ParentId `form:"parentId,omitempty" json:"parentId,omitempty"`
+
+	// TagId Only list tasks carrying this regular tag.
+	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`
+
+	// DueFrom Only list tasks due on or after this day.
+	DueFrom *DueFrom `form:"dueFrom,omitempty" json:"dueFrom,omitempty"`
+
+	// DueTo Only list tasks due on or before this day.
+	DueTo *DueTo `form:"dueTo,omitempty" json:"dueTo,omitempty"`
 }
 
 // ListTimespansParams defines parameters for ListTimespans.
@@ -552,6 +743,15 @@ type CreateTagJSONRequestBody = CreateTag
 
 // UpdateTagJSONRequestBody defines body for UpdateTag for application/json ContentType.
 type UpdateTagJSONRequestBody = UpdateTag
+
+// CreateTaskJSONRequestBody defines body for CreateTask for application/json ContentType.
+type CreateTaskJSONRequestBody = CreateTask
+
+// UpdateTaskJSONRequestBody defines body for UpdateTask for application/json ContentType.
+type UpdateTaskJSONRequestBody = UpdateTask
+
+// MoveTaskJSONRequestBody defines body for MoveTask for application/json ContentType.
+type MoveTaskJSONRequestBody = MoveTask
 
 // CreateTimespanJSONRequestBody defines body for CreateTimespan for application/json ContentType.
 type CreateTimespanJSONRequestBody = CreateTimespan
@@ -695,6 +895,30 @@ type ClientInterface interface {
 
 	// GetTagStats request
 	GetTagStats(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListTasks request
+	ListTasks(ctx context.Context, params *ListTasksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTaskWithBody request with any body
+	CreateTaskWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTask(ctx context.Context, body CreateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTask request
+	DeleteTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTask request
+	GetTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateTaskWithBody request with any body
+	UpdateTaskWithBody(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateTask(ctx context.Context, taskId TaskIdPath, body UpdateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MoveTaskWithBody request with any body
+	MoveTaskWithBody(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	MoveTask(ctx context.Context, taskId TaskIdPath, body MoveTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTimespans request
 	ListTimespans(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -982,6 +1206,114 @@ func (c *Client) UpdateTag(ctx context.Context, tagId TagIdPath, body UpdateTagJ
 
 func (c *Client) GetTagStats(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTagStatsRequest(c.Server, tagId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListTasks(ctx context.Context, params *ListTasksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTasksRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTaskWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTaskRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTask(ctx context.Context, body CreateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTaskRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTaskRequest(c.Server, taskId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTask(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskRequest(c.Server, taskId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateTaskWithBody(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTaskRequestWithBody(c.Server, taskId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateTask(ctx context.Context, taskId TaskIdPath, body UpdateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateTaskRequest(c.Server, taskId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) MoveTaskWithBody(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMoveTaskRequestWithBody(c.Server, taskId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) MoveTask(ctx context.Context, taskId TaskIdPath, body MoveTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMoveTaskRequest(c.Server, taskId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1743,6 +2075,30 @@ func NewListTagsRequest(server string, params *ListTagsParams) (*http.Request, e
 
 		}
 
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2028,6 +2384,334 @@ func NewGetTagStatsRequest(server string, tagId TagIdPath, params *GetTagStatsPa
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListTasksRequest generates requests for ListTasks
+func NewListTasksRequest(server string, params *ListTasksParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeClosed != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeClosed", *params.IncludeClosed, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ParentId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "parentId", *params.ParentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.TagId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tagId", *params.TagId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DueFrom != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dueFrom", *params.DueFrom, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DueTo != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dueTo", *params.DueTo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateTaskRequest calls the generic CreateTask builder with application/json body
+func NewCreateTaskRequest(server string, body CreateTaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTaskRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateTaskRequestWithBody generates requests for CreateTask with any type of body
+func NewCreateTaskRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTaskRequest generates requests for DeleteTask
+func NewDeleteTaskRequest(server string, taskId TaskIdPath) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "taskId", taskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTaskRequest generates requests for GetTask
+func NewGetTaskRequest(server string, taskId TaskIdPath) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "taskId", taskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateTaskRequest calls the generic UpdateTask builder with application/json body
+func NewUpdateTaskRequest(server string, taskId TaskIdPath, body UpdateTaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateTaskRequestWithBody(server, taskId, "application/json", bodyReader)
+}
+
+// NewUpdateTaskRequestWithBody generates requests for UpdateTask with any type of body
+func NewUpdateTaskRequestWithBody(server string, taskId TaskIdPath, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "taskId", taskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewMoveTaskRequest calls the generic MoveTask builder with application/json body
+func NewMoveTaskRequest(server string, taskId TaskIdPath, body MoveTaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMoveTaskRequestWithBody(server, taskId, "application/json", bodyReader)
+}
+
+// NewMoveTaskRequestWithBody generates requests for MoveTask with any type of body
+func NewMoveTaskRequestWithBody(server string, taskId TaskIdPath, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "taskId", taskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tasks/%s/move", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -2371,6 +3055,30 @@ type ClientWithResponsesInterface interface {
 
 	// GetTagStatsWithResponse request
 	GetTagStatsWithResponse(ctx context.Context, tagId TagIdPath, params *GetTagStatsParams, reqEditors ...RequestEditorFn) (*GetTagStatsResponse, error)
+
+	// ListTasksWithResponse request
+	ListTasksWithResponse(ctx context.Context, params *ListTasksParams, reqEditors ...RequestEditorFn) (*ListTasksResponse, error)
+
+	// CreateTaskWithBodyWithResponse request with any body
+	CreateTaskWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTaskResponse, error)
+
+	CreateTaskWithResponse(ctx context.Context, body CreateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTaskResponse, error)
+
+	// DeleteTaskWithResponse request
+	DeleteTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*DeleteTaskResponse, error)
+
+	// GetTaskWithResponse request
+	GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*GetTaskResponse, error)
+
+	// UpdateTaskWithBodyWithResponse request with any body
+	UpdateTaskWithBodyWithResponse(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTaskResponse, error)
+
+	UpdateTaskWithResponse(ctx context.Context, taskId TaskIdPath, body UpdateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTaskResponse, error)
+
+	// MoveTaskWithBodyWithResponse request with any body
+	MoveTaskWithBodyWithResponse(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTaskResponse, error)
+
+	MoveTaskWithResponse(ctx context.Context, taskId TaskIdPath, body MoveTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveTaskResponse, error)
 
 	// ListTimespansWithResponse request
 	ListTimespansWithResponse(ctx context.Context, params *ListTimespansParams, reqEditors ...RequestEditorFn) (*ListTimespansResponse, error)
@@ -2927,6 +3635,185 @@ func (r GetTagStatsResponse) ContentType() string {
 	return ""
 }
 
+type ListTasksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PaginatedTasks
+}
+
+// Status returns HTTPResponse.Status
+func (r ListTasksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListTasksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListTasksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Task
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteTaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteTaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Task
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateTaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Task
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateTaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateTaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateTaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MoveTaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Task
+}
+
+// Status returns HTTPResponse.Status
+func (r MoveTaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MoveTaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveTaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTimespansResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3276,6 +4163,84 @@ func (c *ClientWithResponses) GetTagStatsWithResponse(ctx context.Context, tagId
 		return nil, err
 	}
 	return ParseGetTagStatsResponse(rsp)
+}
+
+// ListTasksWithResponse request returning *ListTasksResponse
+func (c *ClientWithResponses) ListTasksWithResponse(ctx context.Context, params *ListTasksParams, reqEditors ...RequestEditorFn) (*ListTasksResponse, error) {
+	rsp, err := c.ListTasks(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListTasksResponse(rsp)
+}
+
+// CreateTaskWithBodyWithResponse request with arbitrary body returning *CreateTaskResponse
+func (c *ClientWithResponses) CreateTaskWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTaskResponse, error) {
+	rsp, err := c.CreateTaskWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTaskWithResponse(ctx context.Context, body CreateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTaskResponse, error) {
+	rsp, err := c.CreateTask(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTaskResponse(rsp)
+}
+
+// DeleteTaskWithResponse request returning *DeleteTaskResponse
+func (c *ClientWithResponses) DeleteTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*DeleteTaskResponse, error) {
+	rsp, err := c.DeleteTask(ctx, taskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTaskResponse(rsp)
+}
+
+// GetTaskWithResponse request returning *GetTaskResponse
+func (c *ClientWithResponses) GetTaskWithResponse(ctx context.Context, taskId TaskIdPath, reqEditors ...RequestEditorFn) (*GetTaskResponse, error) {
+	rsp, err := c.GetTask(ctx, taskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskResponse(rsp)
+}
+
+// UpdateTaskWithBodyWithResponse request with arbitrary body returning *UpdateTaskResponse
+func (c *ClientWithResponses) UpdateTaskWithBodyWithResponse(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTaskResponse, error) {
+	rsp, err := c.UpdateTaskWithBody(ctx, taskId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateTaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateTaskWithResponse(ctx context.Context, taskId TaskIdPath, body UpdateTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTaskResponse, error) {
+	rsp, err := c.UpdateTask(ctx, taskId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateTaskResponse(rsp)
+}
+
+// MoveTaskWithBodyWithResponse request with arbitrary body returning *MoveTaskResponse
+func (c *ClientWithResponses) MoveTaskWithBodyWithResponse(ctx context.Context, taskId TaskIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTaskResponse, error) {
+	rsp, err := c.MoveTaskWithBody(ctx, taskId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveTaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) MoveTaskWithResponse(ctx context.Context, taskId TaskIdPath, body MoveTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveTaskResponse, error) {
+	rsp, err := c.MoveTask(ctx, taskId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveTaskResponse(rsp)
 }
 
 // ListTimespansWithResponse request returning *ListTimespansResponse
@@ -3747,6 +4712,152 @@ func ParseGetTagStatsResponse(rsp *http.Response) (*GetTagStatsResponse, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest TagStats
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListTasksResponse parses an HTTP response from a ListTasksWithResponse call
+func ParseListTasksResponse(rsp *http.Response) (*ListTasksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListTasksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaginatedTasks
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTaskResponse parses an HTTP response from a CreateTaskWithResponse call
+func ParseCreateTaskResponse(rsp *http.Response) (*CreateTaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Task
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTaskResponse parses an HTTP response from a DeleteTaskWithResponse call
+func ParseDeleteTaskResponse(rsp *http.Response) (*DeleteTaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetTaskResponse parses an HTTP response from a GetTaskWithResponse call
+func ParseGetTaskResponse(rsp *http.Response) (*GetTaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Task
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateTaskResponse parses an HTTP response from a UpdateTaskWithResponse call
+func ParseUpdateTaskResponse(rsp *http.Response) (*UpdateTaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateTaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Task
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMoveTaskResponse parses an HTTP response from a MoveTaskWithResponse call
+func ParseMoveTaskResponse(rsp *http.Response) (*MoveTaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MoveTaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Task
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

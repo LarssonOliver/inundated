@@ -16,10 +16,13 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	var tagIds []uuid.UUID
 
 	if timespan.TagIds != nil {
-		if !t.tagsExist(ctx, scope, timespan.TagIds, nil) {
+		if !t.tagsUsable(scope, timespan.TagIds, nil) {
 			return model.Timespan{}, model.ErrInvalidReference
 		}
 
@@ -39,9 +42,6 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 		TagIds:    tagIds,
 		UserId:    scope.UserID(),
 	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	t.timespans = append(t.timespans, newTimespan)
 	return newTimespan, nil
@@ -100,17 +100,6 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 		return model.Timespan{}, model.ErrInvalidArgument
 	}
 
-	if timespan.TagIds != nil {
-		existing, err := t.GetTimespan(ctx, scope, timespan.Id)
-		if err != nil {
-			return model.Timespan{}, err
-		}
-		if !t.tagsExist(ctx, scope, timespan.TagIds, existing.TagIds) {
-			return model.Timespan{}, model.ErrInvalidReference
-		}
-		timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
-	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -119,6 +108,12 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 	})
 	if idx == -1 {
 		return model.Timespan{}, model.ErrNotFound
+	}
+	if timespan.TagIds != nil {
+		if !t.tagsUsable(scope, timespan.TagIds, t.timespans[idx].TagIds) {
+			return model.Timespan{}, model.ErrInvalidReference
+		}
+		timespan.TagIds = utils.DedupeUUIDs(timespan.TagIds)
 	}
 
 	timespan.UserId = t.timespans[idx].UserId

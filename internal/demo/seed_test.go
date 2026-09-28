@@ -23,7 +23,7 @@ func TestSeed_CreatesTagsProjectsAndTimespans(t *testing.T) {
 
 	require.NoError(t, demo.Seed(context.Background(), repo, now))
 
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), largePage)
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage})
 	require.NoError(t, err)
 	assert.NotEmpty(t, tags.Data)
 
@@ -41,7 +41,7 @@ func TestSeed_DataIsUnowned(t *testing.T) {
 	now := time.Date(2026, 9, 24, 15, 0, 0, 0, time.UTC)
 	require.NoError(t, demo.Seed(context.Background(), repo, now))
 
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), largePage)
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage})
 	require.NoError(t, err)
 	for _, tag := range tags.Data {
 		assert.Nil(t, tag.UserId)
@@ -59,7 +59,7 @@ func TestSeed_ProjectsReferenceExistingTags(t *testing.T) {
 	now := time.Date(2026, 9, 24, 15, 0, 0, 0, time.UTC)
 	require.NoError(t, demo.Seed(context.Background(), repo, now))
 
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), largePage)
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage})
 	require.NoError(t, err)
 	knownTags := make(map[uuid.UUID]bool, len(tags.Data))
 	for _, tag := range tags.Data {
@@ -81,7 +81,7 @@ func TestSeed_TimespansReferenceExistingTags(t *testing.T) {
 	now := time.Date(2026, 9, 24, 15, 0, 0, 0, time.UTC)
 	require.NoError(t, demo.Seed(context.Background(), repo, now))
 
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), largePage)
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage})
 	require.NoError(t, err)
 	knownTags := make(map[uuid.UUID]bool, len(tags.Data))
 	for _, tag := range tags.Data {

@@ -19,6 +19,8 @@ tags:
     description: Project-related operations
   - name: timespans
     description: Timespan-related operations
+  - name: tasks
+    description: Task-related operations
   - name: settings
     description: User settings operations
 paths:
@@ -47,6 +49,12 @@ paths:
     $ref: "./paths/timespans.yaml#/timespans"
   /api/timespans/{timespanId}:
     $ref: "./paths/timespans.yaml#/timespans-id"
+  /api/tasks:
+    $ref: "./paths/tasks.yaml#/tasks"
+  /api/tasks/{taskId}:
+    $ref: "./paths/tasks.yaml#/tasks-id"
+  /api/tasks/{taskId}/move:
+    $ref: "./paths/tasks.yaml#/tasks-id-move"
   /api/settings:
     $ref: "./paths/settings.yaml#/settings"
 components:
@@ -76,6 +84,14 @@ components:
       $ref: "./schemas/timespans.yaml#/CreateTimespan"
     UpdateTimespan:
       $ref: "./schemas/timespans.yaml#/UpdateTimespan"
+    Task:
+      $ref: "./schemas/tasks.yaml#/Task"
+    CreateTask:
+      $ref: "./schemas/tasks.yaml#/CreateTask"
+    UpdateTask:
+      $ref: "./schemas/tasks.yaml#/UpdateTask"
+    MoveTask:
+      $ref: "./schemas/tasks.yaml#/MoveTask"
     Settings:
       $ref: "./schemas/settings.yaml#/Settings"
     UpdateSettings:

@@ -8,6 +8,7 @@ type HttpHandler interface {
 	TagHandler
 	ProjectHandler
 	TimespanHandler
+	TaskHandler
 	SettingsHandler
 }
 
@@ -45,6 +46,15 @@ type TimespanHandler interface {
 	CreateTimespan(ctx context.Context, request CreateTimespanRequestObject) (CreateTimespanResponseObject, error)
 	UpdateTimespan(ctx context.Context, request UpdateTimespanRequestObject) (UpdateTimespanResponseObject, error)
 	DeleteTimespan(ctx context.Context, request DeleteTimespanRequestObject) (DeleteTimespanResponseObject, error)
+}
+
+type TaskHandler interface {
+	GetTask(ctx context.Context, request GetTaskRequestObject) (GetTaskResponseObject, error)
+	ListTasks(ctx context.Context, request ListTasksRequestObject) (ListTasksResponseObject, error)
+	CreateTask(ctx context.Context, request CreateTaskRequestObject) (CreateTaskResponseObject, error)
+	UpdateTask(ctx context.Context, request UpdateTaskRequestObject) (UpdateTaskResponseObject, error)
+	DeleteTask(ctx context.Context, request DeleteTaskRequestObject) (DeleteTaskResponseObject, error)
+	MoveTask(ctx context.Context, request MoveTaskRequestObject) (MoveTaskResponseObject, error)
 }
 
 type SettingsHandler interface {
