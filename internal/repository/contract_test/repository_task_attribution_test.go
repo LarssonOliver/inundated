@@ -147,6 +147,33 @@ func TestTaskAttributionContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, other)
 		})
+
+		t.Run(repoName+"DeletedTagNoLongerLinksTaskAndProject", func(t *testing.T) {
+			repo := newRepo(t)
+			shared, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "shared", Color: "#88c0d0"})
+			require.NoError(t, err)
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{shared.Id}})
+			require.NoError(t, err)
+			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "p", Color: "#5e81ac", TagIds: []uuid.UUID{shared.Id}})
+			require.NoError(t, err)
+
+			inProject := func() int {
+				page, err := repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), ProjectId: &project.Id})
+				require.NoError(t, err)
+				return len(page.Data)
+			}
+			ids, err := repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{task.Id})
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{project.Id}, ids[task.Id])
+			require.Equal(t, 1, inProject())
+
+			// The shared tag was the only link; deleting it breaks it.
+			require.NoError(t, repo.DeleteTag(ctx, testScope, shared.Id))
+			ids, err = repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{task.Id})
+			require.NoError(t, err)
+			require.Empty(t, ids[task.Id])
+			require.Zero(t, inProject())
+		})
 	}
 
 	run(t, "memory", func(t *testing.T) repository.Repository {

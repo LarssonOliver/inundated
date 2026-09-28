@@ -140,9 +140,7 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 	if params.ProjectId != nil {
 		b.args = append(b.args, *params.ProjectId)
 		fmt.Fprintf(&b.sql, ` AND id IN (
-			SELECT te.task_id FROM task_effective_tags te
-			JOIN project_tags pt ON pt.tag_id = te.tag_id
-			JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL
+			SELECT te.task_id FROM task_effective_tags te`+taskProjectJoinSQL+`
 			WHERE pt.project_id = $%d)`, len(b.args))
 	}
 	if params.DueFrom != nil {
@@ -486,6 +484,16 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 	})
 }
 
+// taskProjectJoinSQL joins a task's effective tags (te) to the live
+// projects (p) carrying one of them, through project_tags (pt). Tag
+// deletion is soft and leaves links to the tag in place, so the tag itself
+// must be live too, or a task and a project that both carried a
+// since-deleted tag would still meet.
+const taskProjectJoinSQL = `
+	JOIN tags lt ON lt.id = te.tag_id AND lt.deleted_at IS NULL
+	JOIN project_tags pt ON pt.tag_id = te.tag_id
+	JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL`
+
 func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
 	out := map[uuid.UUID][]uuid.UUID{}
 	if len(taskIds) == 0 {
@@ -495,9 +503,7 @@ func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.Owne
 	ownerSQL, args := ownerPredicate("p.user_id", scope, []any{taskIds})
 	query := `
 		SELECT DISTINCT te.task_id, p.id
-		FROM task_effective_tags te
-		JOIN project_tags pt ON pt.tag_id = te.tag_id
-		JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL
+		FROM task_effective_tags te` + taskProjectJoinSQL + `
 		WHERE te.task_id = ANY($1) AND ` + ownerSQL + `
 		ORDER BY te.task_id, p.id`
 	rows, err := r.db.Query(ctx, query, args...)
