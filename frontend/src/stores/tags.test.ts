@@ -25,6 +25,7 @@ describe("tags store", () => {
       listTags: vi.fn(),
       listTagsPaginated: vi.fn(),
       listAllTags: vi.fn(),
+      searchTags: vi.fn(),
       getTag: vi.fn(),
       createTag: vi.fn(),
       updateTag: vi.fn(),
@@ -85,10 +86,7 @@ describe("tags store", () => {
 
   it("creates a new tag if name does not exist", async () => {
     const created = makeTag({ name: "New" });
-    api.listTagsPaginated.mockResolvedValue({
-      data: [],
-      pagination: { limit: 100, offset: 0, total: 0 },
-    });
+    api.searchTags.mockResolvedValue([makeTag({ name: "Newer" })]);
     api.createTag.mockResolvedValue(created);
 
     const store = useStore();
@@ -117,9 +115,10 @@ describe("tags store", () => {
     const result = await store.createTagFromName("New");
 
     // The local cache is already authoritative (it holds every tag the
-    // server has), so paging the API again to look for a name match would
-    // be redundant.
+    // server has), so searching the API again for a name match would be
+    // redundant.
     expect(api.listTagsPaginated).not.toHaveBeenCalled();
+    expect(api.searchTags).not.toHaveBeenCalled();
     expect(api.createTag).toHaveBeenCalledOnce();
     expect(result).toEqual(created);
   });
@@ -131,16 +130,13 @@ describe("tags store", () => {
     // The local cache excludes archived tags by default (includeArchived is
     // false until the user opts in), so the store must fall back to
     // searching the API directly to find it.
-    api.listTagsPaginated.mockResolvedValue({
-      data: [archivedTag],
-      pagination: { limit: 100, offset: 0, total: 1 },
-    });
+    api.searchTags.mockResolvedValue([archivedTag]);
     api.updateTag.mockResolvedValue(revived);
 
     const store = useStore();
     const result = await store.createTagFromName("Focus");
 
-    expect(api.listTagsPaginated).toHaveBeenCalledWith(100, 0, true);
+    expect(api.searchTags).toHaveBeenCalledWith("Focus", "label", true, 100);
     // A caller creating/using a tag by name needs an ID it can actually
     // attach to something; an archived match must be unarchived rather than
     // handed back unusable (the backend rejects freshly attaching an
@@ -531,5 +527,43 @@ describe("tags store", () => {
     await store.setIncludeArchived(false);
 
     expect(api.listTagsPaginated).not.toHaveBeenCalled();
+  });
+
+  it("searches the server and merges in fuzzy matches from the cache", async () => {
+    const cached = makeTag({ id: "cached", name: "work" });
+    const remote = makeTag({ id: "remote", name: "wrok stream" });
+    api.listTagsPaginated.mockResolvedValue({
+      data: [cached],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+    api.searchTags.mockResolvedValue([remote]);
+
+    const store = useStore();
+    await store.fetchTags();
+    const result = await store.searchTagsOnServer("wrok", "all");
+
+    expect(api.searchTags).toHaveBeenCalledWith("wrok", "all");
+    // The server's substring hit ranks above the cache's typo match.
+    expect(result.map((t) => t.id)).toEqual(["remote", "cached"]);
+    // Server results are cached for getTagById without entering the list.
+    expect(store.getTagById("remote")).toEqual(remote);
+    expect(store.tags.map((t) => t.id)).toEqual(["cached"]);
+  });
+
+  it("searches only task tags on the server when asked for tasks", async () => {
+    const cached = makeTag({ id: "cached", name: "work" });
+    const task = makeTag({ id: "task", name: "work on report", taskId: "t1" });
+    api.listTagsPaginated.mockResolvedValue({
+      data: [cached],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    });
+    api.searchTags.mockResolvedValue([task]);
+
+    const store = useStore();
+    await store.fetchTags();
+    const result = await store.searchTagsOnServer("work", "task");
+
+    expect(api.searchTags).toHaveBeenCalledWith("work", "task");
+    expect(result.map((t) => t.id)).toEqual(["task"]);
   });
 });

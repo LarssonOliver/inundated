@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="chart-title-container">
-      <h2>Tag Statistics</h2>
+      <h2>{{ props.title ?? "Tag Statistics" }}</h2>
       <div class="date-pick-btns">
         <button
           class="date-pick-btn"
@@ -114,6 +114,7 @@ const settingsStore = useSettingsStore();
 
 const props = defineProps<{
   tag: Tag;
+  title?: string;
 }>();
 
 const now = new Date();

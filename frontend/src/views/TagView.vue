@@ -56,6 +56,11 @@ watch(
     try {
       // Fetch detailed tag info from the server to ensure we have the latest data (including total time)
       const result = await tagsStore.fetchDetailedTagById(newId as string);
+      if (result?.taskId) {
+        // A task tag is edited through its task.
+        router.replace({ name: "Task", params: { id: result.taskId } });
+        return;
+      }
       if (result) {
         tag.value = result;
       }

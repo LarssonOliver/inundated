@@ -1,5 +1,10 @@
 import type { Tag, TagStats } from "@/model";
-import { TagsApi as GeneratedTagsApi, GetTagIncludeEnum, type StatsMetric } from "@/api/generated";
+import {
+  TagsApi as GeneratedTagsApi,
+  GetTagIncludeEnum,
+  ListTagsKindEnum,
+  type StatsMetric,
+} from "@/api/generated";
 import { ApiConfig } from "@/api/config";
 import { mapFromApiArray, tagMapper, toApiCreateTag, toApiUpdateTag } from "./mappers";
 import { tagStatsMapper } from "./mappers/tagStatsMapper";
@@ -16,6 +21,9 @@ export interface PaginatedTagsResponse {
   pagination: PaginationMetadata;
 }
 
+/** Which tags a search returns: regular tags, task tags, or both. */
+export type TagKind = "label" | "task" | "all";
+
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
   listTagsPaginated(
@@ -24,6 +32,16 @@ export interface TagsApi {
     includeArchived?: boolean,
   ): Promise<PaginatedTagsResponse>;
   listAllTags(includeArchived?: boolean): Promise<Tag[]>;
+  /**
+   * Searches tags by name on the server (case-insensitive substring match),
+   * regular tags first, then by name.
+   */
+  searchTags(
+    query: string,
+    kind: TagKind,
+    includeArchived?: boolean,
+    limit?: number,
+  ): Promise<Tag[]>;
   getTag(id: string, detailed: boolean): Promise<Tag>;
   createTag(tag: Omit<Tag, "id">): Promise<Tag>;
   updateTag(id: string, tag: Partial<Omit<Tag, "id">>): Promise<Tag>;
@@ -77,6 +95,22 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
           pagination: response.pagination,
         };
       });
+    },
+
+    async searchTags(
+      query: string,
+      kind: TagKind,
+      includeArchived: boolean = false,
+      limit: number = 20,
+    ): Promise<Tag[]> {
+      const response = await api.listTags({
+        limit,
+        offset: 0,
+        includeArchived,
+        q: query,
+        kind: ListTagsKindEnum[kind === "label" ? "Label" : kind === "task" ? "Task" : "All"],
+      });
+      return mapFromApiArray(tagMapper, response.data);
     },
 
     async getTag(id: string, detailed: boolean): Promise<Tag> {

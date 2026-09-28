@@ -1,0 +1,86 @@
+import type { Task } from "@/model";
+import {
+  TasksApi as GeneratedTasksApi,
+  GetTaskIncludeEnum,
+  ListTasksIncludeEnum,
+} from "@/api/generated";
+import { ApiConfig } from "@/api/config";
+import { taskFromApi, toApiCreateTask, toApiUpdateTask, type TaskPatch } from "./mappers";
+import { fetchAllPages } from "./pagination";
+
+export type NewTask = Pick<Task, "name"> &
+  Partial<Pick<Task, "parentId" | "tagIds" | "dueDate" | "estimateHours">>;
+
+export interface TaskListFilter {
+  includeClosed?: boolean;
+  parentId?: string;
+  projectId?: string;
+}
+
+export interface TasksApi {
+  /** Fetches every task matching filter, with its total time. */
+  listAllTasks(filter?: TaskListFilter): Promise<Task[]>;
+  /** Fetches one task; detailed adds its total time and projects. */
+  getTask(id: string, detailed: boolean): Promise<Task>;
+  createTask(task: NewTask): Promise<Task>;
+  updateTask(id: string, patch: TaskPatch): Promise<Task>;
+  /** Places the task under parentId, directly after afterTaskId (first if unset). */
+  moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
+}
+
+const defaultGeneratedApi = new GeneratedTasksApi(ApiConfig);
+
+function createTasksApi(api: GeneratedTasksApi = defaultGeneratedApi): TasksApi {
+  return {
+    async listAllTasks(filter: TaskListFilter = {}): Promise<Task[]> {
+      return fetchAllPages(async (limit, offset) => {
+        const response = await api.listTasks({
+          limit,
+          offset,
+          ...filter,
+          include: new Set([ListTasksIncludeEnum.TotalTimeMs]),
+        });
+        return { data: response.data.map(taskFromApi), pagination: response.pagination };
+      });
+    },
+
+    async getTask(id: string, detailed: boolean): Promise<Task> {
+      const response = await api.getTask({
+        taskId: id,
+        include: detailed
+          ? new Set([GetTaskIncludeEnum.TotalTimeMs, GetTaskIncludeEnum.ProjectIds])
+          : undefined,
+      });
+      return taskFromApi(response);
+    },
+
+    async createTask(task: NewTask): Promise<Task> {
+      const response = await api.createTask({ createTask: toApiCreateTask(task) });
+      return taskFromApi(response);
+    },
+
+    async updateTask(id: string, patch: TaskPatch): Promise<Task> {
+      const response = await api.updateTask({ taskId: id, updateTask: toApiUpdateTask(patch) });
+      return taskFromApi(response);
+    },
+
+    async moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
+      const response = await api.moveTask({
+        taskId: id,
+        moveTask: {
+          ...(parentId && { parentId }),
+          ...(afterTaskId && { afterTaskId }),
+        },
+      });
+      return taskFromApi(response);
+    },
+
+    async deleteTask(id: string): Promise<void> {
+      await api.deleteTask({ taskId: id });
+    },
+  };
+}
+
+export const tasksApi = createTasksApi();
+export const __test__ = { createTasksApi };

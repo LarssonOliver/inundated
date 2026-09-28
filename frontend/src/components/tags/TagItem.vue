@@ -1,6 +1,6 @@
 <template>
   <div :class="containerClasses" @mouseenter="hover = true" @mouseleave="hover = false">
-    <div>{{ tag.name }}</div>
+    <div><span v-if="isTask" class="task-mark">#</span>{{ tag.name }}</div>
     <MaterialIcon
       @click="$emit('close', tag)"
       v-if="hover && canClose"
@@ -34,10 +34,14 @@ const darkText = computed(() => shouldTextBeDarkFromBgColor(tag.color));
 // mount time and stop tracking archive/unarchive changes on this instance
 // (e.g. TagListView re-rendering the same TagItem after a toggle).
 const isArchived = computed(() => tag.archived);
+// Task tags are drawn as an outlined pill with a leading "#", so they read
+// as tasks wherever tags are shown.
+const isTask = computed(() => !!tag.taskId);
 const containerClasses = reactive({
   "tag-container": true,
-  "dark-text": darkText,
+  "dark-text": computed(() => darkText.value && !isTask.value),
   archived: isArchived,
+  task: isTask,
 });
 </script>
 
@@ -51,6 +55,18 @@ const containerClasses = reactive({
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
+}
+
+.tag-container.task {
+  background-color: transparent;
+  border: 2px solid v-bind("tag.color");
+  padding: calc(0.25em - 2px) calc(0.6em - 2px);
+}
+
+.task-mark {
+  color: v-bind("tag.color");
+  font-weight: 700;
+  margin-right: 0.1em;
 }
 
 .tag-container.dark-text {
