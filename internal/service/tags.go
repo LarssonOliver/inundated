@@ -71,5 +71,9 @@ func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	if id == uuid.Nil {
+		// As in GetTag: a malformed id can never name a real row.
+		return fmt.Errorf("DeleteTag %s: %w", id, model.ErrNotFound)
+	}
 	return s.repository.DeleteTag(ctx, scope, id)
 }

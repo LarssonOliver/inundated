@@ -283,3 +283,20 @@ func TestTask_DeleteNilIdIsNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 404, resp.StatusCode())
 }
+
+func TestTask_NilIdWritesAreNotFound(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+
+	updateResp, err := client.UpdateTaskWithResponse(ctx, openapi_types.UUID{}, UpdateTaskJSONRequestBody{Name: new("x")})
+	require.NoError(t, err)
+	require.Equal(t, 404, updateResp.StatusCode())
+
+	moveResp, err := client.MoveTaskWithResponse(ctx, openapi_types.UUID{}, MoveTaskJSONRequestBody{})
+	require.NoError(t, err)
+	require.Equal(t, 404, moveResp.StatusCode())
+
+	tagResp, err := client.DeleteTagWithResponse(ctx, openapi_types.UUID{})
+	require.NoError(t, err)
+	require.Equal(t, 404, tagResp.StatusCode())
+}

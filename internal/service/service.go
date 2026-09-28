@@ -107,7 +107,7 @@ type TaskService interface {
 	GetTask(ctx context.Context, id uuid.UUID) (model.Task, error)
 	ListTasks(ctx context.Context, params model.TaskListParams) (model.Page[model.Task], error)
 	CreateTask(ctx context.Context, task model.Task) (model.Task, error)
-	UpdateTask(ctx context.Context, task model.Task) (model.Task, error)
+	UpdateTask(ctx context.Context, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
 	MoveTask(ctx context.Context, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
 	DeleteTask(ctx context.Context, id uuid.UUID) error
 }

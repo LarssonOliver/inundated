@@ -128,53 +128,21 @@ func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksReques
 // UpdateTask implements [api.TaskHandler].
 func (h *TaskHandler) UpdateTask(ctx context.Context, request api.UpdateTaskRequestObject) (api.UpdateTaskResponseObject, error) {
 	body := request.Body
-	if (body.DueDate != nil && body.ClearDueDate != nil && *body.ClearDueDate) ||
-		(body.EstimateHours != nil && body.ClearEstimate != nil && *body.ClearEstimate) ||
-		(body.CloseReason != nil && body.Closed != nil && !*body.Closed) {
-		return api.UpdateTask400Response{}, nil
+	patch := model.TaskPatch{
+		Name:          body.Name,
+		TagIds:        body.TagIds,
+		DueDate:       dateToTime(body.DueDate),
+		ClearDueDate:  body.ClearDueDate != nil && *body.ClearDueDate,
+		Estimate:      utils.FloatHoursToDuration(body.EstimateHours),
+		ClearEstimate: body.ClearEstimate != nil && *body.ClearEstimate,
+		Closed:        body.Closed,
 	}
-
-	task, err := h.svc.GetTask(ctx, request.TaskId)
-
-	if errors.Is(err, model.ErrNotFound) {
-		return api.UpdateTask404Response{}, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	if body.Name != nil {
-		task.Name = *body.Name
-	}
-	if body.TagIds != nil {
-		task.TagIds = *body.TagIds
-	}
-	if body.DueDate != nil {
-		task.DueDate = dateToTime(body.DueDate)
-	}
-	if body.ClearDueDate != nil && *body.ClearDueDate {
-		task.DueDate = nil
-	}
-	if body.EstimateHours != nil {
-		task.Estimate = utils.FloatHoursToDuration(body.EstimateHours)
-	}
-	if body.ClearEstimate != nil && *body.ClearEstimate {
-		task.Estimate = nil
-	}
-
-	// A close reason on its own closes the task (or changes why it's
-	// closed); closed: true without one closes it as done.
-	switch {
-	case body.CloseReason != nil:
+	if body.CloseReason != nil {
 		reason := model.CloseReason(*body.CloseReason)
-		task.CloseReason = &reason
-	case body.Closed != nil && *body.Closed && task.CloseReason == nil:
-		reason := model.CloseReasonDone
-		task.CloseReason = &reason
-	case body.Closed != nil && !*body.Closed:
-		task.CloseReason = nil
+		patch.CloseReason = &reason
 	}
 
-	reply, err := h.svc.UpdateTask(ctx, task)
+	reply, err := h.svc.UpdateTask(ctx, request.TaskId, patch)
 
 	if errors.Is(err, model.ErrInvalidArgument) || errors.Is(err, model.ErrInvalidReference) {
 		return api.UpdateTask400Response{}, nil

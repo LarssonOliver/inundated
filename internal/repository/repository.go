@@ -50,13 +50,13 @@ type TaskRepository interface {
 	// and TagIds must name regular tags only. Id, TagId, Rank and the
 	// closed fields on task are ignored.
 	CreateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
-	// UpdateTask replaces the task's name, tags, due date, estimate and
-	// close reason wholesale (the same contract as UpdateProject); parent
-	// and rank only change through MoveTask. Closing an open task also
-	// closes its open descendants with the same reason, and reopening a
-	// task also reopens its closed ancestors. The task tag's name follows
+	// UpdateTask applies patch to the stored task within the same write,
+	// so concurrent updates to different fields don't undo each other;
+	// parent and rank only change through MoveTask. Closing an open task
+	// also closes its open descendants with the same reason, and reopening
+	// a task also reopens its closed ancestors. The task tag's name follows
 	// the task's.
-	UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
 	// MoveTask places the task under parentId (nil for the top level),
 	// directly after the sibling afterId (nil for first). A parent that is
 	// the task itself or one of its descendants, a closed parent for an

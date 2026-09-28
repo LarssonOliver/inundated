@@ -19,9 +19,13 @@ import (
 // read tags that way; they expect tags aliased t and the owning task (if
 // any) LEFT JOINed as k, which tagFromSQL provides.
 //
-// Tag names sort case-insensitively, then by bytes, then by id, under the
-// "C" collation rather than the database's own, so the order doesn't hang
-// on how the database was set up and the memory store can match it.
+// Tag names sort case-insensitively, then by bytes, then by id, compared
+// under the "C" collation rather than the database's own so the memory
+// store can match the order. Case folding (lower, ILIKE) still follows the
+// database's LC_CTYPE: under a UTF-8 locale it agrees with Go's
+// strings.ToLower, but under the C locale only ASCII letters fold, so
+// e.g. "Ärende" and "ärende" sort apart and search can't match them to
+// each other there.
 const (
 	tagFromSQL = `tags t LEFT JOIN tasks k ON k.tag_id = t.id AND k.deleted_at IS NULL`
 

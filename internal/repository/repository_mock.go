@@ -26,7 +26,7 @@ type RepoMock struct {
 	GetTaskFn    func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
 	ListTasksFn  func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
 	CreateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
-	UpdateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	UpdateTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
 	MoveTaskFn   func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
 	DeleteTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 
@@ -131,8 +131,8 @@ func (t *RepoMock) CreateTask(ctx context.Context, scope model.OwnerScope, task 
 }
 
 // UpdateTask implements repository.TaskRepository.
-func (t *RepoMock) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
-	return t.UpdateTaskFn(ctx, scope, task)
+func (t *RepoMock) UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
+	return t.UpdateTaskFn(ctx, scope, id, patch)
 }
 
 // MoveTask implements repository.TaskRepository.

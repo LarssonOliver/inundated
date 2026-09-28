@@ -46,21 +46,27 @@ func (s *ServiceImpl) CreateTask(ctx context.Context, task model.Task) (model.Ta
 	return s.repository.CreateTask(ctx, scope, task)
 }
 
-func (s *ServiceImpl) UpdateTask(ctx context.Context, task model.Task) (model.Task, error) {
+func (s *ServiceImpl) UpdateTask(ctx context.Context, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Task{}, err
 	}
-	if err := validateTask(task); err != nil {
+	if id == uuid.Nil {
+		return model.Task{}, fmt.Errorf("UpdateTask %s: %w", id, model.ErrNotFound)
+	}
+	if err := validateTaskPatch(patch); err != nil {
 		return model.Task{}, err
 	}
-	return s.repository.UpdateTask(ctx, scope, task)
+	return s.repository.UpdateTask(ctx, scope, id, patch)
 }
 
 func (s *ServiceImpl) MoveTask(ctx context.Context, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error) {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return model.Task{}, err
+	}
+	if id == uuid.Nil {
+		return model.Task{}, fmt.Errorf("MoveTask %s: %w", id, model.ErrNotFound)
 	}
 	if afterId != nil && *afterId == id {
 		return model.Task{}, fmt.Errorf("MoveTask: a task can't follow itself: %w", model.ErrInvalidArgument)
@@ -73,12 +79,11 @@ func (s *ServiceImpl) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	err = s.repository.DeleteTask(ctx, scope, id)
-	if errors.Is(err, model.ErrInvalidArgument) {
+	if id == uuid.Nil {
 		// As in GetTask: a malformed id can never name a real row.
 		return fmt.Errorf("DeleteTask %s: %w", id, model.ErrNotFound)
 	}
-	return err
+	return s.repository.DeleteTask(ctx, scope, id)
 }
 
 func validateTask(task model.Task) error {
@@ -90,6 +95,24 @@ func validateTask(task model.Task) error {
 	}
 	if task.CloseReason != nil && !task.CloseReason.Valid() {
 		return fmt.Errorf("unknown close reason %q: %w", *task.CloseReason, model.ErrInvalidArgument)
+	}
+	return nil
+}
+
+func validateTaskPatch(patch model.TaskPatch) error {
+	if patch.Name != nil && *patch.Name == "" {
+		return fmt.Errorf("task name must not be empty: %w", model.ErrInvalidArgument)
+	}
+	if patch.Estimate != nil && *patch.Estimate < 0 {
+		return fmt.Errorf("task estimate must not be negative: %w", model.ErrInvalidArgument)
+	}
+	if patch.CloseReason != nil && !patch.CloseReason.Valid() {
+		return fmt.Errorf("unknown close reason %q: %w", *patch.CloseReason, model.ErrInvalidArgument)
+	}
+	if (patch.DueDate != nil && patch.ClearDueDate) ||
+		(patch.Estimate != nil && patch.ClearEstimate) ||
+		(patch.CloseReason != nil && patch.Closed != nil && !*patch.Closed) {
+		return fmt.Errorf("task patch both sets and clears a field: %w", model.ErrInvalidArgument)
 	}
 	return nil
 }

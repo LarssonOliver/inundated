@@ -219,8 +219,8 @@ func (m *MockRepository) CreateTask(ctx context.Context, scope model.OwnerScope,
 	return args.Get(0).(model.Task), args.Error(1)
 }
 
-func (m *MockRepository) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
-	args := m.Called(ctx, scope, task)
+func (m *MockRepository) UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
+	args := m.Called(ctx, scope, id, patch)
 	return args.Get(0).(model.Task), args.Error(1)
 }
 

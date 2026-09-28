@@ -135,8 +135,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "#111111", taggedTag.Color)
 
-			tagged.CloseReason = reason(model.CloseReasonDone)
-			_, err = repo.UpdateTask(ctx, testScope, tagged)
+			_, err = repo.UpdateTask(ctx, testScope, tagged.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonDone)})
 			require.NoError(t, err)
 
 			taggedTag, err = repo.GetTag(ctx, testScope, tagged.TagId)
@@ -147,8 +146,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Len(t, visible.Data, 1)
 			require.Equal(t, bare.TagId, visible.Data[0].Id)
 
-			tagged.CloseReason = nil
-			_, err = repo.UpdateTask(ctx, testScope, tagged)
+			_, err = repo.UpdateTask(ctx, testScope, tagged.Id, model.TaskPatch{Closed: new(false)})
 			require.NoError(t, err)
 			taggedTag, err = repo.GetTag(ctx, testScope, tagged.TagId)
 			require.NoError(t, err)
@@ -164,8 +162,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 			second, err := repo.CreateTask(ctx, testScope, model.Task{Name: "second"})
 			require.NoError(t, err)
-			second.TagIds = []uuid.UUID{first.TagId}
-			_, err = repo.UpdateTask(ctx, testScope, second)
+			_, err = repo.UpdateTask(ctx, testScope, second.Id, model.TaskPatch{TagIds: &[]uuid.UUID{first.TagId}})
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 
 			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
@@ -181,8 +178,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 
 			// A closed task's tag behaves like an archived tag: existing
 			// links survive edits, new ones are refused.
-			first.CloseReason = reason(model.CloseReasonIgnored)
-			_, err = repo.UpdateTask(ctx, testScope, first)
+			_, err = repo.UpdateTask(ctx, testScope, first.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonIgnored)})
 			require.NoError(t, err)
 
 			span.Name = "renamed"
@@ -204,11 +200,9 @@ func TestTaskRepositoryContract(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			task.Name = "new"
-			task.TagIds = nil
-			task.DueDate = nil
-			task.Estimate = nil
-			updated, err := repo.UpdateTask(ctx, testScope, task)
+			updated, err := repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{
+				Name: new("new"), TagIds: &[]uuid.UUID{}, ClearDueDate: true, ClearEstimate: true,
+			})
 			require.NoError(t, err)
 			require.Equal(t, "new", updated.Name)
 			require.Empty(t, updated.TagIds)
@@ -220,8 +214,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "new", tag.Name)
 
-			task.Id = uuid.New()
-			_, err = repo.UpdateTask(ctx, testScope, task)
+			_, err = repo.UpdateTask(ctx, testScope, uuid.New(), model.TaskPatch{Name: new("new")})
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
@@ -236,12 +229,10 @@ func TestTaskRepositoryContract(t *testing.T) {
 			ignored, err := repo.CreateTask(ctx, testScope, model.Task{Name: "ignored", ParentId: &root.Id})
 			require.NoError(t, err)
 
-			ignored.CloseReason = reason(model.CloseReasonIgnored)
-			_, err = repo.UpdateTask(ctx, testScope, ignored)
+			_, err = repo.UpdateTask(ctx, testScope, ignored.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonIgnored)})
 			require.NoError(t, err)
 
-			root.CloseReason = reason(model.CloseReasonDone)
-			closedRoot, err := repo.UpdateTask(ctx, testScope, root)
+			closedRoot, err := repo.UpdateTask(ctx, testScope, root.Id, model.TaskPatch{Closed: new(true)})
 			require.NoError(t, err)
 			require.NotNil(t, closedRoot.ClosedAt)
 
@@ -261,10 +252,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 
 			// Reopening the grandchild reopens its ancestors, but not its
 			// siblings' subtrees.
-			grandchild, err = repo.GetTask(ctx, testScope, grandchild.Id)
-			require.NoError(t, err)
-			grandchild.CloseReason = nil
-			_, err = repo.UpdateTask(ctx, testScope, grandchild)
+			_, err = repo.UpdateTask(ctx, testScope, grandchild.Id, model.TaskPatch{Closed: new(false)})
 			require.NoError(t, err)
 
 			open, err = repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams()})
@@ -272,10 +260,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.ElementsMatch(t, []string{"root", "child", "grandchild"}, names(open.Data))
 
 			// A closed parent takes no new open subtasks.
-			root, err = repo.GetTask(ctx, testScope, root.Id)
-			require.NoError(t, err)
-			root.CloseReason = reason(model.CloseReasonDone)
-			_, err = repo.UpdateTask(ctx, testScope, root)
+			_, err = repo.UpdateTask(ctx, testScope, root.Id, model.TaskPatch{Closed: new(true)})
 			require.NoError(t, err)
 			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "late", ParentId: &root.Id})
 			require.ErrorIs(t, err, model.ErrInvalidArgument)
@@ -370,8 +355,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.ErrorIs(t, err, model.ErrInvalidArgument)
 
 			// An open task can't move under a closed one.
-			b.CloseReason = reason(model.CloseReasonDone)
-			_, err = repo.UpdateTask(ctx, testScope, b)
+			_, err = repo.UpdateTask(ctx, testScope, b.Id, model.TaskPatch{Closed: new(true)})
 			require.NoError(t, err)
 			_, err = repo.MoveTask(ctx, testScope, c.Id, &b.Id, nil)
 			require.ErrorIs(t, err, model.ErrInvalidArgument)
@@ -463,11 +447,13 @@ func TestTaskRepositoryContract(t *testing.T) {
 			page, err := repo.ListTasks(ctx, testScope, allTasks)
 			require.NoError(t, err)
 			require.Equal(t, []uuid.UUID{keep.Id}, page.Data[0].TagIds)
+			byGone, err := repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), TagId: &gone.Id})
+			require.NoError(t, err)
+			require.Empty(t, byGone.Data)
+			require.Zero(t, byGone.TotalCount)
 
-			// Writing back what was read still works.
-			got.Name = "renamed"
-			got.CloseReason = reason(model.CloseReasonDone)
-			updated, err := repo.UpdateTask(ctx, testScope, got)
+			// Updates that leave the tags alone still work.
+			updated, err := repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{Name: new("renamed"), Closed: new(true)})
 			require.NoError(t, err)
 			require.Equal(t, []uuid.UUID{keep.Id}, updated.TagIds)
 		})
@@ -570,6 +556,52 @@ func TestTaskRepositoryContract(t *testing.T) {
 			}
 		})
 
+		t.Run(repoName+"PatchesKeepOtherFields", func(t *testing.T) {
+			repo := newRepo(t)
+			parent, err := repo.CreateTask(ctx, testScope, model.Task{Name: "parent"})
+			require.NoError(t, err)
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "task", ParentId: &parent.Id, DueDate: day(2026, 5, 1)})
+			require.NoError(t, err)
+
+			// A rename after a close leaves the close alone, instead of
+			// writing back an open state read before it.
+			_, err = repo.UpdateTask(ctx, testScope, parent.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonIgnored)})
+			require.NoError(t, err)
+			renamed, err := repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{Name: new("renamed")})
+			require.NoError(t, err)
+			require.Equal(t, "renamed", renamed.Name)
+			require.Equal(t, model.CloseReasonIgnored, *renamed.CloseReason)
+			require.True(t, renamed.DueDate.Equal(*day(2026, 5, 1)))
+			got, err := repo.GetTask(ctx, testScope, parent.Id)
+			require.NoError(t, err)
+			require.True(t, got.Closed())
+
+			// closed: true on a closed task keeps its reason.
+			again, err := repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{Closed: new(true)})
+			require.NoError(t, err)
+			require.Equal(t, model.CloseReasonIgnored, *again.CloseReason)
+
+			// Concurrent patches to different fields both land.
+			fresh, err := repo.CreateTask(ctx, testScope, model.Task{Name: "fresh"})
+			require.NoError(t, err)
+			var wg sync.WaitGroup
+			var errClose, errRename error
+			wg.Go(func() { _, errClose = repo.UpdateTask(ctx, testScope, fresh.Id, model.TaskPatch{Closed: new(true)}) })
+			wg.Go(func() {
+				_, errRename = repo.UpdateTask(ctx, testScope, fresh.Id, model.TaskPatch{Name: new("fresh renamed")})
+			})
+			wg.Wait()
+			require.NoError(t, errClose)
+			require.NoError(t, errRename)
+			got, err = repo.GetTask(ctx, testScope, fresh.Id)
+			require.NoError(t, err)
+			require.True(t, got.Closed())
+			require.Equal(t, "fresh renamed", got.Name)
+
+			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{Name: new("")})
+			require.ErrorIs(t, err, model.ErrInvalidArgument)
+		})
+
 		t.Run(repoName+"ScopeIsolation", func(t *testing.T) {
 			repo := newRepo(t)
 			scopeA := model.UserScope(uuid.New())
@@ -595,9 +627,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Len(t, tagsB.Data, 1)
 			require.Equal(t, taskB.TagId, tagsB.Data[0].Id)
 
-			hijack := taskA
-			hijack.Name = "hijack"
-			_, err = repo.UpdateTask(ctx, scopeB, hijack)
+			_, err = repo.UpdateTask(ctx, scopeB, taskA.Id, model.TaskPatch{Name: new("hijack")})
 			require.ErrorIs(t, err, model.ErrNotFound)
 			_, err = repo.MoveTask(ctx, scopeB, taskA.Id, nil, nil)
 			require.ErrorIs(t, err, model.ErrNotFound)

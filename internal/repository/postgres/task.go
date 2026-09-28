@@ -135,7 +135,7 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 	if params.TagId != nil {
 		// The placeholder sits inside a subquery, which b.add can't express.
 		b.args = append(b.args, *params.TagId)
-		fmt.Fprintf(&b.sql, " AND id IN (SELECT task_id FROM task_tags WHERE tag_id = $%d)", len(b.args))
+		fmt.Fprintf(&b.sql, " AND id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $%d)", len(b.args))
 	}
 	if params.DueFrom != nil {
 		b.add("due_date >=", *params.DueFrom)
@@ -222,27 +222,29 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 	return created, nil
 }
 
-func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
-	if task.Id == uuid.Nil {
+func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
+	if id == uuid.Nil {
 		return model.Task{}, fmt.Errorf("UpdateTask: id: %w", model.ErrInvalidArgument)
 	}
-	if task.Name == "" {
-		return model.Task{}, fmt.Errorf("UpdateTask: name must not be empty: %w", model.ErrInvalidArgument)
-	}
-	if task.CloseReason != nil && !task.CloseReason.Valid() {
-		return model.Task{}, fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
-	}
-	tagIds := utils.DedupeUUIDs(task.TagIds)
 
 	var updated model.Task
+	var tagIds []uuid.UUID
 	err := r.withTx(ctx, func(q Querier) error {
 		if err := lockTaskTree(ctx, q, scope); err != nil {
 			return err
 		}
-		existing, err := r.getTask(ctx, q, scope, task.Id, true)
+		existing, err := r.getTask(ctx, q, scope, id, true)
 		if err != nil {
 			return err
 		}
+		task := patch.Apply(existing)
+		if task.Name == "" {
+			return fmt.Errorf("UpdateTask: name must not be empty: %w", model.ErrInvalidArgument)
+		}
+		if task.CloseReason != nil && !task.CloseReason.Valid() {
+			return fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
+		}
+		tagIds = utils.DedupeUUIDs(task.TagIds)
 		if err := r.checkTaskTags(ctx, q, scope, tagIds, func() ([]uuid.UUID, error) {
 			return existing.TagIds, nil
 		}); err != nil {

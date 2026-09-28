@@ -131,20 +131,19 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 }
 
 // UpdateTask implements [repository.TaskRepository].
-func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
-	if task.Name == "" || (task.CloseReason != nil && !task.CloseReason.Valid()) {
-		return model.Task{}, model.ErrInvalidArgument
-	}
-
-	tagIds := utils.DedupeUUIDs(task.TagIds)
-
+func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	idx := t.taskIndex(scope, task.Id)
+	idx := t.taskIndex(scope, id)
 	if idx == -1 {
 		return model.Task{}, model.ErrNotFound
 	}
+	task := patch.Apply(copyTask(t.tasks[idx]))
+	if task.Name == "" || (task.CloseReason != nil && !task.CloseReason.Valid()) {
+		return model.Task{}, model.ErrInvalidArgument
+	}
+	tagIds := utils.DedupeUUIDs(task.TagIds)
 	if !t.tagsUsable(scope, tagIds, t.tasks[idx].TagIds) || t.anyTaskTag(tagIds) {
 		return model.Task{}, model.ErrInvalidReference
 	}

@@ -140,7 +140,7 @@ func scopedMethods() []scopedMethod {
 			return err
 		}, 1},
 		{"UpdateTask", func(ctx context.Context, s *service.ServiceImpl) error {
-			_, err := s.UpdateTask(ctx, model.Task{Id: uuid.New(), Name: "task"})
+			_, err := s.UpdateTask(ctx, uuid.New(), model.TaskPatch{Name: new("task")})
 			return err
 		}, 1},
 		{"MoveTask", func(ctx context.Context, s *service.ServiceImpl) error {
@@ -252,9 +252,9 @@ func recordingRepo(rec *[]model.OwnerScope) *repository.RepoMock {
 			record(scope)
 			return task, nil
 		},
-		UpdateTaskFn: func(_ context.Context, scope model.OwnerScope, task model.Task) (model.Task, error) {
+		UpdateTaskFn: func(_ context.Context, scope model.OwnerScope, id uuid.UUID, _ model.TaskPatch) (model.Task, error) {
 			record(scope)
-			return task, nil
+			return model.Task{Id: id, Name: "task"}, nil
 		},
 		MoveTaskFn: func(_ context.Context, scope model.OwnerScope, id uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) (model.Task, error) {
 			record(scope)
