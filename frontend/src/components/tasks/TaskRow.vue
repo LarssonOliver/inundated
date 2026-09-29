@@ -43,7 +43,7 @@
     <span v-if="task.closeReason === 'ignored'" class="badge">Ignored</span>
 
     <div ref="tagsFieldEl" class="task-tags">
-      <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" />
+      <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" labels-only />
       <button v-else class="field-trigger tags-trigger" title="Edit tags" @click="startEditTags">
         <TagListEmbedded :model-value="task.tagIds" read-only />
         <span v-if="task.tagIds.size === 0" class="placeholder">Tags</span>
@@ -398,6 +398,7 @@ function startEditTags() {
 .placeholder {
   color: var(--nord3);
   font-style: italic;
+  margin: 0.25em 0.5em 0.25em -0.25em;
 }
 
 .order-buttons {
@@ -427,5 +428,6 @@ function startEditTags() {
 
 :deep(.tag-list) {
   margin: 0;
+  padding-left: 0.25em;
 }
 </style>

@@ -219,20 +219,23 @@ test("debounces server search and does not refetch tasks on every keystroke", as
   expect(listAllTasks).toHaveBeenCalledOnce();
 });
 
-test("without allowTaskCreation, a leading # is treated as part of the name", async () => {
+test("without allowTaskCreation, a leading # still narrows the search to tasks but offers no create option", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
-  searchTags.mockResolvedValue([tag({ id: "label", name: "#hash" })]);
+  searchTags.mockResolvedValue([tag({ id: "t1", name: "Write report", taskId: "task-1" })]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
   await flushPromises();
 
   const input = wrapper.find("input");
   await input.trigger("focus");
-  await input.setValue("#hash");
+  await input.setValue("#report");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("#hash", "all");
-  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');
+  expect(searchTags).toHaveBeenLastCalledWith("report", "task");
+  // The matching task tag is still offered for selection...
+  expect(wrapper.text()).toContain("#Write report");
+  // ...but creating a new one isn't, since this picker can't create tasks.
+  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
 });
 
 test("retries fetching tasks after a failed attempt", async () => {

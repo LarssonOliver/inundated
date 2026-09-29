@@ -3,7 +3,7 @@
     <SelectDropdown
       placeholder=""
       searchable
-      creatable
+      :creatable="canCreateFromCurrentQuery"
       manual-filter
       :options="tagSearchResult"
       :option-value="(tag) => tag.id"
@@ -76,14 +76,27 @@ const tagSearchResult = computed(() =>
 
 /**
  * Returns the task name typed after a leading "#", or null when the query
- * isn't a task query. Task queries search task tags only, and creating from
- * one creates a task.
+ * isn't a task query. A "#" prefix always narrows the search to task tags
+ * (and is stripped from what's actually searched for) whenever task tags
+ * aren't excluded outright by labelsOnly; creating a new task from an
+ * unmatched "#query" additionally requires allowTaskCreation, guarded
+ * separately below.
  */
 function taskNameFromQuery(query: string): string | null {
   const trimmed = query.trim();
-  if (!allowTaskCreation || labelsOnly || !trimmed.startsWith("#")) return null;
+  if (labelsOnly || !trimmed.startsWith("#")) return null;
   return trimmed.slice(1).trim();
 }
+
+// Tracks the live search box text (updated per keystroke, ahead of the
+// debounced search itself) so the "create" option can be hidden instantly
+// for a "#query" when this picker isn't allowed to create tasks - showing
+// "Create task ..." there, or falling back to literally creating a regular
+// tag named "#query", would both be wrong.
+const currentQuery = ref("");
+const canCreateFromCurrentQuery = computed(
+  () => taskNameFromQuery(currentQuery.value) === null || allowTaskCreation,
+);
 
 // Guards against overlapping searches: a slower response for an older query
 // (including a search cleared out from under it) must not replace the
@@ -164,6 +177,7 @@ async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
 }
 
 function onTagSearch(query: string) {
+  currentQuery.value = query;
   if (!query.trim()) {
     clearTimeout(searchDebounceTimer);
     searchToken++; // invalidate any in-flight search so it can't repopulate results
@@ -184,7 +198,9 @@ function onTagClose(tag: Tag) {
 async function onTagCreate(query: string) {
   const taskName = taskNameFromQuery(query);
   if (taskName !== null) {
-    if (!taskName) return;
+    // The create row is hidden in this case (see canCreateFromCurrentQuery),
+    // so this only guards against it somehow still firing.
+    if (!allowTaskCreation || !taskName) return;
     const task = await tasksStore.createTaskFromName(taskName);
     // Fetch the new task tag so its pill can show before the next refresh.
     await tagsStore.fetchTagById(task.tagId);
