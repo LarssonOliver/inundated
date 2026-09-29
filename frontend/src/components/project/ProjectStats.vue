@@ -45,27 +45,13 @@
         <p class="stat-tile-label">Total this period</p>
       </div>
 
-      <div v-if="hasBudget" class="meter">
-        <div class="meter-header">
-          <span class="meter-label">Time budget</span>
-          <span class="meter-reading" :class="budgetSeverityClass">
-            <MaterialIcon
-              v-if="budgetSeverityClass === 'severity-critical'"
-              icon="warning"
-              size="16px"
-              class="meter-icon"
-            />
-            {{ totalAllTimeFormatted }} / {{ timeBudgetFormatted }} ({{ budgetPercentLabel }})
-          </span>
-        </div>
-        <div class="meter-track">
-          <div
-            class="meter-fill"
-            :class="budgetSeverityClass"
-            :style="{ width: budgetFillPercent + '%' }"
-          />
-        </div>
-      </div>
+      <UsageMeter
+        v-if="hasBudget"
+        label="Time budget"
+        :used="project.totalTimeMs ?? 0"
+        :limit="(project.timeBudgetHours ?? 0) * 3600000"
+        :format="(ms) => formatDuration(ms, durationFormat)"
+      />
     </div>
 
     <div class="chart-container">
@@ -107,7 +93,7 @@
 <script setup lang="ts">
 import { Bar } from "vue-chartjs";
 import type { Project, ProjectStats } from "@/model";
-import MaterialIcon from "@/components/icons/MaterialIcon.vue";
+import UsageMeter from "@/components/stats/UsageMeter.vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
 import {
@@ -124,7 +110,6 @@ import { nord } from "@/helpers/nord";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { granularityForRange, unitToHoursFactor } from "@/helpers/statsChart";
 import { formatDuration } from "@/helpers/time";
-import { meterSeverity } from "@/helpers/meter";
 import { useStatsSettings } from "@/composables/useStatsSettings";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
@@ -171,29 +156,6 @@ const periodTotalFormatted = computed(() =>
 const hasBudget = computed(
   () => !!props.project.timeBudgetHours && props.project.timeBudgetHours > 0,
 );
-
-const totalHoursAllTime = computed(() => (props.project.totalTimeMs ?? 0) / (1000 * 60 * 60));
-
-const totalAllTimeFormatted = computed(() =>
-  formatDuration(totalHoursAllTime.value * 3600000, durationFormat.value),
-);
-
-const timeBudgetFormatted = computed(() =>
-  formatDuration((props.project.timeBudgetHours ?? 0) * 3600000, durationFormat.value),
-);
-
-const budgetRatio = computed(() => {
-  if (!hasBudget.value) {
-    return 0;
-  }
-  return totalHoursAllTime.value / (props.project.timeBudgetHours as number);
-});
-
-const budgetFillPercent = computed(() => Math.min(budgetRatio.value * 100, 100));
-
-const budgetPercentLabel = computed(() => `${Math.round(budgetRatio.value * 100)}%`);
-
-const budgetSeverityClass = computed(() => `severity-${meterSeverity(budgetRatio.value)}`);
 
 const iso8601Range = computed(() => {
   if (pickedRange.value.length !== 2) {

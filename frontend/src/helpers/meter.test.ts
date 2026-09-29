@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meterSeverity } from "./meter";
+import { meterRatio, meterSeverity } from "./meter";
 
 describe("meterSeverity", () => {
   it("is good below 80%", () => {
@@ -15,5 +15,18 @@ describe("meterSeverity", () => {
   it("is critical once over 100%", () => {
     expect(meterSeverity(1.01)).toBe("critical");
     expect(meterSeverity(2)).toBe("critical");
+  });
+});
+
+describe("meterRatio", () => {
+  it("divides used by limit", () => {
+    expect(meterRatio(0, 10)).toBe(0);
+    expect(meterRatio(5, 10)).toBe(0.5);
+    expect(meterRatio(15, 10)).toBe(1.5);
+  });
+
+  it("treats a zero limit as full once anything is used", () => {
+    expect(meterRatio(0, 0)).toBe(0);
+    expect(meterRatio(1, 0)).toBe(1);
   });
 });
