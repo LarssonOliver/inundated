@@ -33,7 +33,9 @@
         @keydown.escape="cancelName"
       />
       <template v-else>
-        <router-link class="task-name" :to="`/tasks/${task.id}`">{{ task.name }}</router-link>
+        <router-link class="task-name-link" :to="`/tasks/${task.id}`">
+          <TagItem :tag="taskTagPreview" />
+        </router-link>
         <button class="field-trigger name-edit-btn" title="Rename" @click="startEditName">
           <MaterialIcon icon="edit" size="0.85em" />
         </button>
@@ -135,7 +137,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
-import type { Task } from "@/model";
+import type { Tag, Task } from "@/model";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import {
@@ -144,7 +146,9 @@ import {
   singleDatePickerInputWidthCh,
   toLocalDay,
 } from "@/helpers/dates";
+import { nord10 } from "@/helpers/nord";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
+import TagItem from "@/components/tags/TagItem.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
 
@@ -174,6 +178,21 @@ const emit = defineEmits<{
 
 const settingsStore = useSettingsStore();
 const formatMs = useDurationFormat(() => settingsStore.settings);
+
+// A stand-in for the task's own tag, so its name can be shown as the same
+// outlined "#name" pill used everywhere else a task tag appears, without
+// fetching the real Tag for every row in the list. Task tags are always
+// created with this fixed default color server-side (see
+// DefaultTaskTagColor), so this only looks wrong for the rare tag someone
+// has since recolored by hand - it'll show correctly once its own detail
+// page is opened.
+const taskTagPreview = computed<Tag>(() => ({
+  id: props.task.tagId,
+  name: props.task.name,
+  color: nord10,
+  archived: false,
+  taskId: props.task.id,
+}));
 
 type EditableField = "name" | "estimate" | "dueDate" | "tags" | null;
 const editingField = ref<EditableField>(null);
@@ -293,7 +312,7 @@ function startEditTags() {
   box-shadow: var(--shadow-sm);
 }
 
-.task-row.closed .task-name {
+.task-row.closed .task-name-link {
   text-decoration: line-through;
   opacity: 0.6;
 }
@@ -323,8 +342,24 @@ function startEditTags() {
   gap: 0.3em;
 }
 
-.task-name {
-  font-weight: 600;
+/* Neutralizes the global `a` styling (padding, hover background) so the
+   pill inside - the only thing providing this link's visuals - isn't
+   doubled up with a mismatched box around it. */
+.task-name-link {
+  padding: 0;
+  border-radius: var(--radius-md);
+  color: inherit;
+  transition: opacity var(--transition-fast);
+}
+
+.task-name-link:hover,
+.task-name-link:focus {
+  background-color: transparent;
+  opacity: 0.8;
+}
+
+.task-name-link:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 .name-edit-btn,
