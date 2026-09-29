@@ -66,4 +66,16 @@ func TestPostgres_TaskEffectiveTagsFollowRawWrites(t *testing.T) {
 
 	exec(`UPDATE tags SET deleted_at = NULL WHERE id = $1`, label.Id)
 	require.Equal(t, time.Hour, total(), "restoring a tag brings it back")
+
+	rowsFor := func(tagId uuid.UUID) int {
+		t.Helper()
+		var n int
+		require.NoError(t, pool.QueryRow(ctx,
+			`SELECT count(*) FROM task_effective_tags WHERE tag_id = $1`, tagId).Scan(&n))
+		return n
+	}
+	exec(`UPDATE tags SET deleted_at = now() WHERE id = $1`, parent.TagId)
+	require.Zero(t, rowsFor(parent.TagId), "deleting a task tag drops its rows")
+	exec(`UPDATE tags SET deleted_at = NULL WHERE id = $1`, parent.TagId)
+	require.Equal(t, 2, rowsFor(parent.TagId), "restoring a task tag reaches the task and its subtask")
 }

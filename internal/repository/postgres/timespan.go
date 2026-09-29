@@ -229,17 +229,19 @@ func (r *PostgresStore) timespanTagIds(ctx context.Context, q Querier, timespanI
 	return ids[timespanId], err
 }
 
-// timespanTagHitsSQL selects (timespan_id, tag_id) once for every tag in
-// the uuid[] tagIds that a timespan reaches: directly, by carrying it, or
+// timespanTagHitsSQL selects (timespan_id, tag_id) for every tag in the
+// uuid[] tagIds that a timespan reaches: directly, by carrying it, or
 // through the effective tags of a live task whose task tag it carries (see
 // task_effective_tags). It is the one statement of that attribution rule;
-// every per-tag, per-task and project total builds on it.
+// every per-tag, per-task and project total builds on it. A pair can repeat
+// (a timespan can reach a tag several ways), which an IN test ignores and a
+// per-tag sum must remove.
 func timespanTagHitsSQL(tagIds string) string {
 	return `
 		SELECT tt.timespan_id, tt.tag_id
 		FROM timespan_tags tt
 		WHERE tt.tag_id = ANY(` + tagIds + `)
-		UNION` + timespanTaskTagHitsSQL(tagIds)
+		UNION ALL` + timespanTaskTagHitsSQL(tagIds)
 }
 
 // timespanTaskTagHitsSQL is the task half of timespanTagHitsSQL: the
@@ -328,7 +330,8 @@ func (r *PostgresStore) GetTotalDurationPerTag(ctx context.Context, scope model.
 	// timespanTagHitsSQL), once per tag however many ways it reaches it.
 	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
 	q := `
-		WITH hits AS (` + timespanTagHitsSQL("$1") + `
+		WITH hits AS (
+			SELECT DISTINCT h.timespan_id, h.tag_id FROM (` + timespanTagHitsSQL("$1") + `) h
 		)
 		SELECT h.tag_id, SUM(t.end_time - t.start_time)
 		FROM hits h

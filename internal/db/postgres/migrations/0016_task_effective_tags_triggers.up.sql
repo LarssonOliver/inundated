@@ -12,6 +12,10 @@ CREATE OR REPLACE FUNCTION refresh_task_effective_tags(roots UUID[]) RETURNS voi
 LANGUAGE plpgsql AS $$
 DECLARE
     subtree UUID[];
+    -- (pair_task[i], pair_ancestor[i]): every live subtree task paired with
+    -- itself and each of its ancestors.
+    pair_task UUID[];
+    pair_ancestor UUID[];
 BEGIN
     WITH RECURSIVE sub AS (
         SELECT id FROM tasks WHERE id = ANY(roots)
@@ -24,27 +28,6 @@ BEGIN
         RETURN;
     END IF;
 
-    DELETE FROM task_effective_tags WHERE task_id = ANY(subtree);
-
-    -- Share-lock the regular tags about to be written, so a concurrent tag
-    -- delete either waits for this transaction (and then removes its rows)
-    -- or has already committed (and the insert below skips the tag). Locking
-    -- in id order matches tagsInScope and DeleteTask.
-    PERFORM 1 FROM tags t
-    WHERE t.deleted_at IS NULL AND t.id IN (
-        WITH RECURSIVE ancestry(task_id, ancestor_id) AS (
-            SELECT id, id FROM tasks WHERE id = ANY(subtree) AND deleted_at IS NULL
-            UNION
-            SELECT a.task_id, p.parent_id
-            FROM ancestry a
-            JOIN tasks p ON p.id = a.ancestor_id
-            WHERE p.parent_id IS NOT NULL
-        )
-        SELECT tt.tag_id FROM ancestry a JOIN task_tags tt ON tt.task_id = a.ancestor_id
-    )
-    ORDER BY t.id
-    FOR SHARE;
-
     WITH RECURSIVE ancestry(task_id, ancestor_id) AS (
         SELECT id, id FROM tasks WHERE id = ANY(subtree) AND deleted_at IS NULL
         UNION
@@ -53,13 +36,36 @@ BEGIN
         JOIN tasks p ON p.id = a.ancestor_id
         WHERE p.parent_id IS NOT NULL
     )
+    SELECT array_agg(task_id), array_agg(ancestor_id) INTO pair_task, pair_ancestor FROM ancestry;
+
+    -- Share-lock the tags about to be written before touching any row, so a
+    -- concurrent tag delete either waits for this transaction (and then
+    -- removes its rows) or has already committed (and the insert below
+    -- skips the tag). Taking them after the delete would deadlock with that
+    -- tag delete's own delete of the same rows. Locking in id order matches
+    -- tagsInScope and DeleteTask.
+    PERFORM 1 FROM tags t
+    WHERE t.deleted_at IS NULL AND t.id IN (
+        SELECT k.tag_id FROM tasks k WHERE k.id = ANY(pair_ancestor)
+        UNION
+        SELECT tt.tag_id FROM task_tags tt WHERE tt.task_id = ANY(pair_ancestor)
+    )
+    ORDER BY t.id
+    FOR SHARE;
+
+    DELETE FROM task_effective_tags WHERE task_id = ANY(subtree);
+    IF pair_task IS NULL THEN
+        RETURN;
+    END IF;
+
     INSERT INTO task_effective_tags (task_id, tag_id)
     SELECT a.task_id, k.tag_id
-    FROM ancestry a
+    FROM unnest(pair_task, pair_ancestor) AS a(task_id, ancestor_id)
     JOIN tasks k ON k.id = a.ancestor_id
+    JOIN tags kt ON kt.id = k.tag_id AND kt.deleted_at IS NULL
     UNION
     SELECT a.task_id, tt.tag_id
-    FROM ancestry a
+    FROM unnest(pair_task, pair_ancestor) AS a(task_id, ancestor_id)
     JOIN task_tags tt ON tt.task_id = a.ancestor_id
     JOIN tags lt ON lt.id = tt.tag_id AND lt.deleted_at IS NULL;
 END;
@@ -117,7 +123,7 @@ END;
 $$;
 
 -- Deleted tags leave every task; restored ones come back to the tasks that
--- still link them.
+-- still link them, or own them as their task tag.
 CREATE OR REPLACE FUNCTION task_effective_tags_on_tag_update() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -127,11 +133,13 @@ BEGIN
         WHERE o.deleted_at IS NULL AND n.deleted_at IS NOT NULL
     );
     PERFORM refresh_task_effective_tags(ARRAY(
-        SELECT DISTINCT tt.task_id
-        FROM new_rows n
-        JOIN old_rows o ON o.id = n.id
-        JOIN task_tags tt ON tt.tag_id = n.id
-        WHERE o.deleted_at IS NOT NULL AND n.deleted_at IS NULL
+        WITH restored AS (
+            SELECT n.id FROM new_rows n JOIN old_rows o ON o.id = n.id
+            WHERE o.deleted_at IS NOT NULL AND n.deleted_at IS NULL
+        )
+        SELECT tt.task_id FROM task_tags tt JOIN restored r ON r.id = tt.tag_id
+        UNION
+        SELECT k.id FROM tasks k JOIN restored r ON r.id = k.tag_id
     ));
     RETURN NULL;
 END;
