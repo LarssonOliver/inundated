@@ -23,6 +23,7 @@ declare module 'vue' {
     TagListEmbedded: typeof import('./src/components/tags/TagListEmbedded.vue')['default']
     TagStats: typeof import('./src/components/tags/TagStats.vue')['default']
     TaskCheckbox: typeof import('./src/components/inputs/TaskCheckbox.vue')['default']
+    TaskRow: typeof import('./src/components/tasks/TaskRow.vue')['default']
     TheCalendar: typeof import('./src/components/calendar/TheCalendar.vue')['default']
     TheMenu: typeof import('./src/components/TheMenu.vue')['default']
     TheTimesheet: typeof import('./src/components/timesheet/TheTimesheet.vue')['default']

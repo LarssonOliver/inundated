@@ -76,6 +76,7 @@
         >
           <TaskCheckbox
             :checked="child.closed"
+            :variant="child.closeReason === 'ignored' ? 'ignored' : 'success'"
             :aria-label="child.closed ? `Reopen ${child.name}` : `Mark ${child.name} done`"
             @change="toggleSubtask(child)"
           />

@@ -1,5 +1,5 @@
 <template>
-  <label class="task-checkbox" :class="{ disabled }" :title="title">
+  <label class="task-checkbox" :class="[`variant-${variant}`, { disabled }]" :title="title">
     <input
       type="checkbox"
       :checked="checked"
@@ -18,12 +18,17 @@
 <script setup lang="ts">
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 
-defineProps<{
-  checked: boolean;
-  disabled?: boolean;
-  ariaLabel?: string;
-  title?: string;
-}>();
+withDefaults(
+  defineProps<{
+    checked: boolean;
+    disabled?: boolean;
+    ariaLabel?: string;
+    title?: string;
+    /** Checked-state color: "success" (green, the default) or "ignored" (amber). */
+    variant?: "success" | "ignored";
+  }>(),
+  { variant: "success" },
+);
 
 defineEmits<{
   change: [event: Event];
@@ -81,9 +86,14 @@ defineEmits<{
     transform var(--transition-fast);
 }
 
-.task-checkbox input:checked ~ .box {
+.task-checkbox.variant-success input:checked ~ .box {
   background-color: var(--nord14);
   border-color: var(--nord14);
+}
+
+.task-checkbox.variant-ignored input:checked ~ .box {
+  background-color: var(--nord13);
+  border-color: var(--nord13);
 }
 
 .task-checkbox input:checked ~ .box .check-icon {
@@ -91,8 +101,12 @@ defineEmits<{
   transform: scale(1);
 }
 
-.task-checkbox input:not(:disabled):hover ~ .box {
+.task-checkbox.variant-success input:not(:disabled):hover ~ .box {
   border-color: var(--nord14);
+}
+
+.task-checkbox.variant-ignored input:not(:disabled):hover ~ .box {
+  border-color: var(--nord13);
 }
 
 .task-checkbox input:focus-visible ~ .box {

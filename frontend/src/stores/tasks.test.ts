@@ -179,6 +179,105 @@ describe("tasks store", () => {
     expect(api.moveTask).not.toHaveBeenCalled();
   });
 
+  it("only reorders a task among same-status siblings", async () => {
+    api.listAllTasks.mockResolvedValue([
+      task({ id: "a", rank: "a" }),
+      task({ id: "b", rank: "b", closed: true }),
+      task({ id: "c", rank: "c" }),
+    ]);
+    api.moveTask.mockResolvedValue(task({ id: "x" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    // "a" (open) skips over "b" (closed) to land after "c" (open).
+    await store.shiftTask("a", 1);
+    expect(api.moveTask).toHaveBeenLastCalledWith("a", undefined, "c");
+  });
+
+  it("indents a task under the row immediately above it, even a nested one", async () => {
+    api.listAllTasks.mockResolvedValue([
+      task({ id: "a", rank: "a" }),
+      task({ id: "a1", parentId: "a", rank: "m" }),
+      task({ id: "b", rank: "b" }),
+    ]);
+    api.moveTask.mockResolvedValue(task({ id: "x" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    // Row directly above "b" is "a1" (a's only, and so deepest, child) - not
+    // "a" - so "b" nests one level deeper, under "a1".
+    await store.indentTask("b");
+    expect(api.moveTask).toHaveBeenLastCalledWith("b", "a1", undefined);
+  });
+
+  it("indenting a parent's first child appends it after the parent's other children", async () => {
+    api.listAllTasks.mockResolvedValue([
+      task({ id: "a", rank: "a" }),
+      task({ id: "a1", parentId: "a", rank: "m" }),
+      task({ id: "a2", parentId: "a", rank: "z" }),
+    ]);
+    api.moveTask.mockResolvedValue(task({ id: "x" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    // "a1" is a's first child, so the row above it is "a" itself. Indenting
+    // moves it to be a's last child instead - after "a2" - not a no-op, and
+    // not accidentally passed itself as the "after" sibling.
+    await store.indentTask("a1");
+    expect(api.moveTask).toHaveBeenLastCalledWith("a1", "a", "a2");
+  });
+
+  it("does not indent the first row (nothing above it)", async () => {
+    api.listAllTasks.mockResolvedValue([task({ id: "a", rank: "a" })]);
+    const store = useStore();
+    await store.fetchTasks();
+
+    await store.indentTask("a");
+    expect(api.moveTask).not.toHaveBeenCalled();
+  });
+
+  it("only indents within the same open/closed section", async () => {
+    api.listAllTasks.mockResolvedValue([
+      task({ id: "a", rank: "a", closed: true }),
+      task({ id: "b", rank: "b" }),
+    ]);
+    api.moveTask.mockResolvedValue(task({ id: "x" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    // "b" is open, "a" is closed - nothing open precedes "b" in its own
+    // section, so there's no row above it to indent under.
+    await store.indentTask("b");
+    expect(api.moveTask).not.toHaveBeenCalled();
+  });
+
+  it("outdents a task to become a sibling right after its old parent", async () => {
+    api.listAllTasks.mockResolvedValue([
+      task({ id: "a", rank: "a" }),
+      task({ id: "a1", parentId: "a", rank: "m" }),
+    ]);
+    api.moveTask.mockResolvedValue(task({ id: "x" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    await store.outdentTask("a1");
+    expect(api.moveTask).toHaveBeenLastCalledWith("a1", undefined, "a");
+  });
+
+  it("does not outdent a top-level task", async () => {
+    api.listAllTasks.mockResolvedValue([task({ id: "a", rank: "a" })]);
+    const store = useStore();
+    await store.fetchTasks();
+
+    await store.outdentTask("a");
+    expect(api.moveTask).not.toHaveBeenCalled();
+  });
+
   it("keeps a task in place when the server refuses to delete it", async () => {
     api.listAllTasks.mockResolvedValue([task({ id: "a" })]);
     api.deleteTask.mockRejectedValue(new Error("409"));

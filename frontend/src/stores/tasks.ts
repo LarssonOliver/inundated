@@ -175,9 +175,11 @@ function createTasksStore(api: TasksApi) {
     async function shiftTaskRaw(id: string, delta: -1 | 1): Promise<void> {
       const task = tasks.value.get(id);
       if (!task) return;
+      // Open and closed tasks render as separate lists (see TaskListView), so
+      // moving one must only ever reorder it among same-status siblings.
       const siblings = taskTree(readOnlyTasks.value)
         .map((row) => row.task)
-        .filter((t) => t.parentId === task.parentId);
+        .filter((t) => t.parentId === task.parentId && t.closed === task.closed);
       const index = siblings.findIndex((t) => t.id === id);
       const target = index + delta;
       if (index === -1 || target < 0 || target >= siblings.length) return;
@@ -187,6 +189,38 @@ function createTasksStore(api: TasksApi) {
       const others = siblings.filter((t) => t.id !== id);
       const after = target === 0 ? undefined : others[target - 1];
       await moveTaskRaw(id, task.parentId, after?.id);
+    }
+
+    /**
+     * Makes a task the last child of the task immediately above it (within
+     * its own open/closed section, depth-first order) - a standard outliner
+     * "indent". A no-op if there's no row above it.
+     */
+    async function indentTaskRaw(id: string): Promise<void> {
+      const task = tasks.value.get(id);
+      if (!task) return;
+      const sectionRows = taskTree(readOnlyTasks.value.filter((t) => t.closed === task.closed));
+      const index = sectionRows.findIndex((row) => row.task.id === id);
+      if (index <= 0) return;
+
+      const newParent = sectionRows[index - 1].task;
+      const lastChild = sectionRows
+        .map((row) => row.task)
+        .filter((t) => t.parentId === newParent.id && t.id !== id)
+        .at(-1);
+      await moveTaskRaw(id, newParent.id, lastChild?.id);
+    }
+
+    /**
+     * Makes a task a sibling of its current parent, placed directly after
+     * it - a standard outliner "outdent". A no-op on a top-level task.
+     */
+    async function outdentTaskRaw(id: string): Promise<void> {
+      const task = tasks.value.get(id);
+      if (!task?.parentId) return;
+      const parent = tasks.value.get(task.parentId);
+      if (!parent) return;
+      await moveTaskRaw(id, parent.parentId, parent.id);
     }
 
     // Serializes moveTask/shiftTask so a second call always sees the first
@@ -223,6 +257,16 @@ function createTasksStore(api: TasksApi) {
       return serializeTaskMove(() => shiftTaskRaw(id, delta));
     }
 
+    /** See indentTaskRaw. */
+    function indentTask(id: string): Promise<void> {
+      return serializeTaskMove(() => indentTaskRaw(id));
+    }
+
+    /** See outdentTaskRaw. */
+    function outdentTask(id: string): Promise<void> {
+      return serializeTaskMove(() => outdentTaskRaw(id));
+    }
+
     /**
      * Deletes a task and its subtasks. The server refuses (409) when any of
      * them has logged time.
@@ -249,6 +293,8 @@ function createTasksStore(api: TasksApi) {
       reopenTask,
       moveTask,
       shiftTask,
+      indentTask,
+      outdentTask,
       deleteTask,
     };
   });
