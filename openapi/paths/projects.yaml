@@ -46,7 +46,7 @@ projects-id:
     summary: Get project
     operationId: getProject
     parameters:
-      - $ref: "../parameters/shared.yaml#/includeQuery"
+      - $ref: "../parameters/shared.yaml#/projectIncludeQuery"
     responses:
       "200":
         description: Project

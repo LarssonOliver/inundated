@@ -46,6 +46,7 @@ type RepoMock struct {
 	UpdateTimespanFn         func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	GetTotalDurationByTagsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 	GetTotalDurationPerTagFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error)
+	GetTaskDurationByTagsFn  func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 
 	AggregateTimeSpentByTagsAndBucketsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
 
@@ -221,6 +222,11 @@ func (t *RepoMock) GetTotalDurationByTags(ctx context.Context, scope model.Owner
 // GetTotalDurationPerTag implements repository.TimespanRepository.
 func (t *RepoMock) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
 	return t.GetTotalDurationPerTagFn(ctx, scope, tagIds)
+}
+
+// GetTaskDurationByTags implements repository.TimespanRepository.
+func (t *RepoMock) GetTaskDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
+	return t.GetTaskDurationByTagsFn(ctx, scope, tagIds)
 }
 
 // AggregateTimeSpentByTagsAndBuckets implements repository.ProjectStatsRepository.

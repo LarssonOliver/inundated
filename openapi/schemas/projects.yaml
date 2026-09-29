@@ -17,6 +17,11 @@ Project:
       $ref: "./shared.yaml#/TagIdList"
     totalTimeMs:
       type: integer
+    taskTimeMs:
+      type: integer
+      description: Time logged on the project's tasks, open or closed. Each
+        time span counts once. totalTimeMs minus this is the project's time
+        that is not on any of its tasks.
     archived:
       type: boolean
       description: Whether this project is archived. Archived projects are hidden

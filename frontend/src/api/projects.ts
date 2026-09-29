@@ -68,6 +68,7 @@ function createProjectsApi(api: GeneratedProjectsApi = defaultGeneratedApi): Pro
       const include = new Set<GetProjectIncludeEnum>();
       if (detailed) {
         include.add(GetProjectIncludeEnum.TotalTimeMs);
+        include.add(GetProjectIncludeEnum.TaskTimeMs);
       }
 
       const response = await api.getProject({ projectId: id, include: include });

@@ -57,6 +57,11 @@ func TestTaskAttributionContract(t *testing.T) {
 			logTime(time.Hour, landing.TagId)
 			logTime(30*time.Minute, acme.Id)
 
+			onTasks := func(tagIds ...uuid.UUID) time.Duration {
+				d, err := repo.GetTaskDurationByTags(ctx, testScope, tagIds)
+				require.NoError(t, err)
+				return d
+			}
 			total := func(tagIds ...uuid.UUID) time.Duration {
 				d, err := repo.GetTotalDurationByTags(ctx, testScope, tagIds)
 				require.NoError(t, err)
@@ -86,6 +91,8 @@ func TestTaskAttributionContract(t *testing.T) {
 			require.Equal(t, 3*time.Hour, total(design.Id), "tag time includes time on tasks with the tag")
 			require.Equal(t, 30*time.Minute, total(acme.Id))
 			require.Equal(t, 3*time.Hour+30*time.Minute, total(website.TagIds...), "each timespan counts once per project")
+			require.Equal(t, 3*time.Hour, onTasks(website.TagIds...), "the client call is on no task")
+			require.Zero(t, onTasks())
 
 			// The batch form gives each tag the same total, in one call.
 			unused := tag("unused")
@@ -121,6 +128,7 @@ func TestTaskAttributionContract(t *testing.T) {
 			require.Equal(t, map[uuid.UUID][]uuid.UUID{invoice.Id: {website.Id}}, projectsOf(invoice.Id))
 			require.Equal(t, 45*time.Minute, total(acme.Id))
 			require.Equal(t, 3*time.Hour+45*time.Minute, total(website.TagIds...))
+			require.Equal(t, 3*time.Hour+15*time.Minute, onTasks(website.TagIds...), "a task sharing a project tag is the project's")
 
 			// Re-tagging a task moves its past time with it.
 			_, err = repo.UpdateTask(ctx, testScope, landing.Id, model.TaskPatch{TagIds: &[]uuid.UUID{}})

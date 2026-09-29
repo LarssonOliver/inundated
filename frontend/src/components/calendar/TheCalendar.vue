@@ -47,6 +47,36 @@
               </div>
             </div>
           </template>
+          <!-- The date grid holds task due dates, and also timespans that
+               cross midnight, which schedule-x draws there as multi-day
+               events; only the former get the due-date look. -->
+          <template #dateGridEvent="{ calendarEvent }">
+            <div
+              v-if="isDueDateEvent(calendarEvent)"
+              class="custom-event date-grid-event due-event"
+              :data-calendar-id="calendarEvent.calendarId"
+              :style="eventColorStyle(calendarEvent.calendarId ?? '')"
+              :title="`Due: ${calendarEvent.title}`"
+            >
+              <MaterialIcon icon="flag" size="1em" />
+              <span class="custom-event-title">{{ calendarEvent.title }}</span>
+            </div>
+            <div
+              v-else
+              class="custom-event date-grid-event"
+              :data-calendar-id="calendarEvent.calendarId"
+              :style="eventColorStyle(calendarEvent.calendarId ?? '')"
+            >
+              <span v-if="calendarEvent.title" class="custom-event-title">
+                {{ calendarEvent.title }}
+              </span>
+              <span class="custom-event-time">
+                <MaterialIcon icon="access_time" size="1em" />
+                {{ eventTimeText(calendarEvent) }}
+              </span>
+              <TagItem v-for="tag in eventTagsFor(calendarEvent)" :key="tag.id" :tag="tag" />
+            </div>
+          </template>
         </ScheduleXCalendar>
       </div>
     </template>
@@ -77,7 +107,9 @@ import SelectDropdown, { type DropdownOption } from "@/components/inputs/SelectD
 import TagItem from "@/components/tags/TagItem.vue";
 import { timespansApi } from "@/api/timespans";
 import { tagsApi } from "@/api/tags";
+import { tasksApi } from "@/api/tasks";
 import { useSettingsStore } from "@/stores/settings";
+import { useRouter } from "vue-router";
 import { resolveTimezone } from "@/helpers/timezones";
 import { formatDatePickerInput, singleDatePickerInputWidthCh } from "@/helpers/dates";
 import { memoizeAsync } from "@/helpers/memoize";
@@ -85,6 +117,10 @@ import { TIMEZONE_BROWSER } from "@/model";
 import type { Tag } from "@/model";
 import {
   timespansToCalendarEvents,
+  tasksToDueDateEvents,
+  calendarEventTagIds,
+  dateRangeToDueDates,
+  TASK_DUE_EVENT_PREFIX,
   tagsToCalendarColorDefinitions,
   dateRangeToInterval,
   navigateDate,
@@ -102,26 +138,38 @@ import {
 import { weekStartDayToDateFnsDay } from "@/helpers/statsChart";
 
 const settingsStore = useSettingsStore();
+const router = useRouter();
 
-// Bypasses the shared tags store deliberately: that store's includeArchived
-// flag also drives the Tags page's own "show archived" checkbox
-// (useArchivableList), so flipping it here to pick up archived tags' colors
-// would leak into that page's UI state. This local list is calendar-only.
-const tags = ref<Tag[]>([]);
+// Only the tags the fetched events use, archived and task tags included,
+// keyed by id. Bypasses the shared tags store deliberately: that store's
+// includeArchived flag also drives the Tags page's own "show archived"
+// checkbox (useArchivableList), so this list is calendar-only.
+const tags = ref<Map<string, Tag>>(new Map());
 
-async function fetchAllTagsForCalendar(): Promise<void> {
-  tags.value = await tagsApi.listAllTags(true);
+// Fetches the tags among tagIds not loaded yet, and hands schedule-x the
+// grown set of colors.
+async function loadTags(tagIds: readonly string[]): Promise<void> {
+  const missing = tagIds.filter((id) => !tags.value.has(id));
+  if (missing.length === 0) return;
+  let fetched: Tag[];
+  try {
+    fetched = await tagsApi.getTagsByIds(missing);
+  } catch (error) {
+    // Events still draw, in the fallback color and without tag pills.
+    console.error("Error loading calendar tags:", error);
+    return;
+  }
+  for (const tag of fetched) tags.value.set(tag.id, tag);
+  calendarControls.setCalendars(tagsToCalendarColorDefinitions([...tags.value.values()]));
 }
 
 function tagsForEvent(tagIds: readonly string[] | undefined): Tag[] {
   if (!tagIds) return [];
-  return tagIds
-    .map((id) => tags.value.find((tag) => tag.id === id))
-    .filter((tag): tag is Tag => tag !== undefined);
+  return tagIds.map((id) => tags.value.get(id)).filter((tag): tag is Tag => tag !== undefined);
 }
 
 const concurrentEventBorderCss = computed(() =>
-  concurrentEventBorderOverrideCss([...tags.value.map((tag) => tag.id), UNTAGGED_CALENDAR_ID]),
+  concurrentEventBorderOverrideCss([...tags.value.keys(), UNTAGGED_CALENDAR_ID]),
 );
 
 // Vue's template compiler rejects <style> as a template element ("tags with
@@ -242,21 +290,43 @@ type FetchEventsRange = Parameters<
 // or outlive this one.
 const fetchEvents = memoizeAsync(async (range: FetchEventsRange) => {
   const interval = dateRangeToInterval(range);
-  const timespans = await timespansApi.listTimespansInInterval(interval);
-  return timespansToCalendarEvents(timespans, resolvedTimezone.value);
+  // Due dates are extra: if they fail to load, the timespans still show.
+  const [timespans, dueTasks] = await Promise.all([
+    timespansApi.listTimespansInInterval(interval),
+    tasksApi.listAllTasks(dateRangeToDueDates(range), { withTotalTime: false }).catch((error) => {
+      console.error("Error loading task due dates:", error);
+      return [];
+    }),
+  ]);
+  const events = [
+    ...timespansToCalendarEvents(timespans, resolvedTimezone.value),
+    ...tasksToDueDateEvents(dueTasks),
+  ];
+  // Colors must be known before schedule-x draws the events.
+  await loadTags(calendarEventTagIds(events));
+  return events;
 }, dateRangeToInterval);
 
+function isDueDateEvent(calendarEvent: CalendarEventExternal): boolean {
+  return String(calendarEvent.id).startsWith(TASK_DUE_EVENT_PREFIX);
+}
+
+function onEventClick(calendarEvent: CalendarEventExternal) {
+  const id = String(calendarEvent.id);
+  if (isDueDateEvent(calendarEvent)) {
+    router.push(`/tasks/${id.slice(TASK_DUE_EVENT_PREFIX.length)}`);
+  }
+}
+
 onMounted(async () => {
-  // Tag colors, timezone, first-day-of-week, and 12h/24h locale are all
-  // baked into the calendar's config at creation time (schedule-x doesn't
-  // expose a way to update them afterwards), so tags and settings must both
-  // be loaded first - hence the skeleton loader above. Settings are normally
-  // already loaded by App.vue before routing even renders, but that has an
-  // 8s timeout (see useStartup.ts), so this can't just assume they're ready.
-  await Promise.all([
-    fetchAllTagsForCalendar(),
-    settingsStore.settings ? Promise.resolve() : settingsStore.fetchSettings(),
-  ]);
+  // Timezone, first-day-of-week, and 12h/24h locale are all baked into the
+  // calendar's config at creation time (schedule-x doesn't expose a way to
+  // update them afterwards), so settings must be loaded first - hence the
+  // skeleton loader above. Settings are normally already loaded by App.vue
+  // before routing even renders, but that has an 8s timeout (see
+  // useStartup.ts), so this can't just assume they're ready. Tag colors are
+  // added as events arrive (see loadTags).
+  if (!settingsStore.settings) await settingsStore.fetchSettings();
   resolvedTimezone.value = resolveTimezone(settingsStore.settings?.timezone ?? TIMEZONE_BROWSER);
 
   const firstDayOfWeek = weekStartDayToScheduleXDay(
@@ -272,9 +342,10 @@ onMounted(async () => {
       timezone: resolvedTimezone.value,
       locale: locale.value,
       isDark: true,
-      calendars: tagsToCalendarColorDefinitions(tags.value),
+      calendars: tagsToCalendarColorDefinitions([...tags.value.values()]),
       callbacks: {
         fetchEvents,
+        onEventClick,
       },
     },
     [calendarControls],
@@ -372,6 +443,22 @@ onMounted(async () => {
   /* A hairline gap in the page background color, so adjacent/concurrent
      events read as distinct blocks instead of a single fused strip. */
   border-bottom: 0.75px solid var(--sx-color-background);
+}
+
+.date-grid-event {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3em;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.date-grid-event .custom-event-title {
+  font-size: 1em;
+}
+
+.due-event {
+  cursor: pointer;
 }
 
 .custom-event-title {

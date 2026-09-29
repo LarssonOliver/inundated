@@ -56,6 +56,12 @@ export interface Project {
      */
     totalTimeMs?: number;
     /**
+     * Time logged on the project's tasks, open or closed. Each time span counts once. totalTimeMs minus this is the project's time that is not on any of its tasks.
+     * @type {number}
+     * @memberof Project
+     */
+    taskTimeMs?: number;
+    /**
      * Whether this project is archived. Archived projects are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
      * @type {boolean}
      * @memberof Project
@@ -90,6 +96,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
         'tagIds': json['tagIds'] == null ? undefined : new Set(json['tagIds']),
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
+        'taskTimeMs': json['taskTimeMs'] == null ? undefined : json['taskTimeMs'],
         'archived': json['archived'],
     };
 }
@@ -111,6 +118,7 @@ export function ProjectToJSONTyped(value?: Project | null, ignoreDiscriminator: 
         'timeBudgetHours': value['timeBudgetHours'],
         'tagIds': value['tagIds'] == null ? undefined : Array.from(value['tagIds'] as Set<any>),
         'totalTimeMs': value['totalTimeMs'],
+        'taskTimeMs': value['taskTimeMs'],
         'archived': value['archived'],
     };
 }

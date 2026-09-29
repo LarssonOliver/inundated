@@ -13,6 +13,8 @@ type Project struct {
 	TimeBudget *time.Duration
 	TagIds     []uuid.UUID
 	TotalTime  *time.Duration
-	UserId     *uuid.UUID
-	Archived   bool
+	// TaskTime is the part of TotalTime logged on the project's tasks.
+	TaskTime *time.Duration
+	UserId   *uuid.UUID
+	Archived bool
 }

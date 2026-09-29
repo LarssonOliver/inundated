@@ -494,3 +494,22 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 		require.ErrorIs(t, err, model.ErrUnprocessable)
 	})
 }
+
+func TestProjectService_GetProject_TaskTime(t *testing.T) {
+	projectId := uuid.New()
+	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
+	repo := &repository.RepoMock{
+		GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
+			return model.Project{Id: id, Name: "Website", TagIds: tagIds}, nil
+		},
+		GetTaskDurationByTagsFn: func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error) {
+			require.Equal(t, tagIds, ids)
+			return 2 * time.Hour, nil
+		},
+	}
+
+	got, err := service.NewService(repo).GetProject(context.Background(), projectId, &service.ProjectServiceGetIncludes{TaskTime: true})
+	require.NoError(t, err)
+	require.Equal(t, 2*time.Hour, *got.TaskTime)
+	require.Nil(t, got.TotalTime)
+}

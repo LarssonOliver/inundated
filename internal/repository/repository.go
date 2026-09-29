@@ -107,6 +107,11 @@ type TimespanRepository interface {
 	// GetTotalDurationByTags would for that one tag, in a single pass.
 	// Tags with no time are left out of the map.
 	GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error)
+	// GetTaskDurationByTags totals the timespans logged on any task whose
+	// effective tags include one of tagIds, open or closed, counting each
+	// timespan once. For a project's tags, that is the part of the
+	// project's total logged on its tasks.
+	GetTaskDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 }
 
 type ProjectStatsRepository interface {

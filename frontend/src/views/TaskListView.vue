@@ -26,7 +26,7 @@
       :disabled="movingTaskId !== null"
       :can-indent="index > 0"
       :can-outdent="canOutdent(task)"
-      :is-overdue="isOverdue(task)"
+      :is-overdue="isTaskOverdue(task)"
       @toggle-closed="toggleClosed(task)"
       @ignore="ignoreTask(task)"
       @shift="(delta) => shiftTask(task, delta)"
@@ -45,7 +45,7 @@
         :disabled="movingTaskId !== null"
         :can-indent="index > 0"
         :can-outdent="canOutdent(task)"
-        :is-overdue="isOverdue(task)"
+        :is-overdue="isTaskOverdue(task)"
         @toggle-closed="toggleClosed(task)"
         @ignore="ignoreTask(task)"
         @shift="(delta) => shiftTask(task, delta)"
@@ -59,8 +59,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useTasksStore, taskTree } from "@/stores/tasks";
-import { toLocalDay } from "@/helpers/dates";
+import { useTasksStore, taskTree, isTaskOverdue } from "@/stores/tasks";
 import type { TaskPatch } from "@/api/mappers";
 import type { Task } from "@/model";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
@@ -81,11 +80,6 @@ const closedRows = computed(() => taskTree(tasksStore.tasks.filter((t) => t.clos
 const newTaskName = ref("");
 const movingTaskId = ref<string | null>(null);
 const errorMessage = ref("");
-
-function isOverdue(task: Task): boolean {
-  if (task.closed || !task.dueDate) return false;
-  return task.dueDate < toLocalDay(new Date());
-}
 
 // Mirrors outdentTaskRaw's own no-op guard (frontend/src/stores/tasks.ts):
 // a task closed individually while its parent stays open can't be outdented

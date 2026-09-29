@@ -1,6 +1,7 @@
 import { tasksApi, type NewTask, type TasksApi } from "@/api";
 import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
+import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -29,6 +30,14 @@ export function compareByRank(a: Task, b: Task): number {
  * siblings by rank. A task whose parent isn't in the list is shown at the
  * top level, so a filtered list never hides it.
  */
+/**
+ * Whether an open task's due date is before today, in the browser's time
+ * zone.
+ */
+export function isTaskOverdue(task: Task, today: Date = new Date()): boolean {
+  return !task.closed && !!task.dueDate && task.dueDate < toLocalDay(today);
+}
+
 export function taskTree(tasks: readonly Task[]): TaskRow[] {
   const ids = new Set(tasks.map((task) => task.id));
   const children = new Map<string | undefined, Task[]>();

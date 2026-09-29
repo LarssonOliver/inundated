@@ -121,7 +121,7 @@
       </button>
     </div>
 
-    <div class="order-buttons">
+    <div v-if="orderable" class="order-buttons">
       <button
         class="icon-button"
         title="Outdent"
@@ -170,17 +170,25 @@ import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 
-const props = defineProps<{
-  task: Task;
-  depth: number;
-  /** True while any row's move/indent/outdent is in flight. */
-  disabled?: boolean;
-  /** False for the first row in this open/closed section. */
-  canIndent: boolean;
-  /** False for a top-level task. */
-  canOutdent: boolean;
-  isOverdue: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    task: Task;
+    depth: number;
+    /** True while any row's move/indent/outdent is in flight. */
+    disabled?: boolean;
+    /** False for the first row in this open/closed section. */
+    canIndent: boolean;
+    /** False for a top-level task. */
+    canOutdent: boolean;
+    isOverdue: boolean;
+    /**
+     * False hides the move and indent buttons, for lists that show only
+     * some of a task's siblings (e.g. a project's tasks).
+     */
+    orderable?: boolean;
+  }>(),
+  { orderable: true },
+);
 
 const emit = defineEmits<{
   "toggle-closed": [];

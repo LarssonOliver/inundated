@@ -211,6 +211,42 @@ func (t *MemoryStore) AggregateTimeSpentByTagsAndBuckets(ctx context.Context, sc
 	return values, nil
 }
 
+// GetTaskDurationByTags implements [repository.TimespanRepository].
+func (t *MemoryStore) GetTaskDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
+	if len(tagIds) == 0 {
+		return 0, nil
+	}
+	wanted := make(map[uuid.UUID]bool, len(tagIds))
+	for _, id := range tagIds {
+		wanted[id] = true
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	// The task tags of every task whose effective tags reach tagIds.
+	reaching := map[uuid.UUID]bool{}
+	for _, task := range t.tasks {
+		for tag := range t.taskEffectiveTags(task) {
+			if wanted[tag] {
+				reaching[task.TagId] = true
+				break
+			}
+		}
+	}
+
+	total := time.Duration(0)
+	for _, timespan := range t.timespans {
+		if !matchesScope(timespan.UserId, scope) {
+			continue
+		}
+		if slices.ContainsFunc(timespan.TagIds, func(id uuid.UUID) bool { return reaching[id] }) {
+			total += timespan.EndTime.Sub(timespan.StartTime)
+		}
+	}
+	return total, nil
+}
+
 // GetTotalDurationPerTag implements [repository.TimespanRepository].
 func (t *MemoryStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
 	out := map[uuid.UUID]time.Duration{}

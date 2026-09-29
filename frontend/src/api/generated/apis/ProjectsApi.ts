@@ -401,6 +401,7 @@ export class ProjectsApi extends runtime.BaseAPI {
  * @export
  */
 export const GetProjectIncludeEnum = {
-    TotalTimeMs: 'totalTimeMs'
+    TotalTimeMs: 'totalTimeMs',
+    TaskTimeMs: 'taskTimeMs'
 } as const;
 export type GetProjectIncludeEnum = typeof GetProjectIncludeEnum[keyof typeof GetProjectIncludeEnum];

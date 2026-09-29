@@ -36,6 +36,13 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 			}
 			project.TotalTime = &totalTime
 		}
+		if includes.TaskTime && len(project.TagIds) > 0 {
+			taskTime, err := s.repository.GetTaskDurationByTags(ctx, scope, project.TagIds)
+			if err != nil {
+				return model.Project{}, err
+			}
+			project.TaskTime = &taskTime
+		}
 	}
 
 	return project, nil

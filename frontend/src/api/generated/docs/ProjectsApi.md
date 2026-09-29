@@ -179,7 +179,7 @@ async function example() {
   const body = {
     // string
     projectId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // Set<'totalTimeMs'> | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs  (optional)
+    // Set<'totalTimeMs' | 'taskTimeMs'> | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, taskTimeMs  (optional)
     include: ...,
   } satisfies GetProjectRequest;
 
@@ -201,7 +201,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **projectId** | `string` |  | [Defaults to `undefined`] |
-| **include** | `totalTimeMs` | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs  | [Optional] [Enum: totalTimeMs] |
+| **include** | `totalTimeMs`, `taskTimeMs` | Comma-separated list of optional computed fields to include. Supported values: totalTimeMs, taskTimeMs  | [Optional] [Enum: totalTimeMs, taskTimeMs] |
 
 ### Return type
 

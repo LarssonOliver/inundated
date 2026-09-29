@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import type { Task } from "@/model";
 import type { TasksApi } from "@/api/tasks";
-import { __test__, taskTree } from "@/stores/tasks";
+import { __test__, isTaskOverdue, taskTree } from "@/stores/tasks";
 
 function task(partial: Partial<Task> & { id: string }): Task {
   return {
@@ -14,6 +14,18 @@ function task(partial: Partial<Task> & { id: string }): Task {
     ...partial,
   };
 }
+
+describe("isTaskOverdue", () => {
+  const today = new Date(2026, 8, 29, 12);
+  const base = { id: "k", name: "k", tagId: "t", tagIds: new Set<string>(), rank: "V" };
+
+  it("is true only for open tasks due before today", () => {
+    expect(isTaskOverdue({ ...base, closed: false, dueDate: "2026-09-28" }, today)).toBe(true);
+    expect(isTaskOverdue({ ...base, closed: false, dueDate: "2026-09-29" }, today)).toBe(false);
+    expect(isTaskOverdue({ ...base, closed: true, dueDate: "2026-09-28" }, today)).toBe(false);
+    expect(isTaskOverdue({ ...base, closed: false }, today)).toBe(false);
+  });
+});
 
 describe("taskTree", () => {
   it("orders parents before their subtasks and siblings by rank", () => {

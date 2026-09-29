@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,6 +77,45 @@ var projectSpecs = []projectSpec{
 	{name: "Internal Tools", color: colorTeal, tagNames: []string{"Development", "Research"}},
 }
 
+// taskSpec is a demo task. Time logged under a timespan named like the task
+// is logged on it. The due date is days from now, when set.
+type taskSpec struct {
+	name      string
+	tagNames  []string
+	dueInDays *int
+	estimate  *time.Duration
+	// project assigns the task by adding its task tag to that project.
+	project  string
+	closed   model.CloseReason
+	subtasks []taskSpec
+}
+
+func days(n int) *int { return &n }
+
+func hours(h int) *time.Duration {
+	d := time.Duration(h) * time.Hour
+	return &d
+}
+
+var taskSpecs = []taskSpec{
+	{
+		name: "Launch new website", tagNames: []string{"Design"}, dueInDays: days(12), estimate: hours(60),
+		project: "Website Redesign",
+		subtasks: []taskSpec{
+			{name: "Wireframes", closed: model.CloseReasonDone},
+			{name: "Landing page mockup", dueInDays: days(2), estimate: hours(8)},
+			{name: "Implement API endpoint", dueInDays: days(6), estimate: hours(16)},
+			{name: "Usability review", dueInDays: days(9)},
+		},
+	},
+	{name: "Fix login bug", tagNames: []string{"Bug Fixes"}, dueInDays: days(1), estimate: hours(4)},
+	{name: "Patch broken pagination", tagNames: []string{"Bug Fixes"}},
+	{name: "Quarterly planning", tagNames: []string{"Planning"}, dueInDays: days(15)},
+	{name: "Evaluate new library", tagNames: []string{"Research"}, closed: model.CloseReasonDone},
+	{name: "Icon set", closed: model.CloseReasonIgnored},
+	{name: "Set up CI pipeline", project: "Internal Tools", estimate: hours(6)},
+}
+
 // daySlot is a non-overlapping block of a working day that a timespan can be
 // generated into.
 type daySlot struct {
@@ -107,7 +147,30 @@ func Seed(ctx context.Context, repo repository.Repository, now time.Time) error 
 		return err
 	}
 
-	return seedTimespans(ctx, repo, scope, projects, now, rng)
+	tasksByName, toClose, err := seedTasks(ctx, repo, scope, tagsByName, projects, now)
+	if err != nil {
+		return err
+	}
+
+	taskTagsByProject, err := projectTaskTags(ctx, repo, scope, tasksByName)
+	if err != nil {
+		return err
+	}
+
+	if err := seedTimespans(ctx, repo, scope, projects, taskTagsByProject, now, rng); err != nil {
+		return err
+	}
+
+	// Closing archives a task's tag, and new time can't be logged on an
+	// archived tag, so tasks are closed last.
+	for _, task := range toClose {
+		closed := true
+		patch := model.TaskPatch{Closed: &closed, CloseReason: task.CloseReason}
+		if _, err := repo.UpdateTask(ctx, scope, task.Id, patch); err != nil {
+			return fmt.Errorf("demo: closing task %q: %w", task.Name, err)
+		}
+	}
+	return nil
 }
 
 func seedTags(ctx context.Context, repo repository.Repository, scope model.OwnerScope) (map[string]model.Tag, error) {
@@ -124,7 +187,9 @@ func seedTags(ctx context.Context, repo repository.Repository, scope model.Owner
 
 type seededProject struct {
 	model.Project
-	tasks []string
+	// labelIds are the project's regular tags, without assigned tasks'.
+	labelIds []uuid.UUID
+	tasks    []string
 }
 
 func seedProjects(ctx context.Context, repo repository.Repository, scope model.OwnerScope, tagsByName map[string]model.Tag) ([]seededProject, error) {
@@ -152,9 +217,111 @@ func seedProjects(ctx context.Context, repo repository.Repository, scope model.O
 			return nil, fmt.Errorf("demo: seeding project %q: %w", spec.name, err)
 		}
 
-		projects = append(projects, seededProject{Project: project, tasks: tasks})
+		projects = append(projects, seededProject{Project: project, labelIds: tagIds, tasks: tasks})
 	}
 	return projects, nil
+}
+
+// seedTasks creates taskSpecs, assigning them as specified. It returns each
+// task by name, and the tasks to close, already marked with their close
+// reason.
+func seedTasks(
+	ctx context.Context,
+	repo repository.Repository,
+	scope model.OwnerScope,
+	tagsByName map[string]model.Tag,
+	projects []seededProject,
+	now time.Time,
+) (map[string]model.Task, []model.Task, error) {
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	tasksByName := make(map[string]model.Task)
+	var toClose []model.Task
+
+	var create func(spec taskSpec, parentId *uuid.UUID) error
+	create = func(spec taskSpec, parentId *uuid.UUID) error {
+		task := model.Task{Name: spec.name, ParentId: parentId, Estimate: spec.estimate}
+		for _, tagName := range spec.tagNames {
+			task.TagIds = append(task.TagIds, tagsByName[tagName].Id)
+		}
+		if spec.dueInDays != nil {
+			due := today.AddDate(0, 0, *spec.dueInDays)
+			task.DueDate = &due
+		}
+		created, err := repo.CreateTask(ctx, scope, task)
+		if err != nil {
+			return fmt.Errorf("demo: seeding task %q: %w", spec.name, err)
+		}
+		tasksByName[spec.name] = created
+
+		if spec.project != "" {
+			if err := assignTask(ctx, repo, scope, projects, spec.project, created.TagId); err != nil {
+				return err
+			}
+		}
+		for _, subtask := range spec.subtasks {
+			if err := create(subtask, &created.Id); err != nil {
+				return err
+			}
+		}
+		if spec.closed != "" {
+			reason := spec.closed
+			created.CloseReason = &reason
+			toClose = append(toClose, created)
+		}
+		return nil
+	}
+
+	for _, spec := range taskSpecs {
+		if err := create(spec, nil); err != nil {
+			return nil, nil, err
+		}
+	}
+	return tasksByName, toClose, nil
+}
+
+// assignTask adds taskTagId to the named project's tags.
+func assignTask(ctx context.Context, repo repository.Repository, scope model.OwnerScope, projects []seededProject, projectName string, taskTagId uuid.UUID) error {
+	for i := range projects {
+		if projects[i].Name != projectName {
+			continue
+		}
+		projects[i].TagIds = append(projects[i].TagIds, taskTagId)
+		updated, err := repo.UpdateProject(ctx, scope, projects[i].Project)
+		if err != nil {
+			return fmt.Errorf("demo: assigning task to project %q: %w", projectName, err)
+		}
+		projects[i].Project = updated
+		return nil
+	}
+	return fmt.Errorf("demo: no project %q", projectName)
+}
+
+// projectTaskTags maps each project to the task tags, by task name, of the
+// tasks that belong to that project alone. Demo time is only logged on
+// those, so a timespan picked for one project never counts toward another
+// through a task that several projects share.
+func projectTaskTags(ctx context.Context, repo repository.Repository, scope model.OwnerScope, tasksByName map[string]model.Task) (map[uuid.UUID]map[string]uuid.UUID, error) {
+	taskIds := make([]uuid.UUID, 0, len(tasksByName))
+	for _, task := range tasksByName {
+		taskIds = append(taskIds, task.Id)
+	}
+	projectsByTask, err := repo.ListTaskProjectIds(ctx, scope, taskIds)
+	if err != nil {
+		return nil, fmt.Errorf("demo: listing task projects: %w", err)
+	}
+
+	byProject := make(map[uuid.UUID]map[string]uuid.UUID)
+	for name, task := range tasksByName {
+		projectIds := projectsByTask[task.Id]
+		if len(projectIds) != 1 {
+			continue
+		}
+		if byProject[projectIds[0]] == nil {
+			byProject[projectIds[0]] = make(map[string]uuid.UUID)
+		}
+		byProject[projectIds[0]][name] = task.TagId
+	}
+	return byProject, nil
 }
 
 func seedTimespans(
@@ -162,6 +329,7 @@ func seedTimespans(
 	repo repository.Repository,
 	scope model.OwnerScope,
 	projects []seededProject,
+	taskTagsByProject map[uuid.UUID]map[string]uuid.UUID,
 	now time.Time,
 	rng *rand.Rand,
 ) error {
@@ -202,11 +370,18 @@ func seedTimespans(
 			project := projects[rng.Intn(len(projects))]
 			name := project.tasks[rng.Intn(len(project.tasks))]
 
+			// Log the time on the project's regular tags, and on the task
+			// of the same name if there is one.
+			tagIds := slices.Clone(project.labelIds)
+			if taskTagId, ok := taskTagsByProject[project.Id][name]; ok {
+				tagIds = append(tagIds, taskTagId)
+			}
+
 			_, err := repo.CreateTimespan(ctx, scope, model.Timespan{
 				Name:      name,
 				StartTime: start,
 				EndTime:   end,
-				TagIds:    project.TagIds,
+				TagIds:    tagIds,
 			})
 			if err != nil {
 				return fmt.Errorf("demo: seeding timespan %q on %s: %w", name, day.Format("2006-01-02"), err)

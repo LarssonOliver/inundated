@@ -15,11 +15,18 @@ export interface TaskListFilter {
   includeClosed?: boolean;
   parentId?: string;
   projectId?: string;
+  /** Only tasks due on or after this date (YYYY-MM-DD). */
+  dueFrom?: string;
+  /** Only tasks due on or before this date (YYYY-MM-DD). */
+  dueTo?: string;
 }
 
 export interface TasksApi {
-  /** Fetches every task matching filter, with its total time. */
-  listAllTasks(filter?: TaskListFilter): Promise<Task[]>;
+  /**
+   * Fetches every task matching filter, with its total time unless
+   * withTotalTime is false.
+   */
+  listAllTasks(filter?: TaskListFilter, options?: { withTotalTime?: boolean }): Promise<Task[]>;
   /** Fetches one task; detailed adds its total time and projects. */
   getTask(id: string, detailed: boolean): Promise<Task>;
   createTask(task: NewTask): Promise<Task>;
@@ -33,13 +40,19 @@ const defaultGeneratedApi = new GeneratedTasksApi(ApiConfig);
 
 function createTasksApi(api: GeneratedTasksApi = defaultGeneratedApi): TasksApi {
   return {
-    async listAllTasks(filter: TaskListFilter = {}): Promise<Task[]> {
+    async listAllTasks(
+      filter: TaskListFilter = {},
+      { withTotalTime = true }: { withTotalTime?: boolean } = {},
+    ): Promise<Task[]> {
+      const { dueFrom, dueTo, ...rest } = filter;
       return fetchAllPages(async (limit, offset) => {
         const response = await api.listTasks({
           limit,
           offset,
-          ...filter,
-          include: new Set([ListTasksIncludeEnum.TotalTimeMs]),
+          ...rest,
+          ...(dueFrom && { dueFrom: new Date(dueFrom) }),
+          ...(dueTo && { dueTo: new Date(dueTo) }),
+          include: withTotalTime ? new Set([ListTasksIncludeEnum.TotalTimeMs]) : undefined,
         });
         return { data: response.data.map(taskFromApi), pagination: response.pagination };
       });

@@ -319,6 +319,37 @@ func (r *PostgresStore) GetTotalDurationByTags(ctx context.Context, scope model.
 	return *duration, nil
 }
 
+// GetTaskDurationByTags implements [repository.Repository].
+func (r *PostgresStore) GetTaskDurationByTags(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error) {
+	if len(tagIds) == 0 {
+		return 0, nil
+	}
+
+	// A task reaches tagIds when its effective tags do; a timespan counts
+	// when it carries the task tag of such a task.
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
+	q := `
+		SELECT SUM(t.end_time - t.start_time)
+		FROM timespans t
+		WHERE t.deleted_at IS NULL
+			AND ` + ownerSQL + `
+			AND EXISTS (
+				SELECT 1 FROM timespan_tags tt
+				JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
+				JOIN task_effective_tags te ON te.task_id = k.id
+				WHERE tt.timespan_id = t.id AND te.tag_id = ANY($1)
+			)`
+
+	var duration *time.Duration
+	if err := r.db.QueryRow(ctx, q, args...).Scan(&duration); err != nil {
+		return 0, fmt.Errorf("GetTaskDurationByTags: %w", err)
+	}
+	if duration == nil {
+		return 0, nil
+	}
+	return *duration, nil
+}
+
 // GetTotalDurationPerTag implements [repository.Repository].
 func (r *PostgresStore) GetTotalDurationPerTag(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error) {
 	out := map[uuid.UUID]time.Duration{}

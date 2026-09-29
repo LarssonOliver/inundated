@@ -368,9 +368,29 @@ func TestTask_TimeAndProjects(t *testing.T) {
 		require.Equal(t, []openapi_types.UUID{projectId}, *task.ProjectIds)
 	}
 
-	// The project total counts the subtask's time.
-	projectInclude := IncludeQuery{"totalTimeMs"}
+	// The project total counts the subtask's time, all of it on tasks.
+	projectInclude := ProjectIncludeQuery{"totalTimeMs", "taskTimeMs"}
 	projectGet, err := client.GetProjectWithResponse(ctx, projectId, &GetProjectParams{Include: &projectInclude})
 	require.NoError(t, err)
 	require.Equal(t, 90*60*1000, *projectGet.JSON200.TotalTimeMs)
+	require.Equal(t, 90*60*1000, *projectGet.JSON200.TaskTimeMs)
+
+	// Time logged on the project's regular tag is not on any task.
+	tagResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{Name: "attribution-tag", Color: "#88C0D0"})
+	require.NoError(t, err)
+	require.Equal(t, 201, tagResp.StatusCode())
+	tagIds := []TagIdPath{parent.TagId, tagResp.JSON201.Id}
+	updateResp, err := client.UpdateProjectWithResponse(ctx, projectId, UpdateProjectJSONRequestBody{TagIds: &tagIds})
+	require.NoError(t, err)
+	require.Equal(t, 200, updateResp.StatusCode())
+	spanResp, err = client.CreateTimespanWithResponse(ctx, CreateTimespanJSONRequestBody{
+		StartTime: start.Add(2 * time.Hour), EndTime: start.Add(150 * time.Minute), TagIds: &[]TagIdPath{tagResp.JSON201.Id},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 201, spanResp.StatusCode())
+
+	projectGet, err = client.GetProjectWithResponse(ctx, projectId, &GetProjectParams{Include: &projectInclude})
+	require.NoError(t, err)
+	require.Equal(t, 120*60*1000, *projectGet.JSON200.TotalTimeMs)
+	require.Equal(t, 90*60*1000, *projectGet.JSON200.TaskTimeMs)
 }

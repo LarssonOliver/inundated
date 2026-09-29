@@ -133,4 +133,6 @@ type TagListParams struct {
 	PaginationParams
 	Query string
 	Kind  TagKind
+	// Ids, when set, keeps only these tags.
+	Ids []uuid.UUID
 }
