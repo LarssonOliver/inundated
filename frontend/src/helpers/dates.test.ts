@@ -3,7 +3,9 @@ import {
   datePickerInputWidthCh,
   formatDatePickerInput,
   formatFullDate,
+  fromLocalDay,
   singleDatePickerInputWidthCh,
+  toLocalDay,
 } from "./dates";
 
 describe("formatFullDate", () => {
@@ -70,5 +72,31 @@ describe("singleDatePickerInputWidthCh", () => {
         datePickerInputWidthCh(dateFormat),
       );
     }
+  });
+
+  it("reserves extra room for the clear button when clearable", () => {
+    for (const dateFormat of ["iso", "us", "eu", "text"] as const) {
+      expect(singleDatePickerInputWidthCh(dateFormat, true)).toBeGreaterThan(
+        singleDatePickerInputWidthCh(dateFormat),
+      );
+    }
+  });
+});
+
+describe("toLocalDay / fromLocalDay", () => {
+  it("formats a Date as its local YYYY-MM-DD, zero-padded", () => {
+    expect(toLocalDay(new Date(2024, 0, 5))).toBe("2024-01-05");
+    expect(toLocalDay(new Date(2024, 10, 30))).toBe("2024-11-30");
+  });
+
+  it("parses a YYYY-MM-DD string back to that local calendar day", () => {
+    const date = fromLocalDay("2024-01-05");
+    expect(date.getFullYear()).toBe(2024);
+    expect(date.getMonth()).toBe(0);
+    expect(date.getDate()).toBe(5);
+  });
+
+  it("round-trips regardless of the runner's timezone", () => {
+    expect(toLocalDay(fromLocalDay("2024-12-31"))).toBe("2024-12-31");
   });
 });

@@ -176,3 +176,14 @@ html .dp__theme_dark {
   border: 1px solid var(--nord1);
   border-radius: var(--radius-sm);
 }
+
+/* The library's clear ("x") button is a <button>, which our global
+   `button { width: 100% }` reset (input.css) would otherwise stretch to
+   fill the whole (absolutely positioned) input - covering it entirely
+   instead of sitting as a small control at the input's right edge. */
+.dp--clear-btn {
+  width: auto;
+  max-width: none;
+  padding: 0 4px;
+  margin-right: 3px;
+}

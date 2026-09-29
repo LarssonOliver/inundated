@@ -22,9 +22,7 @@
       :class="{ closed: task.closed }"
       :style="{ marginLeft: `${depth * 1.5}em` }"
     >
-      <input
-        type="checkbox"
-        class="done-box"
+      <TaskCheckbox
         :checked="task.closed"
         :title="task.closed ? 'Reopen' : 'Mark done'"
         :aria-label="task.closed ? `Reopen ${task.name}` : `Mark ${task.name} done`"
@@ -71,10 +69,12 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useTasksStore, taskTree } from "@/stores/tasks";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
+import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
+import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
 
 const tasksStore = useTasksStore();
 const settingsStore = useSettingsStore();
@@ -91,9 +91,7 @@ const formatMs = useDurationFormat(() => settingsStore.settings);
 
 function isOverdue(task: Task): boolean {
   if (task.closed || !task.dueDate) return false;
-  const today = new Date();
-  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return task.dueDate < localToday;
+  return task.dueDate < toLocalDay(new Date());
 }
 
 async function addTask() {
@@ -191,12 +189,6 @@ onMounted(async () => {
   opacity: 0.6;
 }
 
-.done-box {
-  width: 1.1em;
-  height: 1.1em;
-  cursor: pointer;
-}
-
 .task-name {
   font-weight: 600;
 }
@@ -204,6 +196,10 @@ onMounted(async () => {
 .task-tags {
   flex: 1;
   display: flex;
+  align-items: center;
+  /* Reserves the height a tag pill would take up, so rows with and without
+     tags end up the same height instead of the tag-less ones shrinking. */
+  min-height: 2.5em;
 }
 
 .badge {

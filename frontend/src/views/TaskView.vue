@@ -22,7 +22,15 @@
         <input v-model="draft.name" type="text" />
 
         <p class="field-label">Due Date</p>
-        <input v-model="draft.dueDate" type="date" />
+        <div class="date-picker">
+          <VueDatePicker
+            v-model="dueDate"
+            dark
+            :time-config="{ enableTimePicker: false }"
+            :input-attrs="{ clearable: true }"
+            :formats="datePickerFormats"
+          />
+        </div>
 
         <p class="field-label">Estimate (hours)</p>
         <input v-model="draft.estimateHours" type="number" min="0" step="0.25" />
@@ -43,17 +51,6 @@
       </div>
 
       <div class="card summary">
-        <div class="stat-tiles">
-          <div class="stat-tile">
-            <p class="stat-tile-value">{{ formatMs(task.totalTimeMs ?? 0) }}</p>
-            <p class="stat-tile-label">Logged, with subtasks</p>
-          </div>
-          <div v-if="task.estimateHours != null" class="stat-tile">
-            <p class="stat-tile-value">{{ formatMs(task.estimateHours * 3600000) }}</p>
-            <p class="stat-tile-label">Estimate</p>
-          </div>
-        </div>
-
         <p class="field-label">Projects</p>
         <p v-if="projects.length === 0" class="muted">
           Not in any project. Add this task's tag to a project to assign it.
@@ -62,8 +59,10 @@
           <router-link
             v-for="project in projects"
             :key="project.id"
+            class="project-chip"
             :to="`/projects/${project.id}`"
           >
+            <span class="project-chip-dot" :style="{ backgroundColor: project.color }" />
             {{ project.name }}
           </router-link>
         </div>
@@ -75,8 +74,7 @@
           class="subtask"
           :class="{ closed: child.closed }"
         >
-          <input
-            type="checkbox"
+          <TaskCheckbox
             :checked="child.closed"
             :aria-label="child.closed ? `Reopen ${child.name}` : `Mark ${child.name} done`"
             @change="toggleSubtask(child)"
@@ -90,7 +88,36 @@
       </div>
 
       <div v-if="taskTag" class="card">
-        <TagStats :tag="taskTag" title="Task Statistics" />
+        <TagStats :tag="taskTag" title="Task Statistics">
+          <template #extra-tiles>
+            <div class="stat-tile">
+              <p class="stat-tile-value">{{ formatMs(task.totalTimeMs ?? 0) }}</p>
+              <p class="stat-tile-label">Logged, with subtasks</p>
+            </div>
+            <div v-if="task.estimateHours != null" class="meter">
+              <div class="meter-header">
+                <span class="meter-label">Estimate</span>
+                <span class="meter-reading" :class="estimateSeverityClass">
+                  <MaterialIcon
+                    v-if="estimateSeverityClass === 'severity-critical'"
+                    icon="warning"
+                    size="16px"
+                    class="meter-icon"
+                  />
+                  {{ formatMs(task.totalTimeMs ?? 0) }} /
+                  {{ formatMs(task.estimateHours * 3600000) }} ({{ estimatePercentLabel }})
+                </span>
+              </div>
+              <div class="meter-track">
+                <div
+                  class="meter-fill"
+                  :class="estimateSeverityClass"
+                  :style="{ width: estimateFillPercent + '%' }"
+                />
+              </div>
+            </div>
+          </template>
+        </TagStats>
       </div>
     </div>
 
@@ -105,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ResponseError } from "@/api/generated";
 import type { Project, Tag, Task } from "@/model";
@@ -114,11 +141,18 @@ import { useTagsStore } from "@/stores/tags";
 import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
+import { formatDatePickerInput, fromLocalDay, toLocalDay } from "@/helpers/dates";
+import { meterSeverity } from "@/helpers/meter";
 import TagItem from "@/components/tags/TagItem.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
+import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
+import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import NotFoundView from "./NotFoundView.vue";
+
+import { VueDatePicker } from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
 interface Draft {
   name: string;
@@ -146,6 +180,29 @@ const newSubtaskName = ref("");
 const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: "", tagIds: new Set() });
 
 const formatMs = useDurationFormat(() => settingsStore.settings);
+
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? "iso");
+const datePickerFormats = computed(() => ({
+  input: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
+  preview: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
+}));
+
+const estimateRatio = computed(() => {
+  const estimateHours = task.value?.estimateHours;
+  if (!estimateHours) return 0;
+  const loggedHours = (task.value?.totalTimeMs ?? 0) / 3600000;
+  return loggedHours / estimateHours;
+});
+const estimateFillPercent = computed(() => Math.min(estimateRatio.value * 100, 100));
+const estimatePercentLabel = computed(() => `${Math.round(estimateRatio.value * 100)}%`);
+const estimateSeverityClass = computed(() => `severity-${meterSeverity(estimateRatio.value)}`);
+
+const dueDate = computed<Date | null>({
+  get: () => (draft.value.dueDate ? fromLocalDay(draft.value.dueDate) : null),
+  set: (value) => {
+    draft.value = { ...draft.value, dueDate: value ? toLocalDay(value) : "" };
+  },
+});
 
 function applyTask(loaded: Task) {
   task.value = loaded;
@@ -347,6 +404,10 @@ async function deleteTask() {
   color: var(--nord3);
 }
 
+.date-picker {
+  margin-bottom: 1em;
+}
+
 .button-container {
   margin-top: 2em;
   display: flex;
@@ -362,26 +423,36 @@ async function deleteTask() {
   margin-top: 0;
 }
 
-.stat-tiles {
-  display: flex;
-  gap: 1.5em;
-}
-
-.stat-tile-value {
-  font-size: 1.5em;
-  font-weight: 600;
-  margin-bottom: 0;
-}
-
-.stat-tile-label {
-  color: var(--nord3);
-  margin-top: 0.25em;
-}
-
 .project-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 1em;
+  gap: 0.6em;
+}
+
+.project-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.75em;
+  background-color: var(--nord1);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--nord5);
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.project-chip:hover {
+  background-color: var(--nord2);
+  transform: translateY(-1px);
+}
+
+.project-chip-dot {
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  flex: none;
 }
 
 .subtask input[type="checkbox"] {
