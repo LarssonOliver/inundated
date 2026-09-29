@@ -233,9 +233,7 @@ func (r *PostgresStore) timespanTagIds(ctx context.Context, q Querier, timespanI
 // the uuid[] tagIds that a timespan reaches: directly, by carrying it, or
 // through the effective tags of a live task whose task tag it carries (see
 // task_effective_tags). It is the one statement of that attribution rule;
-// every per-tag, per-task and project total builds on it. tagIds must be
-// live tags: task_effective_tags can hold rows for deleted ones (see
-// refreshEffectiveTags), which this doesn't filter out.
+// every per-tag, per-task and project total builds on it.
 func timespanTagHitsSQL(tagIds string) string {
 	return `
 		SELECT tt.timespan_id, tt.tag_id
