@@ -111,6 +111,52 @@ describe("tasks store", () => {
     expect(api.listAllTasks).toHaveBeenCalledOnce();
   });
 
+  it("keeps a task fetched individually in cache after a non-status edit", async () => {
+    api.getTask.mockResolvedValue(task({ id: "a", name: "original", totalTimeMs: 5000 }));
+    api.updateTask.mockResolvedValue(task({ id: "a", name: "renamed" }));
+
+    const store = useStore();
+    // Fetched individually (e.g. opened directly), never loaded into the
+    // main list.
+    await store.fetchDetailedTaskById("a");
+    await store.updateTask("a", { name: "renamed" });
+
+    expect(store.getTaskById("a")).toEqual(
+      expect.objectContaining({ name: "renamed", totalTimeMs: 5000 }),
+    );
+  });
+
+  it("serializes concurrent shiftTask calls so the second sees the first's applied move", async () => {
+    api.listAllTasks
+      .mockResolvedValueOnce([
+        task({ id: "a", rank: "a" }),
+        task({ id: "b", rank: "b" }),
+        task({ id: "c", rank: "c" }),
+      ])
+      // The order after "a" is moved after "b" on the server (taskTree sorts
+      // by rank string, so "b5" sorts between "b" and "c").
+      .mockResolvedValueOnce([
+        task({ id: "b", rank: "b" }),
+        task({ id: "a", rank: "b5" }),
+        task({ id: "c", rank: "c" }),
+      ])
+      .mockResolvedValue([]);
+    api.moveTask.mockResolvedValueOnce(task({ id: "a" })).mockResolvedValueOnce(task({ id: "c" }));
+
+    const store = useStore();
+    await store.fetchTasks();
+
+    const p1 = store.shiftTask("a", 1);
+    const p2 = store.shiftTask("c", -1);
+    await Promise.all([p1, p2]);
+
+    expect(api.moveTask).toHaveBeenNthCalledWith(1, "a", undefined, "b");
+    // Computed from the post-move-1 order [b, a, c], not the stale [a, b, c]
+    // that was current when shiftTask("c", -1) was called.
+    expect(api.moveTask).toHaveBeenNthCalledWith(2, "c", undefined, "b");
+    expect(api.listAllTasks).toHaveBeenCalledTimes(3);
+  });
+
   it("shifts a task down after its next sibling and up to first", async () => {
     api.listAllTasks.mockResolvedValue([
       task({ id: "a", rank: "a" }),

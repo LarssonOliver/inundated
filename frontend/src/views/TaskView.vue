@@ -48,7 +48,7 @@
             <p class="stat-tile-value">{{ formatMs(task.totalTimeMs ?? 0) }}</p>
             <p class="stat-tile-label">Logged, with subtasks</p>
           </div>
-          <div v-if="task.estimateHours" class="stat-tile">
+          <div v-if="task.estimateHours != null" class="stat-tile">
             <p class="stat-tile-value">{{ formatMs(task.estimateHours * 3600000) }}</p>
             <p class="stat-tile-label">Estimate</p>
           </div>
@@ -183,9 +183,14 @@ async function load(id: string) {
   taskTag.value = tag;
   parent.value = parentTask;
   subtasks.value = subtaskList;
-  projects.value = [...(loaded.projectIds ?? [])]
-    .map((projectId) => projectsStore.getProjectById(projectId))
-    .filter((project): project is Project => !!project);
+  const resolvedProjects = await Promise.all(
+    [...(loaded.projectIds ?? [])].map(
+      (projectId) =>
+        projectsStore.getProjectById(projectId) ??
+        projectsStore.fetchProjectById(projectId).catch(() => undefined),
+    ),
+  );
+  projects.value = resolvedProjects.filter((project): project is Project => !!project);
 }
 
 watch(

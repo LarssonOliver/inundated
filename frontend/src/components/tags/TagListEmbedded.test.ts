@@ -143,6 +143,56 @@ test("finds tags beyond the cached page by searching the server", async () => {
   expect(wrapper.text()).toContain("#far task");
 });
 
+test("clearing the search box discards a slower, now-stale pending search", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  let resolveSearch: (value: Tag[]) => void;
+  searchTags.mockReturnValue(
+    new Promise((resolve) => {
+      resolveSearch = resolve;
+    }),
+  );
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("meeting");
+  await settleSearch(); // debounce fires, search() is now in flight
+
+  await input.setValue("");
+  await flushPromises();
+
+  resolveSearch!([tag({ id: "m", name: "meeting" })]);
+  await flushPromises();
+
+  expect(wrapper.text()).not.toContain("meeting");
+});
+
+test("re-includes a tag in search results as soon as it's removed from the model", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  const sprint = tag({ id: "sprint-1", name: "sprint" });
+  searchTags.mockResolvedValue([sprint]);
+  getTag.mockResolvedValue(sprint);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["sprint-1"]) } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("spr");
+  await settleSearch();
+
+  // Already selected, so excluded from the dropdown.
+  expect(wrapper.findAll(".option").length).toBe(0);
+
+  await wrapper.setProps({ modelValue: new Set<string>() });
+  await flushPromises();
+
+  // Removed from the model without typing again - should reappear immediately.
+  expect(wrapper.findAll(".option").length).toBe(1);
+});
+
 test("debounces server search and does not refetch tasks on every keystroke", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([tag({ id: "far", name: "far-away" })]);
@@ -169,10 +219,49 @@ test("debounces server search and does not refetch tasks on every keystroke", as
   expect(listAllTasks).toHaveBeenCalledOnce();
 });
 
+test("without allowTaskCreation, a leading # is treated as part of the name", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "label", name: "#hash" })]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("#hash");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("#hash", "all");
+  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');
+});
+
+test("retries fetching tasks after a failed attempt", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "far", name: "far-away" })]);
+  listAllTasks.mockRejectedValueOnce(new Error("network error"));
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("far");
+  await settleSearch();
+  expect(listAllTasks).toHaveBeenCalledOnce();
+
+  listAllTasks.mockResolvedValue([]);
+  await input.setValue("far2");
+  await settleSearch();
+
+  expect(listAllTasks).toHaveBeenCalledTimes(2);
+});
+
 test("a leading # searches tasks only and offers to create a task", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
 
-  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+  });
   await flushPromises();
 
   const input = wrapper.find("input");
@@ -196,7 +285,9 @@ test("# plus enter creates a task and adds its task tag", async () => {
   });
   getTag.mockResolvedValue(tag({ id: "task-tag-1", name: "Write report", taskId: "task-1" }));
 
-  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+  });
   await flushPromises();
 
   const input = wrapper.find("input");

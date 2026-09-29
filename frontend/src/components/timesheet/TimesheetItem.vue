@@ -1,6 +1,6 @@
 <template>
   <div class="timesheet-row">
-    <TagListEmbedded v-model="tagIds" />
+    <TagListEmbedded v-model="tagIds" allow-task-creation />
     <div class="right-side">
       <TimespanEdit v-model="model" />
       <button class="icon-button" @click="toggleMenu" :aria-expanded="showMenu">

@@ -13,6 +13,7 @@
     <p v-if="!tasksStore.isLoading && rows.length === 0" class="empty">
       No tasks yet. Add one above, or type "#" and a name in any tag field.
     </p>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
     <div
       v-for="{ task, depth } in rows"
@@ -37,17 +38,27 @@
       <span v-if="task.dueDate" class="due" :class="{ overdue: isOverdue(task) }">
         <MaterialIcon icon="event" size="1em" /> {{ task.dueDate }}
       </span>
-      <span class="time" :title="'Logged' + (task.estimateHours ? ' / estimate' : '')">
+      <span class="time" :title="'Logged' + (task.estimateHours != null ? ' / estimate' : '')">
         {{ formatMs(task.totalTimeMs ?? 0) }}
-        <template v-if="task.estimateHours">
+        <template v-if="task.estimateHours != null">
           / {{ formatMs(task.estimateHours * 3600000) }}</template
         >
       </span>
       <div class="order-buttons">
-        <button class="icon-button" title="Move up" @click="tasksStore.shiftTask(task.id, -1)">
+        <button
+          class="icon-button"
+          title="Move up"
+          :disabled="movingTaskId !== null"
+          @click="shiftTask(task, -1)"
+        >
           <MaterialIcon icon="arrow_upward" size="1.1em" />
         </button>
-        <button class="icon-button" title="Move down" @click="tasksStore.shiftTask(task.id, 1)">
+        <button
+          class="icon-button"
+          title="Move down"
+          :disabled="movingTaskId !== null"
+          @click="shiftTask(task, 1)"
+        >
           <MaterialIcon icon="arrow_downward" size="1.1em" />
         </button>
       </div>
@@ -73,6 +84,8 @@ watch(showClosed, (value) => tasksStore.setIncludeClosed(value));
 
 const rows = computed(() => taskTree(tasksStore.tasks));
 const newTaskName = ref("");
+const movingTaskId = ref<string | null>(null);
+const errorMessage = ref("");
 
 function formatMs(ms: number): string {
   return formatDuration(ms, settingsStore.settings?.durationFormat ?? "long");
@@ -90,6 +103,18 @@ async function addTask() {
   if (!name) return;
   await tasksStore.createTaskFromName(name);
   newTaskName.value = "";
+}
+
+async function shiftTask(task: Task, delta: -1 | 1) {
+  errorMessage.value = "";
+  movingTaskId.value = task.id;
+  try {
+    await tasksStore.shiftTask(task.id, delta);
+  } catch {
+    errorMessage.value = "Couldn't move the task.";
+  } finally {
+    movingTaskId.value = null;
+  }
 }
 
 async function toggleClosed(task: Task) {
@@ -146,6 +171,10 @@ onMounted(async () => {
 
 .empty {
   color: var(--nord3);
+}
+
+.error {
+  color: var(--nord11);
 }
 
 .task-row {

@@ -132,15 +132,28 @@ function createTasksStore(api: TasksApi) {
 
     /**
      * Updates a task. Closing or reopening one also changes its subtasks or
-     * parents on the server, so the list is reloaded afterwards.
+     * parents on the server, so the individually-fetched cache is dropped
+     * (a fresh fetch is needed to see those cascading effects) and the list
+     * is reloaded afterwards.
      */
     async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
       const updated = await api.updateTask(id, patch);
-      individuallyFetchedTasks.value.delete(id);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
+        individuallyFetchedTasks.value.delete(id);
         await fetchTasks();
-      } else if (tasks.value.has(id)) {
+        return copyTask(updated);
+      }
+
+      if (tasks.value.has(id)) {
         tasks.value.set(id, { ...updated, totalTimeMs: tasks.value.get(id)?.totalTimeMs });
+      }
+      const individual = individuallyFetchedTasks.value.get(id);
+      if (individual) {
+        individuallyFetchedTasks.value.set(id, {
+          ...updated,
+          totalTimeMs: individual.totalTimeMs,
+          projectIds: individual.projectIds,
+        });
       }
       return copyTask(updated);
     }
@@ -153,21 +166,13 @@ function createTasksStore(api: TasksApi) {
       return await updateTask(id, { closed: false });
     }
 
-    /**
-     * Moves a task under parentId (top level when unset), directly after
-     * afterTaskId (first when unset). Siblings may be re-ranked, so the list
-     * is reloaded afterwards.
-     */
-    async function moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
+    async function moveTaskRaw(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
       const moved = await api.moveTask(id, parentId, afterTaskId);
       await fetchTasks();
       return copyTask(moved);
     }
 
-    /**
-     * Moves a task one step up or down among its siblings in the list.
-     */
-    async function shiftTask(id: string, delta: -1 | 1): Promise<void> {
+    async function shiftTaskRaw(id: string, delta: -1 | 1): Promise<void> {
       const task = tasks.value.get(id);
       if (!task) return;
       const siblings = taskTree(readOnlyTasks.value)
@@ -181,7 +186,41 @@ function createTasksStore(api: TasksApi) {
       // down places it after the next sibling.
       const others = siblings.filter((t) => t.id !== id);
       const after = target === 0 ? undefined : others[target - 1];
-      await moveTask(id, task.parentId, after?.id);
+      await moveTaskRaw(id, task.parentId, after?.id);
+    }
+
+    // Serializes moveTask/shiftTask so a second call always sees the first
+    // one's fully-applied result (both its server move and the refetch that
+    // follows) before computing its own target or re-fetching - otherwise a
+    // second move can compute its target from a stale local order, and its
+    // own fetchTasks() call can be deduped away (as a duplicate of the
+    // still-in-flight first one) by useSupersededFetch, silently dropping
+    // its result.
+    let taskMoveQueue: Promise<void> = Promise.resolve();
+
+    function serializeTaskMove<T>(fn: () => Promise<T>): Promise<T> {
+      const run = taskMoveQueue.then(fn, fn);
+      taskMoveQueue = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
+    }
+
+    /**
+     * Moves a task under parentId (top level when unset), directly after
+     * afterTaskId (first when unset). Siblings may be re-ranked, so the list
+     * is reloaded afterwards.
+     */
+    function moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
+      return serializeTaskMove(() => moveTaskRaw(id, parentId, afterTaskId));
+    }
+
+    /**
+     * Moves a task one step up or down among its siblings in the list.
+     */
+    function shiftTask(id: string, delta: -1 | 1): Promise<void> {
+      return serializeTaskMove(() => shiftTaskRaw(id, delta));
     }
 
     /**

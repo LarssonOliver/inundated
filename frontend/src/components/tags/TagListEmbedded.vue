@@ -43,19 +43,36 @@ import TagItem from "@/components/tags/TagItem.vue";
 import type { Tag } from "@/model";
 import { useTagsStore } from "@/stores/tags";
 import { useTasksStore } from "@/stores/tasks";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const model = defineModel<Set<string>>({ default: new Set<string>() });
-const { readOnly, labelsOnly } = defineProps<{
+const { readOnly, labelsOnly, allowTaskCreation } = defineProps<{
   readOnly?: boolean;
   /** Offer regular tags only, e.g. for a task's own tags. */
   labelsOnly?: boolean;
+  /**
+   * Lets typing "#name" search task tags only and create a new task from
+   * this picker, e.g. for tagging a timespan to log time on a task. Off by
+   * default so an unrelated picker (project tags, etc.) can't accidentally
+   * create a task just because someone typed a leading "#".
+   */
+  allowTaskCreation?: boolean;
 }>();
 
 const tagsStore = useTagsStore();
 const tasksStore = useTasksStore();
 const tags = ref<Tag[]>([]);
-const tagSearchResult = ref<Tag[]>([]);
+// Raw, unfiltered server results for the current query. Filtered into
+// tagSearchResult below so removing/adding a tag in `model` (e.g. via the
+// pill's close button) re-excludes/re-includes it immediately, without
+// waiting on the next keystroke to re-run the search.
+const rawSearchResults = ref<Tag[]>([]);
+const tagSearchResult = computed(() =>
+  rawSearchResults.value
+    .filter((tag) => !tag.archived && !model.value.has(tag.id))
+    .filter((tag) => !labelsOnly || !tag.taskId)
+    .slice(0, 8),
+);
 
 /**
  * Returns the task name typed after a leading "#", or null when the query
@@ -64,23 +81,25 @@ const tagSearchResult = ref<Tag[]>([]);
  */
 function taskNameFromQuery(query: string): string | null {
   const trimmed = query.trim();
-  if (labelsOnly || !trimmed.startsWith("#")) return null;
+  if (!allowTaskCreation || labelsOnly || !trimmed.startsWith("#")) return null;
   return trimmed.slice(1).trim();
 }
 
 // Guards against overlapping searches: a slower response for an older query
-// must not replace the results for the newer one.
+// (including a search cleared out from under it) must not replace the
+// results for the newer one.
 let searchToken = 0;
 // Loaded once so task options can show their parent's name; tracked
 // separately from tasksStore.tasks.length, which stays 0 forever (and would
 // otherwise re-trigger a fetch on every keystroke) when there really are no
-// tasks yet.
+// tasks yet. Reset on failure so a transient error doesn't disable the hint
+// for the rest of this component's lifetime.
 let tasksLoadAttempted = false;
 
 async function search(query: string) {
   const token = ++searchToken;
   if (!query.trim()) {
-    tagSearchResult.value = [];
+    rawSearchResults.value = [];
     return;
   }
 
@@ -89,14 +108,13 @@ async function search(query: string) {
   const results = await tagsStore.searchTagsOnServer(taskName ?? query, kind);
   if (kind !== "label" && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
-    void tasksStore.fetchTasks().catch(() => undefined);
+    tasksStore.fetchTasks().catch(() => {
+      tasksLoadAttempted = false;
+    });
   }
   if (token !== searchToken) return;
 
-  tagSearchResult.value = results
-    .filter((tag) => !tag.archived && !model.value.has(tag.id))
-    .filter((tag) => !labelsOnly || !tag.taskId)
-    .slice(0, 8);
+  rawSearchResults.value = results;
 }
 
 const SEARCH_DEBOUNCE_MS = 200;
@@ -148,7 +166,8 @@ async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
 function onTagSearch(query: string) {
   if (!query.trim()) {
     clearTimeout(searchDebounceTimer);
-    tagSearchResult.value = [];
+    searchToken++; // invalidate any in-flight search so it can't repopulate results
+    rawSearchResults.value = [];
     return;
   }
   debouncedSearch(query);

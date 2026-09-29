@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="new-timespan-container">
-      <TagListEmbedded v-model="tagIds" />
+      <TagListEmbedded v-model="tagIds" allow-task-creation />
       <div class="right-side">
         <TimespanEdit @submit="createTimespan" v-model="timespan" />
         <button class="btn-info btn-add" @click="createTimespan">Add</button>

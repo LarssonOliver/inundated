@@ -1,6 +1,6 @@
 <template>
   <NotFoundView v-if="notFound" />
-  <div v-else class="tag-page">
+  <div v-else-if="!resolvingTaskTag" class="tag-page">
     <div class="title-bar">
       <h2 v-if="!isNewTag">Tag Details</h2>
       <h2 v-else>New Tag</h2>
@@ -39,6 +39,10 @@ const route = useRoute();
 const tag = ref<Tag>(newTagWithDefaults());
 const isNewTag = computed(() => route.name === "New Tag");
 const notFound = ref(false);
+// True while we don't yet know whether this id is a task tag, so the
+// generic (fully-functional, task-unaware) TagEdit form never renders for
+// one, even briefly, before the redirect to its Task view fires.
+const resolvingTaskTag = ref(false);
 
 watch(
   () => route.params.id,
@@ -47,8 +51,17 @@ watch(
       return;
     }
 
-    // Start by grabbing the tag from the store if cached
+    notFound.value = false;
+    resolvingTaskTag.value = true;
+
+    // Start by grabbing the tag from the store if cached. A cached task tag
+    // redirects immediately, without ever assigning it to `tag` or letting
+    // the form render.
     const storeResult = tagsStore.getTagById(newId as string);
+    if (storeResult?.taskId) {
+      router.replace({ name: "Task", params: { id: storeResult.taskId } });
+      return;
+    }
     if (storeResult) {
       tag.value = storeResult;
     }
@@ -66,6 +79,8 @@ watch(
       }
     } catch {
       notFound.value = true;
+    } finally {
+      resolvingTaskTag.value = false;
     }
   },
   { immediate: true },
