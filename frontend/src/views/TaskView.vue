@@ -113,7 +113,7 @@ import { useTasksStore } from "@/stores/tasks";
 import { useTagsStore } from "@/stores/tags";
 import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
-import { formatDuration } from "@/helpers/time";
+import { useDurationFormat } from "@/composables/useDurationFormat";
 import TagItem from "@/components/tags/TagItem.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
@@ -145,9 +145,7 @@ const showDeletionConfirmation = ref(false);
 const newSubtaskName = ref("");
 const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: "", tagIds: new Set() });
 
-function formatMs(ms: number): string {
-  return formatDuration(ms, settingsStore.settings?.durationFormat ?? "long");
-}
+const formatMs = useDurationFormat(() => settingsStore.settings);
 
 function applyTask(loaded: Task) {
   task.value = loaded;
@@ -159,15 +157,23 @@ function applyTask(loaded: Task) {
   };
 }
 
+// Guards against overlapping loads: navigating to another task before a
+// slower, now-stale load() finishes must not let its results overwrite the
+// newer task's state.
+let loadToken = 0;
+
 async function load(id: string) {
+  const token = ++loadToken;
   errorMessage.value = "";
   let loaded: Task;
   try {
     loaded = await tasksStore.fetchDetailedTaskById(id);
   } catch {
+    if (token !== loadToken) return;
     notFound.value = true;
     return;
   }
+  if (token !== loadToken) return;
   notFound.value = false;
   applyTask(loaded);
 
@@ -177,9 +183,10 @@ async function load(id: string) {
       ? (tasksStore.getTaskById(loaded.parentId) ??
         tasksStore.fetchDetailedTaskById(loaded.parentId).catch(() => null))
       : null,
-    tasksStore.fetchSubtasks(id),
-    projectsStore.fetchProjects(),
+    tasksStore.fetchSubtasks(id).catch(() => []),
+    projectsStore.fetchProjects().catch(() => undefined),
   ]);
+  if (token !== loadToken) return;
   taskTag.value = tag;
   parent.value = parentTask;
   subtasks.value = subtaskList;
@@ -190,6 +197,7 @@ async function load(id: string) {
         projectsStore.fetchProjectById(projectId).catch(() => undefined),
     ),
   );
+  if (token !== loadToken) return;
   projects.value = resolvedProjects.filter((project): project is Project => !!project);
 }
 

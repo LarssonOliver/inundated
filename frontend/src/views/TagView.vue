@@ -70,16 +70,18 @@ watch(
       // Fetch detailed tag info from the server to ensure we have the latest data (including total time)
       const result = await tagsStore.fetchDetailedTagById(newId as string);
       if (result?.taskId) {
-        // A task tag is edited through its task.
+        // A task tag is edited through its task. Leave resolvingTaskTag set
+        // - this component is navigating away, so the form must not flash
+        // back into view while that navigation is still in flight.
         router.replace({ name: "Task", params: { id: result.taskId } });
         return;
       }
       if (result) {
         tag.value = result;
       }
+      resolvingTaskTag.value = false;
     } catch {
       notFound.value = true;
-    } finally {
       resolvingTaskTag.value = false;
     }
   },

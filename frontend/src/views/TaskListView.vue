@@ -70,7 +70,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useTasksStore, taskTree } from "@/stores/tasks";
 import { useSettingsStore } from "@/stores/settings";
-import { formatDuration } from "@/helpers/time";
+import { useDurationFormat } from "@/composables/useDurationFormat";
 import type { Task } from "@/model";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
@@ -87,9 +87,7 @@ const newTaskName = ref("");
 const movingTaskId = ref<string | null>(null);
 const errorMessage = ref("");
 
-function formatMs(ms: number): string {
-  return formatDuration(ms, settingsStore.settings?.durationFormat ?? "long");
-}
+const formatMs = useDurationFormat(() => settingsStore.settings);
 
 function isOverdue(task: Task): boolean {
   if (task.closed || !task.dueDate) return false;
