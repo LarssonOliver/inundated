@@ -248,9 +248,6 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 		if task.Name == "" {
 			return fmt.Errorf("UpdateTask: name must not be empty: %w", model.ErrInvalidArgument)
 		}
-		if task.CloseReason != nil && !task.CloseReason.Valid() {
-			return fmt.Errorf("UpdateTask: close reason: %w", model.ErrInvalidArgument)
-		}
 		tagIds = utils.DedupeUUIDs(task.TagIds)
 		// Only a change to the tag set touches task_tags and the effective
 		// tags; sending the current set back is a no-op.

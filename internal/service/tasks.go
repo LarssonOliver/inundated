@@ -127,23 +127,18 @@ func (s *ServiceImpl) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	return s.repository.DeleteTask(ctx, scope, id)
 }
 
+// validateTask and validateTaskPatch check a task's field values. The
+// repositories trust them, and check only the name (as they do for every
+// resource) and what needs stored state. A new task is always open, so its
+// close fields aren't checked.
 func validateTask(task model.Task) error {
-	if task.Name == "" {
-		return fmt.Errorf("task name must not be empty: %w", model.ErrInvalidArgument)
-	}
 	if task.Estimate != nil && *task.Estimate < 0 {
 		return fmt.Errorf("task estimate must not be negative: %w", model.ErrInvalidArgument)
-	}
-	if task.CloseReason != nil && !task.CloseReason.Valid() {
-		return fmt.Errorf("unknown close reason %q: %w", *task.CloseReason, model.ErrInvalidArgument)
 	}
 	return nil
 }
 
 func validateTaskPatch(patch model.TaskPatch) error {
-	if patch.Name != nil && *patch.Name == "" {
-		return fmt.Errorf("task name must not be empty: %w", model.ErrInvalidArgument)
-	}
 	if patch.Estimate != nil && *patch.Estimate < 0 {
 		return fmt.Errorf("task estimate must not be negative: %w", model.ErrInvalidArgument)
 	}

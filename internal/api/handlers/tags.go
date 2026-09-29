@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/larssonoliver/inundated/internal/api"
@@ -65,10 +64,8 @@ func (t *TagHandler) DeleteTag(ctx context.Context, request api.DeleteTagRequest
 
 // GetTag implements [api.TagHandler].
 func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject) (api.GetTagResponseObject, error) {
-	includes := service.TagServiceGetIncludes{}
-
-	if request.Params.Include != nil {
-		includes.TotalTime = slices.Contains(*request.Params.Include, string(api.GetTagParamsIncludeTotalTimeMs))
+	includes := service.TagServiceGetIncludes{
+		TotalTime: hasInclude(request.Params.Include, api.GetTagParamsIncludeTotalTimeMs),
 	}
 
 	reply, err := t.svc.GetTag(ctx, request.TagId, &includes)
@@ -97,27 +94,16 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 
 // ListTags implements [api.TagHandler].
 func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestObject) (api.ListTagsResponseObject, error) {
-	paginationParams := model.DefaultPaginationParams()
-
-	if request.Params.Limit != nil {
-		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
-			return api.ListTags400Response{}, nil
-		}
-		paginationParams.Limit = *request.Params.Limit
-	}
-
-	if request.Params.Offset != nil {
-		if *request.Params.Offset < 0 {
-			return api.ListTags400Response{}, nil
-		}
-		paginationParams.Offset = *request.Params.Offset
+	paginationParams, ok := parsePagination(request.Params.Limit, request.Params.Offset)
+	if !ok {
+		return api.ListTags400Response{}, nil
 	}
 
 	if request.Params.IncludeArchived != nil {
 		paginationParams.IncludeArchived = *request.Params.IncludeArchived
 	}
 
-	params := model.TagListParams{PaginationParams: paginationParams, Kind: model.TagKindLabel}
+	params := model.TagListParams{PaginationParams: paginationParams}
 	if request.Params.Q != nil {
 		params.Query = *request.Params.Q
 	}

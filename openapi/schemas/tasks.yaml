@@ -34,6 +34,7 @@ Task:
     estimateHours:
       type: number
       format: double
+      maximum: 2562047
     rank:
       type: string
       description: Read-only. Sort key among the task's siblings. Tasks with the same
@@ -79,6 +80,7 @@ CreateTask:
     estimateHours:
       type: number
       format: double
+      maximum: 2562047
 
 UpdateTask:
   type: object
@@ -98,6 +100,7 @@ UpdateTask:
     estimateHours:
       type: number
       format: double
+      maximum: 2562047
     clearEstimate:
       type: boolean
       description: Removes the estimate. Can't be combined with estimateHours.

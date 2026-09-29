@@ -100,20 +100,9 @@ func (p *TimespanHandler) GetTimespan(ctx context.Context, request api.GetTimesp
 
 // ListTimespans implements [api.TimespanHandler].
 func (p *TimespanHandler) ListTimespans(ctx context.Context, request api.ListTimespansRequestObject) (api.ListTimespansResponseObject, error) {
-	paginationParams := model.DefaultPaginationParams()
-
-	if request.Params.Limit != nil {
-		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
-			return api.ListTimespans400Response{}, nil
-		}
-		paginationParams.Limit = *request.Params.Limit
-	}
-
-	if request.Params.Offset != nil {
-		if *request.Params.Offset < 0 {
-			return api.ListTimespans400Response{}, nil
-		}
-		paginationParams.Offset = *request.Params.Offset
+	paginationParams, ok := parsePagination(request.Params.Limit, request.Params.Offset)
+	if !ok {
+		return api.ListTimespans400Response{}, nil
 	}
 
 	var intervalRaw *string

@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -70,7 +69,7 @@ func (h *TaskHandler) DeleteTask(ctx context.Context, request api.DeleteTaskRequ
 
 // GetTask implements [api.TaskHandler].
 func (h *TaskHandler) GetTask(ctx context.Context, request api.GetTaskRequestObject) (api.GetTaskResponseObject, error) {
-	reply, err := h.svc.GetTask(ctx, request.TaskId, taskIncludes(request.Params.Include))
+	reply, err := h.svc.GetTask(ctx, request.TaskId, taskIncludes(request.Params.Include, api.GetTaskParamsIncludeTotalTimeMs, api.GetTaskParamsIncludeProjectIds))
 
 	if errors.Is(err, model.ErrNotFound) {
 		return api.GetTask404Response{}, nil
@@ -83,21 +82,11 @@ func (h *TaskHandler) GetTask(ctx context.Context, request api.GetTaskRequestObj
 
 // ListTasks implements [api.TaskHandler].
 func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksRequestObject) (api.ListTasksResponseObject, error) {
-	params := model.TaskListParams{PaginationParams: model.DefaultPaginationParams()}
-
-	if request.Params.Limit != nil {
-		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
-			return api.ListTasks400Response{}, nil
-		}
-		params.Limit = *request.Params.Limit
+	paginationParams, ok := parsePagination(request.Params.Limit, request.Params.Offset)
+	if !ok {
+		return api.ListTasks400Response{}, nil
 	}
-
-	if request.Params.Offset != nil {
-		if *request.Params.Offset < 0 {
-			return api.ListTasks400Response{}, nil
-		}
-		params.Offset = *request.Params.Offset
-	}
+	params := model.TaskListParams{PaginationParams: paginationParams}
 
 	if request.Params.IncludeClosed != nil {
 		params.IncludeClosed = *request.Params.IncludeClosed
@@ -108,7 +97,7 @@ func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksReques
 	params.DueFrom = dateToTime(request.Params.DueFrom)
 	params.DueTo = dateToTime(request.Params.DueTo)
 
-	page, err := h.svc.ListTasks(ctx, params, taskIncludes(request.Params.Include))
+	page, err := h.svc.ListTasks(ctx, params, taskIncludes(request.Params.Include, api.ListTasksParamsIncludeTotalTimeMs, api.ListTasksParamsIncludeProjectIds))
 
 	if errors.Is(err, model.ErrInvalidArgument) {
 		return api.ListTasks400Response{}, nil
@@ -211,13 +200,15 @@ func toAPITask(task model.Task) api.Task {
 	return apiTask
 }
 
-func taskIncludes(include *api.TaskInclude) *service.TaskServiceIncludes {
+// taskIncludes reads include with the calling endpoint's own constants for
+// totalTimeMs and projectIds.
+func taskIncludes[T ~string](include *api.TaskInclude, totalTime, projectIds T) *service.TaskServiceIncludes {
 	if include == nil {
 		return nil
 	}
 	return &service.TaskServiceIncludes{
-		TotalTime:  slices.Contains(*include, string(api.GetTaskParamsIncludeTotalTimeMs)),
-		ProjectIds: slices.Contains(*include, string(api.GetTaskParamsIncludeProjectIds)),
+		TotalTime:  hasInclude(include, totalTime),
+		ProjectIds: hasInclude(include, projectIds),
 	}
 }
 

@@ -43,7 +43,6 @@ func TestTaskService_DeleteTask(t *testing.T) {
 func TestTaskService_UpdateTaskRejectsBadPatches(t *testing.T) {
 	bogus := model.CloseReason("bogus")
 	tests := map[string]model.TaskPatch{
-		"empty name":             {Name: new("")},
 		"negative estimate":      {Estimate: new(-time.Hour)},
 		"unknown close reason":   {CloseReason: &bogus},
 		"reason while opening":   {CloseReason: new(model.CloseReasonDone), Closed: new(false)},
