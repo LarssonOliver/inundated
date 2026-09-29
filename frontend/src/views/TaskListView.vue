@@ -25,7 +25,7 @@
       :depth="depth"
       :disabled="movingTaskId !== null"
       :can-indent="index > 0"
-      :can-outdent="!!task.parentId"
+      :can-outdent="canOutdent(task)"
       :is-overdue="isOverdue(task)"
       @toggle-closed="toggleClosed(task)"
       @ignore="ignoreTask(task)"
@@ -44,7 +44,7 @@
         :depth="depth"
         :disabled="movingTaskId !== null"
         :can-indent="index > 0"
-        :can-outdent="!!task.parentId"
+        :can-outdent="canOutdent(task)"
         :is-overdue="isOverdue(task)"
         @toggle-closed="toggleClosed(task)"
         @ignore="ignoreTask(task)"
@@ -87,6 +87,15 @@ function isOverdue(task: Task): boolean {
   return task.dueDate < toLocalDay(new Date());
 }
 
+// Mirrors outdentTaskRaw's own no-op guard (frontend/src/stores/tasks.ts):
+// a task closed individually while its parent stays open can't be outdented
+// without crossing the open/closed section boundary, so the button must be
+// disabled for it rather than silently doing nothing when clicked.
+function canOutdent(task: Task): boolean {
+  if (!task.parentId) return false;
+  return tasksStore.getTaskById(task.parentId)?.closed === task.closed;
+}
+
 async function addTask() {
   const name = newTaskName.value.trim();
   if (!name) return;
@@ -124,10 +133,15 @@ function outdent(task: Task) {
 }
 
 async function toggleClosed(task: Task) {
-  if (task.closed) {
-    await tasksStore.reopenTask(task.id);
-  } else {
-    await tasksStore.closeTask(task.id, "done");
+  errorMessage.value = "";
+  try {
+    if (task.closed) {
+      await tasksStore.reopenTask(task.id);
+    } else {
+      await tasksStore.closeTask(task.id, "done");
+    }
+  } catch {
+    errorMessage.value = task.closed ? "Couldn't reopen the task." : "Couldn't close the task.";
   }
 }
 

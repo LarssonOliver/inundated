@@ -38,7 +38,12 @@
         <router-link class="task-name-link" :to="`/tasks/${task.id}`">
           <TagItem :tag="taskTagPreview" />
         </router-link>
-        <button class="field-trigger name-edit-btn" title="Rename" @click="startEditName">
+        <button
+          class="field-trigger name-edit-btn"
+          title="Rename"
+          :disabled="disabled"
+          @click="startEditName"
+        >
           <MaterialIcon icon="edit" size="0.85em" />
         </button>
       </template>
@@ -48,7 +53,13 @@
 
     <div ref="tagsFieldEl" class="task-tags">
       <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" labels-only />
-      <button v-else class="field-trigger tags-trigger" title="Edit tags" @click="startEditTags">
+      <button
+        v-else
+        class="field-trigger tags-trigger"
+        title="Edit tags"
+        :disabled="disabled"
+        @click="startEditTags"
+      >
         <span v-if="task.tagIds.size === 0" class="placeholder">Tags</span>
         <TagListEmbedded v-else :model-value="task.tagIds" read-only />
       </button>
@@ -70,6 +81,7 @@
         v-else
         class="field-trigger due"
         :class="{ overdue: isOverdue }"
+        :disabled="disabled"
         @click="startEditDueDate"
       >
         <MaterialIcon icon="event" size="1em" />
@@ -101,7 +113,7 @@
         />
         <span>h</span>
       </template>
-      <button v-else class="field-trigger estimate" @click="startEditEstimate">
+      <button v-else class="field-trigger estimate" :disabled="disabled" @click="startEditEstimate">
         <template v-if="task.estimateHours != null">
           / {{ formatMs(task.estimateHours * 3600000) }}
         </template>
@@ -356,12 +368,17 @@ function startEditTags() {
   border-radius: var(--radius-xs);
 }
 
-.field-trigger:hover {
+.field-trigger:hover:not(:disabled) {
   background-color: var(--nord1);
 }
 
 .field-trigger:focus-visible {
   box-shadow: var(--focus-ring);
+}
+
+.field-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .name-field {

@@ -277,18 +277,21 @@ async function save() {
     return;
   }
   errorMessage.value = "";
-  const updated = await tasksStore.updateTask(task.value.id, {
+  const token = loadToken;
+  const priorTask = task.value;
+  const updated = await tasksStore.updateTask(priorTask.id, {
     name: draft.value.name.trim(),
     tagIds: draft.value.tagIds,
     dueDate: draft.value.dueDate || null,
     estimateHours: estimate === "" ? null : Number(estimate),
   });
+  if (token !== loadToken) return;
   // Editing never changes closed state, parent, tag or projects, so merge
   // the response over the existing task rather than reloading everything.
   applyTask({
     ...updated,
-    totalTimeMs: task.value.totalTimeMs,
-    projectIds: task.value.projectIds,
+    totalTimeMs: priorTask.totalTimeMs,
+    projectIds: priorTask.projectIds,
   });
 }
 
@@ -338,10 +341,12 @@ async function toggleSubtask(child: Task) {
   // own state needs refreshing too, not just the subtask list.
   if (task.value) {
     const id = task.value.id;
+    const token = loadToken;
     const [loaded, subtaskList] = await Promise.all([
       tasksStore.fetchDetailedTaskById(id),
       tasksStore.fetchSubtasks(id),
     ]);
+    if (token !== loadToken) return;
     applyTask(loaded);
     subtasks.value = subtaskList;
   }
@@ -349,9 +354,13 @@ async function toggleSubtask(child: Task) {
 
 async function addSubtask() {
   if (!task.value || !newSubtaskName.value.trim()) return;
-  await tasksStore.createTaskFromName(newSubtaskName.value, task.value.id);
+  const id = task.value.id;
+  const token = loadToken;
+  await tasksStore.createTaskFromName(newSubtaskName.value, id);
   newSubtaskName.value = "";
-  subtasks.value = await tasksStore.fetchSubtasks(task.value.id);
+  const subtaskList = await tasksStore.fetchSubtasks(id);
+  if (token !== loadToken) return;
+  subtasks.value = subtaskList;
 }
 
 async function deleteTask() {

@@ -1,11 +1,12 @@
 <template>
   <label class="task-checkbox" :class="[`variant-${variant}`, { disabled }]" :title="title">
     <input
+      ref="inputEl"
       type="checkbox"
       :checked="checked"
       :disabled="disabled"
       :aria-label="ariaLabel"
-      @change="$emit('change', $event)"
+      @change="onChange"
     />
     <span class="box">
       <span class="check-icon">
@@ -16,9 +17,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     checked: boolean;
     disabled?: boolean;
@@ -30,9 +32,23 @@ withDefaults(
   { variant: "success" },
 );
 
-defineEmits<{
+const emit = defineEmits<{
   change: [event: Event];
 }>();
+
+const inputEl = ref<HTMLInputElement>();
+
+// The browser flips the native checkbox's `checked` DOM property the instant
+// it's clicked, ahead of any Vue patch - and since `checked` here always
+// reflects confirmed task state rather than an optimistic guess, Vue won't
+// reassert it while the caller's async update is pending (or if it's
+// rejected), because the bound prop's *value* hasn't actually changed. Force
+// the DOM back in sync right away so the box only really flips once the
+// prop itself does.
+function onChange(event: Event) {
+  emit("change", event);
+  if (inputEl.value) inputEl.value.checked = props.checked;
+}
 </script>
 
 <style scoped>

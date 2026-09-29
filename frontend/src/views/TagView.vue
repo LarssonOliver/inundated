@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import type { Tag } from "@/model";
 import { watch, ref, computed } from "vue";
+import { ResponseError } from "@/api/generated";
 import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";
 import { newTagWithDefaults } from "@/helpers/tag";
@@ -86,11 +87,13 @@ watch(
         tag.value = result;
       }
       resolvingTaskTag.value = false;
-    } catch {
-      // Only a tag we had no cached copy of is actually "not found" - a
-      // failed background refresh of an already-cached tag should leave the
-      // cached data on screen.
-      if (!storeResult) notFound.value = true;
+    } catch (error) {
+      // A genuine 404 is "not found" regardless of any cached copy (it may
+      // have since been deleted server-side); any other failure (network,
+      // timeout) on an already-cached tag should leave the cached data on
+      // screen instead of flashing Not Found for a transient error.
+      const isRealNotFound = error instanceof ResponseError && error.response.status === 404;
+      if (!storeResult || isRealNotFound) notFound.value = true;
       resolvingTaskTag.value = false;
     }
   },
