@@ -95,28 +95,13 @@
               <p class="stat-tile-value">{{ formatMs(task.totalTimeMs ?? 0) }}</p>
               <p class="stat-tile-label">Logged, with subtasks</p>
             </div>
-            <div v-if="task.estimateHours != null" class="meter">
-              <div class="meter-header">
-                <span class="meter-label">Estimate</span>
-                <span class="meter-reading" :class="estimateSeverityClass">
-                  <MaterialIcon
-                    v-if="estimateSeverityClass === 'severity-critical'"
-                    icon="warning"
-                    size="16px"
-                    class="meter-icon"
-                  />
-                  {{ formatMs(task.totalTimeMs ?? 0) }} /
-                  {{ formatMs(task.estimateHours * 3600000) }} ({{ estimatePercentLabel }})
-                </span>
-              </div>
-              <div class="meter-track">
-                <div
-                  class="meter-fill"
-                  :class="estimateSeverityClass"
-                  :style="{ width: estimateFillPercent + '%' }"
-                />
-              </div>
-            </div>
+            <UsageMeter
+              v-if="task.estimateHours != null"
+              label="Estimate"
+              :used="task.totalTimeMs ?? 0"
+              :limit="task.estimateHours * 3600000"
+              :format="formatMs"
+            />
           </template>
         </TagStats>
       </div>
@@ -143,13 +128,12 @@ import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import { formatDatePickerInput, fromLocalDay, toLocalDay } from "@/helpers/dates";
-import { meterSeverity } from "@/helpers/meter";
 import TagItem from "@/components/tags/TagItem.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
+import UsageMeter from "@/components/stats/UsageMeter.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
 import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
-import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import NotFoundView from "./NotFoundView.vue";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
@@ -187,18 +171,6 @@ const datePickerFormats = computed(() => ({
   input: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
   preview: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
 }));
-
-const estimateRatio = computed(() => {
-  const estimateHours = task.value?.estimateHours;
-  if (estimateHours == null) return 0;
-  const loggedHours = (task.value?.totalTimeMs ?? 0) / 3600000;
-  // A 0-hour estimate with any logged time is over budget, not "no estimate".
-  if (estimateHours <= 0) return loggedHours > 0 ? 1 : 0;
-  return loggedHours / estimateHours;
-});
-const estimateFillPercent = computed(() => Math.min(estimateRatio.value * 100, 100));
-const estimatePercentLabel = computed(() => `${Math.round(estimateRatio.value * 100)}%`);
-const estimateSeverityClass = computed(() => `severity-${meterSeverity(estimateRatio.value)}`);
 
 const dueDate = computed<Date | null>({
   get: () => (draft.value.dueDate ? fromLocalDay(draft.value.dueDate) : null),

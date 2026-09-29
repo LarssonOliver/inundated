@@ -32,5 +32,6 @@ declare module 'vue' {
     TimesheetItem: typeof import('./src/components/timesheet/TimesheetItem.vue')['default']
     TimespanEdit: typeof import('./src/components/inputs/TimespanEdit.vue')['default']
     ToggleSwitch: typeof import('./src/components/inputs/ToggleSwitch.vue')['default']
+    UsageMeter: typeof import('./src/components/stats/UsageMeter.vue')['default']
   }
 }
