@@ -85,7 +85,7 @@ func escapeLike(s string) string {
 
 func (r *PostgresStore) GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 	if id == uuid.Nil {
-		return model.Tag{}, fmt.Errorf("GetTag: id: %w", model.ErrInvalidArgument)
+		return model.Tag{}, fmt.Errorf("GetTag: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{id})
@@ -178,7 +178,7 @@ func (r *PostgresStore) CreateTag(ctx context.Context, scope model.OwnerScope, t
 
 func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {
 	if tag.Id == uuid.Nil {
-		return model.Tag{}, fmt.Errorf("UpdateTag: id: %w", model.ErrInvalidArgument)
+		return model.Tag{}, fmt.Errorf("UpdateTag: %w", errNilId)
 	}
 	if tag.Name == "" {
 		return model.Tag{}, fmt.Errorf("UpdateTag: name must not be empty: %w", model.ErrInvalidArgument)
@@ -208,7 +208,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 
 func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
-		return fmt.Errorf("DeleteTag: id: %w", model.ErrInvalidArgument)
+		return fmt.Errorf("DeleteTag: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})

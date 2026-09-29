@@ -143,7 +143,7 @@ func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id
 		return model.Task{}, model.ErrNotFound
 	}
 	task := patch.Apply(copyTask(t.tasks[idx]))
-	if task.Name == "" || (task.CloseReason != nil && !task.CloseReason.Valid()) {
+	if task.Name == "" {
 		return model.Task{}, model.ErrInvalidArgument
 	}
 	tagIds := utils.DedupeUUIDs(task.TagIds)

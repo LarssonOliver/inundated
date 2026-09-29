@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/larssonoliver/inundated/internal/api"
@@ -83,11 +82,9 @@ func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeletePr
 
 // GetProject implements [api.ProjectHandler].
 func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectRequestObject) (api.GetProjectResponseObject, error) {
-	includes := service.ProjectServiceGetIncludes{}
-
-	if request.Params.Include != nil {
-		includes.TotalTime = slices.Contains(*request.Params.Include, string(api.GetProjectParamsIncludeTotalTimeMs))
-		includes.TaskTime = slices.Contains(*request.Params.Include, string(api.GetProjectParamsIncludeTaskTimeMs))
+	includes := service.ProjectServiceGetIncludes{
+		TotalTime: hasInclude(request.Params.Include, api.GetProjectParamsIncludeTotalTimeMs),
+		TaskTime:  hasInclude(request.Params.Include, api.GetProjectParamsIncludeTaskTimeMs),
 	}
 
 	reply, err := p.svc.GetProject(ctx, request.ProjectId, &includes)
@@ -125,20 +122,9 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 // ListProjects implements [api.ProjectHandler].
 func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProjectsRequestObject) (api.ListProjectsResponseObject, error) {
-	paginationParams := model.DefaultPaginationParams()
-
-	if request.Params.Limit != nil {
-		if *request.Params.Limit < 1 || *request.Params.Limit > 100 {
-			return api.ListProjects400Response{}, nil
-		}
-		paginationParams.Limit = *request.Params.Limit
-	}
-
-	if request.Params.Offset != nil {
-		if *request.Params.Offset < 0 {
-			return api.ListProjects400Response{}, nil
-		}
-		paginationParams.Offset = *request.Params.Offset
+	paginationParams, ok := parsePagination(request.Params.Limit, request.Params.Offset)
+	if !ok {
+		return api.ListProjects400Response{}, nil
 	}
 
 	if request.Params.IncludeArchived != nil {

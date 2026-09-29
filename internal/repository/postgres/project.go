@@ -14,7 +14,7 @@ import (
 
 func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
 	if id == uuid.Nil {
-		return model.Project{}, fmt.Errorf("GetProject: id: %w", model.ErrInvalidArgument)
+		return model.Project{}, fmt.Errorf("GetProject: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
@@ -132,7 +132,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 			Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId); err != nil {
 			return fmt.Errorf("CreateProject: %w", err)
 		}
-		return r.setProjectTags(ctx, q, created.Id, project.TagIds)
+		return setLinkedTags(ctx, q, "project_tags", "project_id", created.Id, project.TagIds)
 	})
 	if err != nil {
 		return model.Project{}, err
@@ -143,7 +143,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 
 func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error) {
 	if project.Id == uuid.Nil {
-		return model.Project{}, fmt.Errorf("UpdateProject: id: %w", model.ErrInvalidArgument)
+		return model.Project{}, fmt.Errorf("UpdateProject: %w", errNilId)
 	}
 	if project.Name == "" {
 		return model.Project{}, fmt.Errorf("UpdateProject: name must not be empty: %w", model.ErrInvalidArgument)
@@ -178,7 +178,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
-		return r.setProjectTags(ctx, q, updated.Id, project.TagIds)
+		return setLinkedTags(ctx, q, "project_tags", "project_id", updated.Id, project.TagIds)
 	})
 	if err != nil {
 		return model.Project{}, err
@@ -189,7 +189,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 
 func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
-		return fmt.Errorf("DeleteProject: id: %w", model.ErrInvalidArgument)
+		return fmt.Errorf("DeleteProject: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
@@ -208,34 +208,11 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	return nil
 }
 
-// projectTagIds returns the live tag IDs linked to a project; links to
-// deleted tags are kept (tag deletion is soft) but never read back, so a
-// read-modify-write never sends one back. Callers pass r.db
-// for a standalone read, or the transaction's Querier to read within it
-// (e.g. alongside a concurrent tagsInScope check).
+// projectTagIds returns the live tag IDs linked to a project (see
+// linkedTagIds).
 func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId uuid.UUID) ([]uuid.UUID, error) {
-	const query = `
-		SELECT pt.tag_id
-		FROM project_tags pt
-		JOIN tags t ON t.id = pt.tag_id AND t.deleted_at IS NULL
-		WHERE pt.project_id = $1
-		ORDER BY pt.tag_id`
-
-	rows, err := q.Query(ctx, query, projectId)
-	if err != nil {
-		return nil, fmt.Errorf("projectTagIds: %w", err)
-	}
-	defer rows.Close()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("projectTagIds scan: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
+	ids, err := linkedTagIds(ctx, q, "project_tags", "project_id", []uuid.UUID{projectId})
+	return ids[projectId], err
 }
 
 // tagsInScope reports whether every id refers to a live tag owned by scope
@@ -315,20 +292,4 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 	}
 
 	return true, nil
-}
-
-// setProjectTags replaces all tag associations for a project.
-func (r *PostgresStore) setProjectTags(ctx context.Context, q Querier, projectId uuid.UUID, tagIds []uuid.UUID) error {
-	if _, err := q.Exec(ctx, `DELETE FROM project_tags WHERE project_id = $1`, projectId); err != nil {
-		return fmt.Errorf("setProjectTags delete: %w", err)
-	}
-	for _, tagId := range tagIds {
-		if _, err := q.Exec(ctx,
-			`INSERT INTO project_tags (project_id, tag_id) VALUES ($1, $2)`,
-			projectId, tagId,
-		); err != nil {
-			return fmt.Errorf("setProjectTags insert: %w: %w", model.ErrInvalidReference, err)
-		}
-	}
-	return nil
 }

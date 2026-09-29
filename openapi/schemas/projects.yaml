@@ -13,6 +13,7 @@ Project:
     timeBudgetHours:
       type: number
       format: double
+      maximum: 2562047
     tagIds:
       $ref: "./shared.yaml#/TagIdList"
     totalTimeMs:
@@ -40,6 +41,7 @@ CreateProject:
     timeBudgetHours:
       type: number
       format: double
+      maximum: 2562047
     tagIds:
       $ref: "./shared.yaml#/TagIdList"
 
@@ -55,6 +57,7 @@ UpdateProject:
     timeBudgetHours:
       type: number
       format: double
+      maximum: 2562047
     tagIds:
       $ref: "./shared.yaml#/TagIdList"
     archived:
