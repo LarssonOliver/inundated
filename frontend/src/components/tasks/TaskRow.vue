@@ -39,14 +39,6 @@
         <TagListEmbedded :model-value="task.tagIds" read-only />
         <span v-if="task.tagIds.size === 0" class="placeholder">Tags</span>
       </button>
-      <button
-        v-if="editingField === 'tags'"
-        class="field-trigger done-btn"
-        title="Done editing tags"
-        @click="editingField = null"
-      >
-        <MaterialIcon icon="close" size="1em" />
-      </button>
     </div>
 
     <div ref="dueFieldEl" class="due-field">
@@ -60,13 +52,6 @@
             :formats="datePickerFormats"
           />
         </div>
-        <button
-          class="field-trigger done-btn"
-          title="Done editing due date"
-          @click="editingField = null"
-        >
-          <MaterialIcon icon="close" size="1em" />
-        </button>
       </template>
       <button
         v-else
@@ -354,11 +339,6 @@ function startEditTags() {
   min-height: 2.5em;
 }
 
-.tags-trigger {
-  flex: 1;
-  min-width: 0;
-}
-
 .task-tags:has(.searchbox-container) {
   flex-wrap: wrap;
 }
@@ -401,15 +381,6 @@ function startEditTags() {
 .placeholder {
   color: var(--nord3);
   font-style: italic;
-}
-
-.done-btn {
-  color: var(--nord3);
-  padding: 0.3em;
-}
-
-.done-btn:hover {
-  color: var(--nord6);
 }
 
 .order-buttons {
