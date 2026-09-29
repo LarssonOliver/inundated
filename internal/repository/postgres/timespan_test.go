@@ -18,26 +18,27 @@ var timespanCols = []string{"id", "name", "start_time", "end_time", "user_id"}
 
 // expectTimespanTagsQuery registers the secondary tag-fetch expectation.
 func expectTimespanTagsQuery(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, tagIds []uuid.UUID) {
-	rows := pgxmock.NewRows([]string{"tag_id"})
+	rows := pgxmock.NewRows([]string{"timespan_id", "tag_id"})
 	for _, tid := range tagIds {
-		rows.AddRow(tid)
+		rows.AddRow(timespanId, tid)
 	}
-	mock.ExpectQuery(`SELECT tt\.tag_id FROM timespan_tags tt JOIN tags t ON t\.id = tt\.tag_id AND t\.deleted_at IS NULL WHERE tt\.timespan_id = \$1`).
-		WithArgs(timespanId).
+	mock.ExpectQuery(`SELECT l\.timespan_id, l\.tag_id FROM timespan_tags l JOIN tags t ON t\.id = l\.tag_id AND t\.deleted_at IS NULL WHERE l\.timespan_id = ANY\(\$1\)`).
+		WithArgs([]uuid.UUID{timespanId}).
 		WillReturnRows(rows)
 }
 
 // expectSetTimespanTags registers the delete + insert expectations produced by
-// setTimespanTags for the given tag list.
+// setLinkedTags for the given tag list.
 func expectSetTimespanTags(mock pgxmock.PgxPoolIface, timespanId uuid.UUID, tagIds []uuid.UUID) {
 	mock.ExpectExec(`DELETE FROM timespan_tags WHERE timespan_id = \$1`).
 		WithArgs(timespanId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
-	for _, tid := range tagIds {
-		mock.ExpectExec(`INSERT INTO timespan_tags`).
-			WithArgs(timespanId, tid).
-			WillReturnResult(pgxmock.NewResult("INSERT", 1))
+	if len(tagIds) == 0 {
+		return
 	}
+	mock.ExpectExec(`INSERT INTO timespan_tags \(timespan_id, tag_id\) SELECT \$1, unnest\(\$2::uuid\[\]\)`).
+		WithArgs(timespanId, tagIds).
+		WillReturnResult(pgxmock.NewResult("INSERT", int64(len(tagIds))))
 }
 
 // ── GetTimespan ──────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ func TestGetTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	_, err := repo.GetTimespan(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 // ── ListTimespans ────────────────────────────────────────────────────────────
@@ -450,7 +451,7 @@ func TestUpdateTimespan_NilId(t *testing.T) {
 	ts.Id = uuid.Nil
 	_, err := repo.UpdateTimespan(context.Background(), testScope, ts)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestUpdateTimespan_ZeroStartTime(t *testing.T) {
@@ -503,7 +504,7 @@ func TestDeleteTimespan_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	err := repo.DeleteTimespan(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestGetTotalDurationByTags_Success(t *testing.T) {

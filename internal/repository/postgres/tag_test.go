@@ -76,7 +76,7 @@ func TestGetTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	_, err := repo.GetTag(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 // ── ListTags ─────────────────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ func TestUpdateTag_NilId(t *testing.T) {
 	tag.Id = uuid.Nil
 	_, err := repo.UpdateTag(context.Background(), testScope, tag)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestUpdateTag_EmptyName(t *testing.T) {
@@ -393,7 +393,7 @@ func TestDeleteTag_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	err := repo.DeleteTag(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 // expectTagWriteMiss expects the lookup UpdateTag and DeleteTag make after

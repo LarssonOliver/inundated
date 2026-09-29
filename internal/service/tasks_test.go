@@ -40,20 +40,6 @@ func TestTaskService_DeleteTask(t *testing.T) {
 	}
 }
 
-// The zero UUID can never name a task, so every by-id write reports it as
-// not found without asking the repository, as GetTask does.
-func TestTaskService_NilIdIsNotFound(t *testing.T) {
-	s := service.NewService(&repository.RepoMock{})
-	ctx := context.Background()
-
-	_, err := s.UpdateTask(ctx, uuid.Nil, model.TaskPatch{Name: new("x")})
-	require.ErrorIs(t, err, model.ErrNotFound)
-	_, err = s.MoveTask(ctx, uuid.Nil, nil, nil)
-	require.ErrorIs(t, err, model.ErrNotFound)
-	require.ErrorIs(t, s.DeleteTask(ctx, uuid.Nil), model.ErrNotFound)
-	require.ErrorIs(t, s.DeleteTag(ctx, uuid.Nil), model.ErrNotFound)
-}
-
 func TestTaskService_UpdateTaskRejectsBadPatches(t *testing.T) {
 	bogus := model.CloseReason("bogus")
 	tests := map[string]model.TaskPatch{

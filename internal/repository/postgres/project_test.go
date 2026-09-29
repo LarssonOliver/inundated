@@ -24,12 +24,12 @@ var projectColsArchived = []string{"id", "name", "color", "time_budget", "user_i
 // expectProjectTagsQuery registers the expectation for the secondary tag-fetch
 // query that all Get/List/Create/Update calls issue after the main query.
 func expectProjectTagsQuery(mock pgxmock.PgxPoolIface, projectId uuid.UUID, tagIds []uuid.UUID) {
-	rows := pgxmock.NewRows([]string{"tag_id"})
+	rows := pgxmock.NewRows([]string{"project_id", "tag_id"})
 	for _, tid := range tagIds {
-		rows.AddRow(tid)
+		rows.AddRow(projectId, tid)
 	}
-	mock.ExpectQuery(`SELECT pt\.tag_id FROM project_tags pt JOIN tags t ON t\.id = pt\.tag_id AND t\.deleted_at IS NULL WHERE pt\.project_id = \$1`).
-		WithArgs(projectId).
+	mock.ExpectQuery(`SELECT l\.project_id, l\.tag_id FROM project_tags l JOIN tags t ON t\.id = l\.tag_id AND t\.deleted_at IS NULL WHERE l\.project_id = ANY\(\$1\)`).
+		WithArgs([]uuid.UUID{projectId}).
 		WillReturnRows(rows)
 }
 
@@ -50,16 +50,17 @@ func expectTagsInScope(mock pgxmock.PgxPoolIface, tagIds []uuid.UUID) {
 }
 
 // expectSetProjectTags registers the delete + insert expectations produced by
-// setProjectTags for the given tag list.
+// setLinkedTags for the given tag list.
 func expectSetProjectTags(mock pgxmock.PgxPoolIface, projectId uuid.UUID, tagIds []uuid.UUID) {
 	mock.ExpectExec(`DELETE FROM project_tags WHERE project_id = \$1`).
 		WithArgs(projectId).
 		WillReturnResult(pgxmock.NewResult("DELETE", int64(len(tagIds))))
-	for _, tid := range tagIds {
-		mock.ExpectExec(`INSERT INTO project_tags`).
-			WithArgs(projectId, tid).
-			WillReturnResult(pgxmock.NewResult("INSERT", 1))
+	if len(tagIds) == 0 {
+		return
 	}
+	mock.ExpectExec(`INSERT INTO project_tags \(project_id, tag_id\) SELECT \$1, unnest\(\$2::uuid\[\]\)`).
+		WithArgs(projectId, tagIds).
+		WillReturnResult(pgxmock.NewResult("INSERT", int64(len(tagIds))))
 }
 
 // ── GetProject ───────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ func TestGetProject_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	_, err := repo.GetProject(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 // ── ListProjects ─────────────────────────────────────────────────────────────
@@ -453,7 +454,7 @@ func TestUpdateProject_NilId(t *testing.T) {
 	p.Id = uuid.Nil
 	_, err := repo.UpdateProject(context.Background(), testScope, p)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }
 
 func TestUpdateProject_EmptyName(t *testing.T) {
@@ -497,5 +498,5 @@ func TestDeleteProject_NilId(t *testing.T) {
 	repo, _ := newMock(t)
 	err := repo.DeleteProject(context.Background(), testScope, uuid.Nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, model.ErrInvalidArgument))
+	assert.True(t, errors.Is(err, model.ErrNotFound))
 }

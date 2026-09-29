@@ -14,7 +14,7 @@ import (
 
 func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	if id == uuid.Nil {
-		return model.Timespan{}, fmt.Errorf("GetTimespan: id: %w", model.ErrInvalidArgument)
+		return model.Timespan{}, fmt.Errorf("GetTimespan: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
@@ -146,7 +146,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 			Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime, &created.UserId); err != nil {
 			return fmt.Errorf("CreateTimespan: %w", err)
 		}
-		return r.setTimespanTags(ctx, q, created.Id, timespan.TagIds)
+		return setLinkedTags(ctx, q, "timespan_tags", "timespan_id", created.Id, timespan.TagIds)
 	})
 	if err != nil {
 		return model.Timespan{}, err
@@ -157,7 +157,7 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 
 func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error) {
 	if timespan.Id == uuid.Nil {
-		return model.Timespan{}, fmt.Errorf("UpdateTimespan: id: %w", model.ErrInvalidArgument)
+		return model.Timespan{}, fmt.Errorf("UpdateTimespan: %w", errNilId)
 	}
 	if timespan.StartTime.IsZero() {
 		return model.Timespan{}, fmt.Errorf("UpdateTimespan: start_time must not be zero: %w", model.ErrInvalidArgument)
@@ -192,7 +192,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 		if err != nil {
 			return fmt.Errorf("UpdateTimespan: %w", err)
 		}
-		return r.setTimespanTags(ctx, q, updated.Id, timespan.TagIds)
+		return setLinkedTags(ctx, q, "timespan_tags", "timespan_id", updated.Id, timespan.TagIds)
 	})
 	if err != nil {
 		return model.Timespan{}, err
@@ -203,7 +203,7 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 
 func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
-		return fmt.Errorf("DeleteTimespan: id: %w", model.ErrInvalidArgument)
+		return fmt.Errorf("DeleteTimespan: %w", errNilId)
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
@@ -222,70 +222,44 @@ func (r *PostgresStore) DeleteTimespan(ctx context.Context, scope model.OwnerSco
 	return nil
 }
 
-// timespanTagIds returns the live tag IDs linked to a time span, skipping
-// deleted tags as projectTagIds does. Callers pass
-// r.db for a standalone read, or the transaction's Querier to read within
-// it (e.g. alongside a concurrent tagsInScope check).
+// timespanTagIds returns the live tag IDs linked to a time span (see
+// linkedTagIds).
 func (r *PostgresStore) timespanTagIds(ctx context.Context, q Querier, timespanId uuid.UUID) ([]uuid.UUID, error) {
-	const query = `
-		SELECT tt.tag_id
-		FROM timespan_tags tt
-		JOIN tags t ON t.id = tt.tag_id AND t.deleted_at IS NULL
-		WHERE tt.timespan_id = $1
-		ORDER BY tt.tag_id`
-
-	rows, err := q.Query(ctx, query, timespanId)
-	if err != nil {
-		return nil, fmt.Errorf("timespanTagIds: %w", err)
-	}
-	defer rows.Close()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("timespanTagIds scan: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
+	ids, err := linkedTagIds(ctx, q, "timespan_tags", "timespan_id", []uuid.UUID{timespanId})
+	return ids[timespanId], err
 }
 
-// setTimespanTags replaces all tag associations for a time span.
-func (r *PostgresStore) setTimespanTags(ctx context.Context, q Querier, timespanId uuid.UUID, tagIds []uuid.UUID) error {
-	if _, err := q.Exec(ctx, `DELETE FROM timespan_tags WHERE timespan_id = $1`, timespanId); err != nil {
-		return fmt.Errorf("setTimespanTags delete: %w", err)
-	}
-	for _, tagId := range tagIds {
-		if _, err := q.Exec(ctx,
-			`INSERT INTO timespan_tags (timespan_id, tag_id) VALUES ($1, $2)`,
-			timespanId, tagId,
-		); err != nil {
-			return fmt.Errorf("setTimespanTags insert: %w: %w", model.ErrInvalidReference, err)
-		}
-	}
-	return nil
+// timespanTagHitsSQL selects (timespan_id, tag_id) once for every tag in
+// the uuid[] tagIds that a timespan reaches: directly, by carrying it, or
+// through the effective tags of a live task whose task tag it carries (see
+// task_effective_tags). It is the one statement of that attribution rule;
+// every per-tag, per-task and project total builds on it. tagIds must be
+// live tags: task_effective_tags can hold rows for deleted ones (see
+// refreshEffectiveTags), which this doesn't filter out.
+func timespanTagHitsSQL(tagIds string) string {
+	return `
+		SELECT tt.timespan_id, tt.tag_id
+		FROM timespan_tags tt
+		WHERE tt.tag_id = ANY(` + tagIds + `)
+		UNION` + timespanTaskTagHitsSQL(tagIds)
+}
+
+// timespanTaskTagHitsSQL is the task half of timespanTagHitsSQL: the
+// (timespan_id, tag_id) pairs a timespan reaches through its tasks.
+func timespanTaskTagHitsSQL(tagIds string) string {
+	return `
+		SELECT tt.timespan_id, te.tag_id
+		FROM timespan_tags tt
+		JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
+		JOIN task_effective_tags te ON te.task_id = k.id
+		WHERE te.tag_id = ANY(` + tagIds + `)`
 }
 
 // timespanHasEffectiveTagSQL is a condition that holds when the timespan
-// with id timespanId has any of the tags in the uuid[] tagIds among its
-// effective tags: the tags it carries, plus the effective tags of every task
-// whose task tag it carries (see task_effective_tags). tagIds must be live
-// tags: task_effective_tags can hold rows for deleted ones (see
-// refreshEffectiveTags), which this doesn't filter out.
+// with id timespanId reaches any of the tags in the uuid[] tagIds (see
+// timespanTagHitsSQL).
 func timespanHasEffectiveTagSQL(timespanId, tagIds string) string {
-	return `EXISTS (
-		SELECT 1 FROM timespan_tags tt
-		WHERE tt.timespan_id = ` + timespanId + `
-			AND (
-				tt.tag_id = ANY(` + tagIds + `)
-				OR EXISTS (
-					SELECT 1 FROM tasks k
-					JOIN task_effective_tags te ON te.task_id = k.id
-					WHERE k.tag_id = tt.tag_id AND k.deleted_at IS NULL AND te.tag_id = ANY(` + tagIds + `)
-				)
-			)
-	)`
+	return timespanId + ` IN (SELECT h.timespan_id FROM (` + timespanTagHitsSQL(tagIds) + `) h)`
 }
 
 // GetTotalDurationByTags implements [repository.Repository].
@@ -333,12 +307,7 @@ func (r *PostgresStore) GetTaskDurationByTags(ctx context.Context, scope model.O
 		FROM timespans t
 		WHERE t.deleted_at IS NULL
 			AND ` + ownerSQL + `
-			AND EXISTS (
-				SELECT 1 FROM timespan_tags tt
-				JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
-				JOIN task_effective_tags te ON te.task_id = k.id
-				WHERE tt.timespan_id = t.id AND te.tag_id = ANY($1)
-			)`
+			AND t.id IN (SELECT h.timespan_id FROM (` + timespanTaskTagHitsSQL("$1") + `) h)`
 
 	var duration *time.Duration
 	if err := r.db.QueryRow(ctx, q, args...).Scan(&duration); err != nil {
@@ -357,21 +326,11 @@ func (r *PostgresStore) GetTotalDurationPerTag(ctx context.Context, scope model.
 		return out, nil
 	}
 
-	// hits pairs each timespan with every requested tag among its effective
-	// tags (see timespanHasEffectiveTagSQL); UNION counts a timespan once
-	// per tag however many ways it reaches it.
+	// hits pairs each timespan with every requested tag it reaches (see
+	// timespanTagHitsSQL), once per tag however many ways it reaches it.
 	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
 	q := `
-		WITH hits AS (
-			SELECT tt.timespan_id, tt.tag_id
-			FROM timespan_tags tt
-			WHERE tt.tag_id = ANY($1)
-			UNION
-			SELECT tt.timespan_id, te.tag_id
-			FROM timespan_tags tt
-			JOIN tasks k ON k.tag_id = tt.tag_id AND k.deleted_at IS NULL
-			JOIN task_effective_tags te ON te.task_id = k.id
-			WHERE te.tag_id = ANY($1)
+		WITH hits AS (` + timespanTagHitsSQL("$1") + `
 		)
 		SELECT h.tag_id, SUM(t.end_time - t.start_time)
 		FROM hits h

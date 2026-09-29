@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -16,15 +14,7 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	}
 
 	tag, err := s.repository.GetTag(ctx, scope, id)
-
-	if errors.Is(err, model.ErrInvalidArgument) {
-		// The only invalid argument a read-by-id raises is a malformed id
-		// (e.g. the zero UUID); it can never name a real row, so it's a miss.
-		return model.Tag{}, fmt.Errorf("GetTag %s: %w", id, model.ErrNotFound)
-	}
 	if err != nil {
-		// Propagate as-is: a genuine miss already carries model.ErrNotFound,
-		// and an infrastructure failure must not be masked as a 404.
 		return model.Tag{}, err
 	}
 
@@ -70,10 +60,6 @@ func (s *ServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return err
-	}
-	if id == uuid.Nil {
-		// As in GetTag: a malformed id can never name a real row.
-		return fmt.Errorf("DeleteTag %s: %w", id, model.ErrNotFound)
 	}
 	return s.repository.DeleteTag(ctx, scope, id)
 }

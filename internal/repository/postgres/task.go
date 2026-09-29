@@ -28,7 +28,7 @@ func scanTask(row pgx.Row) (model.Task, error) {
 
 func (r *PostgresStore) GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error) {
 	if id == uuid.Nil {
-		return model.Task{}, fmt.Errorf("GetTask: id: %w", model.ErrInvalidArgument)
+		return model.Task{}, fmt.Errorf("GetTask: %w", errNilId)
 	}
 	return r.getTask(ctx, r.db, scope, id, false)
 }
@@ -133,15 +133,12 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 		b.add("parent_id =", *params.ParentId)
 	}
 	if params.TagId != nil {
-		// The placeholder sits inside a subquery, which b.add can't express.
-		b.args = append(b.args, *params.TagId)
-		fmt.Fprintf(&b.sql, " AND id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $%d)", len(b.args))
+		b.addExpr(`id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $?)`, *params.TagId)
 	}
 	if params.ProjectId != nil {
-		b.args = append(b.args, *params.ProjectId)
-		fmt.Fprintf(&b.sql, ` AND id IN (
+		b.addExpr(`id IN (
 			SELECT te.task_id FROM task_effective_tags te`+taskProjectJoinSQL+`
-			WHERE pt.project_id = $%d)`, len(b.args))
+			WHERE pt.project_id = $?)`, *params.ProjectId)
 	}
 	if params.DueFrom != nil {
 		b.add("due_date >=", *params.DueFrom)
@@ -193,10 +190,11 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		}
 		rank, err := utils.RankBetween(last, "")
 		if err != nil || len(rank) > utils.MaxRankLength {
-			if err := r.respaceTasks(ctx, q, siblings); err != nil {
+			ranks, err := r.respaceTasks(ctx, q, siblings)
+			if err != nil {
 				return err
 			}
-			rank, err = utils.RankBetween(utils.EvenRanks(len(siblings))[len(siblings)-1], "")
+			rank, err = utils.RankBetween(ranks[len(ranks)-1], "")
 			if err != nil {
 				return err
 			}
@@ -219,7 +217,7 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		if err != nil {
 			return fmt.Errorf("CreateTask: %w", err)
 		}
-		if err := r.setTaskTags(ctx, q, created.Id, tagIds); err != nil {
+		if err := setLinkedTags(ctx, q, "task_tags", "task_id", created.Id, tagIds); err != nil {
 			return err
 		}
 		return r.refreshEffectiveTags(ctx, q, created.Id)
@@ -233,7 +231,7 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 
 func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
 	if id == uuid.Nil {
-		return model.Task{}, fmt.Errorf("UpdateTask: id: %w", model.ErrInvalidArgument)
+		return model.Task{}, fmt.Errorf("UpdateTask: %w", errNilId)
 	}
 
 	var updated model.Task
@@ -318,7 +316,7 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 		if !tagsChanged {
 			return nil
 		}
-		if err := r.setTaskTags(ctx, q, updated.Id, tagIds); err != nil {
+		if err := setLinkedTags(ctx, q, "task_tags", "task_id", updated.Id, tagIds); err != nil {
 			return err
 		}
 		return r.refreshEffectiveTags(ctx, q, updated.Id)
@@ -332,7 +330,7 @@ func (r *PostgresStore) UpdateTask(ctx context.Context, scope model.OwnerScope, 
 
 func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error) {
 	if id == uuid.Nil {
-		return model.Task{}, fmt.Errorf("MoveTask: id: %w", model.ErrInvalidArgument)
+		return model.Task{}, fmt.Errorf("MoveTask: %w", errNilId)
 	}
 
 	var moved model.Task
@@ -408,7 +406,7 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 			ordered = append(ordered, siblings[:pos]...)
 			ordered = append(ordered, rankedTask{id: id})
 			ordered = append(ordered, siblings[pos:]...)
-			if err := r.respaceTasks(ctx, q, ordered); err != nil {
+			if _, err := r.respaceTasks(ctx, q, ordered); err != nil {
 				return err
 			}
 		} else if _, err := q.Exec(ctx, `UPDATE tasks SET rank = $2 WHERE id = $1`, id, rank); err != nil {
@@ -433,7 +431,7 @@ func (r *PostgresStore) MoveTask(ctx context.Context, scope model.OwnerScope, id
 
 func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	if id == uuid.Nil {
-		return fmt.Errorf("DeleteTask: id: %w", model.ErrInvalidArgument)
+		return fmt.Errorf("DeleteTask: %w", errNilId)
 	}
 
 	return r.withTx(ctx, func(q Querier) error {
@@ -599,44 +597,27 @@ func (r *PostgresStore) siblingTasks(ctx context.Context, q Querier, scope model
 	return out, rows.Err()
 }
 
-// respaceTasks gives tasks fresh, evenly spread ranks in the order given.
-func (r *PostgresStore) respaceTasks(ctx context.Context, q Querier, tasks []rankedTask) error {
-	for i, rank := range utils.EvenRanks(len(tasks)) {
-		if _, err := q.Exec(ctx, `UPDATE tasks SET rank = $2 WHERE id = $1`, tasks[i].id, rank); err != nil {
-			return fmt.Errorf("respaceTasks: %w", err)
-		}
+// respaceTasks gives tasks fresh, evenly spread ranks in the order given,
+// in one statement, and returns the ranks it assigned.
+func (r *PostgresStore) respaceTasks(ctx context.Context, q Querier, tasks []rankedTask) ([]string, error) {
+	ranks := utils.EvenRanks(len(tasks))
+	ids := make([]uuid.UUID, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.id
 	}
-	return nil
+	if _, err := q.Exec(ctx, `
+		UPDATE tasks SET rank = v.rank
+		FROM unnest($1::uuid[], $2::text[]) AS v(id, rank)
+		WHERE tasks.id = v.id`, ids, ranks); err != nil {
+		return nil, fmt.Errorf("respaceTasks: %w", err)
+	}
+	return ranks, nil
 }
 
 // taskTagIds returns the live regular tag IDs on each of taskIds, keyed by
-// task. Links to deleted tags are kept (tag deletion is soft) but never
-// read back.
+// task (see linkedTagIds).
 func (r *PostgresStore) taskTagIds(ctx context.Context, q Querier, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
-	out := make(map[uuid.UUID][]uuid.UUID, len(taskIds))
-	if len(taskIds) == 0 {
-		return out, nil
-	}
-	const query = `
-		SELECT kt.task_id, kt.tag_id
-		FROM task_tags kt
-		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
-		WHERE kt.task_id = ANY($1)
-		ORDER BY kt.task_id, kt.tag_id`
-	rows, err := q.Query(ctx, query, taskIds)
-	if err != nil {
-		return nil, fmt.Errorf("taskTagIds: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var taskId, tagId uuid.UUID
-		if err := rows.Scan(&taskId, &tagId); err != nil {
-			return nil, fmt.Errorf("taskTagIds scan: %w", err)
-		}
-		out[taskId] = append(out[taskId], tagId)
-	}
-	return out, rows.Err()
+	return linkedTagIds(ctx, q, "task_tags", "task_id", taskIds)
 }
 
 // refreshEffectiveTags rewrites the task_effective_tags rows of taskId and
@@ -680,22 +661,6 @@ func (r *PostgresStore) refreshEffectiveTags(ctx context.Context, q Querier, tas
 		JOIN task_tags tt ON tt.task_id = a.ancestor_id
 		JOIN tags lt ON lt.id = tt.tag_id AND lt.deleted_at IS NULL`, taskId); err != nil {
 		return fmt.Errorf("refreshEffectiveTags insert: %w", err)
-	}
-	return nil
-}
-
-// setTaskTags replaces a task's regular tags.
-func (r *PostgresStore) setTaskTags(ctx context.Context, q Querier, taskId uuid.UUID, tagIds []uuid.UUID) error {
-	if _, err := q.Exec(ctx, `DELETE FROM task_tags WHERE task_id = $1`, taskId); err != nil {
-		return fmt.Errorf("setTaskTags delete: %w", err)
-	}
-	for _, tagId := range tagIds {
-		if _, err := q.Exec(ctx,
-			`INSERT INTO task_tags (task_id, tag_id) VALUES ($1, $2)`,
-			taskId, tagId,
-		); err != nil {
-			return fmt.Errorf("setTaskTags insert: %w: %w", model.ErrInvalidReference, err)
-		}
 	}
 	return nil
 }

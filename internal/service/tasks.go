@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -16,11 +15,6 @@ func (s *ServiceImpl) GetTask(ctx context.Context, id uuid.UUID, includes *TaskS
 	}
 
 	task, err := s.repository.GetTask(ctx, scope, id)
-	if errors.Is(err, model.ErrInvalidArgument) {
-		// The only invalid argument a read-by-id raises is a malformed id
-		// (e.g. the zero UUID); it can never name a real row, so it's a miss.
-		return model.Task{}, fmt.Errorf("GetTask %s: %w", id, model.ErrNotFound)
-	}
 	if err != nil {
 		return model.Task{}, err
 	}
@@ -108,9 +102,6 @@ func (s *ServiceImpl) UpdateTask(ctx context.Context, id uuid.UUID, patch model.
 	if err != nil {
 		return model.Task{}, err
 	}
-	if id == uuid.Nil {
-		return model.Task{}, fmt.Errorf("UpdateTask %s: %w", id, model.ErrNotFound)
-	}
 	if err := validateTaskPatch(patch); err != nil {
 		return model.Task{}, err
 	}
@@ -122,9 +113,6 @@ func (s *ServiceImpl) MoveTask(ctx context.Context, id uuid.UUID, parentId *uuid
 	if err != nil {
 		return model.Task{}, err
 	}
-	if id == uuid.Nil {
-		return model.Task{}, fmt.Errorf("MoveTask %s: %w", id, model.ErrNotFound)
-	}
 	if afterId != nil && *afterId == id {
 		return model.Task{}, fmt.Errorf("MoveTask: a task can't follow itself: %w", model.ErrInvalidArgument)
 	}
@@ -135,10 +123,6 @@ func (s *ServiceImpl) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	scope, err := ownerScope(ctx)
 	if err != nil {
 		return err
-	}
-	if id == uuid.Nil {
-		// As in GetTask: a malformed id can never name a real row.
-		return fmt.Errorf("DeleteTask %s: %w", id, model.ErrNotFound)
 	}
 	return s.repository.DeleteTask(ctx, scope, id)
 }
