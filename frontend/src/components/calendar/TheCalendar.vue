@@ -47,15 +47,34 @@
               </div>
             </div>
           </template>
+          <!-- The date grid holds task due dates, and also timespans that
+               cross midnight, which schedule-x draws there as multi-day
+               events; only the former get the due-date look. -->
           <template #dateGridEvent="{ calendarEvent }">
             <div
-              class="custom-event due-event"
+              v-if="isDueDateEvent(calendarEvent)"
+              class="custom-event date-grid-event due-event"
               :data-calendar-id="calendarEvent.calendarId"
               :style="eventColorStyle(calendarEvent.calendarId ?? '')"
               :title="`Due: ${calendarEvent.title}`"
             >
               <MaterialIcon icon="flag" size="1em" />
               <span class="custom-event-title">{{ calendarEvent.title }}</span>
+            </div>
+            <div
+              v-else
+              class="custom-event date-grid-event"
+              :data-calendar-id="calendarEvent.calendarId"
+              :style="eventColorStyle(calendarEvent.calendarId ?? '')"
+            >
+              <span v-if="calendarEvent.title" class="custom-event-title">
+                {{ calendarEvent.title }}
+              </span>
+              <span class="custom-event-time">
+                <MaterialIcon icon="access_time" size="1em" />
+                {{ eventTimeText(calendarEvent) }}
+              </span>
+              <TagItem v-for="tag in eventTagsFor(calendarEvent)" :key="tag.id" :tag="tag" />
             </div>
           </template>
         </ScheduleXCalendar>
@@ -132,7 +151,14 @@ const tags = ref<Map<string, Tag>>(new Map());
 async function loadTags(tagIds: readonly string[]): Promise<void> {
   const missing = tagIds.filter((id) => !tags.value.has(id));
   if (missing.length === 0) return;
-  const fetched = await tagsApi.getTagsByIds(missing);
+  let fetched: Tag[];
+  try {
+    fetched = await tagsApi.getTagsByIds(missing);
+  } catch (error) {
+    // Events still draw, in the fallback color and without tag pills.
+    console.error("Error loading calendar tags:", error);
+    return;
+  }
   for (const tag of fetched) tags.value.set(tag.id, tag);
   calendarControls.setCalendars(tagsToCalendarColorDefinitions([...tags.value.values()]));
 }
@@ -264,9 +290,13 @@ type FetchEventsRange = Parameters<
 // or outlive this one.
 const fetchEvents = memoizeAsync(async (range: FetchEventsRange) => {
   const interval = dateRangeToInterval(range);
+  // Due dates are extra: if they fail to load, the timespans still show.
   const [timespans, dueTasks] = await Promise.all([
     timespansApi.listTimespansInInterval(interval),
-    tasksApi.listAllTasks(dateRangeToDueDates(range)),
+    tasksApi.listAllTasks(dateRangeToDueDates(range), { withTotalTime: false }).catch((error) => {
+      console.error("Error loading task due dates:", error);
+      return [];
+    }),
   ]);
   const events = [
     ...timespansToCalendarEvents(timespans, resolvedTimezone.value),
@@ -277,9 +307,13 @@ const fetchEvents = memoizeAsync(async (range: FetchEventsRange) => {
   return events;
 }, dateRangeToInterval);
 
+function isDueDateEvent(calendarEvent: CalendarEventExternal): boolean {
+  return String(calendarEvent.id).startsWith(TASK_DUE_EVENT_PREFIX);
+}
+
 function onEventClick(calendarEvent: CalendarEventExternal) {
   const id = String(calendarEvent.id);
-  if (id.startsWith(TASK_DUE_EVENT_PREFIX)) {
+  if (isDueDateEvent(calendarEvent)) {
     router.push(`/tasks/${id.slice(TASK_DUE_EVENT_PREFIX.length)}`);
   }
 }
@@ -411,16 +445,20 @@ onMounted(async () => {
   border-bottom: 0.75px solid var(--sx-color-background);
 }
 
-.due-event {
+.date-grid-event {
   flex-direction: row;
   align-items: center;
   gap: 0.3em;
-  cursor: pointer;
   border-radius: var(--radius-sm);
+  white-space: nowrap;
 }
 
-.due-event .custom-event-title {
+.date-grid-event .custom-event-title {
   font-size: 1em;
+}
+
+.due-event {
+  cursor: pointer;
 }
 
 .custom-event-title {

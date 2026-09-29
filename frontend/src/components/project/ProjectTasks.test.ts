@@ -3,18 +3,19 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { Project, Task } from "@/model";
 
-const { listAllTasks, createTask } = vi.hoisted(() => ({
+const { listAllTasks, createTask, updateTask } = vi.hoisted(() => ({
   listAllTasks: vi.fn(),
   createTask: vi.fn(),
+  updateTask: vi.fn(),
 }));
 
 vi.mock("@/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api")>()),
-  tasksApi: { listAllTasks, createTask },
+  tasksApi: { listAllTasks, createTask, updateTask },
 }));
 vi.mock("@/api/tasks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/tasks")>()),
-  tasksApi: { listAllTasks, createTask },
+  tasksApi: { listAllTasks, createTask, updateTask },
 }));
 
 import ProjectTasks from "./ProjectTasks.vue";
@@ -39,12 +40,16 @@ const project: Project = {
   archived: false,
 };
 
-function mountTasks() {
+function mountTasks(assignTask = vi.fn().mockResolvedValue(undefined)) {
   return mount(ProjectTasks, {
-    props: { project },
+    props: { project, assignTask },
     global: {
       stubs: {
-        TaskRow: { props: ["task"], template: "<div class='row'>{{ task.name }}</div>" },
+        TaskRow: {
+          props: ["task"],
+          emits: ["toggle-closed"],
+          template: "<div class='row' @click=\"$emit('toggle-closed')\">{{ task.name }}</div>",
+        },
       },
     },
   });
@@ -54,6 +59,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
   listAllTasks.mockReset();
   createTask.mockReset();
+  updateTask.mockReset();
 });
 
 test("lists the project's tasks and splits its time", async () => {
@@ -67,10 +73,11 @@ test("lists the project's tasks and splits its time", async () => {
   expect(wrapper.text()).toContain("Additional 2h");
 });
 
-test("quick-add creates a task and asks to assign its tag", async () => {
+test("quick-add creates a task and assigns its tag", async () => {
   listAllTasks.mockResolvedValue([]);
   createTask.mockResolvedValue(task({ id: "k9", name: "Blog post", tagId: "tk9" }));
-  const wrapper = mountTasks();
+  const assignTask = vi.fn().mockResolvedValue(undefined);
+  const wrapper = mountTasks(assignTask);
   await flushPromises();
 
   await wrapper.find("input").setValue("  Blog post ");
@@ -78,5 +85,59 @@ test("quick-add creates a task and asks to assign its tag", async () => {
   await flushPromises();
 
   expect(createTask).toHaveBeenCalledWith({ name: "Blog post", parentId: undefined });
-  expect(wrapper.emitted("assign")).toEqual([["tk9"]]);
+  expect(assignTask).toHaveBeenCalledWith("tk9");
+  expect(wrapper.find(".error").exists()).toBe(false);
+});
+
+test("says so when a created task can't be assigned", async () => {
+  listAllTasks.mockResolvedValue([]);
+  createTask.mockResolvedValue(task({ id: "k9", name: "Blog post", tagId: "tk9" }));
+  const wrapper = mountTasks(vi.fn().mockRejectedValue(new Error("boom")));
+  await flushPromises();
+
+  await wrapper.find("input").setValue("Blog post");
+  await wrapper.find("form").trigger("submit");
+  await flushPromises();
+
+  expect(wrapper.find(".error").text()).toContain("couldn't add it to this project");
+});
+
+test("keeps only the latest of overlapping loads", async () => {
+  let resolveFirst: (tasks: Task[]) => void = () => {};
+  listAllTasks
+    .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+    .mockResolvedValueOnce([task({ name: "Newer" })]);
+  const wrapper = mountTasks();
+  await wrapper.setProps({ project: { ...project, tagIds: new Set(["l1", "tk9"]) } });
+  await flushPromises();
+  resolveFirst([task({ name: "Older" })]);
+  await flushPromises();
+
+  expect(wrapper.findAll(".row").map((row) => row.text())).toEqual(["Newer"]);
+});
+
+test("a later successful load clears a load error", async () => {
+  listAllTasks.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([]);
+  const wrapper = mountTasks();
+  await flushPromises();
+  expect(wrapper.find(".error").exists()).toBe(true);
+  expect(wrapper.find(".empty").exists()).toBe(false);
+
+  await wrapper.setProps({ project: { ...project, tagIds: new Set(["l2"]) } });
+  await flushPromises();
+  expect(wrapper.find(".error").exists()).toBe(false);
+});
+
+test("closing a task updates it directly and reloads only the project list", async () => {
+  listAllTasks.mockResolvedValue([task({})]);
+  updateTask.mockResolvedValue(task({ closed: true }));
+  const wrapper = mountTasks();
+  await flushPromises();
+
+  await wrapper.find(".row").trigger("click");
+  await flushPromises();
+
+  expect(updateTask).toHaveBeenCalledWith("k1", { closed: true, closeReason: "done" });
+  expect(listAllTasks).toHaveBeenCalledTimes(2);
+  expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1" });
 });

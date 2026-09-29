@@ -22,7 +22,7 @@
       <button type="submit" class="btn-info" :disabled="!newTaskName.trim()">Add</button>
     </form>
 
-    <p v-if="!isLoading && rows.length === 0" class="empty">
+    <p v-if="!isLoading && !loadFailed && rows.length === 0" class="empty">
       No open tasks. Tasks join this project when they carry one of its tags, or when their own tag
       is added to the project.
     </p>
@@ -36,7 +36,7 @@
       :depth="depth"
       :can-indent="false"
       :can-outdent="false"
-      :is-overdue="isOverdue(task)"
+      :is-overdue="isTaskOverdue(task)"
       :orderable="false"
       @toggle-closed="closeTask(task, task.closed ? null : 'done')"
       @ignore="closeTask(task, 'ignored')"
@@ -50,17 +50,18 @@ import { computed, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { CloseReason, Project, Task } from "@/model";
 import { tasksApi } from "@/api";
-import { useTasksStore, taskTree } from "@/stores/tasks";
+import { useTasksStore, taskTree, isTaskOverdue } from "@/stores/tasks";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
-import { toLocalDay } from "@/helpers/dates";
 import TaskRow from "@/components/tasks/TaskRow.vue";
 
-const props = defineProps<{ project: Project }>();
-
-const emit = defineEmits<{
-  /** A task was created here; adding its tag to the project assigns it. */
-  assign: [taskTagId: string];
+const props = defineProps<{
+  project: Project;
+  /**
+   * Assigns a task created here to the project by adding its task tag to
+   * the project's tags. Rejects when that fails.
+   */
+  assignTask: (taskTagId: string) => Promise<void>;
 }>();
 
 const tasksStore = useTasksStore();
@@ -69,6 +70,7 @@ const formatMs = useDurationFormat(() => settingsStore.settings);
 
 const tasks = ref<Task[]>([]);
 const isLoading = ref(false);
+const loadFailed = ref(false);
 const newTaskName = ref("");
 const errorMessage = ref("");
 
@@ -78,25 +80,33 @@ const additionalTimeMs = computed(() =>
   Math.max(0, (props.project.totalTimeMs ?? 0) - taskTimeMs.value),
 );
 
-function isOverdue(task: Task): boolean {
-  return !task.closed && !!task.dueDate && task.dueDate < toLocalDay(new Date());
-}
+// Loads can overlap (the project is replaced several times while the page
+// opens, and after every save); only the latest one may land.
+let loadSeq = 0;
 
 async function load() {
   if (!props.project.id) return;
+  const seq = ++loadSeq;
   isLoading.value = true;
   try {
-    tasks.value = await tasksApi.listAllTasks({ projectId: props.project.id });
+    const result = await tasksApi.listAllTasks({ projectId: props.project.id });
+    if (seq !== loadSeq) return;
+    tasks.value = result;
+    loadFailed.value = false;
+    errorMessage.value = "";
   } catch {
+    if (seq !== loadSeq) return;
+    loadFailed.value = true;
     errorMessage.value = "Couldn't load the project's tasks.";
   } finally {
-    isLoading.value = false;
+    if (seq === loadSeq) isLoading.value = false;
   }
 }
 
-// Changing the project's tags changes which tasks belong to it.
+// Changing the project's tags changes which tasks belong to it. The key is
+// a string so that replacing the project with an equal copy doesn't reload.
 watch(
-  () => [props.project.id, [...props.project.tagIds].sort().join(",")],
+  () => `${props.project.id}:${[...props.project.tagIds].sort().join(",")}`,
   () => load(),
   { immediate: true },
 );
@@ -113,34 +123,34 @@ async function addTask() {
     return;
   }
   newTaskName.value = "";
-  emit("assign", task.tagId);
-}
-
-// Closes the task with reason, or reopens it when reason is null. Closed
-// tasks leave this list, and closing or reopening can cascade to subtasks
-// or parents, so the list is reloaded either way.
-async function closeTask(task: Task, reason: CloseReason | null) {
-  errorMessage.value = "";
   try {
-    if (reason) {
-      await tasksStore.closeTask(task.id, reason);
-    } else {
-      await tasksStore.reopenTask(task.id);
-    }
+    await props.assignTask(task.tagId);
   } catch {
-    errorMessage.value = reason ? "Couldn't close the task." : "Couldn't reopen the task.";
+    errorMessage.value = `Created "${task.name}", but couldn't add it to this project. Add its tag to the project's tags to assign it.`;
   }
-  await load();
 }
 
-// Retagging a task can move it in or out of the project, so the list is
-// reloaded after every edit.
+// Changes go straight to the API rather than through the tasks store, whose
+// close and reopen reload the full task list this page doesn't show. The
+// project's own list is reloaded instead: closing or reopening can cascade
+// to subtasks or parents, and retagging can move a task in or out of the
+// project.
+async function closeTask(task: Task, reason: CloseReason | null) {
+  const patch: TaskPatch = reason ? { closed: true, closeReason: reason } : { closed: false };
+  await applyPatch(task, patch, reason ? "Couldn't close the task." : "Couldn't reopen the task.");
+}
+
 async function updateTask(task: Task, patch: TaskPatch) {
+  await applyPatch(task, patch, "Couldn't save the change.");
+}
+
+async function applyPatch(task: Task, patch: TaskPatch, failure: string) {
   errorMessage.value = "";
   try {
-    await tasksStore.updateTask(task.id, patch);
+    await tasksApi.updateTask(task.id, patch);
   } catch {
-    errorMessage.value = "Couldn't save the change.";
+    errorMessage.value = failure;
+    return;
   }
   await load();
 }

@@ -104,7 +104,7 @@ var taskSpecs = []taskSpec{
 		subtasks: []taskSpec{
 			{name: "Wireframes", closed: model.CloseReasonDone},
 			{name: "Landing page mockup", dueInDays: days(2), estimate: hours(8)},
-			{name: "Implement API endpoint", tagNames: []string{"Development"}, dueInDays: days(6), estimate: hours(16)},
+			{name: "Implement API endpoint", dueInDays: days(6), estimate: hours(16)},
 			{name: "Usability review", dueInDays: days(9)},
 		},
 	},
@@ -147,12 +147,17 @@ func Seed(ctx context.Context, repo repository.Repository, now time.Time) error 
 		return err
 	}
 
-	taskTagsByName, toClose, err := seedTasks(ctx, repo, scope, tagsByName, projects, now)
+	tasksByName, toClose, err := seedTasks(ctx, repo, scope, tagsByName, projects, now)
 	if err != nil {
 		return err
 	}
 
-	if err := seedTimespans(ctx, repo, scope, projects, taskTagsByName, now, rng); err != nil {
+	taskTagsByProject, err := projectTaskTags(ctx, repo, scope, tasksByName)
+	if err != nil {
+		return err
+	}
+
+	if err := seedTimespans(ctx, repo, scope, projects, taskTagsByProject, now, rng); err != nil {
 		return err
 	}
 
@@ -218,8 +223,8 @@ func seedProjects(ctx context.Context, repo repository.Repository, scope model.O
 }
 
 // seedTasks creates taskSpecs, assigning them as specified. It returns each
-// task's task tag id by task name, and the tasks to close, already marked
-// with their close reason.
+// task by name, and the tasks to close, already marked with their close
+// reason.
 func seedTasks(
 	ctx context.Context,
 	repo repository.Repository,
@@ -227,9 +232,9 @@ func seedTasks(
 	tagsByName map[string]model.Tag,
 	projects []seededProject,
 	now time.Time,
-) (map[string]uuid.UUID, []model.Task, error) {
+) (map[string]model.Task, []model.Task, error) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	taskTags := make(map[string]uuid.UUID)
+	tasksByName := make(map[string]model.Task)
 	var toClose []model.Task
 
 	var create func(spec taskSpec, parentId *uuid.UUID) error
@@ -246,7 +251,7 @@ func seedTasks(
 		if err != nil {
 			return fmt.Errorf("demo: seeding task %q: %w", spec.name, err)
 		}
-		taskTags[spec.name] = created.TagId
+		tasksByName[spec.name] = created
 
 		if spec.project != "" {
 			if err := assignTask(ctx, repo, scope, projects, spec.project, created.TagId); err != nil {
@@ -271,7 +276,7 @@ func seedTasks(
 			return nil, nil, err
 		}
 	}
-	return taskTags, toClose, nil
+	return tasksByName, toClose, nil
 }
 
 // assignTask adds taskTagId to the named project's tags.
@@ -291,12 +296,40 @@ func assignTask(ctx context.Context, repo repository.Repository, scope model.Own
 	return fmt.Errorf("demo: no project %q", projectName)
 }
 
+// projectTaskTags maps each project to the task tags, by task name, of the
+// tasks that belong to that project alone. Demo time is only logged on
+// those, so a timespan picked for one project never counts toward another
+// through a task that several projects share.
+func projectTaskTags(ctx context.Context, repo repository.Repository, scope model.OwnerScope, tasksByName map[string]model.Task) (map[uuid.UUID]map[string]uuid.UUID, error) {
+	taskIds := make([]uuid.UUID, 0, len(tasksByName))
+	for _, task := range tasksByName {
+		taskIds = append(taskIds, task.Id)
+	}
+	projectsByTask, err := repo.ListTaskProjectIds(ctx, scope, taskIds)
+	if err != nil {
+		return nil, fmt.Errorf("demo: listing task projects: %w", err)
+	}
+
+	byProject := make(map[uuid.UUID]map[string]uuid.UUID)
+	for name, task := range tasksByName {
+		projectIds := projectsByTask[task.Id]
+		if len(projectIds) != 1 {
+			continue
+		}
+		if byProject[projectIds[0]] == nil {
+			byProject[projectIds[0]] = make(map[string]uuid.UUID)
+		}
+		byProject[projectIds[0]][name] = task.TagId
+	}
+	return byProject, nil
+}
+
 func seedTimespans(
 	ctx context.Context,
 	repo repository.Repository,
 	scope model.OwnerScope,
 	projects []seededProject,
-	taskTagsByName map[string]uuid.UUID,
+	taskTagsByProject map[uuid.UUID]map[string]uuid.UUID,
 	now time.Time,
 	rng *rand.Rand,
 ) error {
@@ -340,7 +373,7 @@ func seedTimespans(
 			// Log the time on the project's regular tags, and on the task
 			// of the same name if there is one.
 			tagIds := slices.Clone(project.labelIds)
-			if taskTagId, ok := taskTagsByName[name]; ok {
+			if taskTagId, ok := taskTagsByProject[project.Id][name]; ok {
 				tagIds = append(tagIds, taskTagId)
 			}
 

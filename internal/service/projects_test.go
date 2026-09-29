@@ -497,28 +497,13 @@ func TestProjectService_GetProjectStats(t *testing.T) {
 
 func TestProjectService_GetProject_TaskTime(t *testing.T) {
 	projectId := uuid.New()
-	// 150 tasks spill onto a second page.
-	taskTagIds := make([]uuid.UUID, 150)
-	for i := range taskTagIds {
-		taskTagIds[i] = uuid.New()
-	}
-
-	var listed []model.TaskListParams
+	tagIds := []uuid.UUID{uuid.New(), uuid.New()}
 	repo := &repository.RepoMock{
 		GetProjectFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Project, error) {
-			return model.Project{Id: id, Name: "Website"}, nil
+			return model.Project{Id: id, Name: "Website", TagIds: tagIds}, nil
 		},
-		ListTasksFn: func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error) {
-			listed = append(listed, params)
-			end := min(params.Offset+params.Limit, len(taskTagIds))
-			var tasks []model.Task
-			for _, tagId := range taskTagIds[params.Offset:end] {
-				tasks = append(tasks, model.Task{Id: uuid.New(), TagId: tagId})
-			}
-			return model.Page[model.Task]{Data: tasks, TotalCount: len(taskTagIds)}, nil
-		},
-		GetTotalDurationByTagsFn: func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error) {
-			require.Equal(t, taskTagIds, ids)
+		GetTaskDurationByTagsFn: func(ctx context.Context, scope model.OwnerScope, ids []uuid.UUID) (time.Duration, error) {
+			require.Equal(t, tagIds, ids)
 			return 2 * time.Hour, nil
 		},
 	}
@@ -527,9 +512,4 @@ func TestProjectService_GetProject_TaskTime(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2*time.Hour, *got.TaskTime)
 	require.Nil(t, got.TotalTime)
-	require.Len(t, listed, 2)
-	for _, params := range listed {
-		require.Equal(t, projectId, *params.ProjectId)
-		require.True(t, params.IncludeClosed, "closed tasks keep their time")
-	}
 }

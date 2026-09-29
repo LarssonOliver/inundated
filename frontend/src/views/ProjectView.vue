@@ -15,7 +15,7 @@
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectTasks :project="project" @assign="assignTask" />
+        <ProjectTasks :project="project" :assign-task="assignTask" />
       </div>
       <div v-if="!isNewProject" class="card">
         <ProjectStats :project="project" />
@@ -82,7 +82,8 @@ async function saveProject() {
 }
 
 // Assigns a task by adding its task tag to the saved project, leaving any
-// unsaved edits in the form alone.
+// unsaved edits in the form alone. Errors reach ProjectTasks, which shows
+// them.
 async function assignTask(taskTagId: string) {
   const saved = await projectsStore.fetchDetailedProjectById(project.value.id);
   saved.tagIds.add(taskTagId);
