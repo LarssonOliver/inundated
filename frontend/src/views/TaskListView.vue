@@ -28,6 +28,7 @@
       :can-outdent="!!task.parentId"
       :is-overdue="isOverdue(task)"
       @toggle-closed="toggleClosed(task)"
+      @ignore="ignoreTask(task)"
       @shift="(delta) => shiftTask(task, delta)"
       @indent="indent(task)"
       @outdent="outdent(task)"
@@ -46,6 +47,7 @@
         :can-outdent="!!task.parentId"
         :is-overdue="isOverdue(task)"
         @toggle-closed="toggleClosed(task)"
+        @ignore="ignoreTask(task)"
         @shift="(delta) => shiftTask(task, delta)"
         @indent="indent(task)"
         @outdent="outdent(task)"
@@ -121,6 +123,15 @@ async function toggleClosed(task: Task) {
     await tasksStore.reopenTask(task.id);
   } else {
     await tasksStore.closeTask(task.id, "done");
+  }
+}
+
+async function ignoreTask(task: Task) {
+  errorMessage.value = "";
+  try {
+    await tasksStore.closeTask(task.id, "ignored");
+  } catch {
+    errorMessage.value = "Couldn't ignore the task.";
   }
 }
 

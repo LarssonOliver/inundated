@@ -11,6 +11,15 @@
       :aria-label="task.closed ? `Reopen ${task.name}` : `Mark ${task.name} done`"
       @change="$emit('toggle-closed')"
     />
+    <button
+      v-if="!task.closed"
+      class="field-trigger ignore-btn"
+      title="Ignore"
+      :aria-label="`Ignore ${task.name}`"
+      @click="$emit('ignore')"
+    >
+      <MaterialIcon icon="block" size="0.85em" />
+    </button>
 
     <div class="name-field">
       <input
@@ -152,6 +161,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "toggle-closed": [];
+  ignore: [];
   shift: [delta: -1 | 1];
   indent: [];
   outdent: [];
@@ -313,15 +323,22 @@ function startEditTags() {
   font-weight: 600;
 }
 
-.name-edit-btn {
+.name-edit-btn,
+.ignore-btn {
   color: var(--nord3);
   padding: 0.2em;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
+.ignore-btn:hover {
+  color: var(--nord13);
+}
+
 .task-row:hover .name-edit-btn,
-.name-edit-btn:focus-visible {
+.name-edit-btn:focus-visible,
+.task-row:hover .ignore-btn,
+.ignore-btn:focus-visible {
   opacity: 1;
 }
 
