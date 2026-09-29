@@ -71,14 +71,14 @@
         @click="startEditDueDate"
       >
         <MaterialIcon icon="event" size="1em" />
-        <span v-if="task.dueDate">{{ task.dueDate }}</span>
+        <span v-if="task.dueDate">{{ formattedDueDate }}</span>
         <span v-else class="placeholder">Due date</span>
       </button>
     </div>
 
     <div class="estimate-field">
       <span
-        v-if="task.totalTimeMs"
+        v-if="task.totalTimeMs || task.estimateHours !== undefined || editingField === 'estimate'"
         class="time"
         :title="'Logged' + (task.estimateHours != null ? ' / estimate' : '')"
       >
@@ -139,6 +139,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { Tag, Task } from "@/model";
 import { useSettingsStore } from "@/stores/settings";
+import { useTagsStore } from "@/stores/tags";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import {
   formatDatePickerInput,
@@ -177,19 +178,39 @@ const emit = defineEmits<{
 }>();
 
 const settingsStore = useSettingsStore();
+const tagsStore = useTagsStore();
 const formatMs = useDurationFormat(() => settingsStore.settings);
 
-// A stand-in for the task's own tag, so its name can be shown as the same
-// outlined "#name" pill used everywhere else a task tag appears, without
-// fetching the real Tag for every row in the list. Task tags are always
-// created with this fixed default color server-side (see
-// DefaultTaskTagColor), so this only looks wrong for the rare tag someone
-// has since recolored by hand - it'll show correctly once its own detail
-// page is opened.
+// The task's own tag, for showing its name as the same outlined "#name"
+// pill used everywhere else a task tag appears. Its color is a per-tag
+// customizable field (not always the server's default), so it has to be
+// resolved from the real tag rather than assumed - starts from the store's
+// cache (instant if already loaded elsewhere) and falls back to the
+// default color only until the fetch resolves.
+const taskOwnTag = ref<Tag | null>(tagsStore.getTagById(props.task.tagId) ?? null);
+
+async function loadTaskOwnTag() {
+  try {
+    taskOwnTag.value = await tagsStore.fetchTagById(props.task.tagId);
+  } catch {
+    // Leave the fallback color in place.
+  }
+}
+
+if (!taskOwnTag.value) loadTaskOwnTag();
+
+watch(
+  () => props.task.tagId,
+  (tagId) => {
+    taskOwnTag.value = tagsStore.getTagById(tagId) ?? null;
+    if (!taskOwnTag.value) loadTaskOwnTag();
+  },
+);
+
 const taskTagPreview = computed<Tag>(() => ({
   id: props.task.tagId,
   name: props.task.name,
-  color: nord10,
+  color: taskOwnTag.value?.color ?? nord10,
   archived: false,
   taskId: props.task.id,
 }));
@@ -269,6 +290,11 @@ const datePickerFormats = computed(() => ({
   preview: (d: Date | Date[]) => formatDatePickerInput(d, dateFormat.value),
 }));
 const datePickerWidth = computed(() => `${singleDatePickerInputWidthCh(dateFormat.value, true)}ch`);
+const formattedDueDate = computed(() =>
+  props.task.dueDate
+    ? formatDatePickerInput(fromLocalDay(props.task.dueDate), dateFormat.value)
+    : "",
+);
 
 // A local ref, not a computed over props.task.dueDate: VueDatePicker (unlike
 // TagListEmbedded, which uses defineModel's local-mirroring) strictly

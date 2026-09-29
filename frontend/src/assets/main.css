@@ -188,8 +188,21 @@ html .dp__theme_dark {
 html .dp--clear-btn {
   width: auto;
   max-width: none;
-  padding: 3px;
+  padding: 5px;
   margin-inline-end: 6px;
+  /* The library's own vertical-centering transform (top:50% pairs with
+     this) - restated explicitly so it survives the cascade the same way
+     the properties above do. */
+  transform: translateY(-50%);
+}
+
+/* Our global `button:active { transform: scale(0.97) }` (input.css) would
+   otherwise replace the centering transform above entirely instead of
+   adding a bounce on top of it - `transform` isn't additive across rules.
+   The extra `:active` in the selector outranks that rule's specificity
+   regardless of stylesheet order, so this reliably wins. */
+html .dp--clear-btn:active {
+  transform: translateY(-50%);
 }
 
 /* The clear button's icon carries the library's generic .dp__input_icons
