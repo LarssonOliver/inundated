@@ -67,7 +67,37 @@ export function datePickerInputWidthCh(dateFormat: DateFormat): number {
 // spare.
 const SINGLE_ICON_AND_PADDING_CH = 7.5;
 
+// A clearable picker also shows a visible "x" button at the input's end,
+// which needs more room than the budget above accounts for - without it,
+// the last character or two of the date gets clipped behind the button.
+const CLEARABLE_EXTRA_CH = 2.5;
+
 /** Same, but for a single date instead of a start-end range. */
-export function singleDatePickerInputWidthCh(dateFormat: DateFormat): number {
-  return widestRenderedSample(dateFormat).length + SINGLE_ICON_AND_PADDING_CH;
+export function singleDatePickerInputWidthCh(
+  dateFormat: DateFormat,
+  clearable: boolean = false,
+): number {
+  return (
+    widestRenderedSample(dateFormat).length +
+    SINGLE_ICON_AND_PADDING_CH +
+    (clearable ? CLEARABLE_EXTRA_CH : 0)
+  );
+}
+
+/**
+ * Converts a Date to a local (not UTC) YYYY-MM-DD calendar-day string, e.g.
+ * for a plain "day" field with no time/timezone component of its own, such
+ * as a task's due date.
+ */
+export function toLocalDay(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Converts a local YYYY-MM-DD calendar-day string to a Date at local midnight. */
+export function fromLocalDay(day: string): Date {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date);
 }

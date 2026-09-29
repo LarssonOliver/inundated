@@ -13,6 +13,7 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       color: apiModel.color,
       totalTimeMs: apiModel.totalTimeMs,
       archived: apiModel.archived,
+      ...(apiModel.taskId !== undefined && { taskId: apiModel.taskId }),
     };
   },
   toApi(domainModel: Tag): Api.Tag {

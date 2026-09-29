@@ -64,6 +64,7 @@ const links = [
   { to: "/", label: "Timesheet", icon: "schedule" },
   { to: "/calendar", label: "Calendar", icon: "calendar_month" },
   { to: "/projects", label: "Projects", icon: "folder" },
+  { to: "/tasks", label: "Tasks", icon: "task_alt" },
   { to: "/tags", label: "Tags", icon: "sell" },
 ];
 

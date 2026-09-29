@@ -6,6 +6,8 @@ export interface Tag {
   color: string;
   totalTimeMs?: number;
   archived: boolean;
+  /** Set on task tags: the task that owns this tag. */
+  taskId?: string;
 }
 
 export interface TagStats {

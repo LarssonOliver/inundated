@@ -172,6 +172,22 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     }
 
     /**
+     * Fetches a project by its ID, bypassing the local cache, without the
+     * additional detail (e.g. totalTimeMs) fetchDetailedProjectById requests
+     * - use this to resolve a project outside the cached page (e.g. one of a
+     * task's assigned projects) when only its name/id is needed, to avoid
+     * the server aggregating stats that won't be shown.
+     *
+     * @param id - The ID of the project to fetch.
+     *
+     * @returns A promise that resolves to the project if found, or rejects if not found.
+     */
+    async function fetchProjectById(id: string): Promise<Project> {
+      const project = await api.getProject(id, false);
+      return copyProject(project);
+    }
+
+    /**
      * Updates an existing project.
      *
      * @param project - The project to update, identified by project.id.
@@ -220,6 +236,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       createProject,
       getProjectById,
       fetchDetailedProjectById,
+      fetchProjectById,
       updateProject,
       deleteProject,
       fetchProjectStats,

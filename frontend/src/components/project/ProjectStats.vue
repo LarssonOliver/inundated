@@ -45,22 +45,22 @@
         <p class="stat-tile-label">Total this period</p>
       </div>
 
-      <div v-if="hasBudget" class="budget-meter">
-        <div class="budget-meter-header">
-          <span class="budget-meter-label">Time budget</span>
-          <span class="budget-meter-reading" :class="budgetSeverityClass">
+      <div v-if="hasBudget" class="meter">
+        <div class="meter-header">
+          <span class="meter-label">Time budget</span>
+          <span class="meter-reading" :class="budgetSeverityClass">
             <MaterialIcon
               v-if="budgetSeverityClass === 'severity-critical'"
               icon="warning"
               size="16px"
-              class="budget-meter-icon"
+              class="meter-icon"
             />
             {{ totalAllTimeFormatted }} / {{ timeBudgetFormatted }} ({{ budgetPercentLabel }})
           </span>
         </div>
-        <div class="budget-meter-track">
+        <div class="meter-track">
           <div
-            class="budget-meter-fill"
+            class="meter-fill"
             :class="budgetSeverityClass"
             :style="{ width: budgetFillPercent + '%' }"
           />
@@ -124,6 +124,7 @@ import { nord } from "@/helpers/nord";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { granularityForRange, unitToHoursFactor } from "@/helpers/statsChart";
 import { formatDuration } from "@/helpers/time";
+import { meterSeverity } from "@/helpers/meter";
 import { useStatsSettings } from "@/composables/useStatsSettings";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
@@ -192,15 +193,7 @@ const budgetFillPercent = computed(() => Math.min(budgetRatio.value * 100, 100))
 
 const budgetPercentLabel = computed(() => `${Math.round(budgetRatio.value * 100)}%`);
 
-const budgetSeverityClass = computed(() => {
-  if (budgetRatio.value > 1) {
-    return "severity-critical";
-  }
-  if (budgetRatio.value >= 0.8) {
-    return "severity-warning";
-  }
-  return "severity-good";
-});
+const budgetSeverityClass = computed(() => `severity-${meterSeverity(budgetRatio.value)}`);
 
 const iso8601Range = computed(() => {
   if (pickedRange.value.length !== 2) {
@@ -247,71 +240,3 @@ watch(
   { immediate: true },
 );
 </script>
-
-<style scoped>
-.budget-meter {
-  flex: 1;
-  min-width: 16em;
-  background-color: var(--nord1);
-  border-radius: var(--radius-md);
-  padding: 0.85em 1.25em;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5em;
-}
-
-.budget-meter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75em;
-  font-size: 0.85em;
-}
-
-.budget-meter-label {
-  color: var(--nord4);
-}
-
-.budget-meter-reading {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  font-weight: 600;
-  color: var(--nord4);
-}
-
-.budget-meter-reading.severity-critical {
-  color: var(--nord11);
-}
-
-.budget-meter-icon {
-  color: var(--nord11);
-}
-
-.budget-meter-track {
-  position: relative;
-  height: 10px;
-  border-radius: 999px;
-  background-color: var(--nord3);
-  overflow: hidden;
-}
-
-.budget-meter-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width var(--transition-base, 0.2s ease);
-}
-
-.budget-meter-fill.severity-good {
-  background-color: var(--nord14);
-}
-
-.budget-meter-fill.severity-warning {
-  background-color: var(--nord13);
-}
-
-.budget-meter-fill.severity-critical {
-  background-color: var(--nord11);
-}
-</style>

@@ -176,3 +176,43 @@ html .dp__theme_dark {
   border: 1px solid var(--nord1);
   border-radius: var(--radius-sm);
 }
+
+/* The library's clear ("x") button is a <button>, which our global
+   `button { width: 100% }` reset (input.css) would otherwise stretch to
+   fill the whole (absolutely positioned) input - covering it entirely
+   instead of sitting as a small control at the input's right edge.
+   Prefixed with `html`, like the theme override above, since the library's
+   own (equal-specificity) padding/margin on this same selector would
+   otherwise win or lose depending on which stylesheet happens to load
+   second. */
+html .dp--clear-btn {
+  width: auto;
+  max-width: none;
+  padding: 5px;
+  margin-inline-end: 6px;
+  /* The library's own vertical-centering transform (top:50% pairs with
+     this) - restated explicitly so it survives the cascade the same way
+     the properties above do. */
+  transform: translateY(-50%);
+}
+
+/* Our global `button:active { transform: scale(0.97) }` (input.css) would
+   otherwise replace the centering transform above entirely instead of
+   adding a bounce on top of it - `transform` isn't additive across rules.
+   The extra `:active` in the selector outranks that rule's specificity
+   regardless of stylesheet order, so this reliably wins. */
+html .dp--clear-btn:active {
+  transform: translateY(-50%);
+}
+
+/* The clear button's icon carries the library's generic .dp__input_icons
+   class, meant for the (larger) leading calendar icon - its baked-in
+   padding (6px 12px) is what actually made the clear button's own
+   clickable/highlighted area oversized, independent of the button's own
+   padding above. Scoped to just this icon so the calendar icon (not inside
+   .dp--clear-btn) keeps its normal size. */
+html .dp--clear-btn .dp__input_icons {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+}

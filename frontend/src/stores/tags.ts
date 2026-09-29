@@ -1,4 +1,5 @@
-import { tagsApi, type TagsApi } from "@/api";
+import { tagsApi, type TagKind, type TagsApi } from "@/api";
+import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
@@ -150,28 +151,18 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Searches the API (not just the local cache) for a tag with an exact
-     * name match, including archived tags. Pages through all tags since
-     * there's no server-side name filter.
+     * Searches the server (not just the local cache) for a regular tag with
+     * an exact name match, including archived tags.
      *
      * @param normalizedName - The exact name to match.
      *
      * @returns The matching tag, or undefined if none exists.
      */
     async function findTagByName(normalizedName: string): Promise<Tag | undefined> {
-      const limit = 100;
-      let offset = 0;
-
-      while (true) {
-        const result = await api.listTagsPaginated(limit, offset, true);
-        const match = result.data.find((tag) => tag.name === normalizedName);
-        if (match) return match;
-
-        offset += result.data.length;
-        if (result.data.length === 0 || offset >= result.pagination.total) {
-          return undefined;
-        }
-      }
+      const matches = await fetchAllPages((limit, offset) =>
+        api.searchTagsPaginated(normalizedName, "label", true, limit, offset),
+      );
+      return matches.find((tag) => tag.name === normalizedName);
     }
 
     /**
@@ -305,6 +296,39 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Searches for tags by name on the server, so tags beyond the locally
+     * cached page are found too, and caches the results for getTagById.
+     * Unless only task tags are wanted, typo-tolerant matches from the local
+     * cache are merged in, since the server only matches substrings. Results
+     * are ranked like searchTags, best match first.
+     *
+     * @param query - The search query string.
+     * @param kind - Whether to search regular tags, task tags, or both.
+     *
+     * @returns A promise that resolves to the matching tags.
+     */
+    async function searchTagsOnServer(query: string, kind: TagKind): Promise<Tag[]> {
+      const q = query.trim();
+      const found = await api.searchTags(q, kind);
+      for (const tag of found) {
+        individuallyFetchedTags.value.set(tag.id, tag);
+      }
+
+      const byId = new Map(found.map((tag) => [tag.id, tag]));
+      if (kind !== "task" && q) {
+        for (const tag of searchTags(q)) {
+          if (!byId.has(tag.id)) byId.set(tag.id, tag);
+        }
+      }
+      if (!q) {
+        return [...byId.values()].map(copyTag);
+      }
+
+      const score = (tag: Tag) => scoreMatch(tag.name, q) ?? Number.MAX_SAFE_INTEGER;
+      return [...byId.values()].sort((a, b) => score(a) - score(b)).map(copyTag);
+    }
+
+    /**
      * Updates an existing tag.
      *
      * @param tag - The tag to update, identified by tag.id.
@@ -366,6 +390,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       fetchDetailedTagById,
       fetchTagById,
       searchTags,
+      searchTagsOnServer,
       updateTag,
       deleteTag,
       fetchTagStats,

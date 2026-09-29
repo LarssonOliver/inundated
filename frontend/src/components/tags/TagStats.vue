@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="chart-title-container">
-      <h2>Tag Statistics</h2>
+      <h2>{{ props.title ?? "Tag Statistics" }}</h2>
       <div class="date-pick-btns">
         <button
           class="date-pick-btn"
@@ -44,6 +44,9 @@
         <p class="stat-tile-value">{{ periodTotalFormatted }}</p>
         <p class="stat-tile-label">Total this period</p>
       </div>
+      <!-- e.g. a task's own total-time and estimate tiles, which this
+           generic tag-stats panel has no data of its own for. -->
+      <slot name="extra-tiles" />
     </div>
 
     <div class="chart-container">
@@ -114,6 +117,7 @@ const settingsStore = useSettingsStore();
 
 const props = defineProps<{
   tag: Tag;
+  title?: string;
 }>();
 
 const now = new Date();

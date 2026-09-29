@@ -1,4 +1,4 @@
-import { test, expect, vi, beforeEach } from "vitest";
+import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
 import TagListEmbedded from "./TagListEmbedded.vue";
@@ -6,11 +6,19 @@ import type { Tag } from "@/model";
 
 const listTagsPaginated = vi.fn();
 const getTag = vi.fn();
+const searchTags = vi.fn();
+const listAllTasks = vi.fn();
+const createTask = vi.fn();
 
 vi.mock("@/api", () => ({
   tagsApi: {
     listTagsPaginated: (...args: unknown[]) => listTagsPaginated(...args),
     getTag: (...args: unknown[]) => getTag(...args),
+    searchTags: (...args: unknown[]) => searchTags(...args),
+  },
+  tasksApi: {
+    listAllTasks: (...args: unknown[]) => listAllTasks(...args),
+    createTask: (...args: unknown[]) => createTask(...args),
   },
 }));
 
@@ -20,9 +28,25 @@ function tag(overrides: Partial<Tag>): Tag {
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  vi.useFakeTimers();
   listTagsPaginated.mockReset();
   getTag.mockReset();
+  searchTags.mockReset();
+  searchTags.mockResolvedValue([]);
+  listAllTasks.mockReset();
+  listAllTasks.mockResolvedValue([]);
+  createTask.mockReset();
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+/** Advances past the tag search's debounce, then flushes the resulting fetch. */
+async function settleSearch() {
+  await vi.advanceTimersByTimeAsync(200);
+  await flushPromises();
+}
 
 test("excludes archived tags from search results", async () => {
   const active = tag({ id: "1", name: "active-tag" });
@@ -39,7 +63,7 @@ test("excludes archived tags from search results", async () => {
   const input = wrapper.find("input");
   await input.trigger("focus");
   await input.setValue("tag");
-  await flushPromises();
+  await settleSearch();
 
   expect(wrapper.text()).toContain("active-tag");
   expect(wrapper.text()).not.toContain("archived-tag");
@@ -92,4 +116,209 @@ test("still shows an already-assigned tag that has since been archived", async (
   await flushPromises();
 
   expect(wrapper.text()).toContain("archived-tag");
+});
+
+function emptyPage() {
+  return { data: [], pagination: { limit: 50, offset: 0, total: 0 } };
+}
+
+test("finds tags beyond the cached page by searching the server", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([
+    tag({ id: "far", name: "far-away" }),
+    tag({ id: "task", name: "far task", taskId: "t1" }),
+  ]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("far");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("far", "all");
+  expect(wrapper.text()).toContain("far-away");
+  // Task tags show with a leading "#".
+  expect(wrapper.text()).toContain("#far task");
+});
+
+test("clearing the search box discards a slower, now-stale pending search", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  let resolveSearch: (value: Tag[]) => void;
+  searchTags.mockReturnValue(
+    new Promise((resolve) => {
+      resolveSearch = resolve;
+    }),
+  );
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("meeting");
+  await settleSearch(); // debounce fires, search() is now in flight
+
+  await input.setValue("");
+  await flushPromises();
+
+  resolveSearch!([tag({ id: "m", name: "meeting" })]);
+  await flushPromises();
+
+  expect(wrapper.text()).not.toContain("meeting");
+});
+
+test("re-includes a tag in search results as soon as it's removed from the model", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  const sprint = tag({ id: "sprint-1", name: "sprint" });
+  searchTags.mockResolvedValue([sprint]);
+  getTag.mockResolvedValue(sprint);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["sprint-1"]) } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("spr");
+  await settleSearch();
+
+  // Already selected, so excluded from the dropdown.
+  expect(wrapper.findAll(".option").length).toBe(0);
+
+  await wrapper.setProps({ modelValue: new Set<string>() });
+  await flushPromises();
+
+  // Removed from the model without typing again - should reappear immediately.
+  expect(wrapper.findAll(".option").length).toBe(1);
+});
+
+test("debounces server search and does not refetch tasks on every keystroke", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "far", name: "far-away" })]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("f");
+  await input.setValue("fa");
+  await input.setValue("far");
+  // Mid-typing, no debounce window has elapsed yet, so nothing was searched.
+  expect(searchTags).not.toHaveBeenCalled();
+
+  await settleSearch();
+  expect(searchTags).toHaveBeenCalledOnce();
+  expect(listAllTasks).toHaveBeenCalledOnce();
+
+  await input.setValue("far ");
+  await settleSearch();
+  // The task list is (and stays) empty, but it's only fetched once, not on
+  // every subsequent search.
+  expect(listAllTasks).toHaveBeenCalledOnce();
+});
+
+test("without allowTaskCreation, a leading # still narrows the search to tasks but offers no create option", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "t1", name: "Write report", taskId: "task-1" })]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("#report");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("report", "task");
+  // The matching task tag is still offered for selection...
+  expect(wrapper.text()).toContain("#Write report");
+  // ...but creating a new one isn't, since this picker can't create tasks.
+  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
+});
+
+test("retries fetching tasks after a failed attempt", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "far", name: "far-away" })]);
+  listAllTasks.mockRejectedValueOnce(new Error("network error"));
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("far");
+  await settleSearch();
+  expect(listAllTasks).toHaveBeenCalledOnce();
+
+  listAllTasks.mockResolvedValue([]);
+  await input.setValue("far2");
+  await settleSearch();
+
+  expect(listAllTasks).toHaveBeenCalledTimes(2);
+});
+
+test("a leading # searches tasks only and offers to create a task", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("#Write report");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("Write report", "task");
+  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create task "Write report"');
+});
+
+test("# plus enter creates a task and adds its task tag", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  createTask.mockResolvedValue({
+    id: "task-1",
+    name: "Write report",
+    tagId: "task-tag-1",
+    tagIds: new Set(),
+    rank: "V",
+    closed: false,
+  });
+  getTag.mockResolvedValue(tag({ id: "task-tag-1", name: "Write report", taskId: "task-1" }));
+
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("#Write report");
+  await settleSearch();
+  await input.trigger("keydown", { key: "Enter" });
+  await flushPromises();
+
+  expect(createTask).toHaveBeenCalledWith({ name: "Write report", parentId: undefined });
+  const emitted = wrapper.emitted("update:modelValue");
+  expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["task-tag-1"]));
+});
+
+test("labelsOnly leaves task tags out and treats # as part of the name", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([tag({ id: "label", name: "#hash" })]);
+
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), labelsOnly: true },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("#hash");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("#hash", "label");
+  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');
 });

@@ -80,12 +80,9 @@ function toggleArchived() {
   gap: 1em;
 }
 
-:deep(.search-container) {
-  --max-width: 100%;
-}
-
 :deep(.searchbox-container) {
   margin: 0;
+  --max-width: 100%;
 }
 
 :deep(.tag-list) {

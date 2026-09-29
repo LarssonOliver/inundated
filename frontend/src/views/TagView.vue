@@ -1,6 +1,6 @@
 <template>
   <NotFoundView v-if="notFound" />
-  <div v-else class="tag-page">
+  <div v-else-if="!resolvingTaskTag" class="tag-page">
     <div class="title-bar">
       <h2 v-if="!isNewTag">Tag Details</h2>
       <h2 v-else>New Tag</h2>
@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import type { Tag } from "@/model";
 import { watch, ref, computed } from "vue";
+import { ResponseError } from "@/api/generated";
 import { useTagsStore } from "@/stores/tags";
 import { useRoute, useRouter } from "vue-router";
 import { newTagWithDefaults } from "@/helpers/tag";
@@ -39,6 +40,10 @@ const route = useRoute();
 const tag = ref<Tag>(newTagWithDefaults());
 const isNewTag = computed(() => route.name === "New Tag");
 const notFound = ref(false);
+// True while we don't yet know whether this id is a task tag, so the
+// generic (fully-functional, task-unaware) TagEdit form never renders for
+// one, even briefly, before the redirect to its Task view fires.
+const resolvingTaskTag = ref(false);
 
 watch(
   () => route.params.id,
@@ -47,20 +52,49 @@ watch(
       return;
     }
 
-    // Start by grabbing the tag from the store if cached
+    notFound.value = false;
+
+    // Start by grabbing the tag from the store if cached. A cached task tag
+    // redirects immediately, without ever assigning it to `tag` or letting
+    // the form render. A cached non-task tag renders right away from that
+    // cached data - resolvingTaskTag only needs to block rendering while we
+    // still don't know which case this is.
     const storeResult = tagsStore.getTagById(newId as string);
+    if (storeResult?.taskId) {
+      resolvingTaskTag.value = true;
+      router.replace({ name: "Task", params: { id: storeResult.taskId } });
+      return;
+    }
     if (storeResult) {
       tag.value = storeResult;
+      resolvingTaskTag.value = false;
+    } else {
+      resolvingTaskTag.value = true;
     }
 
     try {
       // Fetch detailed tag info from the server to ensure we have the latest data (including total time)
       const result = await tagsStore.fetchDetailedTagById(newId as string);
+      if (result?.taskId) {
+        // A task tag is edited through its task. Leave resolvingTaskTag set
+        // - this component is navigating away, so the form must not flash
+        // back into view while that navigation is still in flight.
+        resolvingTaskTag.value = true;
+        router.replace({ name: "Task", params: { id: result.taskId } });
+        return;
+      }
       if (result) {
         tag.value = result;
       }
-    } catch {
-      notFound.value = true;
+      resolvingTaskTag.value = false;
+    } catch (error) {
+      // A genuine 404 is "not found" regardless of any cached copy (it may
+      // have since been deleted server-side); any other failure (network,
+      // timeout) on an already-cached tag should leave the cached data on
+      // screen instead of flashing Not Found for a transient error.
+      const isRealNotFound = error instanceof ResponseError && error.response.status === 404;
+      if (!storeResult || isRealNotFound) notFound.value = true;
+      resolvingTaskTag.value = false;
     }
   },
   { immediate: true },

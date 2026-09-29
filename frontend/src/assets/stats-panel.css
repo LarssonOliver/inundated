@@ -64,3 +64,72 @@
   width: auto;
   margin-right: 1em;
 }
+
+/* A labeled progress bar next to the stat tiles, e.g. a project's time
+   budget or a task's time estimate: current value / limit, with a fill bar
+   that changes color as it approaches or exceeds the limit. */
+.meter {
+  flex: 1;
+  min-width: 16em;
+  background-color: var(--nord1);
+  border-radius: var(--radius-md);
+  padding: 0.85em 1.25em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5em;
+}
+
+.meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  font-size: 0.85em;
+}
+
+.meter-label {
+  color: var(--nord4);
+}
+
+.meter-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  font-weight: 600;
+  color: var(--nord4);
+}
+
+.meter-reading.severity-critical {
+  color: var(--nord11);
+}
+
+.meter-icon {
+  color: var(--nord11);
+}
+
+.meter-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background-color: var(--nord3);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--transition-base, 0.2s ease);
+}
+
+.meter-fill.severity-good {
+  background-color: var(--nord14);
+}
+
+.meter-fill.severity-warning {
+  background-color: var(--nord13);
+}
+
+.meter-fill.severity-critical {
+  background-color: var(--nord11);
+}
