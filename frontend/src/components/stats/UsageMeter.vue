@@ -21,7 +21,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
-import { meterRatio, meterSeverity } from "@/helpers/meter";
 
 /**
  * A labeled progress bar for a used/limit pair, e.g. a project's time budget
@@ -35,8 +34,19 @@ const props = defineProps<{
   format: (value: number) => string;
 }>();
 
-const ratio = computed(() => meterRatio(props.used, props.limit));
-const severity = computed(() => meterSeverity(ratio.value));
+// A limit of 0 (or less) is still a limit: it reads as full once anything is
+// used, not as "no limit".
+const ratio = computed(() => {
+  if (props.limit <= 0) return props.used > 0 ? 1 : 0;
+  return props.used / props.limit;
+});
+
+// "critical" once over the limit, "warning" from 80% up, "good" below that.
+const severity = computed(() => {
+  if (ratio.value > 1) return "critical";
+  if (ratio.value >= 0.8) return "warning";
+  return "good";
+});
 const severityClass = computed(() => `severity-${severity.value}`);
 const fillPercent = computed(() => Math.min(ratio.value * 100, 100));
 const percentLabel = computed(() => `${Math.round(ratio.value * 100)}%`);

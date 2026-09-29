@@ -29,3 +29,22 @@ test("treats a zero limit as full once anything is used", () => {
   expect(wrapper.find(".meter-reading").text()).toContain("(100%)");
   expect(wrapper.find(".meter-fill").attributes("style")).toContain("width: 100%");
 });
+
+test.each([
+  [0, "severity-good"],
+  [7.9, "severity-good"],
+  [8, "severity-warning"],
+  [10, "severity-warning"],
+  [10.1, "severity-critical"],
+])("classifies %s of 10 as %s", (used, severityClass) => {
+  const wrapper = mount(UsageMeter, { props: { label: "Budget", used, limit: 10, format } });
+
+  expect(wrapper.find(".meter-fill").classes()).toContain(severityClass);
+});
+
+test("reads 0% with a zero limit and nothing used", () => {
+  const wrapper = mount(UsageMeter, { props: { label: "Estimate", used: 0, limit: 0, format } });
+
+  expect(wrapper.find(".meter-reading").text()).toContain("(0%)");
+  expect(wrapper.find(".meter-fill").classes()).toContain("severity-good");
+});
