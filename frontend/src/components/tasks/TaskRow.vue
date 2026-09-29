@@ -6,6 +6,7 @@
   >
     <TaskCheckbox
       :checked="task.closed"
+      :disabled="disabled"
       :variant="task.closeReason === 'ignored' ? 'ignored' : 'success'"
       :title="task.closed ? 'Reopen' : 'Mark done'"
       :aria-label="task.closed ? `Reopen ${task.name}` : `Mark ${task.name} done`"
@@ -15,6 +16,7 @@
       v-if="!task.closed"
       class="field-trigger ignore-btn"
       title="Ignore"
+      :disabled="disabled"
       :aria-label="`Ignore ${task.name}`"
       @click="$emit('ignore')"
     >

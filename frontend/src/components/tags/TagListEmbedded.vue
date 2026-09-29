@@ -111,7 +111,7 @@ let tasksLoadAttempted = false;
 
 async function search(query: string) {
   const token = ++searchToken;
-  if (!query.trim()) {
+  if (!query) {
     rawSearchResults.value = [];
     return;
   }
@@ -178,12 +178,15 @@ async function fetchAssignedTag(id: string): Promise<Tag | undefined> {
 
 function onTagSearch(query: string) {
   currentQuery.value = query;
-  if (!query.trim()) {
+  if (!query) {
     clearTimeout(searchDebounceTimer);
     searchToken++; // invalidate any in-flight search so it can't repopulate results
     rawSearchResults.value = [];
     return;
   }
+  // A whitespace-only query still reaches search() -> searchTagsOnServer,
+  // which trims it to "" and treats that as "browse all" - only a literally
+  // empty box should skip the request and clear results outright.
   debouncedSearch(query);
 }
 

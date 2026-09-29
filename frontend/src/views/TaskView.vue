@@ -190,8 +190,10 @@ const datePickerFormats = computed(() => ({
 
 const estimateRatio = computed(() => {
   const estimateHours = task.value?.estimateHours;
-  if (!estimateHours) return 0;
+  if (estimateHours == null) return 0;
   const loggedHours = (task.value?.totalTimeMs ?? 0) / 3600000;
+  // A 0-hour estimate with any logged time is over budget, not "no estimate".
+  if (estimateHours <= 0) return loggedHours > 0 ? 1 : 0;
   return loggedHours / estimateHours;
 });
 const estimateFillPercent = computed(() => Math.min(estimateRatio.value * 100, 100));
@@ -270,6 +272,11 @@ watch(
 async function save() {
   if (!task.value) return;
   const estimate = draft.value.estimateHours;
+  if (estimate !== "" && (Number.isNaN(Number(estimate)) || Number(estimate) < 0)) {
+    errorMessage.value = "Estimate must be a non-negative number.";
+    return;
+  }
+  errorMessage.value = "";
   const updated = await tasksStore.updateTask(task.value.id, {
     name: draft.value.name.trim(),
     tagIds: draft.value.tagIds,
@@ -292,16 +299,20 @@ async function save() {
 async function refreshAfterStatusChange() {
   if (!task.value) return;
   const id = task.value.id;
+  const token = loadToken;
   const [loaded, subtaskList] = await Promise.all([
     tasksStore.fetchDetailedTaskById(id),
     tasksStore.fetchSubtasks(id),
   ]);
+  if (token !== loadToken) return;
   applyTask(loaded);
   subtasks.value = subtaskList;
   if (loaded.parentId) {
-    parent.value =
+    const parentTask =
       tasksStore.getTaskById(loaded.parentId) ??
       (await tasksStore.fetchDetailedTaskById(loaded.parentId).catch(() => null));
+    if (token !== loadToken) return;
+    parent.value = parentTask;
   }
 }
 
@@ -323,8 +334,16 @@ async function toggleSubtask(child: Task) {
   } else {
     await tasksStore.closeTask(child.id, "done");
   }
+  // Reopening a subtask can cascade to reopen the viewed task itself, so its
+  // own state needs refreshing too, not just the subtask list.
   if (task.value) {
-    subtasks.value = await tasksStore.fetchSubtasks(task.value.id);
+    const id = task.value.id;
+    const [loaded, subtaskList] = await Promise.all([
+      tasksStore.fetchDetailedTaskById(id),
+      tasksStore.fetchSubtasks(id),
+    ]);
+    applyTask(loaded);
+    subtasks.value = subtaskList;
   }
 }
 

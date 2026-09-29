@@ -10,7 +10,7 @@
     <input v-model="model.timeBudgetHours" type="number" />
 
     <p class="field-label">Tags</p>
-    <TagListEmbedded v-model="model.tagIds" />
+    <TagListEmbedded v-model="model.tagIds" labels-only />
 
     <div class="button-container" v-if="!props.isNewProject">
       <button class="btn-info" @click="$emit('save', model)">Save</button>

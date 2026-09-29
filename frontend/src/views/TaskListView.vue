@@ -90,8 +90,13 @@ function isOverdue(task: Task): boolean {
 async function addTask() {
   const name = newTaskName.value.trim();
   if (!name) return;
-  await tasksStore.createTaskFromName(name);
-  newTaskName.value = "";
+  errorMessage.value = "";
+  try {
+    await tasksStore.createTaskFromName(name);
+    newTaskName.value = "";
+  } catch {
+    errorMessage.value = "Couldn't create the task.";
+  }
 }
 
 async function runMove(task: Task, action: () => Promise<void>, errorText: string) {

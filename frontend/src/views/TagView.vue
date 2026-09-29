@@ -52,18 +52,23 @@ watch(
     }
 
     notFound.value = false;
-    resolvingTaskTag.value = true;
 
     // Start by grabbing the tag from the store if cached. A cached task tag
     // redirects immediately, without ever assigning it to `tag` or letting
-    // the form render.
+    // the form render. A cached non-task tag renders right away from that
+    // cached data - resolvingTaskTag only needs to block rendering while we
+    // still don't know which case this is.
     const storeResult = tagsStore.getTagById(newId as string);
     if (storeResult?.taskId) {
+      resolvingTaskTag.value = true;
       router.replace({ name: "Task", params: { id: storeResult.taskId } });
       return;
     }
     if (storeResult) {
       tag.value = storeResult;
+      resolvingTaskTag.value = false;
+    } else {
+      resolvingTaskTag.value = true;
     }
 
     try {
@@ -73,6 +78,7 @@ watch(
         // A task tag is edited through its task. Leave resolvingTaskTag set
         // - this component is navigating away, so the form must not flash
         // back into view while that navigation is still in flight.
+        resolvingTaskTag.value = true;
         router.replace({ name: "Task", params: { id: result.taskId } });
         return;
       }
@@ -81,7 +87,10 @@ watch(
       }
       resolvingTaskTag.value = false;
     } catch {
-      notFound.value = true;
+      // Only a tag we had no cached copy of is actually "not found" - a
+      // failed background refresh of an already-cached tag should leave the
+      // cached data on screen.
+      if (!storeResult) notFound.value = true;
       resolvingTaskTag.value = false;
     }
   },

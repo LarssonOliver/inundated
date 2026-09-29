@@ -219,7 +219,10 @@ function createTasksStore(api: TasksApi) {
       const task = tasks.value.get(id);
       if (!task?.parentId) return;
       const parent = tasks.value.get(task.parentId);
-      if (!parent) return;
+      // Closing only cascades parent -> child, so a closed task can have an
+      // open parent; outdenting must still only ever place it among
+      // same-status siblings (see shiftTaskRaw/indentTaskRaw above).
+      if (!parent || parent.closed !== task.closed) return;
       await moveTaskRaw(id, parent.parentId, parent.id);
     }
 
