@@ -45,8 +45,8 @@
     <div ref="tagsFieldEl" class="task-tags">
       <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" labels-only />
       <button v-else class="field-trigger tags-trigger" title="Edit tags" @click="startEditTags">
-        <TagListEmbedded :model-value="task.tagIds" read-only />
         <span v-if="task.tagIds.size === 0" class="placeholder">Tags</span>
+        <TagListEmbedded v-else :model-value="task.tagIds" read-only />
       </button>
     </div>
 
@@ -75,7 +75,11 @@
     </div>
 
     <div class="estimate-field">
-      <span class="time" :title="'Logged' + (task.estimateHours != null ? ' / estimate' : '')">
+      <span
+        v-if="task.totalTimeMs"
+        class="time"
+        :title="'Logged' + (task.estimateHours != null ? ' / estimate' : '')"
+      >
         {{ formatMs(task.totalTimeMs ?? 0) }}
       </span>
       <template v-if="editingField === 'estimate'">
@@ -398,7 +402,7 @@ function startEditTags() {
 .placeholder {
   color: var(--nord3);
   font-style: italic;
-  margin: 0.25em 0.5em 0.25em -0.25em;
+  margin: 0.25em 0.5em 0.25em 0.5em;
 }
 
 .order-buttons {
