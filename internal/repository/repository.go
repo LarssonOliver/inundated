@@ -21,11 +21,10 @@ type Repository interface {
 type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
 	// GetTag and ListTags report a task tag with its TaskId set, and with
-	// its color and archived state derived from its task: archived while
-	// the task is closed, and colored like the task's first regular tag by
-	// name (or model.DefaultTaskTagColor). ListTags puts regular tags
-	// first, then orders by name case-insensitively, then by name bytes,
-	// then by id.
+	// its archived state derived from its task: archived while the task is
+	// closed. Its Color is left as stored; the service derives it with
+	// model.TaskTagColor from ListTaskLabels. ListTags puts regular tags
+	// first, then orders them by model.CompareTagNames.
 	ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	// UpdateTag replaces the tag's mutable fields (including Archived)
@@ -71,6 +70,9 @@ type TaskRepository interface {
 	// tags, and those of its ancestors. Tasks with no projects are left
 	// out.
 	ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
+	// ListTaskLabels maps each of taskIds in scope to its own regular tags,
+	// archived ones included. Tasks with no regular tags are left out.
+	ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 
 type UserRepository interface {

@@ -17,6 +17,11 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	if err != nil {
 		return model.Tag{}, err
 	}
+	tags := []model.Tag{tag}
+	if err := s.colorTaskTags(ctx, scope, tags); err != nil {
+		return model.Tag{}, err
+	}
+	tag = tags[0]
 
 	if includes != nil {
 		if includes.TotalTime {
@@ -36,7 +41,39 @@ func (s *ServiceImpl) ListTags(ctx context.Context, params model.TagListParams) 
 	if err != nil {
 		return model.Page[model.Tag]{}, err
 	}
-	return s.repository.ListTags(ctx, scope, params)
+	page, err := s.repository.ListTags(ctx, scope, params)
+	if err != nil {
+		return model.Page[model.Tag]{}, err
+	}
+	if err := s.colorTaskTags(ctx, scope, page.Data); err != nil {
+		return model.Page[model.Tag]{}, err
+	}
+	return page, nil
+}
+
+// colorTaskTags sets the color of each task tag in tags from its task's
+// regular tags (see model.TaskTagColor), in one lookup for all of them.
+func (s *ServiceImpl) colorTaskTags(ctx context.Context, scope model.OwnerScope, tags []model.Tag) error {
+	var taskIds []uuid.UUID
+	for _, tag := range tags {
+		if tag.TaskId != nil {
+			taskIds = append(taskIds, *tag.TaskId)
+		}
+	}
+	if len(taskIds) == 0 {
+		return nil
+	}
+
+	labels, err := s.repository.ListTaskLabels(ctx, scope, taskIds)
+	if err != nil {
+		return err
+	}
+	for i, tag := range tags {
+		if tag.TaskId != nil {
+			tags[i].Color = model.TaskTagColor(labels[*tag.TaskId])
+		}
+	}
+	return nil
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {

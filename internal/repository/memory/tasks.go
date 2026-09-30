@@ -364,6 +364,27 @@ func (t *MemoryStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerS
 	return out, nil
 }
 
+// ListTaskLabels implements [repository.TaskRepository].
+func (t *MemoryStore) ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	lookup := t.newTagLookup()
+	out := map[uuid.UUID][]model.Tag{}
+	for _, id := range taskIds {
+		idx := t.taskIndex(scope, id)
+		if idx == -1 {
+			continue
+		}
+		for _, tagId := range t.tasks[idx].TagIds {
+			if tag, ok := lookup.tags[tagId]; ok {
+				out[id] = append(out[id], tag)
+			}
+		}
+	}
+	return out, nil
+}
+
 // taskProjectIds returns the projects in scope whose tags meet the task's
 // effective tags, ordered by id. Callers must hold t.mu.
 func (t *MemoryStore) taskProjectIds(scope model.OwnerScope, task model.Task) []uuid.UUID {

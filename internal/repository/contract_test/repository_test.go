@@ -59,6 +59,15 @@ func seedTags(
 	return ids
 }
 
+// tagIdsOf returns the ids of tags, in order.
+func tagIdsOf(tags []model.Tag) []uuid.UUID {
+	ids := make([]uuid.UUID, len(tags))
+	for i, tag := range tags {
+		ids[i] = tag.Id
+	}
+	return ids
+}
+
 // seedArchivedTag creates a single tag and immediately archives it.
 func seedArchivedTag(
 	t *testing.T,

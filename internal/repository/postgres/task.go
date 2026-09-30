@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -504,6 +505,38 @@ func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.Owne
 			return nil, fmt.Errorf("ListTaskProjectIds scan: %w", err)
 		}
 		out[taskId] = append(out[taskId], projectId)
+	}
+	return out, rows.Err()
+}
+
+func (r *PostgresStore) ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	out := map[uuid.UUID][]model.Tag{}
+	if len(taskIds) == 0 {
+		return out, nil
+	}
+
+	ownerSQL, args := ownerPredicate("k.user_id", scope, []any{taskIds})
+	query := `
+		SELECT kt.task_id, t.id, t.name, t.color, t.user_id, t.archived_at
+		FROM task_tags kt
+		JOIN tasks k ON k.id = kt.task_id AND k.deleted_at IS NULL
+		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
+		WHERE kt.task_id = ANY($1) AND ` + ownerSQL
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ListTaskLabels: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskId uuid.UUID
+		var tag model.Tag
+		var archivedAt *time.Time
+		if err := rows.Scan(&taskId, &tag.Id, &tag.Name, &tag.Color, &tag.UserId, &archivedAt); err != nil {
+			return nil, fmt.Errorf("ListTaskLabels scan: %w", err)
+		}
+		tag.Archived = archivedAt != nil
+		out[taskId] = append(out[taskId], tag)
 	}
 	return out, rows.Err()
 }

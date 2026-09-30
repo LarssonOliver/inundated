@@ -31,6 +31,7 @@ type RepoMock struct {
 	DeleteTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 
 	ListTaskProjectIdsFn func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
+	ListTaskLabelsFn     func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 
 	GetUserFn                   func(ctx context.Context, id uuid.UUID) (model.User, error)
 	GetUserBySubFn              func(ctx context.Context, sub string) (model.User, error)
@@ -152,6 +153,11 @@ func (t *RepoMock) DeleteTask(ctx context.Context, scope model.OwnerScope, id uu
 // ListTaskProjectIds implements repository.TaskRepository.
 func (t *RepoMock) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
 	return t.ListTaskProjectIdsFn(ctx, scope, taskIds)
+}
+
+// ListTaskLabels implements repository.TaskRepository.
+func (t *RepoMock) ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	return t.ListTaskLabelsFn(ctx, scope, taskIds)
 }
 
 // UpdateTag implements repository.TagRepository.

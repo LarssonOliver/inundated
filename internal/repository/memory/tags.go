@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"slices"
@@ -101,41 +100,15 @@ func (t *MemoryStore) newTagLookup() tagLookup {
 }
 
 // view returns tag as readers see it: a task tag takes its archived state
-// and color from its task.
+// from its task.
 func (l tagLookup) view(tag model.Tag) model.Tag {
 	if tag.TaskId == nil {
 		return tag
 	}
-	task, ok := l.tasks[*tag.TaskId]
-	if !ok {
-		return tag
-	}
-	tag.Archived = task.Closed()
-	tag.Color = model.DefaultTaskTagColor
-	var first *model.Tag
-	for _, id := range task.TagIds {
-		regular, ok := l.tags[id]
-		if !ok {
-			continue
-		}
-		if first == nil || compareTagNames(regular, *first) < 0 {
-			first = &regular
-		}
-	}
-	if first != nil {
-		tag.Color = first.Color
+	if task, ok := l.tasks[*tag.TaskId]; ok {
+		tag.Archived = task.Closed()
 	}
 	return tag
-}
-
-// compareTagNames orders tags case-insensitively by name, then by name
-// bytes, then by id, as the Postgres store does.
-func compareTagNames(a, b model.Tag) int {
-	return cmp.Or(
-		strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),
-		strings.Compare(a.Name, b.Name),
-		bytes.Compare(a.Id[:], b.Id[:]),
-	)
 }
 
 // ListTags implements [repository.TagRepository].
@@ -175,7 +148,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 	slices.SortStableFunc(all, func(a, b model.Tag) int {
 		return cmp.Or(
 			cmp.Compare(boolRank(a.TaskId != nil), boolRank(b.TaskId != nil)),
-			compareTagNames(a, b),
+			model.CompareTagNames(a, b),
 		)
 	})
 

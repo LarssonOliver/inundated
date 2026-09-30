@@ -128,7 +128,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Empty(t, noIds.Data)
 		})
 
-		t.Run(repoName+"TaskTagColorAndArchivedFollowTask", func(t *testing.T) {
+		t.Run(repoName+"TaskTagArchivedFollowsTask", func(t *testing.T) {
 			repo := newRepo(t)
 			b, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "b", Color: "#222222"})
 			require.NoError(t, err)
@@ -140,17 +140,16 @@ func TestTaskRepositoryContract(t *testing.T) {
 			tagged, err := repo.CreateTask(ctx, testScope, model.Task{Name: "tagged", TagIds: []uuid.UUID{b.Id, a.Id}})
 			require.NoError(t, err)
 
-			bareTag, err := repo.GetTag(ctx, testScope, bare.TagId)
+			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{bare.Id, tagged.Id})
 			require.NoError(t, err)
-			require.Equal(t, model.DefaultTaskTagColor, bareTag.Color)
-			taggedTag, err := repo.GetTag(ctx, testScope, tagged.TagId)
-			require.NoError(t, err)
-			require.Equal(t, "#111111", taggedTag.Color)
+			require.NotContains(t, labels, bare.Id)
+			require.ElementsMatch(t, []uuid.UUID{a.Id, b.Id}, tagIdsOf(labels[tagged.Id]))
+			require.Equal(t, "#111111", model.TaskTagColor(labels[tagged.Id]))
 
 			_, err = repo.UpdateTask(ctx, testScope, tagged.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonDone)})
 			require.NoError(t, err)
 
-			taggedTag, err = repo.GetTag(ctx, testScope, tagged.TagId)
+			taggedTag, err := repo.GetTag(ctx, testScope, tagged.TagId)
 			require.NoError(t, err)
 			require.True(t, taggedTag.Archived)
 			visible, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindTask})
@@ -163,6 +162,42 @@ func TestTaskRepositoryContract(t *testing.T) {
 			taggedTag, err = repo.GetTag(ctx, testScope, tagged.TagId)
 			require.NoError(t, err)
 			require.False(t, taggedTag.Archived)
+		})
+
+		t.Run(repoName+"ListTaskLabels", func(t *testing.T) {
+			repo := newRepo(t)
+			live, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "live", Color: "#111111"})
+			require.NoError(t, err)
+			deleted, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "deleted", Color: "#333333"})
+			require.NoError(t, err)
+
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{live.Id, deleted.Id}})
+			require.NoError(t, err)
+			require.NoError(t, repo.DeleteTag(ctx, testScope, deleted.Id))
+
+			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id, uuid.New()})
+			require.NoError(t, err)
+			require.Len(t, labels, 1)
+			require.Equal(t, []uuid.UUID{live.Id}, tagIdsOf(labels[task.Id]))
+			require.Equal(t, "live", labels[task.Id][0].Name)
+			require.Equal(t, "#111111", labels[task.Id][0].Color)
+
+			// A regular tag archived after it was attached still counts.
+			_, err = repo.UpdateTag(ctx, testScope, model.Tag{Id: live.Id, Name: live.Name, Color: live.Color, Archived: true})
+			require.NoError(t, err)
+			labels, err = repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id})
+			require.NoError(t, err)
+			require.Len(t, labels[task.Id], 1)
+			require.True(t, labels[task.Id][0].Archived)
+
+			// Another scope sees none of it.
+			other, err := repo.ListTaskLabels(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.Id})
+			require.NoError(t, err)
+			require.Empty(t, other)
+
+			empty, err := repo.ListTaskLabels(ctx, testScope, nil)
+			require.NoError(t, err)
+			require.Empty(t, empty)
 		})
 
 		t.Run(repoName+"TaskTagsAttachToTimespansAndProjectsButNotTasks", func(t *testing.T) {
@@ -510,9 +545,9 @@ func TestTaskRepositoryContract(t *testing.T) {
 
 			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{banana.Id, apple.Id}})
 			require.NoError(t, err)
-			taskTag, err := repo.GetTag(ctx, testScope, task.TagId)
+			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id})
 			require.NoError(t, err)
-			require.Equal(t, apple.Color, taskTag.Color)
+			require.Equal(t, apple.Color, model.TaskTagColor(labels[task.Id]))
 		})
 
 		t.Run(repoName+"ConcurrentCreatesGetDistinctRanks", func(t *testing.T) {
