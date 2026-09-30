@@ -157,14 +157,16 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 		return out, nil
 	}
 
-	// A task tag's sources are its task's regular tags.
+	// A task tag's sources are its task's regular tags, not the project
+	// tags it also carries.
 	ownerSQL, args := ownerPredicate("k.user_id", scope, []any{tagIds})
 	query := `
 		SELECT k.tag_id, t.id, t.name, t.color, t.user_id, t.archived_at
 		FROM tasks k
 		JOIN task_tags kt ON kt.task_id = k.id
 		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
-		WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND ` + ownerSQL
+		LEFT JOIN tag_owners o ON o.tag_id = t.id
+		WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND o.tag_id IS NULL AND ` + ownerSQL
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("ListDerivedTagSources: %w", err)

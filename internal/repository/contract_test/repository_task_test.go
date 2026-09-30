@@ -190,6 +190,15 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Len(t, sources[task.TagId], 1)
 			require.True(t, sources[task.TagId][0].Archived)
 
+			// A project tag the task carries isn't a source.
+			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Api", Color: "#5e81ac"})
+			require.NoError(t, err)
+			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{TagIds: &[]uuid.UUID{live.Id, project.TagId}})
+			require.NoError(t, err)
+			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{live.Id}, tagIdsOf(sources[task.TagId]))
+
 			// Another scope sees none of it.
 			other, err := repo.ListDerivedTagSources(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.TagId})
 			require.NoError(t, err)
