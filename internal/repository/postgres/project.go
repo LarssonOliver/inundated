@@ -220,27 +220,27 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("DeleteProject: %w", err)
 		}
 
-		// Lock the project's effective tags before checking for attributed
-		// time: a timespan or task attaching one of them share-locks it (see
-		// tagsInScope), so it either commits first and shows up below, or
-		// waits and then finds the project gone.
-		rows, err := tx.Query(ctx, `
-			SELECT id FROM tags
-			WHERE id IN (SELECT tag_id FROM project_effective_tags WHERE project_id = $1)
-				AND deleted_at IS NULL
-			ORDER BY id FOR UPDATE`, id)
-		if err != nil {
-			return fmt.Errorf("DeleteProject lock tags: %w", err)
-		}
-		tagIds, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-		if err != nil {
-			return fmt.Errorf("DeleteProject lock tags: %w", err)
+		// Lock the project tag before checking for attributed time. A
+		// timespan or task attaching it share-locks it (see tagsInScope),
+		// as does a task tree change that makes it a task's effective tag
+		// (see refresh_task_effective_tags), so each of those either
+		// commits first and shows up below, or waits and then finds the
+		// tag deleted. A timespan attaching the task tag of a task that
+		// carries it needs no lock: it writes nothing that names the
+		// project tag, and deleting the tag drops it from every task's
+		// effective tags, so a timespan committing after this check counts
+		// toward nothing, just as if it had been logged after the delete.
+		// Locking only this tag, after the project row, keeps the order
+		// UpdateProject takes them in.
+		if _, err := tx.Exec(ctx, `SELECT id FROM tags WHERE id = $1 FOR UPDATE`, tagId); err != nil {
+			return fmt.Errorf("DeleteProject lock tag: %w", err)
 		}
 
-		// A project with time attributed to it can only be archived:
-		// deleting its project tag would leave that time counting toward
-		// nothing.
-		timespanOwnerSQL, checkArgs := ownerPredicate("t.user_id", scope, []any{tagIds})
+		// A project with time attributed to its project tag can only be
+		// archived: deleting the tag would leave that time counting toward
+		// nothing. Time reaching it only through its linked tags stays with
+		// those tags.
+		timespanOwnerSQL, checkArgs := ownerPredicate("t.user_id", scope, []any{[]uuid.UUID{tagId}})
 		var attributed bool
 		if err := tx.QueryRow(ctx, `
 			SELECT EXISTS (

@@ -89,7 +89,7 @@ example().catch(console.error);
 
 Delete project
 
-Deletes a project along with its project tag. Projects with time attributed to them can\&#39;t be deleted; archive them instead. 
+Deletes a project along with its project tag. Projects with time logged under their project tag (directly, or on a task carrying it) can\&#39;t be deleted; archive them instead. Time reaching a project only through its linked tags doesn\&#39;t prevent deleting it. 
 
 ### Example
 
@@ -151,7 +151,7 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **204** | Deleted |  -  |
 | **404** | Not found |  -  |
-| **409** | Time is attributed to the project. Archive it instead.  |  -  |
+| **409** | Time is logged under the project tag. Archive the project instead.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -135,7 +136,7 @@ func TestProjectTagContract(t *testing.T) {
 			require.Empty(t, ids)
 		})
 
-		t.Run(repoName+"DeleteRefusesTimeThroughLinkedTags", func(t *testing.T) {
+		t.Run(repoName+"DeleteIgnoresTimeThroughLinkedTags", func(t *testing.T) {
 			repo := newRepo(t)
 
 			label, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "client", Color: "#88c0d0"})
@@ -150,19 +151,109 @@ func TestProjectTagContract(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// Time reaching the project through a linked tag counts too; the
-			// project can still be archived.
-			require.ErrorIs(t, repo.DeleteProject(ctx, testScope, project.Id), model.ErrConflict)
-			project.Archived = true
-			_, err = repo.UpdateProject(ctx, testScope, project)
-			require.NoError(t, err)
-			_, err = repo.GetTag(ctx, testScope, project.TagId)
-			require.NoError(t, err)
-
-			require.NoError(t, repo.DeleteTimespan(ctx, testScope, span.Id))
+			// Time reaching the project only through a linked tag stays with
+			// that tag, so the project can go.
 			require.NoError(t, repo.DeleteProject(ctx, testScope, project.Id))
 			_, err = repo.GetProject(ctx, testScope, project.Id)
 			require.ErrorIs(t, err, model.ErrNotFound)
+			_, err = repo.GetTag(ctx, testScope, label.Id)
+			require.NoError(t, err)
+			got, err := repo.GetTimespan(ctx, testScope, span.Id)
+			require.NoError(t, err)
+			require.Equal(t, []uuid.UUID{label.Id}, got.TagIds)
+		})
+
+		t.Run(repoName+"DeleteRacesUpdateSafely", func(t *testing.T) {
+			repo := newRepo(t)
+			label, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "client", Color: "#88c0d0"})
+			require.NoError(t, err)
+			for range 20 {
+				project, err := repo.CreateProject(ctx, testScope, model.Project{
+					Name: "Website", Color: "#bf616a", TagIds: []uuid.UUID{label.Id},
+				})
+				require.NoError(t, err)
+
+				// Saving and deleting a project at once: the delete always
+				// wins, and the save either lands first or finds it gone.
+				var wg sync.WaitGroup
+				var errDelete, errUpdate error
+				wg.Go(func() { errDelete = repo.DeleteProject(ctx, testScope, project.Id) })
+				wg.Go(func() {
+					project.Name = "Web site"
+					_, errUpdate = repo.UpdateProject(ctx, testScope, project)
+				})
+				wg.Wait()
+
+				require.NoError(t, errDelete)
+				if errUpdate != nil {
+					require.ErrorIs(t, errUpdate, model.ErrNotFound)
+				}
+			}
+		})
+
+		t.Run(repoName+"DeleteRacesTimespanSafely", func(t *testing.T) {
+			repo := newRepo(t)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			for range 20 {
+				project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Website", Color: "#bf616a"})
+				require.NoError(t, err)
+
+				// Deleting a project and logging time on it at once: one
+				// must lose, or time ends up logged on a deleted tag.
+				var wg sync.WaitGroup
+				var errDelete, errLog error
+				wg.Go(func() { errDelete = repo.DeleteProject(ctx, testScope, project.Id) })
+				wg.Go(func() {
+					_, errLog = repo.CreateTimespan(ctx, testScope, model.Timespan{
+						StartTime: start, EndTime: start.Add(time.Hour), TagIds: []uuid.UUID{project.TagId},
+					})
+				})
+				wg.Wait()
+
+				if errDelete == nil {
+					require.ErrorIs(t, errLog, model.ErrInvalidReference)
+				} else {
+					require.ErrorIs(t, errDelete, model.ErrConflict)
+					require.NoError(t, errLog)
+				}
+			}
+		})
+
+		t.Run(repoName+"DeleteRacesTimespanOnTaskSafely", func(t *testing.T) {
+			repo := newRepo(t)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			for range 20 {
+				project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Website", Color: "#bf616a"})
+				require.NoError(t, err)
+				task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Launch", TagIds: []uuid.UUID{project.TagId}})
+				require.NoError(t, err)
+
+				// Logging time on a task of a project being deleted: the log
+				// always lands, and counts toward the project only if the
+				// project survives.
+				var wg sync.WaitGroup
+				var errDelete, errLog error
+				wg.Go(func() { errDelete = repo.DeleteProject(ctx, testScope, project.Id) })
+				wg.Go(func() {
+					_, errLog = repo.CreateTimespan(ctx, testScope, model.Timespan{
+						StartTime: start, EndTime: start.Add(time.Hour), TagIds: []uuid.UUID{task.TagId},
+					})
+				})
+				wg.Wait()
+
+				require.NoError(t, errLog)
+				total, err := repo.GetTotalDurationByTags(ctx, testScope, []uuid.UUID{project.TagId})
+				require.NoError(t, err)
+				if errDelete == nil {
+					require.Zero(t, total)
+					ids, err := repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{task.Id})
+					require.NoError(t, err)
+					require.Empty(t, ids)
+				} else {
+					require.ErrorIs(t, errDelete, model.ErrConflict)
+					require.Equal(t, time.Hour, total)
+				}
+			}
 		})
 	}
 

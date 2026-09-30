@@ -137,19 +137,18 @@ func (t *MemoryStore) DeleteProject(ctx context.Context, scope model.OwnerScope,
 		return model.ErrNotFound
 	}
 
-	// A project with time attributed to it can only be archived.
-	effective := map[uuid.UUID]struct{}{}
-	for _, tagId := range t.projects[idx].EffectiveTagIds() {
-		effective[tagId] = struct{}{}
-	}
+	// A project with time attributed to its project tag can only be
+	// archived. Time reaching it only through its linked tags stays with
+	// those tags.
+	tagId := t.projects[idx].TagId
+	projectTag := map[uuid.UUID]struct{}{tagId: {}}
 	for _, span := range t.timespans {
-		if matchesScope(span.UserId, scope) && t.timespanHasAnyTag(span, effective) {
+		if matchesScope(span.UserId, scope) && t.timespanHasAnyTag(span, projectTag) {
 			return model.ErrConflict
 		}
 	}
 
 	// The project tag goes with its project.
-	tagId := t.projects[idx].TagId
 	t.projects = slices.Delete(t.projects, idx, idx+1)
 	t.deleteTags(func(id uuid.UUID) bool { return id == tagId })
 	return nil

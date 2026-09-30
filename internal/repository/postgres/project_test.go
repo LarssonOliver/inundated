@@ -499,15 +499,16 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 // ── DeleteProject ────────────────────────────────────────────────────────────
 
 // expectDeleteProjectLocks expects DeleteProject to lock the project and its
-// effective tags, then check for attributed time, answering attributed.
+// project tag, then check for time attributed to the tag, answering
+// attributed.
 func expectDeleteProjectLocks(mock pgxmock.PgxPoolIface, id, tagId uuid.UUID, attributed bool) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(`SELECT tag_id FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2 FOR UPDATE`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"tag_id"}).AddRow(tagId))
-	mock.ExpectQuery(`SELECT id FROM tags WHERE id IN \(SELECT tag_id FROM project_effective_tags WHERE project_id = \$1\) AND deleted_at IS NULL ORDER BY id FOR UPDATE`).
-		WithArgs(id).
-		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(tagId))
+	mock.ExpectExec(`SELECT id FROM tags WHERE id = \$1 FOR UPDATE`).
+		WithArgs(tagId).
+		WillReturnResult(pgxmock.NewResult("SELECT", 1))
 	mock.ExpectQuery(`SELECT EXISTS`).
 		WithArgs([]uuid.UUID{tagId}, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(attributed))
