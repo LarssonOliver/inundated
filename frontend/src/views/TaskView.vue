@@ -230,8 +230,13 @@ async function load(id: string) {
   if (token !== loadToken) return;
   parent.value = parentTask;
   subtasks.value = subtaskList;
+  await showProjects(loaded.projectIds, token);
+}
+
+/** Resolves the projects a task belongs to for the Projects section. */
+async function showProjects(projectIds: Set<string> | undefined, token: number) {
   const resolvedProjects = await Promise.all(
-    [...(loaded.projectIds ?? [])].map(
+    [...(projectIds ?? [])].map(
       (projectId) =>
         projectsStore.getProjectById(projectId) ??
         projectsStore.fetchProjectById(projectId).catch(() => undefined),
@@ -266,13 +271,25 @@ async function save() {
     estimateHours: estimate === "" ? null : Number(estimate),
   });
   if (token !== loadToken) return;
-  // Editing never changes closed state, parent, tag or projects, so merge
-  // the response over the existing task rather than reloading everything.
+  // Editing never changes closed state, parent or own tag, so merge the
+  // response over the existing task rather than reloading everything.
   applyTask({
     ...updated,
     totalTimeMs: priorTask.totalTimeMs,
     projectIds: priorTask.projectIds,
   });
+
+  // Changing its tags can move the task into or out of a project (an
+  // "@project" tag, or a tag a project is linked to), so its projects are
+  // fetched again.
+  const tagsChanged =
+    updated.tagIds.size !== priorTask.tagIds.size ||
+    [...updated.tagIds].some((id) => !priorTask.tagIds.has(id));
+  if (!tagsChanged) return;
+  const detailed = await tasksStore.fetchDetailedTaskById(priorTask.id).catch(() => null);
+  if (token !== loadToken || !detailed || !task.value) return;
+  task.value = { ...task.value, projectIds: detailed.projectIds };
+  await showProjects(detailed.projectIds, token);
 }
 
 /**
