@@ -19,7 +19,9 @@
         placeholder="Add a task to this project..."
         aria-label="New task"
       />
-      <button type="submit" class="btn-info" :disabled="!newTaskName.trim()">Add</button>
+      <button type="submit" class="btn-info" :disabled="!newTaskName.trim() || !project.tagId">
+        Add
+      </button>
     </form>
 
     <p v-if="!isLoading && !loadFailed && rows.length === 0" class="empty">
@@ -57,11 +59,6 @@ import TaskRow from "@/components/tasks/TaskRow.vue";
 
 const props = defineProps<{
   project: Project;
-  /**
-   * Assigns a task created here to the project by adding its task tag to
-   * the project's tags. Rejects when that fails.
-   */
-  assignTask: (taskTagId: string) => Promise<void>;
 }>();
 
 const tasksStore = useTasksStore();
@@ -111,23 +108,20 @@ watch(
   { immediate: true },
 );
 
+// A new task joins the project by carrying its project tag.
 async function addTask() {
   const name = newTaskName.value.trim();
-  if (!name) return;
+  const projectTagId = props.project.tagId;
+  if (!name || !projectTagId) return;
   errorMessage.value = "";
-  let task: Task;
   try {
-    task = await tasksStore.createTaskFromName(name);
+    await tasksStore.createTask({ name, tagIds: new Set([projectTagId]) });
   } catch {
     errorMessage.value = "Couldn't create the task.";
     return;
   }
   newTaskName.value = "";
-  try {
-    await props.assignTask(task.tagId);
-  } catch {
-    errorMessage.value = `Created "${task.name}", but couldn't add it to this project. Add its tag to the project's tags to assign it.`;
-  }
+  await load();
 }
 
 // Changes go straight to the API rather than through the tasks store, whose
