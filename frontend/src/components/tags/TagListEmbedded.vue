@@ -123,12 +123,10 @@ const canCreateFromCurrentQuery = computed(() => {
 });
 
 // The kinds of tags a search without an owner prefix asks the server for:
-// regular tags and each owned kind offered, or every tag when all are
-// offered. Kinds the picker doesn't offer aren't searched, so they can't
-// fill up the server's result limit ahead of ones it does.
-const searchedKinds = computed<TagKind[]>(() =>
-  allTagOwnerKinds.every((kind) => ownerKinds.includes(kind)) ? ["all"] : ["label", ...ownerKinds],
-);
+// regular tags and each owned kind offered, each searched on its own so one
+// kind's matches can't fill up the server's result limit ahead of another's.
+// Kinds the picker doesn't offer aren't searched at all.
+const searchedKinds = computed<TagKind[]>(() => ["label", ...ownerKinds]);
 
 // Guards against overlapping searches: a slower response for an older query
 // (including a search cleared out from under it) must not replace the
@@ -151,7 +149,7 @@ async function search(query: string) {
   const owner = ownerQuery(query);
   const kinds = owner ? [owner.spec.kind] : searchedKinds.value;
   const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kinds);
-  const mayShowTaskTags = kinds.some((kind) => kind === "task" || kind === "all");
+  const mayShowTaskTags = kinds.includes("task");
   if (mayShowTaskTags && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
     tasksStore.fetchTasks().catch(() => {

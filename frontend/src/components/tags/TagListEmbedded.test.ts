@@ -151,10 +151,13 @@ function emptyPage() {
 
 test("finds tags beyond the cached page by searching the server", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
-  searchTags.mockResolvedValue([
-    tag({ id: "far", name: "far-away" }),
-    tag({ id: "task", name: "far task", owner: { kind: "task", id: "t1" } }),
-  ]);
+  searchTags.mockImplementation(async (_query: string, kind: string) =>
+    kind === "label"
+      ? [tag({ id: "far", name: "far-away" })]
+      : kind === "task"
+        ? [tag({ id: "task", name: "far task", owner: { kind: "task", id: "t1" } })]
+        : [],
+  );
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
   await flushPromises();
@@ -164,7 +167,13 @@ test("finds tags beyond the cached page by searching the server", async () => {
   await input.setValue("far");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("far", "all");
+  // Each kind is searched on its own, so regular tags can't crowd owned
+  // ones out of the server's result limit.
+  expect(searchTags.mock.calls).toEqual([
+    ["far", "label"],
+    ["far", "task"],
+    ["far", "project"],
+  ]);
   expect(wrapper.text()).toContain("far-away");
   // Task tags show with a leading "#".
   expect(wrapper.text()).toContain("#far task");
@@ -236,7 +245,8 @@ test("debounces server search and does not refetch tasks on every keystroke", as
   expect(searchTags).not.toHaveBeenCalled();
 
   await settleSearch();
-  expect(searchTags).toHaveBeenCalledOnce();
+  // One search, sent as a request per tag kind.
+  expect(searchTags).toHaveBeenCalledTimes(3);
   expect(listAllTasks).toHaveBeenCalledOnce();
 
   await input.setValue("far ");
