@@ -41,6 +41,7 @@
 import SelectDropdown from "@/components/inputs/SelectDropdown.vue";
 import TagItem from "@/components/tags/TagItem.vue";
 import { allTagOwnerKinds, isOwnedBy, parseOwnerQuery } from "@/helpers/tagOwners";
+import type { TagKind } from "@/api";
 import type { Tag, TagOwnerKind } from "@/model";
 import { useTagsStore } from "@/stores/tags";
 import { useTasksStore } from "@/stores/tasks";
@@ -114,6 +115,14 @@ const canCreateFromCurrentQuery = computed(() => {
   return !owner || canCreateOwner(owner);
 });
 
+// The kinds of tags a search without an owner prefix asks the server for:
+// regular tags and each owned kind offered, or every tag when all are
+// offered. Kinds the picker doesn't offer aren't searched, so they can't
+// fill up the server's result limit ahead of ones it does.
+const searchedKinds = computed<TagKind[]>(() =>
+  allTagOwnerKinds.every((kind) => ownerKinds.includes(kind)) ? ["all"] : ["label", ...ownerKinds],
+);
+
 // Guards against overlapping searches: a slower response for an older query
 // (including a search cleared out from under it) must not replace the
 // results for the newer one.
@@ -133,9 +142,9 @@ async function search(query: string) {
   }
 
   const owner = ownerQuery(query);
-  const kind = owner?.spec.kind ?? (ownerKinds.length === 0 ? "label" : "all");
-  const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kind);
-  const mayShowTaskTags = kind === "task" || (kind === "all" && ownerKinds.includes("task"));
+  const kinds = owner ? [owner.spec.kind] : searchedKinds.value;
+  const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kinds);
+  const mayShowTaskTags = kinds.some((kind) => kind === "task" || kind === "all");
   if (mayShowTaskTags && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
     tasksStore.fetchTasks().catch(() => {

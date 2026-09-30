@@ -766,6 +766,29 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.id)).toEqual(["cached"]);
   });
 
+  it("searches each of several kinds on its own and merges the results", async () => {
+    const label = makeTag({ id: "label", name: "web label" });
+    const project = makeTag({ id: "project", name: "web", owner: { kind: "project", id: "p1" } });
+    api.listTagsPaginated.mockResolvedValue({
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
+    });
+    api.searchTags.mockImplementation(async (_q, kind) =>
+      kind === "label" ? [label] : kind === "project" ? [project] : [],
+    );
+
+    const store = useStore();
+    await store.fetchTags();
+    const result = await store.searchTagsOnServer("web", ["label", "project"]);
+
+    expect(api.searchTags).toHaveBeenCalledTimes(2);
+    expect(api.searchTags).toHaveBeenCalledWith("web", "label");
+    expect(api.searchTags).toHaveBeenCalledWith("web", "project");
+    // The exact match ranks first.
+    expect(result.map((t) => t.id)).toEqual(["project", "label"]);
+    expect(store.getTagById("project")).toEqual(project);
+  });
+
   it.each(["task", "project"] as const)(
     "searches only %s tags on the server when asked for them",
     async (kind) => {

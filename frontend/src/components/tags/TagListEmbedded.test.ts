@@ -392,7 +392,10 @@ test("only offers the owned tag kinds it is given", async () => {
   await input.setValue("web");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("web", "all");
+  // Only the kinds offered are searched, each on its own.
+  expect(searchTags).toHaveBeenCalledWith("web", "label");
+  expect(searchTags).toHaveBeenLastCalledWith("web", "task");
+  expect(searchTags).not.toHaveBeenCalledWith("web", "all");
   expect(wrapper.text()).toContain("web label");
   expect(wrapper.text()).toContain("#web task");
   expect(wrapper.text()).not.toContain("web project");
@@ -400,5 +403,6 @@ test("only offers the owned tag kinds it is given", async () => {
   // "@" isn't a prefix here, so it is searched as part of the name.
   await input.setValue("@web");
   await settleSearch();
-  expect(searchTags).toHaveBeenLastCalledWith("@web", "all");
+  expect(searchTags).toHaveBeenCalledWith("@web", "label");
+  expect(searchTags).toHaveBeenLastCalledWith("@web", "task");
 });
