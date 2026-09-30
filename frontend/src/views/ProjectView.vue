@@ -113,7 +113,7 @@ async function deleteProject() {
   } catch (error) {
     errorMessage.value =
       error instanceof ResponseError && error.response.status === 409
-        ? `Time is logged under @${project.value.name}, so this project can't be deleted. Archive it instead.`
+        ? "Time is logged under this project's own tag, so it can't be deleted. Archive it instead."
         : "Couldn't delete the project.";
     return; // Only navigate away if deletion was successful
   }
