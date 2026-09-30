@@ -158,7 +158,12 @@ const route = useRoute();
 const router = useRouter();
 
 const task = ref<Task | null>(null);
-const taskTag = ref<Tag | null>(null);
+// Read from the tags store rather than kept locally, so the color the server
+// derives from the task's regular tags updates once the store refetches it
+// after a save.
+const taskTag = computed<Tag | null>(() =>
+  task.value ? (tagsStore.getTagById(task.value.tagId) ?? null) : null,
+);
 const parent = ref<Task | null>(null);
 const projects = ref<Project[]>([]);
 const subtasks = ref<Task[]>([]);
@@ -213,7 +218,7 @@ async function load(id: string) {
   notFound.value = false;
   applyTask(loaded);
 
-  const [tag, parentTask, subtaskList] = await Promise.all([
+  const [, parentTask, subtaskList] = await Promise.all([
     tagsStore.fetchTagById(loaded.tagId).catch(() => null),
     loaded.parentId
       ? (tasksStore.getTaskById(loaded.parentId) ??
@@ -223,7 +228,6 @@ async function load(id: string) {
     projectsStore.fetchProjects().catch(() => undefined),
   ]);
   if (token !== loadToken) return;
-  taskTag.value = tag;
   parent.value = parentTask;
   subtasks.value = subtaskList;
   const resolvedProjects = await Promise.all(

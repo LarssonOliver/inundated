@@ -458,6 +458,62 @@ describe("tags store", () => {
     await expect(store.fetchTagById("missing")).rejects.toThrow();
   });
 
+  it("refetches a cached tag on refresh", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    api.getTagsByIds.mockResolvedValueOnce([stale]).mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
+  it("doesn't fetch an uncached tag on refresh", async () => {
+    const store = useStore();
+    await store.refreshTag("1");
+    expect(api.getTagsByIds).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cached tag when a refresh fails", async () => {
+    const cached = makeTag({ id: "1" });
+    api.getTagsByIds.mockResolvedValueOnce([cached]).mockRejectedValueOnce(new Error());
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toEqual(cached);
+  });
+
+  it.each([
+    ["updating", (store: ReturnType<typeof useStore>, tag: Tag) => store.updateTag(tag)],
+    ["deleting", (store: ReturnType<typeof useStore>, tag: Tag) => store.deleteTag(tag.id)],
+  ])("refetches cached owned tags after %s a regular tag", async (_, change) => {
+    const regular = makeTag({ id: "r" });
+    const owned = makeTag({ id: "o", color: "#111111", owner: { kind: "task", id: "t" } });
+    const recolored = { ...owned, color: "#222222" };
+    api.createTag.mockResolvedValue(regular);
+    api.updateTag.mockResolvedValue(regular);
+    api.getTagsByIds.mockResolvedValueOnce([owned]).mockResolvedValueOnce([recolored]);
+    const store = useStore();
+    await store.createTag(regular);
+    await store.fetchTagById("o");
+
+    await change(store, regular);
+    await vi.waitFor(() => expect(store.getTagById("o")).toEqual(recolored));
+    expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o"]);
+  });
+
+  it("doesn't refetch owned tags after updating an owned tag", async () => {
+    const owned = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    api.getTagsByIds.mockResolvedValue([owned]);
+    api.updateTag.mockResolvedValue(owned);
+    const store = useStore();
+    await store.fetchTagById("o");
+
+    await store.updateTag(owned);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(api.getTagsByIds).toHaveBeenCalledOnce();
+  });
+
   it("fetches tag stats via the API", async () => {
     const stats = {
       tagId: "1",

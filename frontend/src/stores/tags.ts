@@ -326,6 +326,35 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Refetches a tag if it's cached, so a tag whose color the server
+     * derives from other tags (e.g. a task tag, from its task's regular
+     * tags) doesn't keep showing a stale color after those tags change. The
+     * cached tag stays in place until the fresh one arrives.
+     *
+     * @param id - The ID of the tag to refresh.
+     *
+     * @returns A promise that resolves once the refetch settles (or at once
+     *   if the tag isn't cached).
+     */
+    async function refreshTag(id: string): Promise<void> {
+      if (!getTagById(id)) return;
+      await fetchTagById(id).catch(() => {
+        // Keep the cached tag.
+      });
+    }
+
+    /**
+     * Refreshes every cached owned tag, whose derived color may depend on a
+     * regular tag that just changed.
+     */
+    async function refreshOwnedTags(): Promise<void> {
+      const owned = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
+        .filter((tag) => tag.owner)
+        .map((tag) => tag.id);
+      await Promise.all([...new Set(owned)].map(refreshTag));
+    }
+
+    /**
      * Searches for tags based on a query string. The search is
      * case-insensitive. Exact matches rank first, followed by prefix
      * matches, substring matches, and finally typo-tolerant fuzzy matches;
@@ -392,6 +421,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const { id, ...patch } = tag;
       const updated = await api.updateTag(id, patch);
       tags.value.set(updated.id, updated);
+      if (!updated.owner) void refreshOwnedTags();
       return copyTag(updated);
     }
 
@@ -403,8 +433,10 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the tag is deleted.
      */
     async function deleteTag(id: string): Promise<void> {
+      const owned = !!getTagById(id)?.owner;
       await api.deleteTag(id);
       tags.value.delete(id);
+      if (!owned) void refreshOwnedTags();
     }
 
     /**
@@ -442,6 +474,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       getTagById,
       fetchDetailedTagById,
       fetchTagById,
+      refreshTag,
       searchTags,
       searchTagsOnServer,
       updateTag,

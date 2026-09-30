@@ -4,6 +4,9 @@ import type { Task } from "@/model";
 import type { TasksApi } from "@/api/tasks";
 import { __test__, isTaskOverdue, taskTree } from "@/stores/tasks";
 
+const refreshTag = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag }) }));
+
 function task(partial: Partial<Task> & { id: string }): Task {
   return {
     name: partial.id,
@@ -67,6 +70,7 @@ describe("tasks store", () => {
     };
 
     useStore = __test__.createTasksStore(api);
+    refreshTag.mockReset();
   });
 
   it("fetches open tasks by default and closed ones when asked", async () => {
@@ -121,6 +125,24 @@ describe("tasks store", () => {
       expect.objectContaining({ name: "renamed", totalTimeMs: 1000 }),
     );
     expect(api.listAllTasks).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes the task tag when the task's tags change", async () => {
+    api.updateTask.mockResolvedValue(task({ id: "a", tagIds: new Set(["x"]) }));
+
+    const store = useStore();
+    await store.updateTask("a", { tagIds: new Set(["x"]) });
+
+    expect(refreshTag).toHaveBeenCalledWith("tag-a");
+  });
+
+  it("doesn't refresh the task tag when the task's tags are untouched", async () => {
+    api.updateTask.mockResolvedValue(task({ id: "a", name: "renamed" }));
+
+    const store = useStore();
+    await store.updateTask("a", { name: "renamed" });
+
+    expect(refreshTag).not.toHaveBeenCalled();
   });
 
   it("keeps a task fetched individually in cache after a non-status edit", async () => {

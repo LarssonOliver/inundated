@@ -3,6 +3,7 @@ import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
+import { useTagsStore } from "@/stores/tags";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
@@ -143,10 +144,12 @@ function createTasksStore(api: TasksApi) {
      * Updates a task. Closing or reopening one also changes its subtasks or
      * parents on the server, so the individually-fetched cache is dropped
      * (a fresh fetch is needed to see those cascading effects) and the list
-     * is reloaded afterwards.
+     * is reloaded afterwards. Changing its regular tags changes the color
+     * the server derives for its task tag, so a cached task tag is refetched.
      */
     async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
       const updated = await api.updateTask(id, patch);
+      if (patch.tagIds !== undefined) void useTagsStore().refreshTag(updated.tagId);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
         await fetchTasks();
