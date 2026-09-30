@@ -425,6 +425,7 @@ export type GetTagIncludeEnum = typeof GetTagIncludeEnum[keyof typeof GetTagIncl
 export const ListTagsKindEnum = {
     Label: 'label',
     Task: 'task',
+    Project: 'project',
     All: 'all'
 } as const;
 export type ListTagsKindEnum = typeof ListTagsKindEnum[keyof typeof ListTagsKindEnum];

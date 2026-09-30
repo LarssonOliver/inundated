@@ -32,7 +32,8 @@ type Tag struct {
 type TagOwnerKind string
 
 const (
-	TagOwnerTask TagOwnerKind = "task"
+	TagOwnerTask    TagOwnerKind = "task"
+	TagOwnerProject TagOwnerKind = "project"
 )
 
 // tagOwnerKind holds what differs between kinds of owners.
@@ -44,6 +45,8 @@ type tagOwnerKind struct {
 
 var tagOwnerKinds = map[TagOwnerKind]tagOwnerKind{
 	TagOwnerTask: {derivesColor: true},
+	// A project tag keeps its project's color, stored on the tag.
+	TagOwnerProject: {},
 }
 
 // Valid reports whether k is a known owner kind.
@@ -75,11 +78,12 @@ const (
 // tagHolderRules lists the owned tag kinds each holder may carry; regular
 // tags can go on any of them. Leaving a kind off its own holder keeps
 // links between owners from forming loops: a task can't carry task tags
-// (subtasks nest through their parent instead).
+// (subtasks nest through their parent instead), and a project can't carry
+// project tags.
 var tagHolderRules = map[TagHolder][]TagOwnerKind{
-	TagHolderTask:     {},
+	TagHolderTask:     {TagOwnerProject},
 	TagHolderProject:  {TagOwnerTask},
-	TagHolderTimespan: {TagOwnerTask},
+	TagHolderTimespan: {TagOwnerTask, TagOwnerProject},
 }
 
 // CarriedOwnerKinds returns the owned tag kinds h may carry.

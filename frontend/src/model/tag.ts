@@ -10,8 +10,8 @@ export interface Tag {
   owner?: TagOwner;
 }
 
-/** A kind of item that owns a tag of its own, such as a task. */
-export type TagOwnerKind = "task";
+/** A kind of item that owns a tag of its own: a task ("#") or a project ("@"). */
+export type TagOwnerKind = "task" | "project";
 
 export interface TagOwner {
   kind: TagOwnerKind;

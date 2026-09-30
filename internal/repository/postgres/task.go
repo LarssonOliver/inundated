@@ -473,11 +473,12 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 }
 
 // taskProjectJoinSQL joins a task's effective tags (te) to the live
-// projects (p) carrying one of them, through project_tags (pt). Deleting a
-// tag removes its task_effective_tags rows (see migration 0016), so a
-// since-deleted tag that both still link never joins them.
+// projects (p) they count toward, through project_effective_tags (pt): the
+// project's linked tags and its own project tag. Deleting a tag removes
+// its task_effective_tags rows (see migration 0016), so a since-deleted tag
+// that both still link never joins them.
 const taskProjectJoinSQL = `
-	JOIN project_tags pt ON pt.tag_id = te.tag_id
+	JOIN project_effective_tags pt ON pt.tag_id = te.tag_id
 	JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL`
 
 func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {

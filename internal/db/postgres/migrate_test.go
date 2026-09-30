@@ -382,6 +382,52 @@ func TestIndividualMigrations(t *testing.T) {
 				assertTableNotExists(t, ctx, pool, "tag_owners")
 			},
 		},
+		{
+			name:        "0018_project_tags",
+			fromVersion: 17,
+			toVersion:   18,
+			before: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "projects", "tag_id")
+				_, err := pool.Exec(ctx, `
+					INSERT INTO projects (id, name, color) VALUES
+						('00000000-0000-0000-0000-000000000001', 'Website', '#bf616a'),
+						('00000000-0000-0000-0000-000000000002', 'Old', '#a3be8c')`)
+				require.NoError(t, err)
+				_, err = pool.Exec(ctx, `UPDATE projects SET deleted_at = now() WHERE name = 'Old'`)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnExists(t, ctx, pool, "projects", "tag_id", sptr("uuid"))
+				assertForeignKeyExists(t, ctx, pool, "projects", "projects_tag_id_fkey")
+				assertTableExists(t, ctx, pool, "project_effective_tags")
+
+				// Every project got a tag named and colored like it, deleted
+				// with it, and the live one is listed as its owner.
+				var name, color, kind string
+				var deleted bool
+				require.NoError(t, pool.QueryRow(ctx, `
+					SELECT t.name, t.color, t.deleted_at IS NOT NULL, o.kind
+					FROM projects p JOIN tags t ON t.id = p.tag_id
+					JOIN tag_owners o ON o.tag_id = t.id
+					WHERE p.name = 'Website'`).Scan(&name, &color, &deleted, &kind))
+				require.Equal(t, "Website", name)
+				require.Equal(t, "#bf616a", color)
+				require.False(t, deleted)
+				require.Equal(t, "project", kind)
+				require.NoError(t, pool.QueryRow(ctx, `
+					SELECT t.deleted_at IS NOT NULL
+					FROM projects p JOIN tags t ON t.id = p.tag_id
+					WHERE p.name = 'Old'`).Scan(&deleted))
+				require.True(t, deleted)
+			},
+			afterDown: func(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+				assertColumnNotExists(t, ctx, pool, "projects", "tag_id")
+				assertTableNotExists(t, ctx, pool, "project_effective_tags")
+				var tags int
+				require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM tags`).Scan(&tags))
+				require.Zero(t, tags)
+			},
+		},
 	}
 
 	for _, tc := range tests {

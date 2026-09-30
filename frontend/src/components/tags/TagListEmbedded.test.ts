@@ -2,6 +2,7 @@ import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
 import TagListEmbedded from "./TagListEmbedded.vue";
+import { stringToHexColor } from "@/helpers/colors";
 import type { Tag } from "@/model";
 
 const listTagsPaginated = vi.fn();
@@ -9,6 +10,7 @@ const getTagsByIds = vi.fn();
 const searchTags = vi.fn();
 const listAllTasks = vi.fn();
 const createTask = vi.fn();
+const createProject = vi.fn();
 
 vi.mock("@/api", () => ({
   tagsApi: {
@@ -19,6 +21,12 @@ vi.mock("@/api", () => ({
   tasksApi: {
     listAllTasks: (...args: unknown[]) => listAllTasks(...args),
     createTask: (...args: unknown[]) => createTask(...args),
+  },
+}));
+
+vi.mock("@/api/projects", () => ({
+  projectsApi: {
+    createProject: (...args: unknown[]) => createProject(...args),
   },
 }));
 
@@ -36,6 +44,7 @@ beforeEach(() => {
   listAllTasks.mockReset();
   listAllTasks.mockResolvedValue([]);
   createTask.mockReset();
+  createProject.mockReset();
 });
 
 afterEach(() => {
@@ -219,7 +228,7 @@ test("debounces server search and does not refetch tasks on every keystroke", as
   expect(listAllTasks).toHaveBeenCalledOnce();
 });
 
-test("without allowTaskCreation, a leading # still narrows the search to tasks but offers no create option", async () => {
+test("without task creation, a leading # still narrows the search to tasks but offers no create option", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([
     tag({ id: "t1", name: "Write report", owner: { kind: "task", id: "task-1" } }),
@@ -265,7 +274,7 @@ test("a leading # searches tasks only and offers to create a task", async () => 
   listTagsPaginated.mockResolvedValue(emptyPage());
 
   const wrapper = mount(TagListEmbedded, {
-    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+    props: { modelValue: new Set<string>(), createOwners: ["task"] },
   });
   await flushPromises();
 
@@ -293,7 +302,7 @@ test("# plus enter creates a task and adds its task tag", async () => {
   ]);
 
   const wrapper = mount(TagListEmbedded, {
-    props: { modelValue: new Set<string>(), allowTaskCreation: true },
+    props: { modelValue: new Set<string>(), createOwners: ["task"] },
   });
   await flushPromises();
 
@@ -309,12 +318,12 @@ test("# plus enter creates a task and adds its task tag", async () => {
   expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["task-tag-1"]));
 });
 
-test("labelsOnly leaves task tags out and treats # as part of the name", async () => {
+test("with no owner kinds, owned tags are left out and # is part of the name", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([tag({ id: "label", name: "#hash" })]);
 
   const wrapper = mount(TagListEmbedded, {
-    props: { modelValue: new Set<string>(), labelsOnly: true },
+    props: { modelValue: new Set<string>(), ownerKinds: [] },
   });
   await flushPromises();
 
@@ -325,4 +334,71 @@ test("labelsOnly leaves task tags out and treats # as part of the name", async (
 
   expect(searchTags).toHaveBeenLastCalledWith("#hash", "label");
   expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');
+});
+
+test("@ plus enter creates a project colored from its name and adds its project tag", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  createProject.mockResolvedValue({
+    id: "project-1",
+    name: "Website",
+    color: "#123456",
+    tagIds: new Set(),
+    tagId: "project-tag-1",
+    archived: false,
+  });
+  getTagsByIds.mockResolvedValue([
+    tag({ id: "project-tag-1", name: "Website", owner: { kind: "project", id: "project-1" } }),
+  ]);
+
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), createOwners: ["project"] },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("@Website");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("Website", "project");
+  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create project "Website"');
+
+  await input.trigger("keydown", { key: "Enter" });
+  await flushPromises();
+
+  expect(createProject).toHaveBeenCalledWith(
+    expect.objectContaining({ name: "Website", color: stringToHexColor("Website") }),
+  );
+  const emitted = wrapper.emitted("update:modelValue");
+  expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["project-tag-1"]));
+});
+
+test("only offers the owned tag kinds it is given", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([
+    tag({ id: "label", name: "web label" }),
+    tag({ id: "task-tag", name: "web task", owner: { kind: "task", id: "task-1" } }),
+    tag({ id: "project-tag", name: "web project", owner: { kind: "project", id: "project-1" } }),
+  ]);
+
+  // A project can carry task tags but not project tags.
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), ownerKinds: ["task"] },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("web");
+  await settleSearch();
+
+  expect(searchTags).toHaveBeenLastCalledWith("web", "all");
+  expect(wrapper.text()).toContain("web label");
+  expect(wrapper.text()).toContain("#web task");
+  expect(wrapper.text()).not.toContain("web project");
+
+  // "@" isn't a prefix here, so it is searched as part of the name.
+  await input.setValue("@web");
+  await settleSearch();
+  expect(searchTags).toHaveBeenLastCalledWith("@web", "all");
 });

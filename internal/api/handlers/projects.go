@@ -54,6 +54,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
@@ -97,6 +98,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
@@ -141,6 +143,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 	for _, project := range page.Data {
 		apiProject := api.Project{
 			Id:              project.Id,
+			TagId:           project.TagId,
 			Name:            project.Name,
 			Color:           project.Color,
 			TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
@@ -208,6 +211,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),

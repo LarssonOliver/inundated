@@ -13,6 +13,7 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       color: apiModel.color,
       timeBudgetHours: apiModel.timeBudgetHours,
       tagIds: new Set(apiModel.tagIds || []),
+      tagId: apiModel.tagId,
       totalTimeMs: apiModel.totalTimeMs,
       ...(apiModel.taskTimeMs !== undefined && { taskTimeMs: apiModel.taskTimeMs }),
       archived: apiModel.archived,
@@ -25,6 +26,8 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       color: domainModel.color,
       timeBudgetHours: domainModel.timeBudgetHours,
       tagIds: domainModel.tagIds.size > 0 ? new Set(domainModel.tagIds) : undefined,
+      // Only the server assigns it; a project not yet saved has none.
+      tagId: domainModel.tagId ?? "",
       archived: domainModel.archived,
     };
   },

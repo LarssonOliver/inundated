@@ -31,7 +31,7 @@ carry several task tags, and its time counts toward each of them.
 
 Task tags take their color from the task's first tag, or a default blue when
 the task has none. They aren't listed on the Tags page, and a task can't be
-tagged with another task's tag. Two tasks may share a name.
+tagged with another task's tag, though it can carry project `@` tags. Two tasks may share a name.
 
 ## Where task time counts
 
@@ -49,10 +49,12 @@ an hour logged on `#Hero section` counts toward *Hero section*, *Build
 landing page*, the `design` tag and the *Website* project. An entry still
 counts only once toward a project, however many of its tags the project has.
 
-A task belongs to a project in two ways:
+A task belongs to a project in three ways:
 
 - **Assigned**: its task tag is one of the project's tags. Adding a task's
   tag to a project assigns it, and a task can be assigned to many projects.
+- **Tagged with the project**: it carries the project's `@` tag, directly
+  or through a parent.
 - **Shared tag**: it carries one of the project's regular tags, directly or
   through a parent.
 

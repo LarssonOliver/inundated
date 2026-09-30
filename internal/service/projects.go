@@ -19,15 +19,16 @@ func (s *ServiceImpl) GetProject(ctx context.Context, id uuid.UUID, includes *Pr
 	}
 
 	if includes != nil {
-		if includes.TotalTime && len(project.TagIds) > 0 {
-			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, project.TagIds)
+		tagIds := project.EffectiveTagIds()
+		if includes.TotalTime && len(tagIds) > 0 {
+			totalTime, err := s.repository.GetTotalDurationByTags(ctx, scope, tagIds)
 			if err != nil {
 				return model.Project{}, err
 			}
 			project.TotalTime = &totalTime
 		}
-		if includes.TaskTime && len(project.TagIds) > 0 {
-			taskTime, err := s.repository.GetTaskDurationByTags(ctx, scope, project.TagIds)
+		if includes.TaskTime && len(tagIds) > 0 {
+			taskTime, err := s.repository.GetTaskDurationByTags(ctx, scope, tagIds)
 			if err != nil {
 				return model.Project{}, err
 			}

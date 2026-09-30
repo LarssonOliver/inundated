@@ -36,7 +36,11 @@
         <input v-model="draft.estimateHours" type="number" min="0" step="0.25" />
 
         <p class="field-label">Tags</p>
-        <TagListEmbedded v-model="draft.tagIds" labels-only />
+        <TagListEmbedded
+          v-model="draft.tagIds"
+          :owner-kinds="['project']"
+          :create-owners="['project']"
+        />
 
         <div class="button-container">
           <button class="btn-info" :disabled="!draft.name.trim()" @click="save">Save</button>

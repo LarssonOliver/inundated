@@ -26,6 +26,10 @@ describe("tagOwners", () => {
   it("routes an owned tag to its owner", () => {
     expect(tagOwnerRoute(taskTag)).toEqual({ name: "Task", params: { id: "task-1" } });
     expect(tagOwnerRoute(label)).toBeUndefined();
+    expect(tagOwnerRoute({ ...label, owner: { kind: "project", id: "project-1" } })).toEqual({
+      name: "Project",
+      params: { id: "project-1" },
+    });
   });
 
   it("parses a prefixed picker query into kind and name", () => {
@@ -34,6 +38,12 @@ describe("tagOwners", () => {
       name: "write report",
     });
     expect(parseOwnerQuery("#")).toMatchObject({ spec: { kind: "task" }, name: "" });
+    expect(parseOwnerQuery("@ website")).toMatchObject({
+      spec: { kind: "project", prefix: "@" },
+      name: "website",
+    });
     expect(parseOwnerQuery("design")).toBeNull();
+    // Only the given kinds' prefixes count.
+    expect(parseOwnerQuery("@website", ["task"])).toBeNull();
   });
 });

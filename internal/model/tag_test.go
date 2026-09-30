@@ -31,6 +31,7 @@ func TestDerivedTagColor(t *testing.T) {
 func TestTagHolderMayCarry(t *testing.T) {
 	label := Tag{Id: uuid.New()}
 	taskTag := Tag{Id: uuid.New(), Owner: &TagOwner{Kind: TagOwnerTask, Id: uuid.New()}}
+	projectTag := Tag{Id: uuid.New(), Owner: &TagOwner{Kind: TagOwnerProject, Id: uuid.New()}}
 
 	tests := []struct {
 		holder TagHolder
@@ -39,6 +40,9 @@ func TestTagHolderMayCarry(t *testing.T) {
 	}{
 		{TagHolderTask, label, true},
 		{TagHolderTask, taskTag, false},
+		{TagHolderTask, projectTag, true},
+		{TagHolderProject, projectTag, false},
+		{TagHolderTimespan, projectTag, true},
 		{TagHolderProject, label, true},
 		{TagHolderProject, taskTag, true},
 		{TagHolderTimespan, label, true},
@@ -52,6 +56,7 @@ func TestTagHolderMayCarry(t *testing.T) {
 func TestTagIsDerived(t *testing.T) {
 	require.False(t, Tag{}.IsDerived())
 	require.True(t, Tag{Owner: &TagOwner{Kind: TagOwnerTask}}.IsDerived())
+	require.False(t, Tag{Owner: &TagOwner{Kind: TagOwnerProject}}.IsDerived())
 }
 
 func TestTagKindOwnerKind(t *testing.T) {

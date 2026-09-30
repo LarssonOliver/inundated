@@ -52,7 +52,12 @@
     <span v-if="task.closeReason === 'ignored'" class="badge">Ignored</span>
 
     <div ref="tagsFieldEl" class="task-tags">
-      <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" labels-only />
+      <TagListEmbedded
+        v-if="editingField === 'tags'"
+        v-model="tagsDraft"
+        :owner-kinds="['project']"
+        :create-owners="['project']"
+      />
       <button
         v-else
         class="field-trigger tags-trigger"

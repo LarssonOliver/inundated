@@ -214,9 +214,9 @@ tagKindQuery:
   required: false
   description: >
     Which tags to return: regular tags (label), the tags owned by one kind
-    of item (task, see TagOwnerKind), or every tag (all). Defaults to
-    label.
+    of item (task or project, see TagOwnerKind), or every tag (all).
+    Defaults to label.
   schema:
     type: string
-    enum: [label, task, all]
+    enum: [label, task, project, all]
     default: label

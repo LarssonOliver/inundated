@@ -303,7 +303,7 @@ func TestCreateTimespan_Success(t *testing.T) {
 	ts := aTimespan()
 
 	mock.ExpectBegin()
-	expectTagsInScope(mock, ts.TagIds)
+	expectTagsInScope(mock, model.TagHolderTimespan, ts.TagIds)
 	mock.ExpectQuery(`INSERT INTO timespans \(id, name, start_time, end_time, user_id\) VALUES \(\$1, \$2, \$3, \$4, \$5\) RETURNING id, name, start_time, end_time, user_id`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
@@ -325,7 +325,7 @@ func TestCreateTimespan_GeneratesIdWhenNil(t *testing.T) {
 
 	generatedId := uuid.New()
 	mock.ExpectBegin()
-	expectTagsInScope(mock, ts.TagIds)
+	expectTagsInScope(mock, model.TagHolderTimespan, ts.TagIds)
 	mock.ExpectQuery(`INSERT INTO timespans \(id, name, start_time, end_time, user_id\) VALUES \(\$1, \$2, \$3, \$4, \$5\) RETURNING id, name, start_time, end_time, user_id`).
 		WithArgs(pgxmock.AnyArg(), ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
@@ -372,7 +372,7 @@ func TestCreateTimespan_ZeroEndTimeAllowed(t *testing.T) {
 	ts.EndTime = time.Time{}
 
 	mock.ExpectBegin()
-	expectTagsInScope(mock, ts.TagIds)
+	expectTagsInScope(mock, model.TagHolderTimespan, ts.TagIds)
 	mock.ExpectQuery(`INSERT INTO timespans \(id, name, start_time, end_time, user_id\) VALUES \(\$1, \$2, \$3, \$4, \$5\) RETURNING id, name, start_time, end_time, user_id`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
@@ -397,7 +397,7 @@ func TestCreateTimespan_ForeignTagRejected(t *testing.T) {
 		rows.AddRow(tid, nil)
 	}
 	mock.ExpectQuery(`SELECT t\.id, CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.id = ANY\(\$1\) AND t\.deleted_at IS NULL AND \(o\.tag_id IS NULL OR o\.kind = ANY\(\$2\)\) AND t\.user_id = \$3`).
-		WithArgs(ts.TagIds, []string{"task"}, *testScope.UserID()).
+		WithArgs(ts.TagIds, carriedKinds(model.TagHolderTimespan), *testScope.UserID()).
 		WillReturnRows(rows)
 	mock.ExpectRollback()
 
@@ -414,7 +414,7 @@ func TestUpdateTimespan_Success(t *testing.T) {
 	ts.Name = "renamed session"
 
 	mock.ExpectBegin()
-	expectTagsInScope(mock, ts.TagIds)
+	expectTagsInScope(mock, model.TagHolderTimespan, ts.TagIds)
 	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(timespanCols).
@@ -434,7 +434,7 @@ func TestUpdateTimespan_NotFound(t *testing.T) {
 	ts := aTimespan()
 
 	mock.ExpectBegin()
-	expectTagsInScope(mock, ts.TagIds)
+	expectTagsInScope(mock, model.TagHolderTimespan, ts.TagIds)
 	mock.ExpectQuery(`UPDATE timespans .* WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$5 RETURNING id, name, start_time, end_time, user_id`).
 		WithArgs(ts.Id, ts.Name, ts.StartTime, ts.EndTime, *testScope.UserID()).
 		WillReturnError(pgx.ErrNoRows)

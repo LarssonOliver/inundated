@@ -40,24 +40,33 @@
 <script setup lang="ts">
 import SelectDropdown from "@/components/inputs/SelectDropdown.vue";
 import TagItem from "@/components/tags/TagItem.vue";
-import { isOwnedBy, parseOwnerQuery } from "@/helpers/tagOwners";
-import type { Tag } from "@/model";
+import { allTagOwnerKinds, isOwnedBy, parseOwnerQuery } from "@/helpers/tagOwners";
+import type { Tag, TagOwnerKind } from "@/model";
 import { useTagsStore } from "@/stores/tags";
 import { useTasksStore } from "@/stores/tasks";
 import { computed, ref, watch } from "vue";
 
 const model = defineModel<Set<string>>({ default: new Set<string>() });
-const { readOnly, labelsOnly, allowTaskCreation } = defineProps<{
+const {
+  readOnly,
+  ownerKinds = allTagOwnerKinds,
+  createOwners = [],
+} = defineProps<{
   readOnly?: boolean;
-  /** Offer regular tags only, no owned tags. */
-  labelsOnly?: boolean;
   /**
-   * Lets typing "#name" search task tags only and create a new task from
-   * this picker, e.g. for tagging a timespan to log time on a task. Off by
-   * default so an unrelated picker (project tags, etc.) can't accidentally
-   * create a task just because someone typed a leading "#".
+   * The kinds of owned tags offered besides regular tags, matching what the
+   * item being tagged may carry: e.g. a task takes project tags but not
+   * task tags, and a project takes task tags but not project tags. Every
+   * kind by default; none for regular tags only.
    */
-  allowTaskCreation?: boolean;
+  ownerKinds?: readonly TagOwnerKind[];
+  /**
+   * The kinds of owners this picker may create from "prefix + name" (e.g.
+   * "#name" for a task, "@name" for a project), for tagging a timespan to
+   * log time on a new task. None by default, so an unrelated picker can't
+   * accidentally create one just because someone typed a leading prefix.
+   */
+  createOwners?: readonly TagOwnerKind[];
 }>();
 
 const tagsStore = useTagsStore();
@@ -71,33 +80,34 @@ const rawSearchResults = ref<Tag[]>([]);
 const tagSearchResult = computed(() =>
   rawSearchResults.value
     .filter((tag) => !tag.archived && !model.value.has(tag.id))
-    .filter((tag) => !labelsOnly || !tag.owner)
+    .filter((tag) => !tag.owner || ownerKinds.includes(tag.owner.kind))
     .slice(0, 8),
 );
 
 /**
  * Returns the owner kind and name typed after a leading owner prefix ("#"
- * for tasks, see helpers/tagOwners), or null when the query has none. A
- * prefix always narrows the search to that kind's tags (and is stripped
- * from what's actually searched for) whenever owned tags aren't excluded
- * outright by labelsOnly; creating a new owner from an unmatched query
- * additionally requires that this picker allows it, guarded separately
- * below.
+ * for tasks, "@" for projects, see helpers/tagOwners), or null when the
+ * query has none. A prefix of a kind this picker offers always narrows the
+ * search to that kind's tags (and is stripped from what's actually
+ * searched for); any other prefix is just part of the name. Creating a new
+ * owner from an unmatched query additionally requires createOwners,
+ * guarded separately below.
  */
 function ownerQuery(query: string) {
-  return labelsOnly ? null : parseOwnerQuery(query);
+  return parseOwnerQuery(query, ownerKinds);
 }
 
 /** Whether this picker may create an owner of the kind the query names. */
 function canCreateOwner(owner: NonNullable<ReturnType<typeof ownerQuery>>): boolean {
-  return owner.spec.kind === "task" && allowTaskCreation;
+  return createOwners.includes(owner.spec.kind);
 }
 
 // Tracks the live search box text (updated per keystroke, ahead of the
 // debounced search itself) so the "create" option can be hidden instantly
 // for a "#query" when this picker isn't allowed to create tasks - showing
 // "Create task ..." there, or falling back to literally creating a regular
-// tag named "#query", would both be wrong.
+// tag named "#query", would both be wrong. Likewise for "@query" and
+// projects.
 const currentQuery = ref("");
 const canCreateFromCurrentQuery = computed(() => {
   const owner = ownerQuery(currentQuery.value);
@@ -123,7 +133,7 @@ async function search(query: string) {
   }
 
   const owner = ownerQuery(query);
-  const kind = labelsOnly ? "label" : (owner?.spec.kind ?? "all");
+  const kind = owner?.spec.kind ?? (ownerKinds.length === 0 ? "label" : "all");
   const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kind);
   if (kind !== "label" && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
@@ -211,10 +221,10 @@ async function onTagCreate(query: string) {
     // (see canCreateFromCurrentQuery), so this only guards against it
     // somehow still firing.
     if (!canCreateOwner(owner) || !owner.name) return;
-    const task = await tasksStore.createTaskFromName(owner.name);
-    // Fetch the new task tag so its pill can show before the next refresh.
-    await tagsStore.fetchTagById(task.tagId);
-    model.value = new Set([...model.value, task.tagId]);
+    const tagId = await owner.spec.create(owner.name);
+    // Fetch the new owned tag so its pill can show before the next refresh.
+    await tagsStore.fetchTagById(tagId);
+    model.value = new Set([...model.value, tagId]);
     return;
   }
 

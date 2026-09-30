@@ -1,10 +1,17 @@
 Project:
   type: object
-  required: [id, name, color, archived]
+  required: [id, name, color, archived, tagId]
   properties:
     id:
       type: string
       format: uuid
+    tagId:
+      type: string
+      format: uuid
+      description: The project's own project tag, shown as "@name". Time
+        spans and tasks carrying it count toward the project, like those
+        carrying any of tagIds, which never include it. Its name, color and
+        archived state follow the project.
     name:
       type: string
       minLength: 1

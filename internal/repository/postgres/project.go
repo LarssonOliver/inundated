@@ -19,13 +19,13 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
 	q := `
-		SELECT id, name, color, time_budget, user_id, archived_at
+		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var p model.Project
 	var archivedAt *time.Time
-	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt, &p.TagId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
 	}
@@ -57,7 +57,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 
 	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	dataQ := `
-		SELECT id, name, color, time_budget, user_id, archived_at
+		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
 		ORDER BY name
@@ -74,7 +74,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 	for rows.Next() {
 		var p model.Project
 		var archivedAt *time.Time
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt, &p.TagId); err != nil {
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		p.Archived = archivedAt != nil
@@ -124,12 +124,21 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("CreateProject: %w", model.ErrInvalidReference)
 		}
 
+		// The project tag's name and color follow the project's.
+		tagId := uuid.New()
+		if _, err := q.Exec(ctx,
+			`INSERT INTO tags (id, name, color, user_id) VALUES ($1, $2, $3, $4)`,
+			tagId, project.Name, project.Color, scope.UserID(),
+		); err != nil {
+			return fmt.Errorf("CreateProject tag: %w", err)
+		}
+
 		const insert = `
-			INSERT INTO projects (id, name, color, time_budget, user_id)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, name, color, time_budget, user_id`
-		if err := q.QueryRow(ctx, insert, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
-			Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId); err != nil {
+			INSERT INTO projects (id, name, color, time_budget, user_id, tag_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, name, color, time_budget, user_id, tag_id`
+		if err := q.QueryRow(ctx, insert, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID(), tagId).
+			Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId, &created.TagId); err != nil {
 			return fmt.Errorf("CreateProject: %w", err)
 		}
 		return setLinkedTags(ctx, q, "project_tags", "project_id", created.Id, project.TagIds)
@@ -167,10 +176,10 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			UPDATE projects SET name = $2, color = $3, time_budget = $4,
 				archived_at = CASE WHEN $5 THEN COALESCE(archived_at, now()) ELSE NULL END
 			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-			RETURNING id, name, color, time_budget, user_id, archived_at`
+			RETURNING id, name, color, time_budget, user_id, archived_at, tag_id`
 		var archivedAt *time.Time
 		err = q.QueryRow(ctx, update, args...).
-			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId, &archivedAt)
+			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId, &archivedAt, &updated.TagId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("UpdateProject %s: %w", project.Id, model.ErrNotFound)
 		}
@@ -178,6 +187,9 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
+		if _, err := q.Exec(ctx, `UPDATE tags SET name = $2, color = $3 WHERE id = $1`, updated.TagId, updated.Name, updated.Color); err != nil {
+			return fmt.Errorf("UpdateProject tag: %w", err)
+		}
 		return setLinkedTags(ctx, q, "project_tags", "project_id", updated.Id, project.TagIds)
 	})
 	if err != nil {
@@ -196,16 +208,26 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	q := `
 		UPDATE projects
 		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
+		RETURNING tag_id`
 
-	res, err := r.db.Exec(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("DeleteProject: %w", err)
-	}
-	if res.RowsAffected() == 0 {
-		return fmt.Errorf("DeleteProject %s: %w", id, model.ErrNotFound)
-	}
-	return nil
+	return r.withTx(ctx, func(tx Querier) error {
+		var tagId uuid.UUID
+		err := tx.QueryRow(ctx, q, args...).Scan(&tagId)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("DeleteProject %s: %w", id, model.ErrNotFound)
+		}
+		if err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+		// The project tag goes with its project; deleting it drops it from
+		// task_effective_tags (see migration 0016), so the time it
+		// attributed counts toward nothing anymore.
+		if _, err := tx.Exec(ctx, `UPDATE tags SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, tagId); err != nil {
+			return fmt.Errorf("DeleteProject tag: %w", err)
+		}
+		return nil
+	})
 }
 
 // projectTagIds returns the live tag IDs linked to a project (see

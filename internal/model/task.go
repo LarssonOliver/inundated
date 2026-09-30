@@ -116,13 +116,14 @@ type TaskListParams struct {
 
 // TagKind selects the tags ListTags returns: regular tags (TagKindLabel),
 // every tag (TagKindAll), or the tags owned by one kind of owner, whose
-// TagKind is the TagOwnerKind itself (TagKindTask).
+// TagKind is the TagOwnerKind itself (TagKindTask, TagKindProject).
 type TagKind string
 
 const (
-	TagKindLabel TagKind = "label"
-	TagKindTask          = TagKind(TagOwnerTask)
-	TagKindAll   TagKind = "all"
+	TagKindLabel   TagKind = "label"
+	TagKindTask            = TagKind(TagOwnerTask)
+	TagKindProject         = TagKind(TagOwnerProject)
+	TagKindAll     TagKind = "all"
 )
 
 // OwnerKind returns the owner kind k selects, if it selects one.

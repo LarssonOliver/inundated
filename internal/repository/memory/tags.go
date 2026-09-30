@@ -78,24 +78,29 @@ func (t *MemoryStore) GetTag(ctx context.Context, scope model.OwnerScope, id uui
 	return t.newTagLookup().view(t.tags[idx]), nil
 }
 
-// tagLookup indexes tags and tasks by id, so viewing many tags doesn't
-// rescan both slices for each one.
+// tagLookup indexes tags and their owners by id, so viewing many tags
+// doesn't rescan every slice for each one.
 type tagLookup struct {
-	tags  map[uuid.UUID]model.Tag
-	tasks map[uuid.UUID]model.Task
+	tags     map[uuid.UUID]model.Tag
+	tasks    map[uuid.UUID]model.Task
+	projects map[uuid.UUID]model.Project
 }
 
-// newTagLookup indexes t's tags and tasks. Callers must hold t.mu.
+// newTagLookup indexes t's tags and their owners. Callers must hold t.mu.
 func (t *MemoryStore) newTagLookup() tagLookup {
 	l := tagLookup{
-		tags:  make(map[uuid.UUID]model.Tag, len(t.tags)),
-		tasks: make(map[uuid.UUID]model.Task, len(t.tasks)),
+		tags:     make(map[uuid.UUID]model.Tag, len(t.tags)),
+		tasks:    make(map[uuid.UUID]model.Task, len(t.tasks)),
+		projects: make(map[uuid.UUID]model.Project, len(t.projects)),
 	}
 	for _, tag := range t.tags {
 		l.tags[tag.Id] = tag
 	}
 	for _, task := range t.tasks {
 		l.tasks[task.Id] = task
+	}
+	for _, project := range t.projects {
+		l.projects[project.Id] = project
 	}
 	return l
 }
@@ -110,6 +115,10 @@ func (l tagLookup) view(tag model.Tag) model.Tag {
 	case model.TagOwnerTask:
 		if task, ok := l.tasks[tag.Owner.Id]; ok {
 			tag.Archived = task.Closed()
+		}
+	case model.TagOwnerProject:
+		if project, ok := l.projects[tag.Owner.Id]; ok {
+			tag.Archived = project.Archived
 		}
 	}
 	return tag
@@ -230,8 +239,15 @@ func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id 
 		return model.ErrInvalidArgument
 	}
 
-	t.tags = slices.Delete(t.tags, idx, idx+1)
-	isDeleted := func(tagId uuid.UUID) bool { return tagId == id }
+	t.deleteTags(func(tagId uuid.UUID) bool { return tagId == id })
+	return nil
+}
+
+// deleteTags deletes the tags isDeleted picks and drops them from the
+// TagIds of every task, project and timespan. Callers must hold t.mu for
+// writing.
+func (t *MemoryStore) deleteTags(isDeleted func(tagId uuid.UUID) bool) {
+	t.tags = slices.DeleteFunc(t.tags, func(tag model.Tag) bool { return isDeleted(tag.Id) })
 	for i := range t.tasks {
 		t.tasks[i].TagIds = slices.DeleteFunc(t.tasks[i].TagIds, isDeleted)
 	}
@@ -241,7 +257,6 @@ func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id 
 	for i := range t.timespans {
 		t.timespans[i].TagIds = slices.DeleteFunc(t.timespans[i].TagIds, isDeleted)
 	}
-	return nil
 }
 
 func boolRank(b bool) int {

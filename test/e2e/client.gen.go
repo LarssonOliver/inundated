@@ -102,12 +102,15 @@ func (e StatsMetric) Valid() bool {
 
 // Defines values for TagOwnerKind.
 const (
-	TagOwnerKindTask TagOwnerKind = "task"
+	TagOwnerKindProject TagOwnerKind = "project"
+	TagOwnerKindTask    TagOwnerKind = "task"
 )
 
 // Valid indicates whether the value is a known member of the TagOwnerKind enum.
 func (e TagOwnerKind) Valid() bool {
 	switch e {
+	case TagOwnerKindProject:
+		return true
 	case TagOwnerKindTask:
 		return true
 	default:
@@ -153,9 +156,10 @@ func (e WeekStartDay) Valid() bool {
 
 // Defines values for TagKindQuery.
 const (
-	TagKindQueryAll   TagKindQuery = "all"
-	TagKindQueryLabel TagKindQuery = "label"
-	TagKindQueryTask  TagKindQuery = "task"
+	TagKindQueryAll     TagKindQuery = "all"
+	TagKindQueryLabel   TagKindQuery = "label"
+	TagKindQueryProject TagKindQuery = "project"
+	TagKindQueryTask    TagKindQuery = "task"
 )
 
 // Valid indicates whether the value is a known member of the TagKindQuery enum.
@@ -164,6 +168,8 @@ func (e TagKindQuery) Valid() bool {
 	case TagKindQueryAll:
 		return true
 	case TagKindQueryLabel:
+		return true
+	case TagKindQueryProject:
 		return true
 	case TagKindQueryTask:
 		return true
@@ -192,9 +198,10 @@ func (e GetProjectParamsInclude) Valid() bool {
 
 // Defines values for ListTagsParamsKind.
 const (
-	ListTagsParamsKindAll   ListTagsParamsKind = "all"
-	ListTagsParamsKindLabel ListTagsParamsKind = "label"
-	ListTagsParamsKindTask  ListTagsParamsKind = "task"
+	ListTagsParamsKindAll     ListTagsParamsKind = "all"
+	ListTagsParamsKindLabel   ListTagsParamsKind = "label"
+	ListTagsParamsKindProject ListTagsParamsKind = "project"
+	ListTagsParamsKindTask    ListTagsParamsKind = "task"
 )
 
 // Valid indicates whether the value is a known member of the ListTagsParamsKind enum.
@@ -203,6 +210,8 @@ func (e ListTagsParamsKind) Valid() bool {
 	case ListTagsParamsKindAll:
 		return true
 	case ListTagsParamsKindLabel:
+		return true
+	case ListTagsParamsKindProject:
 		return true
 	case ListTagsParamsKindTask:
 		return true
@@ -372,7 +381,10 @@ type Project struct {
 	Color    HexColor           `json:"color"`
 	Id       openapi_types.UUID `json:"id"`
 	Name     string             `json:"name"`
-	TagIds   *TagIdList         `json:"tagIds,omitempty"`
+
+	// TagId The project's own project tag, shown as "@name". Time spans and tasks carrying it count toward the project, like those carrying any of tagIds, which never include it. Its name, color and archived state follow the project.
+	TagId  openapi_types.UUID `json:"tagId"`
+	TagIds *TagIdList         `json:"tagIds,omitempty"`
 
 	// TaskTimeMs Time logged on the project's tasks, open or closed. Each time span counts once. totalTimeMs minus this is the project's time that is not on any of its tasks.
 	TaskTimeMs      *int     `json:"taskTimeMs,omitempty"`
@@ -744,7 +756,7 @@ type ListTagsParams struct {
 	// Q Only return tags whose name contains this text, ignoring case.
 	Q *TagSearchQuery `form:"q,omitempty" json:"q,omitempty"`
 
-	// Kind Which tags to return: regular tags (label), the tags owned by one kind of item (task, see TagOwnerKind), or every tag (all). Defaults to label.
+	// Kind Which tags to return: regular tags (label), the tags owned by one kind of item (task or project, see TagOwnerKind), or every tag (all). Defaults to label.
 	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
 
 	// Ids Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get owned tags too.

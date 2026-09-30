@@ -38,11 +38,13 @@ func TestPostgres_CreateUserAdoptingOrphans_PopulatesUserIdColumn(t *testing.T) 
 	user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
 	_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
-	require.Equal(t, perType*3+1, adoption.Total())
+	// Each project's own project tag is adopted along with it.
+	require.Equal(t, perType*4+1, adoption.Total())
 
-	for _, table := range []string{"tags", "projects", "timespans"} {
+	for _, table := range []string{"projects", "timespans"} {
 		require.Equal(t, perType, countOwnedBy(t, ctx, pool, table, user.Id), "table %q", table)
 	}
+	require.Equal(t, perType*2, countOwnedBy(t, ctx, pool, "tags", user.Id))
 	require.Equal(t, 1, countOwnedBy(t, ctx, pool, "settings", user.Id))
 }
 
