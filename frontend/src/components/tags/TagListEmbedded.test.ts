@@ -5,7 +5,7 @@ import TagListEmbedded from "./TagListEmbedded.vue";
 import type { Tag } from "@/model";
 
 const listTagsPaginated = vi.fn();
-const getTag = vi.fn();
+const getTagsByIds = vi.fn();
 const searchTags = vi.fn();
 const listAllTasks = vi.fn();
 const createTask = vi.fn();
@@ -13,7 +13,7 @@ const createTask = vi.fn();
 vi.mock("@/api", () => ({
   tagsApi: {
     listTagsPaginated: (...args: unknown[]) => listTagsPaginated(...args),
-    getTag: (...args: unknown[]) => getTag(...args),
+    getTagsByIds: (...args: unknown[]) => getTagsByIds(...args),
     searchTags: (...args: unknown[]) => searchTags(...args),
   },
   tasksApi: {
@@ -30,7 +30,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
   vi.useFakeTimers();
   listTagsPaginated.mockReset();
-  getTag.mockReset();
+  getTagsByIds.mockReset();
   searchTags.mockReset();
   searchTags.mockResolvedValue([]);
   listAllTasks.mockReset();
@@ -78,11 +78,11 @@ test("a slower stale refresh does not clobber a newer model change", async () =>
     pagination: { limit: 50, offset: 0, total: 1 },
   });
 
-  let resolveGetTag: (value: unknown) => void;
+  let resolveGetTags: (value: unknown) => void;
   const staleFetch = new Promise((resolve) => {
-    resolveGetTag = resolve;
+    resolveGetTags = resolve;
   });
-  getTag.mockReturnValue(staleFetch);
+  getTagsByIds.mockReturnValue(staleFetch);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["archived-1"]) } });
   await flushPromises();
@@ -96,7 +96,7 @@ test("a slower stale refresh does not clobber a newer model change", async () =>
   expect(wrapper.text()).toContain("active-tag");
   expect(wrapper.text()).not.toContain("archived-tag");
 
-  resolveGetTag!(archived);
+  resolveGetTags!([archived]);
   await flushPromises();
 
   expect(wrapper.text()).toContain("active-tag");
@@ -110,7 +110,7 @@ test("still shows an already-assigned tag that has since been archived", async (
     data: [],
     pagination: { limit: 50, offset: 0, total: 0 },
   });
-  getTag.mockResolvedValue(archived);
+  getTagsByIds.mockResolvedValue([archived]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["2"]) } });
   await flushPromises();
@@ -173,7 +173,7 @@ test("re-includes a tag in search results as soon as it's removed from the model
   listTagsPaginated.mockResolvedValue(emptyPage());
   const sprint = tag({ id: "sprint-1", name: "sprint" });
   searchTags.mockResolvedValue([sprint]);
-  getTag.mockResolvedValue(sprint);
+  getTagsByIds.mockResolvedValue([sprint]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["sprint-1"]) } });
   await flushPromises();
@@ -286,7 +286,9 @@ test("# plus enter creates a task and adds its task tag", async () => {
     rank: "V",
     closed: false,
   });
-  getTag.mockResolvedValue(tag({ id: "task-tag-1", name: "Write report", taskId: "task-1" }));
+  getTagsByIds.mockResolvedValue([
+    tag({ id: "task-tag-1", name: "Write report", taskId: "task-1" }),
+  ]);
 
   const wrapper = mount(TagListEmbedded, {
     props: { modelValue: new Set<string>(), allowTaskCreation: true },

@@ -247,9 +247,55 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves to the tag with detailed information if found, or rejects if not found.
      */
     async function fetchDetailedTagById(id: string): Promise<Tag> {
+      const seq = nextIndividualFetchSeq(id);
       const detailedTag = await api.getTag(id, true);
-      individuallyFetchedTags.value.set(id, detailedTag);
+      cacheIndividuallyFetchedTag(id, seq, detailedTag);
       return copyTag(detailedTag);
+    }
+
+    // The latest request sequence number sent per tag id, across
+    // fetchTagById and fetchDetailedTagById. Responses can arrive out of
+    // order, so only the newest request's response may update the cache;
+    // otherwise an older response could overwrite a fresher tag.
+    const individualFetchSeq = new Map<string, number>();
+
+    function nextIndividualFetchSeq(id: string): number {
+      const seq = (individualFetchSeq.get(id) ?? 0) + 1;
+      individualFetchSeq.set(id, seq);
+      return seq;
+    }
+
+    function cacheIndividuallyFetchedTag(id: string, seq: number, tag: Tag): void {
+      if (individualFetchSeq.get(id) === seq) individuallyFetchedTags.value.set(id, tag);
+    }
+
+    type TagFetchWaiter = { resolve: (tag: Tag) => void; reject: (error: unknown) => void };
+    // Ids requested through fetchTagById that haven't been sent yet, each
+    // with the callers waiting on it.
+    let pendingTagFetches = new Map<string, TagFetchWaiter[]>();
+
+    async function flushTagFetches(): Promise<void> {
+      const batch = pendingTagFetches;
+      pendingTagFetches = new Map();
+      const seqs = new Map([...batch.keys()].map((id) => [id, nextIndividualFetchSeq(id)]));
+      let fetched: Tag[];
+      try {
+        fetched = await api.getTagsByIds([...batch.keys()]);
+      } catch (error) {
+        for (const waiters of batch.values()) {
+          for (const waiter of waiters) waiter.reject(error);
+        }
+        return;
+      }
+      const byId = new Map(fetched.map((tag) => [tag.id, tag]));
+      for (const [id, waiters] of batch) {
+        const tag = byId.get(id);
+        if (tag) cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
+        for (const waiter of waiters) {
+          if (tag) waiter.resolve(copyTag(tag));
+          else waiter.reject(new Error(`Tag ${id} not found`));
+        }
+      }
     }
 
     /**
@@ -262,14 +308,21 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * merged into the listing cache (tags), so it can't leak an archived tag
      * into a list view that's filtering them out.
      *
+     * Calls made in the same tick are batched into one request, so a list
+     * that renders a row per tag (e.g. the task list, where each row shows
+     * its task tag) costs one round trip rather than one per row.
+     *
      * @param id - The ID of the tag to fetch.
      *
      * @returns A promise that resolves to the tag if found, or rejects if not found.
      */
-    async function fetchTagById(id: string): Promise<Tag> {
-      const tag = await api.getTag(id, false);
-      individuallyFetchedTags.value.set(id, tag);
-      return copyTag(tag);
+    function fetchTagById(id: string): Promise<Tag> {
+      return new Promise<Tag>((resolve, reject) => {
+        if (pendingTagFetches.size === 0) queueMicrotask(flushTagFetches);
+        const waiters = pendingTagFetches.get(id) ?? [];
+        waiters.push({ resolve, reject });
+        pendingTagFetches.set(id, waiters);
+      });
     }
 
     /**
