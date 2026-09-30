@@ -442,6 +442,35 @@ describe("tags store", () => {
     expect(store.getTagById("1")).toEqual(fresh);
   });
 
+  it("keeps a search's result over an older fetch that resolves after it", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.getTagsByIds.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)));
+    api.searchTags.mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    const first = store.fetchTagById("1");
+    await Promise.resolve();
+    await store.searchTagsOnServer("tag", "all");
+    resolveStale([stale]);
+    await first;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
+  it("keeps a fetch's result over an older search that resolves after it", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.searchTags.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)));
+    api.getTagsByIds.mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    const search = store.searchTagsOnServer("tag", "all");
+    await store.fetchTagById("1");
+    resolveStale([stale]);
+    await search;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
   it("rejects fetchTagById for an id the server doesn't return", async () => {
     const t1 = makeTag({ id: "1" });
     api.getTagsByIds.mockResolvedValue([t1]);

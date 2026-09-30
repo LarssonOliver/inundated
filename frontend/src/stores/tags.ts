@@ -253,20 +253,38 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       return copyTag(detailedTag);
     }
 
-    // The latest request sequence number sent per tag id, across
-    // fetchTagById and fetchDetailedTagById. Responses can arrive out of
-    // order, so only the newest request's response may update the cache;
-    // otherwise an older response could overwrite a fresher tag.
+    // Requests that can cache a tag for getTagById (fetchTagById,
+    // fetchDetailedTagById and searchTagsOnServer) are numbered in the
+    // order they're sent, and individualFetchSeq holds, per tag id, the
+    // number of the newest one known to concern it. Responses can arrive
+    // out of order, so a response may only update the cache when no newer
+    // request for that tag was sent; otherwise an older response could
+    // overwrite a fresher tag.
+    let lastFetchSeq = 0;
     const individualFetchSeq = new Map<string, number>();
 
+    function nextFetchSeq(): number {
+      return ++lastFetchSeq;
+    }
+
     function nextIndividualFetchSeq(id: string): number {
-      const seq = (individualFetchSeq.get(id) ?? 0) + 1;
+      const seq = nextFetchSeq();
       individualFetchSeq.set(id, seq);
       return seq;
     }
 
+    /** Whether a response to request seq is the newest word on tag id. */
+    function isNewestFetch(id: string, seq: number): boolean {
+      return seq >= (individualFetchSeq.get(id) ?? 0);
+    }
+
     function cacheIndividuallyFetchedTag(id: string, seq: number, tag: Tag): void {
-      if (individualFetchSeq.get(id) === seq) individuallyFetchedTags.value.set(id, tag);
+      if (!isNewestFetch(id, seq)) return;
+      // A search only learns which tags it concerns from its response, so
+      // it claims them here, which also discards older fetches of them
+      // still in flight.
+      individualFetchSeq.set(id, seq);
+      individuallyFetchedTags.value.set(id, tag);
     }
 
     type TagFetchWaiter = { resolve: (tag: Tag) => void; reject: (error: unknown) => void };
@@ -292,7 +310,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
         const tag = byId.get(id);
         if (tag) {
           cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
-        } else if (individualFetchSeq.get(id) === seqs.get(id)) {
+        } else if (isNewestFetch(id, seqs.get(id)!)) {
           // Gone on the server (e.g. a project tag whose project was
           // deleted), so a cached copy would only keep showing a tag that no
           // longer exists.
@@ -419,9 +437,10 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      */
     async function searchTagsOnServer(query: string, kind: TagKind): Promise<Tag[]> {
       const q = query.trim();
+      const seq = nextFetchSeq();
       const found = await api.searchTags(q, kind);
       for (const tag of found) {
-        individuallyFetchedTags.value.set(tag.id, tag);
+        cacheIndividuallyFetchedTag(tag.id, seq, tag);
       }
 
       const byId = new Map(found.map((tag) => [tag.id, tag]));
