@@ -50,7 +50,7 @@ import { computed, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { CloseReason, Project, Task } from "@/model";
 import { tasksApi } from "@/api";
-import { useTasksStore, taskTree, isTaskOverdue } from "@/stores/tasks";
+import { useTasksStore, taskTree, isTaskOverdue, refreshTaskTagsAfter } from "@/stores/tasks";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import TaskRow from "@/components/tasks/TaskRow.vue";
@@ -152,6 +152,7 @@ async function applyPatch(task: Task, patch: TaskPatch, failure: string) {
     errorMessage.value = failure;
     return;
   }
+  void refreshTaskTagsAfter(task.tagId, patch);
   await load();
 }
 
