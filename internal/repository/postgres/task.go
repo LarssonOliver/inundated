@@ -509,10 +509,10 @@ func (r *PostgresStore) ListTaskProjectIds(ctx context.Context, scope model.Owne
 }
 
 // checkTaskTags reports model.ErrInvalidReference unless every id is a
-// usable regular tag in scope (see tagsInScope); a task's own tags can
-// never include task tags.
+// usable tag in scope that a task may carry (see tagsInScope); a task's own
+// tags never include task tags.
 func (r *PostgresStore) checkTaskTags(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated func() ([]uuid.UUID, error)) error {
-	ok, err := r.tagsInScope(ctx, q, scope, tagIds, true, alreadyAssociated)
+	ok, err := r.tagsInScope(ctx, q, scope, tagIds, model.TagHolderTask, alreadyAssociated)
 	if err != nil {
 		return err
 	}

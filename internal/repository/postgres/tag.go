@@ -13,11 +13,12 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-// A task tag's archived state isn't stored on its row: it's archived while
-// its task is closed. Its color is derived in the service layer (see
-// model.DerivedTagColor), so the stored one is returned as is. These fragments
-// read tags that way; they expect tags aliased t and the owning task (if
-// any) LEFT JOINed as k, which tagFromSQL provides.
+// An owned tag's archived state isn't stored on its row: it follows its
+// owner (a task tag is archived while its task is closed), as the
+// tag_owners view reports it. A derived tag's color is derived in the
+// service layer (see model.DerivedTagColor), so the stored one is returned
+// as is. These fragments read tags that way; they expect tags aliased t and
+// its owner (if any) LEFT JOINed as o, which tagFromSQL provides.
 //
 // Tag names sort case-insensitively, then by bytes, then by id, compared
 // under the "C" collation rather than the database's own so the memory
@@ -27,20 +28,25 @@ import (
 // e.g. "Ärende" and "ärende" sort apart and search can't match them to
 // each other there.
 const (
-	tagFromSQL = `tags t LEFT JOIN tasks k ON k.tag_id = t.id AND k.deleted_at IS NULL`
+	tagFromSQL = `tags t LEFT JOIN tag_owners o ON o.tag_id = t.id`
 
-	tagArchivedAtSQL = `CASE WHEN k.id IS NULL THEN t.archived_at ELSE k.closed_at END`
+	tagArchivedAtSQL = `CASE WHEN o.tag_id IS NULL THEN t.archived_at ELSE o.archived_at END`
 
-	tagColumnsSQL = `t.id, t.name, t.color, t.user_id, ` + tagArchivedAtSQL + `, k.id`
+	tagColumnsSQL = `t.id, t.name, t.color, t.user_id, ` + tagArchivedAtSQL + `, o.kind, o.owner_id`
 )
 
 func scanTag(row pgx.Row) (model.Tag, error) {
 	var t model.Tag
 	var archivedAt *time.Time
-	if err := row.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt, &t.TaskId); err != nil {
+	var ownerKind *string
+	var ownerId *uuid.UUID
+	if err := row.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt, &ownerKind, &ownerId); err != nil {
 		return model.Tag{}, err
 	}
 	t.Archived = archivedAt != nil
+	if ownerKind != nil && ownerId != nil {
+		t.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
+	}
 	return t, nil
 }
 
@@ -52,12 +58,11 @@ func tagListFilterSQL(params model.TagListParams, args []any) (string, []any) {
 	if !params.IncludeArchived {
 		sql.WriteString(tagArchivedAtSQL + " IS NULL AND ")
 	}
-	switch params.Kind {
-	case model.TagKindAll:
-	case model.TagKindTask:
-		sql.WriteString("k.id IS NOT NULL AND ")
-	default:
-		sql.WriteString("k.id IS NULL AND ")
+	if ownerKind, ok := params.Kind.OwnerKind(); ok {
+		args = append(args, string(ownerKind))
+		fmt.Fprintf(&sql, `o.kind = $%d AND `, len(args))
+	} else if params.Kind != model.TagKindAll {
+		sql.WriteString("o.tag_id IS NULL AND ")
 	}
 	if params.Query != "" {
 		args = append(args, "%"+escapeLike(params.Query)+"%")
@@ -115,7 +120,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 		SELECT ` + tagColumnsSQL + `
 		FROM ` + tagFromSQL + `
 		WHERE t.deleted_at IS NULL AND ` + dataFilterSQL + dataOwnerSQL + `
-		ORDER BY k.id IS NOT NULL, lower(t.name) COLLATE "C", t.name COLLATE "C", t.id
+		ORDER BY o.tag_id IS NOT NULL, lower(t.name) COLLATE "C", t.name COLLATE "C", t.id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, q, args...)
@@ -214,7 +219,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		UPDATE tags
 		SET name = $2, color = $3,
 			archived_at = CASE WHEN $4 THEN COALESCE(archived_at, now()) ELSE NULL END
-		WHERE id = $1 AND ` + notTaskTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL + `
+		WHERE id = $1 AND ` + notOwnedTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL + `
 		RETURNING id, name, color, user_id, archived_at`
 
 	var updated model.Tag
@@ -240,7 +245,7 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 	q := `
 		UPDATE tags
 		SET deleted_at = now()
-		WHERE id = $1 AND ` + notTaskTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL
+		WHERE id = $1 AND ` + notOwnedTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL
 
 	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
@@ -252,26 +257,26 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 	return nil
 }
 
-// notTaskTagSQL keeps UpdateTag and DeleteTag off task tags, which follow
-// their task and can't be changed directly.
-const notTaskTagSQL = `NOT EXISTS (SELECT 1 FROM tasks k WHERE k.tag_id = tags.id)`
+// notOwnedTagSQL keeps UpdateTag and DeleteTag off owned tags, which follow
+// their owner and can't be changed directly.
+const notOwnedTagSQL = `NOT EXISTS (SELECT 1 FROM tag_owners o WHERE o.tag_id = tags.id)`
 
 // tagWriteMiss explains why UpdateTag or DeleteTag matched no row:
-// model.ErrInvalidArgument if id is a task tag in scope, otherwise
+// model.ErrInvalidArgument if id is an owned tag in scope, otherwise
 // model.ErrNotFound.
 func (r *PostgresStore) tagWriteMiss(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
 	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{id})
 	q := `
 		SELECT EXISTS (
-			SELECT 1 FROM tags t JOIN tasks k ON k.tag_id = t.id
+			SELECT 1 FROM tags t JOIN tag_owners o ON o.tag_id = t.id
 			WHERE t.id = $1 AND t.deleted_at IS NULL AND ` + ownerSQL + `
 		)`
-	var taskTag bool
-	if err := r.db.QueryRow(ctx, q, args...).Scan(&taskTag); err != nil {
+	var owned bool
+	if err := r.db.QueryRow(ctx, q, args...).Scan(&owned); err != nil {
 		return fmt.Errorf("tagWriteMiss: %w", err)
 	}
-	if taskTag {
-		return fmt.Errorf("tag belongs to a task: %w", model.ErrInvalidArgument)
+	if owned {
+		return fmt.Errorf("tag belongs to another item: %w", model.ErrInvalidArgument)
 	}
 	return model.ErrNotFound
 }

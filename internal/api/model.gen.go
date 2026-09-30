@@ -91,6 +91,21 @@ func (e StatsMetric) Valid() bool {
 	}
 }
 
+// Defines values for TagOwnerKind.
+const (
+	TagOwnerKindTask TagOwnerKind = "task"
+)
+
+// Valid indicates whether the value is a known member of the TagOwnerKind enum.
+func (e TagOwnerKind) Valid() bool {
+	switch e {
+	case TagOwnerKindTask:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TimeFormat.
 const (
 	N12h TimeFormat = "12h"
@@ -415,13 +430,24 @@ type Tag struct {
 	Id       openapi_types.UUID `json:"id"`
 	Name     string             `json:"name"`
 
-	// TaskId Set when this is a task tag, naming the task that owns it. A task tag's name, color and archived state follow its task, so it can't be changed through the tag API.
-	TaskId      *openapi_types.UUID `json:"taskId,omitempty"`
-	TotalTimeMs *int                `json:"totalTimeMs,omitempty"`
+	// Owner Set on owned tags, naming the item that owns the tag, such as the task that owns a task tag. An owned tag's name, color and archived state follow its owner, so it can't be changed through the tag API.
+	Owner       *TagOwner `json:"owner,omitempty"`
+	TotalTimeMs *int      `json:"totalTimeMs,omitempty"`
 }
 
 // TagIdList defines model for TagIdList.
 type TagIdList = []openapi_types.UUID
+
+// TagOwner Set on owned tags, naming the item that owns the tag, such as the task that owns a task tag. An owned tag's name, color and archived state follow its owner, so it can't be changed through the tag API.
+type TagOwner struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Kind The kind of item that owns an owned tag.
+	Kind TagOwnerKind `json:"kind"`
+}
+
+// TagOwnerKind The kind of item that owns an owned tag.
+type TagOwnerKind string
 
 // TagStats defines model for TagStats.
 type TagStats struct {
@@ -709,10 +735,10 @@ type ListTagsParams struct {
 	// Q Only return tags whose name contains this text, ignoring case.
 	Q *TagSearchQuery `form:"q,omitempty" json:"q,omitempty"`
 
-	// Kind Which tags to return: regular tags (label), task tags (task), or both (all). Defaults to label.
+	// Kind Which tags to return: regular tags (label), the tags owned by one kind of item (task, see TagOwnerKind), or every tag (all). Defaults to label.
 	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
 
-	// Ids Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get task tags too.
+	// Ids Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get owned tags too.
 	Ids *TagIdsQuery `form:"ids,omitempty" json:"ids,omitempty"`
 }
 

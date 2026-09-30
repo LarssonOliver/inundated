@@ -19,6 +19,8 @@ export * from './SeriesPoint';
 export * from './Settings';
 export * from './StatsMetric';
 export * from './Tag';
+export * from './TagOwner';
+export * from './TagOwnerKind';
 export * from './TagStats';
 export * from './Task';
 export * from './TimeFormat';

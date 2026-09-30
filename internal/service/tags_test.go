@@ -164,9 +164,9 @@ func TestTagService_ListTags(t *testing.T) {
 func TestTagService_DerivedTagColors(t *testing.T) {
 	taskA, taskB, taskC := uuid.New(), uuid.New(), uuid.New()
 	regular := model.Tag{Id: uuid.New(), Name: "regular", Color: "#123456"}
-	tagA := model.Tag{Id: uuid.New(), Name: "a", Color: model.DefaultDerivedTagColor, TaskId: &taskA}
-	tagB := model.Tag{Id: uuid.New(), Name: "b", Color: model.DefaultDerivedTagColor, TaskId: &taskB}
-	tagC := model.Tag{Id: uuid.New(), Name: "c", Color: "#000000", TaskId: &taskC}
+	tagA := model.Tag{Id: uuid.New(), Name: "a", Color: model.DefaultDerivedTagColor, Owner: &model.TagOwner{Kind: model.TagOwnerTask, Id: taskA}}
+	tagB := model.Tag{Id: uuid.New(), Name: "b", Color: model.DefaultDerivedTagColor, Owner: &model.TagOwner{Kind: model.TagOwnerTask, Id: taskB}}
+	tagC := model.Tag{Id: uuid.New(), Name: "c", Color: "#000000", Owner: &model.TagOwner{Kind: model.TagOwnerTask, Id: taskC}}
 	sources := map[uuid.UUID][]model.Tag{
 		tagA.Id: {{Name: "zebra", Color: "#222222"}, {Name: "Apple", Color: "#111111"}},
 		tagB.Id: {{Name: "only", Color: "#333333"}},

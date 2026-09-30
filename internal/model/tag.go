@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"cmp"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,9 +17,80 @@ type Tag struct {
 	TotalTime *time.Duration
 	UserId    *uuid.UUID
 	Archived  bool
-	// TaskId is set on task tags. A task tag's name, color and archived
-	// state follow its task.
-	TaskId *uuid.UUID
+	// Owner is set on owned tags, naming the item that owns the tag (see
+	// TagOwnerKind). Regular tags have none.
+	Owner *TagOwner
+}
+
+// TagOwnerKind is a kind of item that owns a tag of its own, such as a task
+// and its task tag. An owned tag's name and archived state follow its
+// owner, and it can't be edited or deleted through the tag API.
+//
+// A new kind of owner is declared here, in tagOwnerKinds and tagHolderRules,
+// in the tag_owners database view and the memory store's tag lookup, and in
+// the frontend's owner registry.
+type TagOwnerKind string
+
+const (
+	TagOwnerTask TagOwnerKind = "task"
+)
+
+// tagOwnerKind holds what differs between kinds of owners.
+type tagOwnerKind struct {
+	// derivesColor marks kinds whose tags take their color from source
+	// tags (see DerivedTagColor) rather than keeping one of their own.
+	derivesColor bool
+}
+
+var tagOwnerKinds = map[TagOwnerKind]tagOwnerKind{
+	TagOwnerTask: {derivesColor: true},
+}
+
+// Valid reports whether k is a known owner kind.
+func (k TagOwnerKind) Valid() bool {
+	_, ok := tagOwnerKinds[k]
+	return ok
+}
+
+// TagOwner names the item that owns an owned tag.
+type TagOwner struct {
+	Kind TagOwnerKind
+	Id   uuid.UUID
+}
+
+// OwnedBy reports whether the tag is owned by an item of kind k.
+func (t Tag) OwnedBy(k TagOwnerKind) bool {
+	return t.Owner != nil && t.Owner.Kind == k
+}
+
+// TagHolder is a kind of item that carries tags.
+type TagHolder string
+
+const (
+	TagHolderTask     TagHolder = "task"
+	TagHolderProject  TagHolder = "project"
+	TagHolderTimespan TagHolder = "timespan"
+)
+
+// tagHolderRules lists the owned tag kinds each holder may carry; regular
+// tags can go on any of them. Leaving a kind off its own holder keeps
+// links between owners from forming loops: a task can't carry task tags
+// (subtasks nest through their parent instead).
+var tagHolderRules = map[TagHolder][]TagOwnerKind{
+	TagHolderTask:     {},
+	TagHolderProject:  {TagOwnerTask},
+	TagHolderTimespan: {TagOwnerTask},
+}
+
+// CarriedOwnerKinds returns the owned tag kinds h may carry.
+func (h TagHolder) CarriedOwnerKinds() []TagOwnerKind {
+	return tagHolderRules[h]
+}
+
+// MayCarry reports whether h may carry tag: any regular tag, or an owned
+// tag of a kind h allows.
+func (h TagHolder) MayCarry(tag Tag) bool {
+	return tag.Owner == nil || slices.Contains(tagHolderRules[h], tag.Owner.Kind)
 }
 
 // DefaultDerivedTagColor is the color a derived tag reports when it has no
@@ -29,7 +101,7 @@ const DefaultDerivedTagColor = "#5e81ac"
 // DerivedTagColor) rather than set on the tag itself. Task tags are derived:
 // they take their color from their task's regular tags.
 func (t Tag) IsDerived() bool {
-	return t.TaskId != nil
+	return t.Owner != nil && tagOwnerKinds[t.Owner.Kind].derivesColor
 }
 
 // CompareTagNames orders tags case-insensitively by name, then by name

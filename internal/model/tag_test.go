@@ -27,3 +27,40 @@ func TestDerivedTagColor(t *testing.T) {
 		})
 	}
 }
+
+func TestTagHolderMayCarry(t *testing.T) {
+	label := Tag{Id: uuid.New()}
+	taskTag := Tag{Id: uuid.New(), Owner: &TagOwner{Kind: TagOwnerTask, Id: uuid.New()}}
+
+	tests := []struct {
+		holder TagHolder
+		tag    Tag
+		want   bool
+	}{
+		{TagHolderTask, label, true},
+		{TagHolderTask, taskTag, false},
+		{TagHolderProject, label, true},
+		{TagHolderProject, taskTag, true},
+		{TagHolderTimespan, label, true},
+		{TagHolderTimespan, taskTag, true},
+	}
+	for _, tt := range tests {
+		require.Equal(t, tt.want, tt.holder.MayCarry(tt.tag), "%s carrying owner %v", tt.holder, tt.tag.Owner)
+	}
+}
+
+func TestTagIsDerived(t *testing.T) {
+	require.False(t, Tag{}.IsDerived())
+	require.True(t, Tag{Owner: &TagOwner{Kind: TagOwnerTask}}.IsDerived())
+}
+
+func TestTagKindOwnerKind(t *testing.T) {
+	kind, ok := TagKindTask.OwnerKind()
+	require.True(t, ok)
+	require.Equal(t, TagOwnerTask, kind)
+
+	_, ok = TagKindLabel.OwnerKind()
+	require.False(t, ok)
+	_, ok = TagKindAll.OwnerKind()
+	require.False(t, ok)
+}

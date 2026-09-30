@@ -126,7 +126,7 @@ test("finds tags beyond the cached page by searching the server", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([
     tag({ id: "far", name: "far-away" }),
-    tag({ id: "task", name: "far task", taskId: "t1" }),
+    tag({ id: "task", name: "far task", owner: { kind: "task", id: "t1" } }),
   ]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
@@ -221,7 +221,9 @@ test("debounces server search and does not refetch tasks on every keystroke", as
 
 test("without allowTaskCreation, a leading # still narrows the search to tasks but offers no create option", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
-  searchTags.mockResolvedValue([tag({ id: "t1", name: "Write report", taskId: "task-1" })]);
+  searchTags.mockResolvedValue([
+    tag({ id: "t1", name: "Write report", owner: { kind: "task", id: "task-1" } }),
+  ]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
   await flushPromises();
@@ -287,7 +289,7 @@ test("# plus enter creates a task and adds its task tag", async () => {
     closed: false,
   });
   getTagsByIds.mockResolvedValue([
-    tag({ id: "task-tag-1", name: "Write report", taskId: "task-1" }),
+    tag({ id: "task-tag-1", name: "Write report", owner: { kind: "task", id: "task-1" } }),
   ]);
 
   const wrapper = mount(TagListEmbedded, {

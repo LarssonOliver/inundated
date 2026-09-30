@@ -1,6 +1,9 @@
 <template>
   <div :class="containerClasses" @mouseenter="hover = true" @mouseleave="hover = false">
-    <div><span v-if="isTask" class="task-mark">#</span>{{ tag.name }}</div>
+    <div>
+      <span v-if="owner" class="owner-mark">{{ owner.prefix }}</span
+      >{{ tag.name }}
+    </div>
     <MaterialIcon
       @click="$emit('close', tag)"
       v-if="hover && canClose"
@@ -14,6 +17,7 @@
 <script setup lang="ts">
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import { shouldTextBeDarkFromBgColor } from "@/helpers/colors";
+import { tagOwnerSpec } from "@/helpers/tagOwners";
 import type { Tag } from "@/model";
 import { computed, reactive, ref } from "vue";
 
@@ -34,14 +38,14 @@ const darkText = computed(() => shouldTextBeDarkFromBgColor(tag.color));
 // mount time and stop tracking archive/unarchive changes on this instance
 // (e.g. TagListView re-rendering the same TagItem after a toggle).
 const isArchived = computed(() => tag.archived);
-// Task tags are drawn as an outlined pill with a leading "#", so they read
-// as tasks wherever tags are shown.
-const isTask = computed(() => !!tag.taskId);
+// Owned tags are drawn as an outlined pill with their owner kind's prefix
+// ("#" for tasks), so they read as that kind of item wherever tags are shown.
+const owner = computed(() => tagOwnerSpec(tag));
 const containerClasses = reactive({
   "tag-container": true,
-  "dark-text": computed(() => darkText.value && !isTask.value),
+  "dark-text": computed(() => darkText.value && !owner.value),
   archived: isArchived,
-  task: isTask,
+  owned: computed(() => !!owner.value),
 });
 </script>
 
@@ -57,13 +61,13 @@ const containerClasses = reactive({
   align-items: center;
 }
 
-.tag-container.task {
+.tag-container.owned {
   background-color: transparent;
   border: 2px solid v-bind("tag.color");
   padding: calc(0.25em - 2px) calc(0.6em - 2px);
 }
 
-.task-mark {
+.owner-mark {
   color: v-bind("tag.color");
   font-weight: 700;
   margin-right: 0.1em;

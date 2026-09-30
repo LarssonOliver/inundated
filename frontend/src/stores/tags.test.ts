@@ -648,7 +648,7 @@ describe("tags store", () => {
 
   it("searches only task tags on the server when asked for tasks", async () => {
     const cached = makeTag({ id: "cached", name: "work" });
-    const task = makeTag({ id: "task", name: "work on report", taskId: "t1" });
+    const task = makeTag({ id: "task", name: "work on report", owner: { kind: "task", id: "t1" } });
     api.listTagsPaginated.mockResolvedValue({
       data: [cached],
       pagination: { limit: 50, offset: 0, total: 1 },

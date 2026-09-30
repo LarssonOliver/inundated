@@ -6,8 +6,16 @@ export interface Tag {
   color: string;
   totalTimeMs?: number;
   archived: boolean;
-  /** Set on task tags: the task that owns this tag. */
-  taskId?: string;
+  /** Set on owned tags: the item that owns this tag (see helpers/tagOwners). */
+  owner?: TagOwner;
+}
+
+/** A kind of item that owns a tag of its own, such as a task. */
+export type TagOwnerKind = "task";
+
+export interface TagOwner {
+  kind: TagOwnerKind;
+  id: string;
 }
 
 export interface TagStats {

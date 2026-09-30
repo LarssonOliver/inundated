@@ -27,7 +27,7 @@ const taskTag = (id: string, color: string): Tag => ({
   name: "Launch",
   color,
   archived: false,
-  taskId: "k1",
+  owner: { kind: "task", id: "k1" },
 });
 
 function mountRow(t: Task) {

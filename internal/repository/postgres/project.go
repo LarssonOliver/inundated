@@ -116,7 +116,7 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 
 	var created model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, false, noAssociatedTags)
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, model.TagHolderProject, noAssociatedTags)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 
 	var updated model.Project
 	err := r.withTx(ctx, func(q Querier) error {
-		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, false, func() ([]uuid.UUID, error) {
+		ok, err := r.tagsInScope(ctx, q, scope, project.TagIds, model.TagHolderProject, func() ([]uuid.UUID, error) {
 			return r.projectTagIds(ctx, q, project.Id)
 		})
 		if err != nil {
@@ -216,7 +216,7 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId 
 }
 
 // tagsInScope reports whether every id refers to a live tag owned by scope
-// (and, with regularOnly, not to a task tag).
+// that holder may carry (see model.TagHolder.MayCarry).
 // An archived tag is only acceptable if it's already in the set alreadyAssociated
 // returns (i.e. it was attached to this project/timespan before this call) -
 // that keeps existing associations with a since-archived tag intact across
@@ -224,20 +224,23 @@ func (r *PostgresStore) projectTagIds(ctx context.Context, q Querier, projectId 
 // tag that a picker would never surface. alreadyAssociated is called at most
 // once, and only if an archived tag is actually encountered, since the vast
 // majority of calls reference no archived tags at all.
-func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, regularOnly bool, alreadyAssociated func() ([]uuid.UUID, error)) (bool, error) {
+func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.OwnerScope, tagIds []uuid.UUID, holder model.TagHolder, alreadyAssociated func() ([]uuid.UUID, error)) (bool, error) {
 	if len(tagIds) == 0 {
 		return true, nil
 	}
 
-	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds})
+	carried := []string{}
+	for _, kind := range holder.CarriedOwnerKinds() {
+		carried = append(carried, string(kind))
+	}
+	ownerSQL, args := ownerPredicate("t.user_id", scope, []any{tagIds, carried})
 	query := `
 		SELECT t.id, ` + tagArchivedAtSQL + ` FROM ` + tagFromSQL + `
-		WHERE t.id = ANY($1) AND t.deleted_at IS NULL AND ` + ownerSQL
-	if regularOnly {
-		query += ` AND k.id IS NULL`
-	}
+		WHERE t.id = ANY($1) AND t.deleted_at IS NULL
+			AND (o.tag_id IS NULL OR o.kind = ANY($2))
+			AND ` + ownerSQL
 	// Share-lock the tags until the caller's transaction ends, so a
-	// concurrent delete (of the tag, or of the task owning a task tag)
+	// concurrent delete (of the tag, or of the owner of an owned tag)
 	// either waits for this write or has already happened and fails the
 	// deleted_at check above. Locking in id order avoids deadlocking with
 	// DeleteTask, which locks its task tags the same way.

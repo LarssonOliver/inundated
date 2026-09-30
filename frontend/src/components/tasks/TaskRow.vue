@@ -229,7 +229,7 @@ const taskTagPreview = computed<Tag>(() => ({
   name: props.task.name,
   color: taskOwnTag.value?.color ?? nord10,
   archived: false,
-  taskId: props.task.id,
+  owner: { kind: "task", id: props.task.id },
 }));
 
 type EditableField = "name" | "estimate" | "dueDate" | "tags" | null;
