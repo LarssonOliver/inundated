@@ -63,6 +63,25 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
   return rows;
 }
 
+/**
+ * Refreshes the cached task tags a task update can make stale. A task tag
+ * takes its name from its task and its color from the task's regular tags,
+ * and is archived while the task is closed. Closing or reopening a task
+ * cascades to its subtasks or parents, so every cached task tag is
+ * refreshed then.
+ *
+ * @param taskTagId - The updated task's own tag.
+ * @param patch - The update applied to the task.
+ */
+export async function refreshTaskTagsAfter(taskTagId: string, patch: TaskPatch): Promise<void> {
+  const tagsStore = useTagsStore();
+  if (patch.closed !== undefined) {
+    await tagsStore.refreshTagsOwnedByKind("task");
+  } else if (patch.name !== undefined || patch.tagIds !== undefined) {
+    await tagsStore.refreshTag(taskTagId);
+  }
+}
+
 function createTasksStore(api: TasksApi) {
   return defineStore("tasks", () => {
     const tasks = ref<Map<string, Task>>(new Map());
@@ -144,12 +163,12 @@ function createTasksStore(api: TasksApi) {
      * Updates a task. Closing or reopening one also changes its subtasks or
      * parents on the server, so the individually-fetched cache is dropped
      * (a fresh fetch is needed to see those cascading effects) and the list
-     * is reloaded afterwards. Changing its regular tags changes the color
-     * the server derives for its task tag, so a cached task tag is refetched.
+     * is reloaded afterwards. Cached task tags the update affects are
+     * refetched (see refreshTaskTagsAfter).
      */
     async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
       const updated = await api.updateTask(id, patch);
-      if (patch.tagIds !== undefined) void useTagsStore().refreshTag(updated.tagId);
+      void refreshTaskTagsAfter(updated.tagId, patch);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
         await fetchTasks();

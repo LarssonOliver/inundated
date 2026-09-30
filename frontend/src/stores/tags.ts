@@ -3,7 +3,7 @@ import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
-import { isDerivedTag, type Tag, type TagOwner, type TagStats } from "@/model";
+import { isDerivedTag, type Tag, type TagOwner, type TagOwnerKind, type TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -385,10 +385,25 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * its color from.
      */
     async function refreshDerivedTags(): Promise<void> {
-      const derived = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
-        .filter(isDerivedTag)
+      await refreshCachedTags(isDerivedTag);
+    }
+
+    /**
+     * Refreshes every cached tag owned by an item of this kind, after a
+     * change that can reach owners besides the one changed (e.g. closing a
+     * task also closes its subtasks, which archives their task tags).
+     *
+     * @param kind - The owner kind whose tags to refresh.
+     */
+    async function refreshTagsOwnedByKind(kind: TagOwnerKind): Promise<void> {
+      await refreshCachedTags((tag) => tag.owner?.kind === kind);
+    }
+
+    async function refreshCachedTags(filter: (tag: Tag) => boolean): Promise<void> {
+      const ids = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
+        .filter(filter)
         .map((tag) => tag.id);
-      await Promise.all([...new Set(derived)].map(refreshTag));
+      await Promise.all([...new Set(ids)].map(refreshTag));
     }
 
     /**
@@ -539,6 +554,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       fetchTagById,
       refreshTag,
       refreshDerivedTags,
+      refreshTagsOwnedByKind,
       forgetTagsOwnedBy,
       searchTags,
       searchTagsOnServer,

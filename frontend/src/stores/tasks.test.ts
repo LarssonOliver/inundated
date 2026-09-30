@@ -5,7 +5,8 @@ import type { TasksApi } from "@/api/tasks";
 import { __test__, isTaskOverdue, taskTree } from "@/stores/tasks";
 
 const refreshTag = vi.fn();
-vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag }) }));
+const refreshTagsOwnedByKind = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag, refreshTagsOwnedByKind }) }));
 
 function task(partial: Partial<Task> & { id: string }): Task {
   return {
@@ -71,6 +72,7 @@ describe("tasks store", () => {
 
     useStore = __test__.createTasksStore(api);
     refreshTag.mockReset();
+    refreshTagsOwnedByKind.mockReset();
   });
 
   it("fetches open tasks by default and closed ones when asked", async () => {
@@ -136,13 +138,33 @@ describe("tasks store", () => {
     expect(refreshTag).toHaveBeenCalledWith("tag-a");
   });
 
-  it("doesn't refresh the task tag when the task's tags are untouched", async () => {
+  it("refreshes the task tag when the task is renamed", async () => {
     api.updateTask.mockResolvedValue(task({ id: "a", name: "renamed" }));
 
     const store = useStore();
     await store.updateTask("a", { name: "renamed" });
 
+    expect(refreshTag).toHaveBeenCalledWith("tag-a");
+  });
+
+  it("refreshes every task tag when closing can cascade to other tasks", async () => {
+    api.updateTask.mockResolvedValue(task({ id: "a", closed: true }));
+    api.listAllTasks.mockResolvedValue([]);
+
+    const store = useStore();
+    await store.closeTask("a");
+
+    expect(refreshTagsOwnedByKind).toHaveBeenCalledWith("task");
+  });
+
+  it("doesn't refresh the task tag when nothing it shows changes", async () => {
+    api.updateTask.mockResolvedValue(task({ id: "a", dueDate: "2026-10-01" }));
+
+    const store = useStore();
+    await store.updateTask("a", { dueDate: "2026-10-01" });
+
     expect(refreshTag).not.toHaveBeenCalled();
+    expect(refreshTagsOwnedByKind).not.toHaveBeenCalled();
   });
 
   it("keeps a task fetched individually in cache after a non-status edit", async () => {

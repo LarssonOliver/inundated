@@ -581,6 +581,22 @@ describe("tags store", () => {
     expect(store.getTagById("p")).toBeUndefined();
   });
 
+  it("refreshes every cached tag of one owner kind", async () => {
+    const taskTag = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    const otherTaskTag = makeTag({ id: "o2", owner: { kind: "task", id: "t2" } });
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    api.getTagsByIds
+      .mockResolvedValueOnce([taskTag, otherTaskTag, projectTag])
+      .mockResolvedValueOnce([{ ...taskTag, archived: true }, otherTaskTag]);
+    const store = useStore();
+    await Promise.all(["o", "o2", "p"].map((id) => store.fetchTagById(id)));
+
+    await store.refreshTagsOwnedByKind("task");
+
+    expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o", "o2"]);
+    expect(store.getTagById("o")?.archived).toBe(true);
+  });
+
   it("doesn't refetch owned tags after updating an owned tag", async () => {
     const owned = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
     api.getTagsByIds.mockResolvedValue([owned]);
