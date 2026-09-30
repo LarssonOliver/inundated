@@ -21,6 +21,17 @@ type Tag struct {
 	TaskId *uuid.UUID
 }
 
+// DefaultDerivedTagColor is the color a derived tag reports when it has no
+// source tag to borrow a color from (Nord's nord10).
+const DefaultDerivedTagColor = "#5e81ac"
+
+// IsDerived reports whether the tag's color is derived from other tags (see
+// DerivedTagColor) rather than set on the tag itself. Task tags are derived:
+// they take their color from their task's regular tags.
+func (t Tag) IsDerived() bool {
+	return t.TaskId != nil
+}
+
 // CompareTagNames orders tags case-insensitively by name, then by name
 // bytes, then by id: the order tags are listed in.
 func CompareTagNames(a, b Tag) int {
@@ -31,17 +42,17 @@ func CompareTagNames(a, b Tag) int {
 	)
 }
 
-// TaskTagColor is the color of a task tag whose task carries labels as its
-// regular tags: that of the first label by CompareTagNames, or
-// DefaultTaskTagColor when there are none.
-func TaskTagColor(labels []Tag) string {
-	if len(labels) == 0 {
-		return DefaultTaskTagColor
+// DerivedTagColor is the color of a derived tag whose color comes from
+// sources: that of the first source by CompareTagNames, or
+// DefaultDerivedTagColor when there are none.
+func DerivedTagColor(sources []Tag) string {
+	if len(sources) == 0 {
+		return DefaultDerivedTagColor
 	}
-	first := labels[0]
-	for _, label := range labels[1:] {
-		if CompareTagNames(label, first) < 0 {
-			first = label
+	first := sources[0]
+	for _, source := range sources[1:] {
+		if CompareTagNames(source, first) < 0 {
+			first = source
 		}
 	}
 	return first.Color

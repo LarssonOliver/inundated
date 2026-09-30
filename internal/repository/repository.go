@@ -22,8 +22,9 @@ type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
 	// GetTag and ListTags report a task tag with its TaskId set, and with
 	// its archived state derived from its task: archived while the task is
-	// closed. Its Color is left as stored; the service derives it with
-	// model.TaskTagColor from ListTaskLabels. ListTags puts regular tags
+	// closed. A derived tag's Color (see model.Tag.IsDerived) is left as
+	// stored; the service derives it with model.DerivedTagColor from
+	// ListDerivedTagSources. ListTags puts regular tags
 	// first, then orders them by model.CompareTagNames.
 	ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
@@ -38,6 +39,11 @@ type TagRepository interface {
 	// TagIds of every task, project and timespan.
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	// ListDerivedTagSources maps each derived tag among tagIds in scope to
+	// the regular tags its color derives from, archived ones included: a
+	// task tag's are its task's regular tags. Tags with no sources, and
+	// tags that aren't derived, are left out.
+	ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 
 type TaskRepository interface {
@@ -70,9 +76,6 @@ type TaskRepository interface {
 	// tags, and those of its ancestors. Tasks with no projects are left
 	// out.
 	ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
-	// ListTaskLabels maps each of taskIds in scope to its own regular tags,
-	// archived ones included. Tasks with no regular tags are left out.
-	ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 
 type UserRepository interface {

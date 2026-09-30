@@ -112,7 +112,7 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 	tag := model.Tag{
 		Id:     uuid.New(),
 		Name:   task.Name,
-		Color:  model.DefaultTaskTagColor,
+		Color:  model.DefaultDerivedTagColor,
 		UserId: scope.UserID(),
 		TaskId: &taskId,
 	}
@@ -359,27 +359,6 @@ func (t *MemoryStore) ListTaskProjectIds(ctx context.Context, scope model.OwnerS
 		}
 		if projectIds := t.taskProjectIds(scope, t.tasks[idx]); len(projectIds) > 0 {
 			out[id] = projectIds
-		}
-	}
-	return out, nil
-}
-
-// ListTaskLabels implements [repository.TaskRepository].
-func (t *MemoryStore) ListTaskLabels(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	lookup := t.newTagLookup()
-	out := map[uuid.UUID][]model.Tag{}
-	for _, id := range taskIds {
-		idx := t.taskIndex(scope, id)
-		if idx == -1 {
-			continue
-		}
-		for _, tagId := range t.tasks[idx].TagIds {
-			if tag, ok := lookup.tags[tagId]; ok {
-				out[id] = append(out[id], tag)
-			}
 		}
 	}
 	return out, nil

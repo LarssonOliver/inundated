@@ -140,11 +140,11 @@ func TestTaskRepositoryContract(t *testing.T) {
 			tagged, err := repo.CreateTask(ctx, testScope, model.Task{Name: "tagged", TagIds: []uuid.UUID{b.Id, a.Id}})
 			require.NoError(t, err)
 
-			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{bare.Id, tagged.Id})
+			sources, err := repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{bare.TagId, tagged.TagId})
 			require.NoError(t, err)
-			require.NotContains(t, labels, bare.Id)
-			require.ElementsMatch(t, []uuid.UUID{a.Id, b.Id}, tagIdsOf(labels[tagged.Id]))
-			require.Equal(t, "#111111", model.TaskTagColor(labels[tagged.Id]))
+			require.NotContains(t, sources, bare.TagId)
+			require.ElementsMatch(t, []uuid.UUID{a.Id, b.Id}, tagIdsOf(sources[tagged.TagId]))
+			require.Equal(t, "#111111", model.DerivedTagColor(sources[tagged.TagId]))
 
 			_, err = repo.UpdateTask(ctx, testScope, tagged.Id, model.TaskPatch{CloseReason: reason(model.CloseReasonDone)})
 			require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.False(t, taggedTag.Archived)
 		})
 
-		t.Run(repoName+"ListTaskLabels", func(t *testing.T) {
+		t.Run(repoName+"ListDerivedTagSources", func(t *testing.T) {
 			repo := newRepo(t)
 			live, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "live", Color: "#111111"})
 			require.NoError(t, err)
@@ -175,27 +175,28 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, repo.DeleteTag(ctx, testScope, deleted.Id))
 
-			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id, uuid.New()})
+			// Regular tags and unknown ids have no sources.
+			sources, err := repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId, live.Id, uuid.New()})
 			require.NoError(t, err)
-			require.Len(t, labels, 1)
-			require.Equal(t, []uuid.UUID{live.Id}, tagIdsOf(labels[task.Id]))
-			require.Equal(t, "live", labels[task.Id][0].Name)
-			require.Equal(t, "#111111", labels[task.Id][0].Color)
+			require.Len(t, sources, 1)
+			require.Equal(t, []uuid.UUID{live.Id}, tagIdsOf(sources[task.TagId]))
+			require.Equal(t, "live", sources[task.TagId][0].Name)
+			require.Equal(t, "#111111", sources[task.TagId][0].Color)
 
 			// A regular tag archived after it was attached still counts.
 			_, err = repo.UpdateTag(ctx, testScope, model.Tag{Id: live.Id, Name: live.Name, Color: live.Color, Archived: true})
 			require.NoError(t, err)
-			labels, err = repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id})
+			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
 			require.NoError(t, err)
-			require.Len(t, labels[task.Id], 1)
-			require.True(t, labels[task.Id][0].Archived)
+			require.Len(t, sources[task.TagId], 1)
+			require.True(t, sources[task.TagId][0].Archived)
 
 			// Another scope sees none of it.
-			other, err := repo.ListTaskLabels(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.Id})
+			other, err := repo.ListDerivedTagSources(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.TagId})
 			require.NoError(t, err)
 			require.Empty(t, other)
 
-			empty, err := repo.ListTaskLabels(ctx, testScope, nil)
+			empty, err := repo.ListDerivedTagSources(ctx, testScope, nil)
 			require.NoError(t, err)
 			require.Empty(t, empty)
 		})
@@ -545,9 +546,9 @@ func TestTaskRepositoryContract(t *testing.T) {
 
 			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "t", TagIds: []uuid.UUID{banana.Id, apple.Id}})
 			require.NoError(t, err)
-			labels, err := repo.ListTaskLabels(ctx, testScope, []uuid.UUID{task.Id})
+			sources, err := repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
 			require.NoError(t, err)
-			require.Equal(t, apple.Color, model.TaskTagColor(labels[task.Id]))
+			require.Equal(t, apple.Color, model.DerivedTagColor(sources[task.TagId]))
 		})
 
 		t.Run(repoName+"ConcurrentCreatesGetDistinctRanks", func(t *testing.T) {

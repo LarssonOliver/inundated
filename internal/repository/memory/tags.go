@@ -111,6 +111,32 @@ func (l tagLookup) view(tag model.Tag) model.Tag {
 	return tag
 }
 
+// ListDerivedTagSources implements [repository.TagRepository].
+func (t *MemoryStore) ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	lookup := t.newTagLookup()
+	out := map[uuid.UUID][]model.Tag{}
+	for _, id := range tagIds {
+		derived, ok := lookup.tags[id]
+		if !ok || !matchesScope(derived.UserId, scope) || !derived.IsDerived() {
+			continue
+		}
+		// A task tag's sources are its task's regular tags.
+		task, ok := lookup.tasks[*derived.TaskId]
+		if !ok {
+			continue
+		}
+		for _, sourceId := range task.TagIds {
+			if source, ok := lookup.tags[sourceId]; ok {
+				out[id] = append(out[id], source)
+			}
+		}
+	}
+	return out, nil
+}
+
 // ListTags implements [repository.TagRepository].
 func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 	t.mu.RLock()

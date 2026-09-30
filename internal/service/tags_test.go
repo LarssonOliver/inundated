@@ -161,39 +161,39 @@ func TestTagService_ListTags(t *testing.T) {
 	}
 }
 
-func TestTagService_TaskTagColors(t *testing.T) {
+func TestTagService_DerivedTagColors(t *testing.T) {
 	taskA, taskB, taskC := uuid.New(), uuid.New(), uuid.New()
 	regular := model.Tag{Id: uuid.New(), Name: "regular", Color: "#123456"}
-	tagA := model.Tag{Id: uuid.New(), Name: "a", Color: model.DefaultTaskTagColor, TaskId: &taskA}
-	tagB := model.Tag{Id: uuid.New(), Name: "b", Color: model.DefaultTaskTagColor, TaskId: &taskB}
+	tagA := model.Tag{Id: uuid.New(), Name: "a", Color: model.DefaultDerivedTagColor, TaskId: &taskA}
+	tagB := model.Tag{Id: uuid.New(), Name: "b", Color: model.DefaultDerivedTagColor, TaskId: &taskB}
 	tagC := model.Tag{Id: uuid.New(), Name: "c", Color: "#000000", TaskId: &taskC}
-	labels := map[uuid.UUID][]model.Tag{
-		taskA: {{Name: "zebra", Color: "#222222"}, {Name: "Apple", Color: "#111111"}},
-		taskB: {{Name: "only", Color: "#333333"}},
+	sources := map[uuid.UUID][]model.Tag{
+		tagA.Id: {{Name: "zebra", Color: "#222222"}, {Name: "Apple", Color: "#111111"}},
+		tagB.Id: {{Name: "only", Color: "#333333"}},
 	}
 
-	t.Run("ListTags colors every task tag in one lookup", func(t *testing.T) {
+	t.Run("ListTags colors every derived tag in one lookup", func(t *testing.T) {
 		var calls [][]uuid.UUID
 		repo := &repository.RepoMock{
 			ListTagFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{regular, tagA, tagB, tagC}, TotalCount: 4}, nil
 			},
-			ListTaskLabelsFn: func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
-				calls = append(calls, taskIds)
-				return labels, nil
+			ListDerivedTagSourcesFn: func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+				calls = append(calls, tagIds)
+				return sources, nil
 			},
 		}
 		got, err := service.NewService(repo).ListTags(context.Background(), model.TagListParams{Kind: model.TagKindAll})
 		require.NoError(t, err)
-		require.Equal(t, [][]uuid.UUID{{taskA, taskB, taskC}}, calls)
+		require.Equal(t, [][]uuid.UUID{{tagA.Id, tagB.Id, tagC.Id}}, calls)
 		var colors []string
 		for _, tag := range got.Data {
 			colors = append(colors, tag.Color)
 		}
-		require.Equal(t, []string{"#123456", "#111111", "#333333", model.DefaultTaskTagColor}, colors)
+		require.Equal(t, []string{"#123456", "#111111", "#333333", model.DefaultDerivedTagColor}, colors)
 	})
 
-	t.Run("ListTags skips the lookup without task tags", func(t *testing.T) {
+	t.Run("ListTags skips the lookup without derived tags", func(t *testing.T) {
 		repo := &repository.RepoMock{
 			ListTagFn: func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error) {
 				return model.Page[model.Tag]{Data: []model.Tag{regular}, TotalCount: 1}, nil
@@ -204,13 +204,13 @@ func TestTagService_TaskTagColors(t *testing.T) {
 		require.Equal(t, "#123456", got.Data[0].Color)
 	})
 
-	t.Run("GetTag colors a task tag", func(t *testing.T) {
+	t.Run("GetTag colors a derived tag", func(t *testing.T) {
 		repo := &repository.RepoMock{
 			GetTagFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 				return tagA, nil
 			},
-			ListTaskLabelsFn: func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
-				return labels, nil
+			ListDerivedTagSourcesFn: func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+				return sources, nil
 			},
 		}
 		got, err := service.NewService(repo).GetTag(context.Background(), tagA.Id, nil)
@@ -223,7 +223,7 @@ func TestTagService_TaskTagColors(t *testing.T) {
 			GetTagFn: func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error) {
 				return tagA, nil
 			},
-			ListTaskLabelsFn: func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+			ListDerivedTagSourcesFn: func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
 				return nil, errors.New("boom")
 			},
 		}

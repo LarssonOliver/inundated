@@ -18,7 +18,7 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 		return model.Tag{}, err
 	}
 	tags := []model.Tag{tag}
-	if err := s.colorTaskTags(ctx, scope, tags); err != nil {
+	if err := s.deriveTagColors(ctx, scope, tags); err != nil {
 		return model.Tag{}, err
 	}
 	tag = tags[0]
@@ -45,32 +45,32 @@ func (s *ServiceImpl) ListTags(ctx context.Context, params model.TagListParams) 
 	if err != nil {
 		return model.Page[model.Tag]{}, err
 	}
-	if err := s.colorTaskTags(ctx, scope, page.Data); err != nil {
+	if err := s.deriveTagColors(ctx, scope, page.Data); err != nil {
 		return model.Page[model.Tag]{}, err
 	}
 	return page, nil
 }
 
-// colorTaskTags sets the color of each task tag in tags from its task's
-// regular tags (see model.TaskTagColor), in one lookup for all of them.
-func (s *ServiceImpl) colorTaskTags(ctx context.Context, scope model.OwnerScope, tags []model.Tag) error {
-	var taskIds []uuid.UUID
+// deriveTagColors sets the color of each derived tag in tags from its
+// source tags (see model.DerivedTagColor), in one lookup for all of them.
+func (s *ServiceImpl) deriveTagColors(ctx context.Context, scope model.OwnerScope, tags []model.Tag) error {
+	var derivedIds []uuid.UUID
 	for _, tag := range tags {
-		if tag.TaskId != nil {
-			taskIds = append(taskIds, *tag.TaskId)
+		if tag.IsDerived() {
+			derivedIds = append(derivedIds, tag.Id)
 		}
 	}
-	if len(taskIds) == 0 {
+	if len(derivedIds) == 0 {
 		return nil
 	}
 
-	labels, err := s.repository.ListTaskLabels(ctx, scope, taskIds)
+	sources, err := s.repository.ListDerivedTagSources(ctx, scope, derivedIds)
 	if err != nil {
 		return err
 	}
 	for i, tag := range tags {
-		if tag.TaskId != nil {
-			tags[i].Color = model.TaskTagColor(labels[*tag.TaskId])
+		if tag.IsDerived() {
+			tags[i].Color = model.DerivedTagColor(sources[tag.Id])
 		}
 	}
 	return nil
