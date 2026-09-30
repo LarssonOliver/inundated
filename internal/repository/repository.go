@@ -21,11 +21,11 @@ type Repository interface {
 type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
 	// GetTag and ListTags report a task tag with its TaskId set, and with
-	// its color and archived state derived from its task: archived while
-	// the task is closed, and colored like the task's first regular tag by
-	// name (or model.DefaultTaskTagColor). ListTags puts regular tags
-	// first, then orders by name case-insensitively, then by name bytes,
-	// then by id.
+	// its archived state derived from its task: archived while the task is
+	// closed. A derived tag's Color (see model.Tag.IsDerived) is left as
+	// stored; the service derives it with model.DerivedTagColor from
+	// ListDerivedTagSources. ListTags puts regular tags
+	// first, then orders them by model.CompareTagNames.
 	ListTags(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	// UpdateTag replaces the tag's mutable fields (including Archived)
@@ -39,6 +39,11 @@ type TagRepository interface {
 	// TagIds of every task, project and timespan.
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	// ListDerivedTagSources maps each derived tag among tagIds in scope to
+	// the regular tags its color derives from, archived ones included: a
+	// task tag's are its task's regular tags. Tags with no sources, and
+	// tags that aren't derived, are left out.
+	ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 
 type TaskRepository interface {

@@ -6,10 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// DefaultTaskTagColor is the color a task tag reports when its task carries
-// no regular tag to borrow a color from (Nord's nord10).
-const DefaultTaskTagColor = "#5e81ac"
-
 type CloseReason string
 
 const (

@@ -112,7 +112,7 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 	tag := model.Tag{
 		Id:     uuid.New(),
 		Name:   task.Name,
-		Color:  model.DefaultTaskTagColor,
+		Color:  model.DefaultDerivedTagColor,
 		UserId: scope.UserID(),
 		TaskId: &taskId,
 	}

@@ -244,6 +244,11 @@ func (m *MockRepository) DeleteTask(ctx context.Context, scope model.OwnerScope,
 	return args.Error(0)
 }
 
+func (m *MockRepository) ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	args := m.Called(ctx, scope, tagIds)
+	return args.Get(0).(map[uuid.UUID][]model.Tag), args.Error(1)
+}
+
 func (m *MockRepository) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
 	args := m.Called(ctx, scope, taskIds)
 	return args.Get(0).(map[uuid.UUID][]uuid.UUID), args.Error(1)

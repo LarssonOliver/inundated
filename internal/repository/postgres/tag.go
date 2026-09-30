@@ -13,9 +13,9 @@ import (
 	"github.com/larssonoliver/inundated/internal/model"
 )
 
-// A task tag's archived state and color aren't stored on its row: it's
-// archived while its task is closed, and it takes the color of the task's
-// first regular tag by name, or model.DefaultTaskTagColor. These fragments
+// A task tag's archived state isn't stored on its row: it's archived while
+// its task is closed. Its color is derived in the service layer (see
+// model.DerivedTagColor), so the stored one is returned as is. These fragments
 // read tags that way; they expect tags aliased t and the owning task (if
 // any) LEFT JOINed as k, which tagFromSQL provides.
 //
@@ -31,15 +31,7 @@ const (
 
 	tagArchivedAtSQL = `CASE WHEN k.id IS NULL THEN t.archived_at ELSE k.closed_at END`
 
-	tagColorSQL = `CASE WHEN k.id IS NULL THEN t.color ELSE COALESCE((
-			SELECT rt.color FROM task_tags kt
-			JOIN tags rt ON rt.id = kt.tag_id AND rt.deleted_at IS NULL
-			WHERE kt.task_id = k.id
-			ORDER BY lower(rt.name) COLLATE "C", rt.name COLLATE "C", rt.id
-			LIMIT 1
-		), '` + model.DefaultTaskTagColor + `') END`
-
-	tagColumnsSQL = `t.id, t.name, ` + tagColorSQL + `, t.user_id, ` + tagArchivedAtSQL + `, k.id`
+	tagColumnsSQL = `t.id, t.name, t.color, t.user_id, ` + tagArchivedAtSQL + `, k.id`
 )
 
 func scanTag(row pgx.Row) (model.Tag, error) {
@@ -152,6 +144,39 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 		Limit:      params.Limit,
 		Offset:     params.Offset,
 	}, nil
+}
+
+func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	out := map[uuid.UUID][]model.Tag{}
+	if len(tagIds) == 0 {
+		return out, nil
+	}
+
+	// A task tag's sources are its task's regular tags.
+	ownerSQL, args := ownerPredicate("k.user_id", scope, []any{tagIds})
+	query := `
+		SELECT k.tag_id, t.id, t.name, t.color, t.user_id, t.archived_at
+		FROM tasks k
+		JOIN task_tags kt ON kt.task_id = k.id
+		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
+		WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND ` + ownerSQL
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ListDerivedTagSources: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var derivedId uuid.UUID
+		var source model.Tag
+		var archivedAt *time.Time
+		if err := rows.Scan(&derivedId, &source.Id, &source.Name, &source.Color, &source.UserId, &archivedAt); err != nil {
+			return nil, fmt.Errorf("ListDerivedTagSources scan: %w", err)
+		}
+		source.Archived = archivedAt != nil
+		out[derivedId] = append(out[derivedId], source)
+	}
+	return out, rows.Err()
 }
 
 func (r *PostgresStore) CreateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error) {

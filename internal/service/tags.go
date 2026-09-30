@@ -17,6 +17,11 @@ func (s *ServiceImpl) GetTag(ctx context.Context, id uuid.UUID, includes *TagSer
 	if err != nil {
 		return model.Tag{}, err
 	}
+	tags := []model.Tag{tag}
+	if err := s.deriveTagColors(ctx, scope, tags); err != nil {
+		return model.Tag{}, err
+	}
+	tag = tags[0]
 
 	if includes != nil {
 		if includes.TotalTime {
@@ -36,7 +41,39 @@ func (s *ServiceImpl) ListTags(ctx context.Context, params model.TagListParams) 
 	if err != nil {
 		return model.Page[model.Tag]{}, err
 	}
-	return s.repository.ListTags(ctx, scope, params)
+	page, err := s.repository.ListTags(ctx, scope, params)
+	if err != nil {
+		return model.Page[model.Tag]{}, err
+	}
+	if err := s.deriveTagColors(ctx, scope, page.Data); err != nil {
+		return model.Page[model.Tag]{}, err
+	}
+	return page, nil
+}
+
+// deriveTagColors sets the color of each derived tag in tags from its
+// source tags (see model.DerivedTagColor), in one lookup for all of them.
+func (s *ServiceImpl) deriveTagColors(ctx context.Context, scope model.OwnerScope, tags []model.Tag) error {
+	var derivedIds []uuid.UUID
+	for _, tag := range tags {
+		if tag.IsDerived() {
+			derivedIds = append(derivedIds, tag.Id)
+		}
+	}
+	if len(derivedIds) == 0 {
+		return nil
+	}
+
+	sources, err := s.repository.ListDerivedTagSources(ctx, scope, derivedIds)
+	if err != nil {
+		return err
+	}
+	for i, tag := range tags {
+		if tag.IsDerived() {
+			tags[i].Color = model.DerivedTagColor(sources[tag.Id])
+		}
+	}
+	return nil
 }
 
 func (s *ServiceImpl) CreateTag(ctx context.Context, tag model.Tag) (model.Tag, error) {

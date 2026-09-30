@@ -203,7 +203,7 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		tagId := uuid.New()
 		if _, err := q.Exec(ctx,
 			`INSERT INTO tags (id, name, color, user_id) VALUES ($1, $2, $3, $4)`,
-			tagId, task.Name, model.DefaultTaskTagColor, scope.UserID(),
+			tagId, task.Name, model.DefaultDerivedTagColor, scope.UserID(),
 		); err != nil {
 			return fmt.Errorf("CreateTask tag: %w", err)
 		}

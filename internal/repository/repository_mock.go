@@ -23,6 +23,8 @@ type RepoMock struct {
 	ListTagFn   func(ctx context.Context, scope model.OwnerScope, params model.TagListParams) (model.Page[model.Tag], error)
 	UpdateTagFn func(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 
+	ListDerivedTagSourcesFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
+
 	GetTaskFn    func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
 	ListTasksFn  func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
 	CreateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
@@ -152,6 +154,11 @@ func (t *RepoMock) DeleteTask(ctx context.Context, scope model.OwnerScope, id uu
 // ListTaskProjectIds implements repository.TaskRepository.
 func (t *RepoMock) ListTaskProjectIds(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
 	return t.ListTaskProjectIdsFn(ctx, scope, taskIds)
+}
+
+// ListDerivedTagSources implements repository.TagRepository.
+func (t *RepoMock) ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error) {
+	return t.ListDerivedTagSourcesFn(ctx, scope, tagIds)
 }
 
 // UpdateTag implements repository.TagRepository.
