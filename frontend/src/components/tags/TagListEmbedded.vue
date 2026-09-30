@@ -100,14 +100,23 @@ const tagSearchResult = computed(() =>
 /**
  * Returns the owner kind and name typed after a leading owner prefix ("#"
  * for tasks, "@" for projects, see helpers/tagOwners), or null when the
- * query has none. A prefix of a kind this picker offers always narrows the
+ * query has none of a kind this picker offers. Such a prefix narrows the
  * search to that kind's tags (and is stripped from what's actually
- * searched for); any other prefix is just part of the name. Creating a new
- * owner from an unmatched query additionally requires createOwners,
- * guarded separately below.
+ * searched for). Creating a new owner from an unmatched query additionally
+ * requires createOwners, guarded separately below.
  */
 function ownerQuery(query: string) {
   return parseOwnerQuery(query, ownerKinds);
+}
+
+/**
+ * Whether the query starts with the prefix of an owner kind this picker
+ * doesn't offer. It then only finds regular tags named with the prefix,
+ * and creates nothing: a regular tag named e.g. "@name" would look like a
+ * project tag.
+ */
+function namesUnofferedOwner(query: string): boolean {
+  return !ownerQuery(query) && parseOwnerQuery(query) !== null;
 }
 
 /** Whether this picker may create an owner of the kind the query names. */
@@ -120,11 +129,13 @@ function canCreateOwner(owner: NonNullable<ReturnType<typeof ownerQuery>>): bool
 // for a "#query" when this picker isn't allowed to create tasks - showing
 // "Create task ..." there, or falling back to literally creating a regular
 // tag named "#query", would both be wrong. Likewise for "@query" and
-// projects.
+// projects, and for the prefix of a kind this picker doesn't offer at all
+// (see namesUnofferedOwner).
 const currentQuery = ref("");
 const canCreateFromCurrentQuery = computed(() => {
   const owner = ownerQuery(currentQuery.value);
-  return !owner || canCreateOwner(owner);
+  if (owner) return canCreateOwner(owner);
+  return !namesUnofferedOwner(currentQuery.value);
 });
 
 // The kinds of tags a search without an owner prefix asks the server for:
@@ -152,7 +163,9 @@ async function search(query: string) {
   }
 
   const owner = ownerQuery(query);
-  const kinds = owner ? [owner.spec.kind] : searchedKinds.value;
+  let kinds: TagKind[] = searchedKinds.value;
+  if (owner) kinds = [owner.spec.kind];
+  else if (namesUnofferedOwner(query)) kinds = ["label"];
   const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kinds);
   const mayShowTaskTags = kinds.includes("task");
   if (mayShowTaskTags && !tasksLoadAttempted) {
@@ -249,7 +262,7 @@ async function onTagCreate(query: string) {
   }
 
   const name = query.trim();
-  if (!name) return;
+  if (!name || namesUnofferedOwner(name)) return;
   const tag = await tagsStore.createTagFromName(name);
   if (tag) {
     model.value = new Set([...model.value, tag.id]);

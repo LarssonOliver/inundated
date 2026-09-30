@@ -365,7 +365,7 @@ test("# plus enter creates a task and adds its task tag", async () => {
   expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["task-tag-1"]));
 });
 
-test("with no owner kinds, owned tags are left out and # is part of the name", async () => {
+test("with no owner kinds, owned tags are left out and # finds regular tags but creates none", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([tag({ id: "label", name: "#hash" })]);
 
@@ -380,7 +380,9 @@ test("with no owner kinds, owned tags are left out and # is part of the name", a
   await settleSearch();
 
   expect(searchTags).toHaveBeenLastCalledWith("#hash", "label");
-  expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create "#hash"');
+  expect(wrapper.text()).toContain("#hash");
+  // A regular tag named "#..." would look like a task tag.
+  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
 });
 
 test("@ plus enter creates a project colored from its name and adds its project tag", async () => {
@@ -447,9 +449,12 @@ test("only offers the owned tag kinds it is given", async () => {
   expect(wrapper.text()).toContain("#web task");
   expect(wrapper.text()).not.toContain("web project");
 
-  // "@" isn't a prefix here, so it is searched as part of the name.
+  // Project tags aren't offered here, so "@" only finds regular tags
+  // named with it, and offers to create neither a project nor a regular
+  // tag that would look like one.
+  searchTags.mockClear();
   await input.setValue("@web");
   await settleSearch();
-  expect(searchTags).toHaveBeenCalledWith("@web", "label");
-  expect(searchTags).toHaveBeenLastCalledWith("@web", "task");
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("@web", "label");
+  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
 });
