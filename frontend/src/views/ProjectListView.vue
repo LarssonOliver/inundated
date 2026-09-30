@@ -12,7 +12,7 @@
             <router-link class="project-name" :to="`/projects/${project.id}`">
               {{ project.name }}
             </router-link>
-            <TagListEmbedded v-model="project.tagIds" read-only />
+            <TagListEmbedded v-model="project.tagIds" :hide-owner-kinds="['task']" read-only />
           </div>
         </div>
       </div>

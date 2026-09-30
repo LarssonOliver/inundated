@@ -63,18 +63,23 @@ const containerClasses = reactive({
 
 .tag-container.owned {
   background-color: transparent;
-  border: 2px solid v-bind("tag.color");
+  border: 1px solid var(--nord1);
   padding: calc(0.25em - 2px) calc(0.6em - 2px);
+  font-size: 1.1em;
 }
 
 .owner-mark {
   color: v-bind("tag.color");
   font-weight: 700;
-  margin-right: 0.1em;
+  margin-right: 0.2em;
 }
 
 .tag-container.dark-text {
   color: var(--nord0);
+}
+
+.tag-container.archived {
+  opacity: 0.7;
 }
 
 .tag-container.archived div {

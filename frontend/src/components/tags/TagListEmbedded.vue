@@ -52,6 +52,7 @@ const {
   readOnly,
   ownerKinds = allTagOwnerKinds,
   createOwners = [],
+  hideOwnerKinds = [],
 } = defineProps<{
   readOnly?: boolean;
   /**
@@ -68,6 +69,7 @@ const {
    * accidentally create one just because someone typed a leading prefix.
    */
   createOwners?: readonly TagOwnerKind[];
+  hideOwnerKinds?: readonly TagOwnerKind[];
 }>();
 
 const tagsStore = useTagsStore();
@@ -83,6 +85,7 @@ const resolvedTags = ref<Tag[]>([]);
 const tags = computed(() =>
   resolvedTags.value
     .filter((tag) => !tagsStore.isTagDeleted(tag))
+    .filter((tag) => !tag.owner || !hideOwnerKinds.includes(tag.owner.kind))
     .map((tag) => tagsStore.getTagById(tag.id) ?? tag),
 );
 // Raw, unfiltered server results for the current query. Filtered into
