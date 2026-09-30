@@ -306,6 +306,8 @@ describe("tags store", () => {
     expect(api.deleteTag).toHaveBeenCalledWith("1");
     expect(store.getTagById("1")).toBeUndefined();
     expect(store.tags).toHaveLength(0);
+    expect(store.isTagDeleted(tag)).toBe(true);
+    expect(store.isTagDeleted(makeTag({ id: "2" }))).toBe(false);
   });
 
   it("only issue one API call when fetching tags multiple times", async () => {

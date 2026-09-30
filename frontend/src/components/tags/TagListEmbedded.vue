@@ -77,9 +77,14 @@ const tasksStore = useTasksStore();
 // color after its task's tags change, or a renamed project) reaches pills
 // already on screen. The resolved copy is only a fallback for a tag the
 // store has since dropped from its listing (e.g. an archived tag after the
-// archived filter changes).
+// archived filter changes), and a tag the store knows was deleted (e.g.
+// with its project) isn't shown at all.
 const resolvedTags = ref<Tag[]>([]);
-const tags = computed(() => resolvedTags.value.map((tag) => tagsStore.getTagById(tag.id) ?? tag));
+const tags = computed(() =>
+  resolvedTags.value
+    .filter((tag) => !tagsStore.isTagDeleted(tag))
+    .map((tag) => tagsStore.getTagById(tag.id) ?? tag),
+);
 // Raw, unfiltered server results for the current query. Filtered into
 // tagSearchResult below so removing/adding a tag in `model` (e.g. via the
 // pill's close button) re-excludes/re-includes it immediately, without

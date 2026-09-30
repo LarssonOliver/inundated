@@ -145,6 +145,25 @@ test("updates a shown pill when the store refreshes its tag", async () => {
   expect(wrapper.text()).toContain("@Blog");
 });
 
+test("drops a shown pill once the store learns its tag was deleted", async () => {
+  const project = tag({ id: "p", name: "Website", owner: { kind: "project", id: "p1" } });
+  const archived = tag({ id: "a", name: "old", archived: true });
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  getTagsByIds.mockResolvedValueOnce([project, archived]).mockResolvedValueOnce([]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["p", "a"]) } });
+  await flushPromises();
+  expect(wrapper.text()).toContain("@Website");
+  expect(wrapper.text()).toContain("old");
+
+  await useTagsStore().ownerWritten({ owner: { kind: "project", id: "p1" }, deleted: true });
+  await useTagsStore().refreshTag("a");
+  await flushPromises();
+
+  expect(wrapper.text()).not.toContain("@Website");
+  expect(wrapper.text()).not.toContain("old");
+});
+
 function emptyPage() {
   return { data: [], pagination: { limit: 50, offset: 0, total: 0 } };
 }
