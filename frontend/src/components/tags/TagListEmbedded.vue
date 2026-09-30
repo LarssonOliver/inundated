@@ -72,7 +72,14 @@ const {
 
 const tagsStore = useTagsStore();
 const tasksStore = useTasksStore();
-const tags = ref<Tag[]>([]);
+// The assigned tags as last resolved by refreshTags. Pills show the store's
+// current copy of each instead, so a refetch elsewhere (e.g. a task tag's
+// color after its task's tags change, or a renamed project) reaches pills
+// already on screen. The resolved copy is only a fallback for a tag the
+// store has since dropped from its listing (e.g. an archived tag after the
+// archived filter changes).
+const resolvedTags = ref<Tag[]>([]);
+const tags = computed(() => resolvedTags.value.map((tag) => tagsStore.getTagById(tag.id) ?? tag));
 // Raw, unfiltered server results for the current query. Filtered into
 // tagSearchResult below so removing/adding a tag in `model` (e.g. via the
 // pill's close button) re-excludes/re-includes it immediately, without
@@ -184,7 +191,7 @@ async function refreshTags() {
     [...model.value].map((id) => tagsStore.getTagById(id) ?? fetchAssignedTag(id)),
   );
   if (token !== refreshToken) return; // superseded by a newer refresh
-  tags.value = resolved.filter((tag): tag is Tag => tag != null);
+  resolvedTags.value = resolved.filter((tag): tag is Tag => tag != null);
 }
 
 // Tags already assigned to this item must still be shown even if archived,

@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from "pinia";
 import TagListEmbedded from "./TagListEmbedded.vue";
 import { stringToHexColor } from "@/helpers/colors";
 import type { Tag } from "@/model";
+import { useTagsStore } from "@/stores/tags";
 
 const listTagsPaginated = vi.fn();
 const getTagsByIds = vi.fn();
@@ -125,6 +126,23 @@ test("still shows an already-assigned tag that has since been archived", async (
   await flushPromises();
 
   expect(wrapper.text()).toContain("archived-tag");
+});
+
+test("updates a shown pill when the store refreshes its tag", async () => {
+  const project = tag({ id: "p", name: "Website", owner: { kind: "project", id: "p1" } });
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  getTagsByIds
+    .mockResolvedValueOnce([project])
+    .mockResolvedValueOnce([{ ...project, name: "Blog" }]);
+
+  const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set(["p"]) } });
+  await flushPromises();
+  expect(wrapper.text()).toContain("@Website");
+
+  await useTagsStore().refreshTag("p");
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("@Blog");
 });
 
 function emptyPage() {
