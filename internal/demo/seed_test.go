@@ -62,7 +62,7 @@ func TestSeed_ProjectsReferenceExistingTags(t *testing.T) {
 	require.NoError(t, demo.Seed(context.Background(), repo, now))
 
 	// Projects carry the task tags of the tasks assigned to them.
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage, Kind: model.TagKindAll})
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: largePage, Kinds: []model.TagKind{model.TagKindAll}})
 	require.NoError(t, err)
 	knownTags := make(map[uuid.UUID]bool, len(tags.Data))
 	for _, tag := range tags.Data {
@@ -86,7 +86,7 @@ func TestSeed_TimespansReferenceExistingTags(t *testing.T) {
 
 	// Time is logged on task tags too, including closed (archived) tasks'.
 	allTags := model.PaginationParams{Limit: largePage.Limit, IncludeArchived: true}
-	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: allTags, Kind: model.TagKindAll})
+	tags, err := repo.ListTags(context.Background(), model.UnownedScope(), model.TagListParams{PaginationParams: allTags, Kinds: []model.TagKind{model.TagKindAll}})
 	require.NoError(t, err)
 	knownTags := make(map[uuid.UUID]bool, len(tags.Data))
 	for _, tag := range tags.Data {

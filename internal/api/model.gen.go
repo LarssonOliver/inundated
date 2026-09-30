@@ -145,30 +145,6 @@ func (e WeekStartDay) Valid() bool {
 	}
 }
 
-// Defines values for TagKindQuery.
-const (
-	TagKindQueryAll     TagKindQuery = "all"
-	TagKindQueryLabel   TagKindQuery = "label"
-	TagKindQueryProject TagKindQuery = "project"
-	TagKindQueryTask    TagKindQuery = "task"
-)
-
-// Valid indicates whether the value is a known member of the TagKindQuery enum.
-func (e TagKindQuery) Valid() bool {
-	switch e {
-	case TagKindQueryAll:
-		return true
-	case TagKindQueryLabel:
-		return true
-	case TagKindQueryProject:
-		return true
-	case TagKindQueryTask:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetProjectParamsInclude.
 const (
 	GetProjectParamsIncludeTaskTimeMs  GetProjectParamsInclude = "taskTimeMs"
@@ -660,7 +636,7 @@ type TagIdPath = openapi_types.UUID
 type TagIdsQuery = []openapi_types.UUID
 
 // TagKindQuery defines model for tagKindQuery.
-type TagKindQuery string
+type TagKindQuery = []string
 
 // TagSearchQuery defines model for tagSearchQuery.
 type TagSearchQuery = string
@@ -747,8 +723,8 @@ type ListTagsParams struct {
 	// Q Only return tags whose name contains this text, ignoring case.
 	Q *TagSearchQuery `form:"q,omitempty" json:"q,omitempty"`
 
-	// Kind Which tags to return: regular tags (label), the tags owned by one kind of item (task or project, see TagOwnerKind), or every tag (all). Defaults to label.
-	Kind *ListTagsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
+	// Kind Which kinds of tags to return, comma-separated: regular tags (label), the tags owned by one kind of item (task or project, see TagOwnerKind), or every tag (all). Defaults to label. Several kinds take turns filling each page, the first tag of each kind by name, then the second of each, and so on, so one kind's matches can't crowd another's out.
+	Kind *TagKindQuery `form:"kind,omitempty" json:"kind,omitempty"`
 
 	// Ids Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get owned tags too.
 	Ids *TagIdsQuery `form:"ids,omitempty" json:"ids,omitempty"`

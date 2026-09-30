@@ -69,3 +69,34 @@ func TestTagKindOwnerKind(t *testing.T) {
 	_, ok = TagKindAll.OwnerKind()
 	require.False(t, ok)
 }
+
+func TestTagKindValid(t *testing.T) {
+	for _, k := range []TagKind{TagKindLabel, TagKindTask, TagKindProject, TagKindAll} {
+		require.True(t, k.Valid(), k)
+	}
+	require.False(t, TagKind("").Valid())
+	require.False(t, TagKind("tag").Valid())
+}
+
+func TestTagListParamsSelectsKind(t *testing.T) {
+	task := &TagOwner{Kind: TagOwnerTask}
+	project := &TagOwner{Kind: TagOwnerProject}
+
+	byDefault := TagListParams{}
+	require.True(t, byDefault.SelectsKind(nil))
+	require.False(t, byDefault.SelectsKind(task))
+
+	some := TagListParams{Kinds: []TagKind{TagKindLabel, TagKindTask}}
+	require.True(t, some.SelectsKind(nil))
+	require.True(t, some.SelectsKind(task))
+	require.False(t, some.SelectsKind(project))
+
+	owned := TagListParams{Kinds: []TagKind{TagKindProject}}
+	require.False(t, owned.SelectsKind(nil))
+	require.True(t, owned.SelectsKind(project))
+
+	all := TagListParams{Kinds: []TagKind{TagKindAll}}
+	require.True(t, all.SelectsKind(nil))
+	require.True(t, all.SelectsKind(task))
+	require.True(t, all.SelectsKind(project))
+}

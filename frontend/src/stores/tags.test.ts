@@ -825,7 +825,7 @@ describe("tags store", () => {
     await store.fetchTags();
     const result = await store.searchTagsOnServer("wrok", "all");
 
-    expect(api.searchTags).toHaveBeenCalledWith("wrok", "all");
+    expect(api.searchTags).toHaveBeenCalledWith("wrok", ["all"]);
     // The server's substring hit ranks above the cache's typo match.
     expect(result.map((t) => t.id)).toEqual(["remote", "cached"]);
     // Server results are cached for getTagById without entering the list.
@@ -833,24 +833,20 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.id)).toEqual(["cached"]);
   });
 
-  it("searches each of several kinds on its own and merges the results", async () => {
+  it("searches several kinds in one request and ranks the results together", async () => {
     const label = makeTag({ id: "label", name: "web label" });
     const project = makeTag({ id: "project", name: "web", owner: { kind: "project", id: "p1" } });
     api.listTagsPaginated.mockResolvedValue({
       data: [],
       pagination: { limit: 50, offset: 0, total: 0 },
     });
-    api.searchTags.mockImplementation(async (_q, kind) =>
-      kind === "label" ? [label] : kind === "project" ? [project] : [],
-    );
+    api.searchTags.mockResolvedValue([label, project]);
 
     const store = useStore();
     await store.fetchTags();
     const result = await store.searchTagsOnServer("web", ["label", "project"]);
 
-    expect(api.searchTags).toHaveBeenCalledTimes(2);
-    expect(api.searchTags).toHaveBeenCalledWith("web", "label");
-    expect(api.searchTags).toHaveBeenCalledWith("web", "project");
+    expect(api.searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "project"]);
     // The exact match ranks first.
     expect(result.map((t) => t.id)).toEqual(["project", "label"]);
     expect(store.getTagById("project")).toEqual(project);
@@ -871,7 +867,7 @@ describe("tags store", () => {
       await store.fetchTags();
       const result = await store.searchTagsOnServer("work", kind);
 
-      expect(api.searchTags).toHaveBeenCalledWith("work", kind);
+      expect(api.searchTags).toHaveBeenCalledWith("work", [kind]);
       expect(result.map((t) => t.id)).toEqual(["owned"]);
     },
   );

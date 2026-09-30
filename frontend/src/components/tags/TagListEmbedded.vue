@@ -139,9 +139,9 @@ const canCreateFromCurrentQuery = computed(() => {
 });
 
 // The kinds of tags a search without an owner prefix asks the server for:
-// regular tags and each owned kind offered, each searched on its own so one
-// kind's matches can't fill up the server's result limit ahead of another's.
-// Kinds the picker doesn't offer aren't searched at all.
+// regular tags and each owned kind offered, which take turns filling the
+// server's results so one kind's matches can't crowd another's out. Kinds
+// the picker doesn't offer aren't searched at all.
 const searchedKinds = computed<TagKind[]>(() => ["label", ...ownerKinds]);
 
 // Guards against overlapping searches: a slower response for an older query

@@ -132,12 +132,44 @@ func (k TagKind) OwnerKind() (TagOwnerKind, bool) {
 	return owner, owner.Valid()
 }
 
-// TagListParams extends PaginationParams for ListTags. An empty Kind means
-// TagKindLabel, and an empty Query matches every name.
+// Valid reports whether k is a kind ListTags knows.
+func (k TagKind) Valid() bool {
+	_, owned := k.OwnerKind()
+	return owned || k == TagKindLabel || k == TagKindAll
+}
+
+// TagListParams extends PaginationParams for ListTags. Empty Kinds means
+// TagKindLabel alone, and an empty Query matches every name.
+//
+// With several kinds, they take turns filling each page: the first tag of
+// each kind by name, then the second of each, and so on, regular tags
+// first and owned ones by owner kind within each turn. So one kind's
+// matches can't crowd another's out of a page. With one kind, that's name
+// order.
 type TagListParams struct {
 	PaginationParams
 	Query string
-	Kind  TagKind
+	Kinds []TagKind
 	// Ids, when set, keeps only these tags.
 	Ids []uuid.UUID
+}
+
+// SelectsKind reports whether a tag owned by owner (nil for a regular tag)
+// is of one of p's kinds.
+func (p TagListParams) SelectsKind(owner *TagOwner) bool {
+	kinds := p.Kinds
+	if len(kinds) == 0 {
+		kinds = []TagKind{TagKindLabel}
+	}
+	for _, k := range kinds {
+		switch {
+		case k == TagKindAll:
+			return true
+		case k == TagKindLabel && owner == nil:
+			return true
+		case owner != nil && k == TagKind(owner.Kind):
+			return true
+		}
+	}
+	return false
 }

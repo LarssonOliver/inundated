@@ -111,7 +111,7 @@ func TestListTags_ReturnsSorted(t *testing.T) {
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY o\.tag_id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY row_number\(\) OVER \(PARTITION BY o\.kind ORDER BY lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id\), o\.kind NULLS FIRST LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -141,7 +141,7 @@ func TestListTags_WithPaginationParams(t *testing.T) {
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY o\.tag_id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY row_number\(\) OVER \(PARTITION BY o\.kind ORDER BY lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id\), o\.kind NULLS FIRST LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -172,7 +172,7 @@ func TestListTags_Empty(t *testing.T) {
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY o\.tag_id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY row_number\(\) OVER \(PARTITION BY o\.kind ORDER BY lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id\), o\.kind NULLS FIRST LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead),
@@ -199,7 +199,7 @@ func TestListTags_UnownedScope(t *testing.T) {
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id IS NULL ORDER BY o\.tag_id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END IS NULL AND o\.tag_id IS NULL AND t\.user_id IS NULL ORDER BY row_number\(\) OVER \(PARTITION BY o\.kind ORDER BY lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id\), o\.kind NULLS FIRST LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(tagColsRead).
@@ -224,7 +224,7 @@ func TestListTags_IncludeArchived(t *testing.T) {
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(1))
 
-	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY o\.tag_id IS NOT NULL, lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT t\.id, t\.name, .+ FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.deleted_at IS NULL AND o\.tag_id IS NULL AND t\.user_id = \$3 ORDER BY row_number\(\) OVER \(PARTITION BY o\.kind ORDER BY lower\(t\.name\) COLLATE "C", t\.name COLLATE "C", t\.id\), o\.kind NULLS FIRST LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(tagColsRead).
 			AddRow(tag.Id, tag.Name, tag.Color, tag.UserId, &archivedAt, nil, nil))

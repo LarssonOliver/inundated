@@ -33,6 +33,10 @@ const (
 	tagArchivedAtSQL = `CASE WHEN o.tag_id IS NULL THEN t.archived_at ELSE o.archived_at END`
 
 	tagColumnsSQL = `t.id, t.name, t.color, t.user_id, ` + tagArchivedAtSQL + `, o.kind, o.owner_id`
+
+	// tagTurnSQL numbers each tag within its kind by name, so ordering by
+	// it lets the kinds take turns (see model.TagListParams).
+	tagTurnSQL = `row_number() OVER (PARTITION BY o.kind ORDER BY lower(t.name) COLLATE "C", t.name COLLATE "C", t.id)`
 )
 
 func scanTag(row pgx.Row) (model.Tag, error) {
@@ -58,11 +62,9 @@ func tagListFilterSQL(params model.TagListParams, args []any) (string, []any) {
 	if !params.IncludeArchived {
 		sql.WriteString(tagArchivedAtSQL + " IS NULL AND ")
 	}
-	if ownerKind, ok := params.Kind.OwnerKind(); ok {
-		args = append(args, string(ownerKind))
-		fmt.Fprintf(&sql, `o.kind = $%d AND `, len(args))
-	} else if params.Kind != model.TagKindAll {
-		sql.WriteString("o.tag_id IS NULL AND ")
+	if kindSQL, kindArgs := tagKindFilterSQL(params.Kinds, args); kindSQL != "" {
+		args = kindArgs
+		sql.WriteString(kindSQL + " AND ")
 	}
 	if params.Query != "" {
 		args = append(args, "%"+escapeLike(params.Query)+"%")
@@ -73,6 +75,38 @@ func tagListFilterSQL(params model.TagListParams, args []any) (string, []any) {
 		fmt.Fprintf(&sql, `t.id = ANY($%d) AND `, len(args))
 	}
 	return sql.String(), args
+}
+
+// tagKindFilterSQL returns the condition keeping only tags of kinds (see
+// model.TagListParams), with any value it binds appended to args, or ""
+// when every kind is kept.
+func tagKindFilterSQL(kinds []model.TagKind, args []any) (string, []any) {
+	if len(kinds) == 0 {
+		kinds = []model.TagKind{model.TagKindLabel}
+	}
+	var conds []string
+	ownerKinds := []string{}
+	for _, k := range kinds {
+		if k == model.TagKindAll {
+			return "", args
+		}
+		if ownerKind, ok := k.OwnerKind(); ok {
+			ownerKinds = append(ownerKinds, string(ownerKind))
+		} else if k == model.TagKindLabel && len(conds) == 0 {
+			conds = append(conds, "o.tag_id IS NULL")
+		}
+	}
+	if len(ownerKinds) > 0 {
+		args = append(args, ownerKinds)
+		conds = append(conds, fmt.Sprintf("o.kind = ANY($%d)", len(args)))
+	}
+	switch len(conds) {
+	case 0:
+		return "FALSE", args
+	case 1:
+		return conds[0], args
+	}
+	return "(" + strings.Join(conds, " OR ") + ")", args
 }
 
 // escapeLike escapes LIKE wildcards in s, using '\' as the escape character.
@@ -120,7 +154,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 		SELECT ` + tagColumnsSQL + `
 		FROM ` + tagFromSQL + `
 		WHERE t.deleted_at IS NULL AND ` + dataFilterSQL + dataOwnerSQL + `
-		ORDER BY o.tag_id IS NOT NULL, lower(t.name) COLLATE "C", t.name COLLATE "C", t.id
+		ORDER BY ` + tagTurnSQL + `, o.kind NULLS FIRST
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, q, args...)

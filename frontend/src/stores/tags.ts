@@ -496,8 +496,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     /**
      * Searches for tags by name on the server, so tags beyond the locally
      * cached page are found too, and caches the results for getTagById.
-     * Each kind is searched on its own, so one kind's matches can't crowd
-     * another's out of the server's result limit. When regular tags are
+     * The kinds are searched in one request, taking turns filling its
+     * results, so one kind's matches can't crowd another's out of the
+     * server's result limit. When regular tags are
      * wanted, typo-tolerant matches from the local cache (which only holds
      * regular tags) are merged in, since the server only matches
      * substrings. Results are ranked like searchTags, best match first.
@@ -514,7 +515,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const q = query.trim();
       const kindList: readonly TagKind[] = typeof kinds === "string" ? [kinds] : kinds;
       const seq = nextFetchSeq();
-      const found = (await Promise.all(kindList.map((kind) => api.searchTags(q, kind)))).flat();
+      const found = await api.searchTags(q, kindList);
       for (const tag of found) {
         cacheIndividuallyFetchedTag(tag.id, seq, tag);
       }

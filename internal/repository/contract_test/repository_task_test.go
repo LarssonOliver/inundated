@@ -25,7 +25,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 	}
 	allTags := model.TagListParams{
 		PaginationParams: model.PaginationParams{Limit: 100, IncludeArchived: true},
-		Kind:             model.TagKindAll,
+		Kinds:            []model.TagKind{model.TagKindAll},
 	}
 	day := func(y int, m time.Month, d int) *time.Time {
 		t := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
@@ -94,13 +94,13 @@ func TestTaskRepositoryContract(t *testing.T) {
 				require.Nil(t, tag.Owner)
 			}
 
-			tasks, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindTask})
+			tasks, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kinds: []model.TagKind{model.TagKindTask}})
 			require.NoError(t, err)
 			require.Len(t, tasks.Data, 1)
 			require.Equal(t, task.TagId, tasks.Data[0].Id)
 
 			// Regular tags come first, and search ignores case.
-			both, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindAll, Query: "DESIGN"})
+			both, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kinds: []model.TagKind{model.TagKindAll}, Query: "DESIGN"})
 			require.NoError(t, err)
 			require.Equal(t, 2, both.TotalCount)
 			require.Equal(t, "Design", both.Data[0].Name)
@@ -115,14 +115,14 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Empty(t, none.Data)
 
 			// Ids keeps only those tags, of the kinds asked for.
-			byId, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindAll, Ids: []uuid.UUID{done.Id, task.TagId}})
+			byId, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kinds: []model.TagKind{model.TagKindAll}, Ids: []uuid.UUID{done.Id, task.TagId}})
 			require.NoError(t, err)
 			require.Equal(t, 2, byId.TotalCount)
 			require.Equal(t, []uuid.UUID{done.Id, task.TagId}, []uuid.UUID{byId.Data[0].Id, byId.Data[1].Id})
 			labelById, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Ids: []uuid.UUID{done.Id, task.TagId}})
 			require.NoError(t, err)
 			require.Len(t, labelById.Data, 1)
-			noIds, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindAll, Ids: []uuid.UUID{}})
+			noIds, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kinds: []model.TagKind{model.TagKindAll}, Ids: []uuid.UUID{}})
 			require.NoError(t, err)
 			require.Empty(t, noIds.Data)
 		})
@@ -151,7 +151,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			taggedTag, err := repo.GetTag(ctx, testScope, tagged.TagId)
 			require.NoError(t, err)
 			require.True(t, taggedTag.Archived)
-			visible, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindTask})
+			visible, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kinds: []model.TagKind{model.TagKindTask}})
 			require.NoError(t, err)
 			require.Len(t, visible.Data, 1)
 			require.Equal(t, bare.TagId, visible.Data[0].Id)

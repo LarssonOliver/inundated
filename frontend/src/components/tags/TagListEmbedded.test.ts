@@ -170,13 +170,10 @@ function emptyPage() {
 
 test("finds tags beyond the cached page by searching the server", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
-  searchTags.mockImplementation(async (_query: string, kind: string) =>
-    kind === "label"
-      ? [tag({ id: "far", name: "far-away" })]
-      : kind === "task"
-        ? [tag({ id: "task", name: "far task", owner: { kind: "task", id: "t1" } })]
-        : [],
-  );
+  searchTags.mockResolvedValue([
+    tag({ id: "far", name: "far-away" }),
+    tag({ id: "task", name: "far task", owner: { kind: "task", id: "t1" } }),
+  ]);
 
   const wrapper = mount(TagListEmbedded, { props: { modelValue: new Set<string>() } });
   await flushPromises();
@@ -186,13 +183,9 @@ test("finds tags beyond the cached page by searching the server", async () => {
   await input.setValue("far");
   await settleSearch();
 
-  // Each kind is searched on its own, so regular tags can't crowd owned
-  // ones out of the server's result limit.
-  expect(searchTags.mock.calls).toEqual([
-    ["far", "label"],
-    ["far", "task"],
-    ["far", "project"],
-  ]);
+  // Every kind in one request, where the server has them take turns, so
+  // regular tags can't crowd owned ones out of its result limit.
+  expect(searchTags.mock.calls).toEqual([["far", ["label", "task", "project"]]]);
   expect(wrapper.text()).toContain("far-away");
   // Task tags show with a leading "#".
   expect(wrapper.text()).toContain("#far task");
@@ -264,8 +257,8 @@ test("debounces server search and does not refetch tasks on every keystroke", as
   expect(searchTags).not.toHaveBeenCalled();
 
   await settleSearch();
-  // One search, sent as a request per tag kind.
-  expect(searchTags).toHaveBeenCalledTimes(3);
+  // One search, of every kind in one request.
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("far", ["label", "task", "project"]);
   expect(listAllTasks).toHaveBeenCalledOnce();
 
   await input.setValue("far ");
@@ -289,7 +282,7 @@ test("without task creation, a leading # still narrows the search to tasks but o
   await input.setValue("#report");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("report", "task");
+  expect(searchTags).toHaveBeenLastCalledWith("report", ["task"]);
   // The matching task tag is still offered for selection...
   expect(wrapper.text()).toContain("#Write report");
   // ...but creating a new one isn't, since this picker can't create tasks.
@@ -330,7 +323,7 @@ test("a leading # searches tasks only and offers to create a task", async () => 
   await input.setValue("#Write report");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("Write report", "task");
+  expect(searchTags).toHaveBeenLastCalledWith("Write report", ["task"]);
   expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create task "Write report"');
 });
 
@@ -379,7 +372,7 @@ test("with no owner kinds, owned tags are left out and # finds regular tags but 
   await input.setValue("#hash");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("#hash", "label");
+  expect(searchTags).toHaveBeenLastCalledWith("#hash", ["label"]);
   expect(wrapper.text()).toContain("#hash");
   // A regular tag named "#..." would look like a task tag.
   expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
@@ -409,7 +402,7 @@ test("@ plus enter creates a project colored from its name and adds its project 
   await input.setValue("@Website");
   await settleSearch();
 
-  expect(searchTags).toHaveBeenLastCalledWith("Website", "project");
+  expect(searchTags).toHaveBeenLastCalledWith("Website", ["project"]);
   expect(wrapper.find('[data-testid="create-row"]').text()).toContain('Create project "Website"');
 
   await input.trigger("keydown", { key: "Enter" });
@@ -441,10 +434,8 @@ test("only offers the owned tag kinds it is given", async () => {
   await input.setValue("web");
   await settleSearch();
 
-  // Only the kinds offered are searched, each on its own.
-  expect(searchTags).toHaveBeenCalledWith("web", "label");
-  expect(searchTags).toHaveBeenLastCalledWith("web", "task");
-  expect(searchTags).not.toHaveBeenCalledWith("web", "all");
+  // Only the kinds offered are searched.
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "task"]);
   expect(wrapper.text()).toContain("web label");
   expect(wrapper.text()).toContain("#web task");
   expect(wrapper.text()).not.toContain("web project");
@@ -455,6 +446,6 @@ test("only offers the owned tag kinds it is given", async () => {
   searchTags.mockClear();
   await input.setValue("@web");
   await settleSearch();
-  expect(searchTags).toHaveBeenCalledExactlyOnceWith("@web", "label");
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("@web", ["label"]);
   expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
 });

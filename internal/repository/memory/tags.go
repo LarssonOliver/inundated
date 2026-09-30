@@ -164,11 +164,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 		if !matchesScope(tag.UserId, scope) || (!params.IncludeArchived && tag.Archived) {
 			continue
 		}
-		if ownerKind, ok := params.Kind.OwnerKind(); ok {
-			if !tag.OwnedBy(ownerKind) {
-				continue
-			}
-		} else if params.Kind != model.TagKindAll && tag.Owner != nil {
+		if !params.SelectsKind(tag.Owner) {
 			continue
 		}
 		if query != "" && !strings.Contains(strings.ToLower(tag.Name), query) {
@@ -180,12 +176,24 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 		all = append(all, tag)
 	}
 
-	// Regular tags first, then by name, as the Postgres store orders them.
+	// Kinds take turns (see model.TagListParams), as the Postgres store
+	// orders them: number each tag within its kind by name, then order by
+	// that number, regular tags first within each turn.
+	kindOf := func(tag model.Tag) string {
+		if tag.Owner == nil {
+			return ""
+		}
+		return string(tag.Owner.Kind)
+	}
+	slices.SortStableFunc(all, model.CompareTagNames)
+	turn := make(map[uuid.UUID]int, len(all))
+	perKind := map[string]int{}
+	for _, tag := range all {
+		turn[tag.Id] = perKind[kindOf(tag)]
+		perKind[kindOf(tag)]++
+	}
 	slices.SortStableFunc(all, func(a, b model.Tag) int {
-		return cmp.Or(
-			cmp.Compare(boolRank(a.Owner != nil), boolRank(b.Owner != nil)),
-			model.CompareTagNames(a, b),
-		)
+		return cmp.Or(cmp.Compare(turn[a.Id], turn[b.Id]), cmp.Compare(kindOf(a), kindOf(b)))
 	})
 
 	total := len(all)
@@ -258,11 +266,4 @@ func (t *MemoryStore) deleteTags(isDeleted func(tagId uuid.UUID) bool) {
 	for i := range t.timespans {
 		t.timespans[i].TagIds = slices.DeleteFunc(t.timespans[i].TagIds, isDeleted)
 	}
-}
-
-func boolRank(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }

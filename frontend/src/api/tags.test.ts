@@ -84,10 +84,28 @@ describe("tags API", () => {
       await sut.searchTagsPaginated("web", kind, false, 20, 0);
 
       expect(api.listTags).toHaveBeenCalledTimes(2);
-      expect(api.listTags).toHaveBeenNthCalledWith(1, expect.objectContaining({ q: "web", kind }));
-      expect(api.listTags).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "web", kind }));
+      const kinds = new Set([kind]);
+      expect(api.listTags).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ q: "web", kind: kinds }),
+      );
+      expect(api.listTags).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ q: "web", kind: kinds }),
+      );
     },
   );
+
+  it("searchTags asks for several kinds in one request", async () => {
+    api.listTags.mockResolvedValue({ data: [], pagination: { limit: 20, offset: 0, total: 0 } });
+
+    const sut = createTagsApi(api);
+    await sut.searchTags("web", ["label", "task"]);
+
+    expect(api.listTags).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ q: "web", kind: new Set(["label", "task"]) }),
+    );
+  });
 
   it("getTagsByIds asks for any kind of tag by id, 100 ids per request", async () => {
     api.listTags.mockImplementation(async (request) => ({
@@ -107,7 +125,7 @@ describe("tags API", () => {
     expect(result.map((tag) => tag.id)).toEqual(ids);
     expect(api.listTags).toHaveBeenCalledTimes(2);
     expect(api.listTags).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "all", includeArchived: true, limit: 100 }),
+      expect.objectContaining({ kind: new Set(["all"]), includeArchived: true, limit: 100 }),
     );
     expect(api.listTags.mock.calls[1][0]?.ids?.size).toBe(50);
   });

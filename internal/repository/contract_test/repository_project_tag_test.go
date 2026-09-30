@@ -44,7 +44,7 @@ func TestProjectTagContract(t *testing.T) {
 			require.Empty(t, got.TagIds)
 
 			// Project tags list under their own kind, not as labels.
-			projects, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: pagination, Kind: model.TagKindProject})
+			projects, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: pagination, Kinds: []model.TagKind{model.TagKindProject}})
 			require.NoError(t, err)
 			require.Len(t, projects.Data, 1)
 			require.Equal(t, project.TagId, projects.Data[0].Id)
@@ -71,6 +71,50 @@ func TestProjectTagContract(t *testing.T) {
 			require.NoError(t, repo.DeleteProject(ctx, testScope, project.Id))
 			_, err = repo.GetTag(ctx, testScope, project.TagId)
 			require.ErrorIs(t, err, model.ErrNotFound)
+		})
+
+		t.Run(repoName+"SeveralKindsShareAPage", func(t *testing.T) {
+			repo := newRepo(t)
+			for _, name := range []string{"web c", "web a", "web b"} {
+				_, err := repo.CreateTag(ctx, testScope, model.Tag{Name: name, Color: "#88c0d0"})
+				require.NoError(t, err)
+			}
+			task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "web launch"})
+			require.NoError(t, err)
+			_, err = repo.CreateProject(ctx, testScope, model.Project{Name: "web site", Color: "#bf616a"})
+			require.NoError(t, err)
+
+			// The labels would fill the page alone, but the kinds take turns.
+			params := model.TagListParams{
+				PaginationParams: model.PaginationParams{Limit: 2},
+				Query:            "web",
+				Kinds:            []model.TagKind{model.TagKindTask, model.TagKindLabel},
+			}
+			names := func(page model.Page[model.Tag]) []string {
+				out := []string{}
+				for _, tag := range page.Data {
+					out = append(out, tag.Name)
+				}
+				return out
+			}
+			first, err := repo.ListTags(ctx, testScope, params)
+			require.NoError(t, err)
+			require.Equal(t, 4, first.TotalCount)
+			require.Equal(t, []string{"web a", "web launch"}, names(first))
+			require.Equal(t, task.TagId, first.Data[1].Id)
+
+			params.Offset = 2
+			second, err := repo.ListTags(ctx, testScope, params)
+			require.NoError(t, err)
+			require.Equal(t, []string{"web b", "web c"}, names(second))
+
+			// Every kind: regular tags first in each turn, then by owner kind.
+			all, err := repo.ListTags(ctx, testScope, model.TagListParams{
+				PaginationParams: pagination,
+				Kinds:            []model.TagKind{model.TagKindAll},
+			})
+			require.NoError(t, err)
+			require.Equal(t, []string{"web a", "web site", "web launch", "web b", "web c"}, names(all))
 		})
 
 		t.Run(repoName+"ProjectTagsCountTowardTheirProject", func(t *testing.T) {
