@@ -20,9 +20,15 @@ export interface PaginatedTagsResponse {
   pagination: PaginationMetadata;
 }
 
-/** Which tags a search returns: regular tags, task tags, or both. */
 /** Regular tags (label), the tags of one owner kind, or every tag (all). */
 export type TagKind = "label" | TagOwnerKind | "all";
+
+const API_TAG_KINDS: Record<TagKind, ListTagsKindEnum> = {
+  label: ListTagsKindEnum.Label,
+  task: ListTagsKindEnum.Task,
+  project: ListTagsKindEnum.Project,
+  all: ListTagsKindEnum.All,
+};
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
@@ -106,7 +112,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
         offset: 0,
         includeArchived,
         q: query,
-        kind: ListTagsKindEnum[kind === "label" ? "Label" : kind === "task" ? "Task" : "All"],
+        kind: API_TAG_KINDS[kind],
       });
       return mapFromApiArray(tagMapper, response.data);
     },
@@ -123,7 +129,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
         offset,
         includeArchived,
         q: query,
-        kind: ListTagsKindEnum[kind === "label" ? "Label" : kind === "task" ? "Task" : "All"],
+        kind: API_TAG_KINDS[kind],
       });
       return {
         data: mapFromApiArray(tagMapper, response.data),

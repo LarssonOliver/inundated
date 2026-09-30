@@ -390,12 +390,13 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     /**
      * Searches for tags by name on the server, so tags beyond the locally
      * cached page are found too, and caches the results for getTagById.
-     * Unless only task tags are wanted, typo-tolerant matches from the local
-     * cache are merged in, since the server only matches substrings. Results
+     * When regular tags are wanted, typo-tolerant matches from the local
+     * cache (which only holds regular tags) are merged in, since the server
+     * only matches substrings. Results
      * are ranked like searchTags, best match first.
      *
      * @param query - The search query string.
-     * @param kind - Whether to search regular tags, task tags, or both.
+     * @param kind - Which kind of tags to search (see TagKind).
      *
      * @returns A promise that resolves to the matching tags.
      */
@@ -407,7 +408,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       }
 
       const byId = new Map(found.map((tag) => [tag.id, tag]));
-      if (kind !== "task" && q) {
+      if ((kind === "label" || kind === "all") && q) {
         for (const tag of searchTags(q)) {
           if (!byId.has(tag.id)) byId.set(tag.id, tag);
         }

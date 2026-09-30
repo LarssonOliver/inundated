@@ -710,20 +710,23 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.id)).toEqual(["cached"]);
   });
 
-  it("searches only task tags on the server when asked for tasks", async () => {
-    const cached = makeTag({ id: "cached", name: "work" });
-    const task = makeTag({ id: "task", name: "work on report", owner: { kind: "task", id: "t1" } });
-    api.listTagsPaginated.mockResolvedValue({
-      data: [cached],
-      pagination: { limit: 50, offset: 0, total: 1 },
-    });
-    api.searchTags.mockResolvedValue([task]);
+  it.each(["task", "project"] as const)(
+    "searches only %s tags on the server when asked for them",
+    async (kind) => {
+      const cached = makeTag({ id: "cached", name: "work" });
+      const owned = makeTag({ id: "owned", name: "work on report", owner: { kind, id: "o1" } });
+      api.listTagsPaginated.mockResolvedValue({
+        data: [cached],
+        pagination: { limit: 50, offset: 0, total: 1 },
+      });
+      api.searchTags.mockResolvedValue([owned]);
 
-    const store = useStore();
-    await store.fetchTags();
-    const result = await store.searchTagsOnServer("work", "task");
+      const store = useStore();
+      await store.fetchTags();
+      const result = await store.searchTagsOnServer("work", kind);
 
-    expect(api.searchTags).toHaveBeenCalledWith("work", "task");
-    expect(result.map((t) => t.id)).toEqual(["task"]);
-  });
+      expect(api.searchTags).toHaveBeenCalledWith("work", kind);
+      expect(result.map((t) => t.id)).toEqual(["owned"]);
+    },
+  );
 });

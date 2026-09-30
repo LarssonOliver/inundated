@@ -71,6 +71,24 @@ describe("tags API", () => {
     expect(api.listTags).toHaveBeenCalledWith({ limit: 50, offset: 0, includeArchived: true });
   });
 
+  it.each(["label", "task", "project", "all"] as const)(
+    "searchTags and searchTagsPaginated ask the server for %s tags",
+    async (kind) => {
+      api.listTags.mockResolvedValue({
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      });
+
+      const sut = createTagsApi(api);
+      await sut.searchTags("web", kind);
+      await sut.searchTagsPaginated("web", kind, false, 20, 0);
+
+      expect(api.listTags).toHaveBeenCalledTimes(2);
+      expect(api.listTags).toHaveBeenNthCalledWith(1, expect.objectContaining({ q: "web", kind }));
+      expect(api.listTags).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "web", kind }));
+    },
+  );
+
   it("getTagsByIds asks for any kind of tag by id, 100 ids per request", async () => {
     api.listTags.mockImplementation(async (request) => ({
       data: [...(request?.ids ?? [])].map((id) => ({
