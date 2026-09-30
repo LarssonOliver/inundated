@@ -99,8 +99,10 @@ type ProjectRepository interface {
 	// the project).
 	UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
 	// DeleteProject deletes the project and its project tag. It fails with
-	// model.ErrConflict when any time is attributed to the project (see
-	// model.Project.EffectiveTagIds); such a project can only be archived.
+	// model.ErrConflict when time is attributed to its project tag
+	// (directly, or through a task carrying it); such a project can only be
+	// archived. Time reaching the project only through its linked tags
+	// stays with those tags and doesn't block the delete.
 	DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }
 
