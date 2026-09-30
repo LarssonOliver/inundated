@@ -566,6 +566,21 @@ describe("tags store", () => {
     expect(store.getTagById("q")).toEqual(other);
   });
 
+  it("doesn't cache a deleted owner's tag from a fetch sent before it was cached", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)));
+    const store = useStore();
+
+    const late = store.fetchTagById("p");
+    await Promise.resolve();
+    store.forgetTagsOwnedBy({ kind: "project", id: "p1" });
+    resolveLate([projectTag]);
+    await late;
+
+    expect(store.getTagById("p")).toBeUndefined();
+  });
+
   it("doesn't refetch owned tags after updating an owned tag", async () => {
     const owned = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
     api.getTagsByIds.mockResolvedValue([owned]);

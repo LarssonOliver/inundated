@@ -278,8 +278,18 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       return seq >= (individualFetchSeq.get(id) ?? 0);
     }
 
+    // Owners deleted in this session (see forgetTagsOwnedBy), as
+    // "kind:id". Their tags are refused by the cache, so a fetch sent before
+    // the delete can't bring one back, even one that wasn't cached yet.
+    const deletedOwners = new Set<string>();
+
+    function ownerKey(owner: TagOwner): string {
+      return `${owner.kind}:${owner.id}`;
+    }
+
     function cacheIndividuallyFetchedTag(id: string, seq: number, tag: Tag): void {
       if (!isNewestFetch(id, seq)) return;
+      if (tag.owner && deletedOwners.has(ownerKey(tag.owner))) return;
       // A search only learns which tags it concerns from its response, so
       // it claims them here, which also discards older fetches of them
       // still in flight.
@@ -384,11 +394,12 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     /**
      * Drops the cached tags of an owner that's been deleted, whose tags
      * went with it, so they stop showing. A fetch of one still in flight
-     * can't bring it back.
+     * can't bring it back, whether or not it was cached.
      *
      * @param owner - The deleted owner.
      */
     function forgetTagsOwnedBy(owner: TagOwner): void {
+      deletedOwners.add(ownerKey(owner));
       for (const cache of [tags.value, individuallyFetchedTags.value]) {
         for (const tag of [...cache.values()]) {
           if (tag.owner?.kind === owner.kind && tag.owner.id === owner.id) {
