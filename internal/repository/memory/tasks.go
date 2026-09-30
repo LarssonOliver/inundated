@@ -81,7 +81,7 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if !t.tagsUsable(scope, tagIds, nil) || t.anyTaskTag(tagIds) {
+	if !t.tagsUsable(scope, model.TagHolderTask, tagIds, nil) {
 		return model.Task{}, model.ErrInvalidReference
 	}
 	if task.ParentId != nil {
@@ -114,7 +114,7 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 		Name:   task.Name,
 		Color:  model.DefaultDerivedTagColor,
 		UserId: scope.UserID(),
-		TaskId: &taskId,
+		Owner:  &model.TagOwner{Kind: model.TagOwnerTask, Id: taskId},
 	}
 	created := model.Task{
 		Id:       taskId,
@@ -147,7 +147,7 @@ func (t *MemoryStore) UpdateTask(ctx context.Context, scope model.OwnerScope, id
 		return model.Task{}, model.ErrInvalidArgument
 	}
 	tagIds := utils.DedupeUUIDs(task.TagIds)
-	if patch.TagIds != nil && (!t.tagsUsable(scope, tagIds, t.tasks[idx].TagIds) || t.anyTaskTag(tagIds)) {
+	if patch.TagIds != nil && !t.tagsUsable(scope, model.TagHolderTask, tagIds, t.tasks[idx].TagIds) {
 		return model.Task{}, model.ErrInvalidReference
 	}
 
@@ -338,12 +338,6 @@ func (t *MemoryStore) respace(idxs []int) {
 	for i, rank := range utils.EvenRanks(len(idxs)) {
 		t.tasks[idxs[i]].Rank = rank
 	}
-}
-
-// anyTaskTag reports whether any of ids names a task tag. Callers must hold
-// t.mu.
-func (t *MemoryStore) anyTaskTag(ids []uuid.UUID) bool {
-	return slices.ContainsFunc(ids, t.isTaskTag)
 }
 
 // ListTaskProjectIds implements [repository.TaskRepository].

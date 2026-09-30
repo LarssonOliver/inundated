@@ -114,14 +114,22 @@ type TaskListParams struct {
 	DueTo     *time.Time
 }
 
-// TagKind selects regular tags, task tags, or both in ListTags.
+// TagKind selects the tags ListTags returns: regular tags (TagKindLabel),
+// every tag (TagKindAll), or the tags owned by one kind of owner, whose
+// TagKind is the TagOwnerKind itself (TagKindTask).
 type TagKind string
 
 const (
 	TagKindLabel TagKind = "label"
-	TagKindTask  TagKind = "task"
+	TagKindTask          = TagKind(TagOwnerTask)
 	TagKindAll   TagKind = "all"
 )
+
+// OwnerKind returns the owner kind k selects, if it selects one.
+func (k TagKind) OwnerKind() (TagOwnerKind, bool) {
+	owner := TagOwnerKind(k)
+	return owner, owner.Valid()
+}
 
 // TagListParams extends PaginationParams for ListTags. An empty Kind means
 // TagKindLabel, and an empty Query matches every name.

@@ -20,9 +20,9 @@ type Repository interface {
 
 type TagRepository interface {
 	GetTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Tag, error)
-	// GetTag and ListTags report a task tag with its TaskId set, and with
-	// its archived state derived from its task: archived while the task is
-	// closed. A derived tag's Color (see model.Tag.IsDerived) is left as
+	// GetTag and ListTags report an owned tag with its Owner set, and with
+	// its archived state derived from its owner (a task tag is archived
+	// while its task is closed). A derived tag's Color (see model.Tag.IsDerived) is left as
 	// stored; the service derives it with model.DerivedTagColor from
 	// ListDerivedTagSources. ListTags puts regular tags
 	// first, then orders them by model.CompareTagNames.
@@ -34,7 +34,7 @@ type TagRepository interface {
 	// they don't intend to change, or that field resets to its zero value
 	// (e.g. an omitted/false Archived unarchives the tag).
 	//
-	// UpdateTag and DeleteTag refuse task tags, which follow their task,
+	// UpdateTag and DeleteTag refuse owned tags, which follow their owner,
 	// with model.ErrInvalidArgument. Deleting a tag drops it from the
 	// TagIds of every task, project and timespan.
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)

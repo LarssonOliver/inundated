@@ -1,4 +1,4 @@
-import type { Tag, TagStats } from "@/model";
+import type { Tag, TagOwnerKind, TagStats } from "@/model";
 import {
   TagsApi as GeneratedTagsApi,
   GetTagIncludeEnum,
@@ -21,7 +21,8 @@ export interface PaginatedTagsResponse {
 }
 
 /** Which tags a search returns: regular tags, task tags, or both. */
-export type TagKind = "label" | "task" | "all";
+/** Regular tags (label), the tags of one owner kind, or every tag (all). */
+export type TagKind = "label" | TagOwnerKind | "all";
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;

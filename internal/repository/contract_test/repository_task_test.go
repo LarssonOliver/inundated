@@ -72,8 +72,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			tag, err := repo.GetTag(ctx, testScope, created.TagId)
 			require.NoError(t, err)
 			require.Equal(t, "Write report", tag.Name)
-			require.NotNil(t, tag.TaskId)
-			require.Equal(t, created.Id, *tag.TaskId)
+			require.Equal(t, &model.TagOwner{Kind: model.TagOwnerTask, Id: created.Id}, tag.Owner)
 
 			_, err = repo.GetTask(ctx, testScope, uuid.New())
 			require.ErrorIs(t, err, model.ErrNotFound)
@@ -92,7 +91,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 2, labels.TotalCount)
 			for _, tag := range labels.Data {
-				require.Nil(t, tag.TaskId)
+				require.Nil(t, tag.Owner)
 			}
 
 			tasks, err := repo.ListTags(ctx, testScope, model.TagListParams{PaginationParams: model.DefaultPaginationParams(), Kind: model.TagKindTask})

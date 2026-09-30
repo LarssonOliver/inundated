@@ -12,18 +12,32 @@ Tag:
       $ref: "./shared.yaml#/HexColor"
     totalTimeMs:
       type: integer
-    taskId:
-      type: string
-      format: uuid
-      readOnly: true
-      description: Set when this is a task tag, naming the task that owns it.
-        A task tag's name, color and archived state follow its task, so it
-        can't be changed through the tag API.
+    owner:
+      $ref: "#/TagOwner"
     archived:
       type: boolean
       description: Whether this tag is archived. Archived tags are hidden from
         list views by default and excluded from search/pickers, but keep
         their history and can still be fetched, edited, or deleted directly.
+
+TagOwner:
+  type: object
+  readOnly: true
+  description: Set on owned tags, naming the item that owns the tag, such as
+    the task that owns a task tag. An owned tag's name, color and archived
+    state follow its owner, so it can't be changed through the tag API.
+  required: [kind, id]
+  properties:
+    kind:
+      $ref: "#/TagOwnerKind"
+    id:
+      type: string
+      format: uuid
+
+TagOwnerKind:
+  type: string
+  description: The kind of item that owns an owned tag.
+  enum: [task]
 
 CreateTag:
   type: object

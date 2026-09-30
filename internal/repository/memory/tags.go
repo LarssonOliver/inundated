@@ -11,14 +11,15 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-// tagsUsable reports whether every id refers to a live tag owned by scope.
+// tagsUsable reports whether every id refers to a live tag owned by scope
+// that holder may carry (see model.TagHolder.MayCarry).
 // An archived tag is only acceptable if it's already in alreadyAssociated
 // (i.e. it was attached before this call) - that keeps existing
 // associations with a since-archived tag intact across unrelated edits,
 // while still blocking a fresh attachment of an archived tag that a picker
 // would never surface. Callers must hold t.mu for writing, so the check and
 // the write that relies on it see the same state.
-func (t *MemoryStore) tagsUsable(scope model.OwnerScope, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
+func (t *MemoryStore) tagsUsable(scope model.OwnerScope, holder model.TagHolder, tagIds []uuid.UUID, alreadyAssociated []uuid.UUID) bool {
 	if len(tagIds) == 0 {
 		return true
 	}
@@ -30,7 +31,7 @@ func (t *MemoryStore) tagsUsable(scope model.OwnerScope, tagIds []uuid.UUID, alr
 	lookup := t.newTagLookup()
 	for _, tagId := range tagIds {
 		stored, ok := lookup.tags[tagId]
-		if !ok || !matchesScope(stored.UserId, scope) {
+		if !ok || !matchesScope(stored.UserId, scope) || !holder.MayCarry(stored) {
 			return false
 		}
 		if lookup.view(stored).Archived && !allowedArchived[tagId] {
@@ -99,14 +100,17 @@ func (t *MemoryStore) newTagLookup() tagLookup {
 	return l
 }
 
-// view returns tag as readers see it: a task tag takes its archived state
-// from its task.
+// view returns tag as readers see it: an owned tag takes its archived
+// state from its owner (a task tag is archived while its task is closed).
 func (l tagLookup) view(tag model.Tag) model.Tag {
-	if tag.TaskId == nil {
+	if tag.Owner == nil {
 		return tag
 	}
-	if task, ok := l.tasks[*tag.TaskId]; ok {
-		tag.Archived = task.Closed()
+	switch tag.Owner.Kind {
+	case model.TagOwnerTask:
+		if task, ok := l.tasks[tag.Owner.Id]; ok {
+			tag.Archived = task.Closed()
+		}
 	}
 	return tag
 }
@@ -124,8 +128,8 @@ func (t *MemoryStore) ListDerivedTagSources(ctx context.Context, scope model.Own
 			continue
 		}
 		// A task tag's sources are its task's regular tags.
-		task, ok := lookup.tasks[*derived.TaskId]
-		if !ok {
+		task, ok := lookup.tasks[derived.Owner.Id]
+		if !ok || derived.Owner.Kind != model.TagOwnerTask {
 			continue
 		}
 		for _, sourceId := range task.TagIds {
@@ -150,16 +154,12 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 		if !matchesScope(tag.UserId, scope) || (!params.IncludeArchived && tag.Archived) {
 			continue
 		}
-		switch params.Kind {
-		case model.TagKindAll:
-		case model.TagKindTask:
-			if tag.TaskId == nil {
+		if ownerKind, ok := params.Kind.OwnerKind(); ok {
+			if !tag.OwnedBy(ownerKind) {
 				continue
 			}
-		default:
-			if tag.TaskId != nil {
-				continue
-			}
+		} else if params.Kind != model.TagKindAll && tag.Owner != nil {
+			continue
 		}
 		if query != "" && !strings.Contains(strings.ToLower(tag.Name), query) {
 			continue
@@ -173,7 +173,7 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 	// Regular tags first, then by name, as the Postgres store orders them.
 	slices.SortStableFunc(all, func(a, b model.Tag) int {
 		return cmp.Or(
-			cmp.Compare(boolRank(a.TaskId != nil), boolRank(b.TaskId != nil)),
+			cmp.Compare(boolRank(a.Owner != nil), boolRank(b.Owner != nil)),
 			model.CompareTagNames(a, b),
 		)
 	})
@@ -205,12 +205,12 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag
 	if idx == -1 {
 		return model.Tag{}, model.ErrNotFound
 	}
-	if t.tags[idx].TaskId != nil {
+	if t.tags[idx].Owner != nil {
 		return model.Tag{}, model.ErrInvalidArgument
 	}
 
 	tag.UserId = t.tags[idx].UserId
-	tag.TaskId = nil
+	tag.Owner = nil
 	t.tags[idx] = tag
 	return tag, nil
 }
@@ -226,7 +226,7 @@ func (t *MemoryStore) DeleteTag(ctx context.Context, scope model.OwnerScope, id 
 	if idx == -1 {
 		return model.ErrNotFound
 	}
-	if t.tags[idx].TaskId != nil {
+	if t.tags[idx].Owner != nil {
 		return model.ErrInvalidArgument
 	}
 
@@ -249,10 +249,4 @@ func boolRank(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-// isTaskTag reports whether id names a task tag. Callers must hold t.mu.
-func (t *MemoryStore) isTaskTag(id uuid.UUID) bool {
-	idx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == id })
-	return idx != -1 && t.tags[idx].TaskId != nil
 }

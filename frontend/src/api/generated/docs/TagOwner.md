@@ -1,32 +1,25 @@
 
-# Tag
+# TagOwner
 
+Set on owned tags, naming the item that owns the tag, such as the task that owns a task tag. An owned tag\'s name, color and archived state follow its owner, so it can\'t be changed through the tag API.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`kind` | [TagOwnerKind](TagOwnerKind.md)
 `id` | string
-`name` | string
-`color` | string
-`totalTimeMs` | number
-`owner` | [TagOwner](TagOwner.md)
-`archived` | boolean
 
 ## Example
 
 ```typescript
-import type { Tag } from ''
+import type { TagOwner } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "kind": null,
   "id": null,
-  "name": null,
-  "color": null,
-  "totalTimeMs": null,
-  "owner": null,
-  "archived": null,
-} satisfies Tag
+} satisfies TagOwner
 
 console.log(example)
 
@@ -35,7 +28,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as Tag
+const exampleParsed = JSON.parse(exampleJSON) as TagOwner
 console.log(exampleParsed)
 ```
 

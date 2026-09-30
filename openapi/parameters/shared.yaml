@@ -197,7 +197,7 @@ tagIdsQuery:
   required: false
   description: >
     Only return the tags with these ids, comma-separated. The other filters
-    still apply, so pass kind=all to get task tags too.
+    still apply, so pass kind=all to get owned tags too.
   style: form
   explode: false
   schema:
@@ -213,8 +213,9 @@ tagKindQuery:
   in: query
   required: false
   description: >
-    Which tags to return: regular tags (label), task tags (task), or both
-    (all). Defaults to label.
+    Which tags to return: regular tags (label), the tags owned by one kind
+    of item (task, see TagOwnerKind), or every tag (all). Defaults to
+    label.
   schema:
     type: string
     enum: [label, task, all]

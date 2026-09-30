@@ -396,8 +396,8 @@ func TestCreateTimespan_ForeignTagRejected(t *testing.T) {
 	for _, tid := range ts.TagIds[:len(ts.TagIds)-1] {
 		rows.AddRow(tid, nil)
 	}
-	mock.ExpectQuery(`SELECT t\.id, CASE WHEN k\.id IS NULL THEN t\.archived_at ELSE k\.closed_at END FROM tags t LEFT JOIN tasks k ON k\.tag_id = t\.id AND k\.deleted_at IS NULL WHERE t\.id = ANY\(\$1\) AND t\.deleted_at IS NULL AND t\.user_id = \$2`).
-		WithArgs(ts.TagIds, *testScope.UserID()).
+	mock.ExpectQuery(`SELECT t\.id, CASE WHEN o\.tag_id IS NULL THEN t\.archived_at ELSE o\.archived_at END FROM tags t LEFT JOIN tag_owners o ON o\.tag_id = t\.id WHERE t\.id = ANY\(\$1\) AND t\.deleted_at IS NULL AND \(o\.tag_id IS NULL OR o\.kind = ANY\(\$2\)\) AND t\.user_id = \$3`).
+		WithArgs(ts.TagIds, []string{"task"}, *testScope.UserID()).
 		WillReturnRows(rows)
 	mock.ExpectRollback()
 

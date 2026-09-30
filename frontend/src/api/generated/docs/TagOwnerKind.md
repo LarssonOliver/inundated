@@ -1,32 +1,21 @@
 
-# Tag
+# TagOwnerKind
 
+The kind of item that owns an owned tag.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`name` | string
-`color` | string
-`totalTimeMs` | number
-`owner` | [TagOwner](TagOwner.md)
-`archived` | boolean
 
 ## Example
 
 ```typescript
-import type { Tag } from ''
+import type { TagOwnerKind } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "name": null,
-  "color": null,
-  "totalTimeMs": null,
-  "owner": null,
-  "archived": null,
-} satisfies Tag
+} satisfies TagOwnerKind
 
 console.log(example)
 
@@ -35,7 +24,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as Tag
+const exampleParsed = JSON.parse(exampleJSON) as TagOwnerKind
 console.log(exampleParsed)
 ```
 

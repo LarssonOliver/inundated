@@ -41,7 +41,7 @@ func TestTask_CRUD(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 200, tagResp.StatusCode())
 	require.Equal(t, "Write report", tagResp.JSON200.Name)
-	require.Equal(t, task.Id, *tagResp.JSON200.TaskId)
+	require.Equal(t, &TagOwner{Kind: TagOwnerKindTask, Id: task.Id}, tagResp.JSON200.Owner)
 	require.Equal(t, "#A3BE8C", tagResp.JSON200.Color)
 
 	// READ

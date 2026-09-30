@@ -19,8 +19,8 @@
         </div>
       </template>
       <template #create="{ query }">
-        <template v-if="taskNameFromQuery(query) !== null">
-          Create task "{{ taskNameFromQuery(query) }}"...
+        <template v-if="ownerQuery(query)">
+          Create {{ ownerQuery(query)?.spec.noun }} "{{ ownerQuery(query)?.name }}"...
         </template>
         <template v-else>Create "{{ query }}"...</template>
       </template>
@@ -40,6 +40,7 @@
 <script setup lang="ts">
 import SelectDropdown from "@/components/inputs/SelectDropdown.vue";
 import TagItem from "@/components/tags/TagItem.vue";
+import { isOwnedBy, parseOwnerQuery } from "@/helpers/tagOwners";
 import type { Tag } from "@/model";
 import { useTagsStore } from "@/stores/tags";
 import { useTasksStore } from "@/stores/tasks";
@@ -48,7 +49,7 @@ import { computed, ref, watch } from "vue";
 const model = defineModel<Set<string>>({ default: new Set<string>() });
 const { readOnly, labelsOnly, allowTaskCreation } = defineProps<{
   readOnly?: boolean;
-  /** Offer regular tags only, e.g. for a task's own tags. */
+  /** Offer regular tags only, no owned tags. */
   labelsOnly?: boolean;
   /**
    * Lets typing "#name" search task tags only and create a new task from
@@ -70,22 +71,26 @@ const rawSearchResults = ref<Tag[]>([]);
 const tagSearchResult = computed(() =>
   rawSearchResults.value
     .filter((tag) => !tag.archived && !model.value.has(tag.id))
-    .filter((tag) => !labelsOnly || !tag.taskId)
+    .filter((tag) => !labelsOnly || !tag.owner)
     .slice(0, 8),
 );
 
 /**
- * Returns the task name typed after a leading "#", or null when the query
- * isn't a task query. A "#" prefix always narrows the search to task tags
- * (and is stripped from what's actually searched for) whenever task tags
- * aren't excluded outright by labelsOnly; creating a new task from an
- * unmatched "#query" additionally requires allowTaskCreation, guarded
- * separately below.
+ * Returns the owner kind and name typed after a leading owner prefix ("#"
+ * for tasks, see helpers/tagOwners), or null when the query has none. A
+ * prefix always narrows the search to that kind's tags (and is stripped
+ * from what's actually searched for) whenever owned tags aren't excluded
+ * outright by labelsOnly; creating a new owner from an unmatched query
+ * additionally requires that this picker allows it, guarded separately
+ * below.
  */
-function taskNameFromQuery(query: string): string | null {
-  const trimmed = query.trim();
-  if (labelsOnly || !trimmed.startsWith("#")) return null;
-  return trimmed.slice(1).trim();
+function ownerQuery(query: string) {
+  return labelsOnly ? null : parseOwnerQuery(query);
+}
+
+/** Whether this picker may create an owner of the kind the query names. */
+function canCreateOwner(owner: NonNullable<ReturnType<typeof ownerQuery>>): boolean {
+  return owner.spec.kind === "task" && allowTaskCreation;
 }
 
 // Tracks the live search box text (updated per keystroke, ahead of the
@@ -94,9 +99,10 @@ function taskNameFromQuery(query: string): string | null {
 // "Create task ..." there, or falling back to literally creating a regular
 // tag named "#query", would both be wrong.
 const currentQuery = ref("");
-const canCreateFromCurrentQuery = computed(
-  () => taskNameFromQuery(currentQuery.value) === null || allowTaskCreation,
-);
+const canCreateFromCurrentQuery = computed(() => {
+  const owner = ownerQuery(currentQuery.value);
+  return !owner || canCreateOwner(owner);
+});
 
 // Guards against overlapping searches: a slower response for an older query
 // (including a search cleared out from under it) must not replace the
@@ -116,9 +122,9 @@ async function search(query: string) {
     return;
   }
 
-  const taskName = taskNameFromQuery(query);
-  const kind = labelsOnly ? "label" : taskName !== null ? "task" : "all";
-  const results = await tagsStore.searchTagsOnServer(taskName ?? query, kind);
+  const owner = ownerQuery(query);
+  const kind = labelsOnly ? "label" : (owner?.spec.kind ?? "all");
+  const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kind);
   if (kind !== "label" && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
     tasksStore.fetchTasks().catch(() => {
@@ -139,8 +145,8 @@ function debouncedSearch(query: string) {
 }
 
 function parentName(tag: Tag): string | undefined {
-  if (!tag.taskId) return undefined;
-  const parentId = tasksStore.getTaskById(tag.taskId)?.parentId;
+  if (!tag.owner || !isOwnedBy(tag, "task")) return undefined;
+  const parentId = tasksStore.getTaskById(tag.owner.id)?.parentId;
   return parentId ? tasksStore.getTaskById(parentId)?.name : undefined;
 }
 
@@ -164,7 +170,7 @@ async function refreshTags() {
 // Tags already assigned to this item must still be shown even if archived,
 // but the shared tags cache only holds non-archived tags unless the "show
 // archived" toggle is on elsewhere, so fall back to fetching them directly.
-// Task tags are never in that cache, so they're always fetched this way.
+// Owned tags are never in that cache, so they're always fetched this way.
 // Uses the non-detailed fetch since this pill display has no use for stats
 // like totalTimeMs, which would otherwise make the server aggregate them
 // for nothing.
@@ -199,12 +205,13 @@ function onTagClose(tag: Tag) {
 }
 
 async function onTagCreate(query: string) {
-  const taskName = taskNameFromQuery(query);
-  if (taskName !== null) {
-    // The create row is hidden in this case (see canCreateFromCurrentQuery),
-    // so this only guards against it somehow still firing.
-    if (!allowTaskCreation || !taskName) return;
-    const task = await tasksStore.createTaskFromName(taskName);
+  const owner = ownerQuery(query);
+  if (owner) {
+    // The create row is hidden when this picker can't create this kind
+    // (see canCreateFromCurrentQuery), so this only guards against it
+    // somehow still firing.
+    if (!canCreateOwner(owner) || !owner.name) return;
+    const task = await tasksStore.createTaskFromName(owner.name);
     // Fetch the new task tag so its pill can show before the next refresh.
     await tagsStore.fetchTagById(task.tagId);
     model.value = new Set([...model.value, task.tagId]);

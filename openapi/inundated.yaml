@@ -68,6 +68,10 @@ components:
       $ref: "./schemas/users.yaml#/User"
     Tag:
       $ref: "./schemas/tags.yaml#/Tag"
+    TagOwner:
+      $ref: "./schemas/tags.yaml#/TagOwner"
+    TagOwnerKind:
+      $ref: "./schemas/tags.yaml#/TagOwnerKind"
     CreateTag:
       $ref: "./schemas/tags.yaml#/CreateTag"
     UpdateTag:

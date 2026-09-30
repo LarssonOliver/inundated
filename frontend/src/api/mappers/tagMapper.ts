@@ -13,7 +13,9 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       color: apiModel.color,
       totalTimeMs: apiModel.totalTimeMs,
       archived: apiModel.archived,
-      ...(apiModel.taskId !== undefined && { taskId: apiModel.taskId }),
+      ...(apiModel.owner !== undefined && {
+        owner: { kind: apiModel.owner.kind, id: apiModel.owner.id },
+      }),
     };
   },
   toApi(domainModel: Tag): Api.Tag {

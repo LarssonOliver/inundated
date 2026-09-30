@@ -81,7 +81,7 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 		Name:     reply.Name,
 		Color:    reply.Color,
 		Archived: reply.Archived,
-		TaskId:   reply.TaskId,
+		Owner:    tagOwnerToAPI(reply.Owner),
 	}
 
 	if includes.TotalTime {
@@ -133,7 +133,7 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 			Name:     tag.Name,
 			Color:    tag.Color,
 			Archived: tag.Archived,
-			TaskId:   tag.TaskId,
+			Owner:    tagOwnerToAPI(tag.Owner),
 		}
 		apiTags = append(apiTags, apiTag)
 	}
@@ -252,4 +252,12 @@ func mapTagStatsToAPIResponse(stats model.TagStats) api.GetTagStatsResponseObjec
 		Unit:        stats.Unit,
 		Series:      series,
 	})
+}
+
+// tagOwnerToAPI converts an owned tag's owner, if it has one.
+func tagOwnerToAPI(owner *model.TagOwner) *api.TagOwner {
+	if owner == nil {
+		return nil
+	}
+	return &api.TagOwner{Kind: api.TagOwnerKind(owner.Kind), Id: owner.Id}
 }
