@@ -135,7 +135,8 @@ async function search(query: string) {
   const owner = ownerQuery(query);
   const kind = owner?.spec.kind ?? (ownerKinds.length === 0 ? "label" : "all");
   const results = await tagsStore.searchTagsOnServer(owner?.name ?? query, kind);
-  if (kind !== "label" && !tasksLoadAttempted) {
+  const mayShowTaskTags = kind === "task" || (kind === "all" && ownerKinds.includes("task"));
+  if (mayShowTaskTags && !tasksLoadAttempted) {
     tasksLoadAttempted = true;
     tasksStore.fetchTasks().catch(() => {
       tasksLoadAttempted = false;
