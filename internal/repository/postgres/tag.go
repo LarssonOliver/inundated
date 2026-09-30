@@ -243,11 +243,19 @@ func (r *PostgresStore) DeleteTag(ctx context.Context, scope model.OwnerScope, i
 		return fmt.Errorf("DeleteTag: %w", errNilId)
 	}
 
+	// Lock the tag FOR UPDATE, not just the no-key lock the UPDATE takes,
+	// so a write attaching it (see tagsInScope) either commits first or
+	// waits and then finds it deleted.
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
 	q := `
+		WITH locked AS (
+			SELECT id FROM tags
+			WHERE id = $1 AND ` + notOwnedTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL + `
+			FOR UPDATE
+		)
 		UPDATE tags
 		SET deleted_at = now()
-		WHERE id = $1 AND ` + notOwnedTagSQL + ` AND deleted_at IS NULL AND ` + ownerSQL
+		WHERE id IN (SELECT id FROM locked)`
 
 	res, err := r.db.Exec(ctx, q, args...)
 	if err != nil {

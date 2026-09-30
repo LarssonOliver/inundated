@@ -370,7 +370,7 @@ func TestDeleteTag_Success(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectExec(`WITH locked AS \( SELECT id FROM tags WHERE .* deleted_at IS NULL AND user_id = \$2 FOR UPDATE \) UPDATE tags SET deleted_at = now\(\) WHERE id IN \(SELECT id FROM locked\)`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
@@ -382,7 +382,7 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE .* deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectExec(`WITH locked AS \( SELECT id FROM tags WHERE .* deleted_at IS NULL AND user_id = \$2 FOR UPDATE \) UPDATE tags SET deleted_at = now\(\) WHERE id IN \(SELECT id FROM locked\)`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 	expectTagWriteMiss(mock, id, false)
@@ -397,7 +397,7 @@ func TestDeleteTag_TaskTag(t *testing.T) {
 	repo, mock := newMock(t)
 	id := uuid.New()
 
-	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE id = \$1 AND NOT EXISTS \(SELECT 1 FROM tag_owners o WHERE o\.tag_id = tags\.id\) AND deleted_at IS NULL AND user_id = \$2`).
+	mock.ExpectExec(`WITH locked AS \( SELECT id FROM tags WHERE id = \$1 AND NOT EXISTS \(SELECT 1 FROM tag_owners o WHERE o\.tag_id = tags\.id\) AND deleted_at IS NULL AND user_id = \$2 FOR UPDATE \)`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 	expectTagWriteMiss(mock, id, true)

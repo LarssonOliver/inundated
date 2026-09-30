@@ -187,8 +187,8 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
-		// Skipping an unchanged tag avoids locking it against the timespan
-		// and task writes that share-lock it (see tagsInScope).
+		// Skipping an unchanged tag avoids locking it against the task
+		// tree changes that share-lock it (see refresh_task_effective_tags).
 		syncTag := `UPDATE tags SET name = $2, color = $3 WHERE id = $1 AND (name, color) IS DISTINCT FROM ($2, $3)`
 		if _, err := q.Exec(ctx, syncTag, updated.TagId, updated.Name, updated.Color); err != nil {
 			return fmt.Errorf("UpdateProject tag: %w", err)
@@ -224,7 +224,7 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 		}
 
 		// Lock the project tag before checking for attributed time. A
-		// timespan or task attaching it share-locks it (see tagsInScope),
+		// timespan or task attaching it locks it (see tagsInScope),
 		// as does a task tree change that makes it a task's effective tag
 		// (see refresh_task_effective_tags), so each of those either
 		// commits first and shows up below, or waits and then finds the
@@ -300,12 +300,17 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 		WHERE t.id = ANY($1) AND t.deleted_at IS NULL
 			AND (o.tag_id IS NULL OR o.kind = ANY($2))
 			AND ` + ownerSQL
-	// Share-lock the tags until the caller's transaction ends, so a
+	// Key-share-lock the tags until the caller's transaction ends, so a
 	// concurrent delete (of the tag, or of the owner of an owned tag)
 	// either waits for this write or has already happened and fails the
-	// deleted_at check above. Locking in id order avoids deadlocking with
-	// DeleteTask, which locks its task tags the same way.
-	query += ` ORDER BY t.id FOR SHARE OF t`
+	// deleted_at check above. Every delete locks its tags FOR UPDATE first,
+	// the only mode this conflicts with. A plain share lock would also
+	// block renames: UpdateTask and UpdateProject each rewrite their own
+	// owned tag after checking the others, so a project linking a task's
+	// tag and that task carrying the project's tag would deadlock.
+	// Locking in id order avoids deadlocking with DeleteTask, which locks
+	// its task tags the same way.
+	query += ` ORDER BY t.id FOR KEY SHARE OF t`
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)

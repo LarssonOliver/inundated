@@ -437,8 +437,8 @@ func (r *PostgresStore) DeleteTask(ctx context.Context, scope model.OwnerScope, 
 			)`
 
 		// Lock the subtree's task tags before checking for logged time: a
-		// timespan attaching one of them share-locks it (see tagsInScope),
-		// so it either commits first and shows up below, or waits and then
+		// timespan attaching one of them locks it (see tagsInScope), so
+		// it either commits first and shows up below, or waits and then
 		// finds the tag deleted.
 		if _, err := q.Exec(ctx, subtree+`
 			SELECT id FROM tags WHERE id IN (SELECT tag_id FROM sub) ORDER BY id FOR UPDATE`, id); err != nil {

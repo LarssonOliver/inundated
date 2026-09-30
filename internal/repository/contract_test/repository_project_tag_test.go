@@ -191,6 +191,42 @@ func TestProjectTagContract(t *testing.T) {
 			}
 		})
 
+		t.Run(repoName+"UpdateRacesTaskUpdateSafely", func(t *testing.T) {
+			repo := newRepo(t)
+			label, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "client", Color: "#88c0d0"})
+			require.NoError(t, err)
+			for range 50 {
+				project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Website", Color: "#bf616a"})
+				require.NoError(t, err)
+				task, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Launch", TagIds: []uuid.UUID{project.TagId}})
+				require.NoError(t, err)
+				project.TagIds = []uuid.UUID{task.TagId}
+				project, err = repo.UpdateProject(ctx, testScope, project)
+				require.NoError(t, err)
+
+				// The project links the task's tag and the task carries the
+				// project's tag: renaming both at once, each keeping the
+				// other's tag, rewrites each owned tag while checking the
+				// other, and both saves land.
+				var wg sync.WaitGroup
+				var errProject, errTask error
+				wg.Go(func() {
+					project.Name = "Web site"
+					_, errProject = repo.UpdateProject(ctx, testScope, project)
+				})
+				wg.Go(func() {
+					_, errTask = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{
+						Name:   new("Go live"),
+						TagIds: &[]uuid.UUID{project.TagId, label.Id},
+					})
+				})
+				wg.Wait()
+
+				require.NoError(t, errProject)
+				require.NoError(t, errTask)
+			}
+		})
+
 		t.Run(repoName+"DeleteRacesTimespanSafely", func(t *testing.T) {
 			repo := newRepo(t)
 			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
