@@ -54,40 +54,6 @@ describe("projectMapper", () => {
       expect(result.tagIds.size).toBe(0);
     });
   });
-
-  describe("toApi", () => {
-    it("maps a full domain Project to an API Project", () => {
-      const domainProject: Project = {
-        id: "550e8400-e29b-41d4-a716-446655440002",
-        tagId: "tag-550e8400-e29b-41d4-a716-446655440002",
-        name: "Domain Project",
-        color: "#00ff00",
-        timeBudgetHours: 100,
-        tagIds: new Set([
-          "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-        ]),
-        totalTimeMs: 987654321,
-        archived: false,
-      };
-
-      const result = projectMapper.toApi(domainProject);
-
-      expect(result).toEqual({
-        id: "550e8400-e29b-41d4-a716-446655440002",
-        tagId: "tag-550e8400-e29b-41d4-a716-446655440002",
-        name: "Domain Project",
-        color: "#00ff00",
-        timeBudgetHours: 100,
-        tagIds: new Set([
-          "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-        ]),
-        totalTimeMs: undefined,
-        archived: false,
-      });
-    });
-  });
 });
 
 describe("toApiCreateProject", () => {

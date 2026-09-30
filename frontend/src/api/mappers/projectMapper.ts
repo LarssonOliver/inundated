@@ -1,11 +1,12 @@
-import type { Mapper } from "./index";
+import type { FromApiMapper } from "./index";
 import type * as Api from "@/api/generated/models";
 import type { Project } from "@/model";
 
 /**
- * Full Project <-> API Project mapper
+ * API Project -> Project mapper. Projects are written through
+ * toApiCreateProject and toApiUpdateProject.
  */
-export const projectMapper: Mapper<Project, Api.Project> = {
+export const projectMapper: FromApiMapper<Project, Api.Project> = {
   fromApi(apiModel: Api.Project): Project {
     return {
       id: apiModel.id,
@@ -17,18 +18,6 @@ export const projectMapper: Mapper<Project, Api.Project> = {
       totalTimeMs: apiModel.totalTimeMs,
       ...(apiModel.taskTimeMs !== undefined && { taskTimeMs: apiModel.taskTimeMs }),
       archived: apiModel.archived,
-    };
-  },
-  toApi(domainModel: Project): Api.Project {
-    return {
-      id: domainModel.id,
-      name: domainModel.name,
-      color: domainModel.color,
-      timeBudgetHours: domainModel.timeBudgetHours,
-      tagIds: domainModel.tagIds.size > 0 ? new Set(domainModel.tagIds) : undefined,
-      // Only the server assigns it; a project not yet saved has none.
-      tagId: domainModel.tagId ?? "",
-      archived: domainModel.archived,
     };
   },
 };
