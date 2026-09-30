@@ -6,8 +6,9 @@ import { stringToHexColor } from "./colors";
 
 /**
  * How one kind of owned tag looks and behaves in the UI. A new owner kind
- * (see TagOwnerKind) is declared here, and every tag pill, tag picker and
- * tag page picks it up.
+ * is added to TagOwnerKind, which the API's tag kinds must also include,
+ * and specified here; every tag pill, tag picker, tag page and tags store
+ * refresh picks it up.
  */
 export interface TagOwnerSpec {
   kind: TagOwnerKind;
@@ -15,6 +16,12 @@ export interface TagOwnerSpec {
   prefix: string;
   /** What the owner is called, e.g. in "Create task ...". */
   noun: string;
+  /**
+   * Whether the server derives the tags' color from other tags rather than
+   * the tag having one of its own (e.g. a task tag's, from its task's
+   * regular tags), so a change to a regular tag can recolor them.
+   */
+  derivesColor: boolean;
   /** Where the owner is shown and edited; the tag's own page redirects here. */
   route: (ownerId: string) => RouteLocationRaw;
   /** Creates a new owner from a tag picker and returns its owned tag's id. */
@@ -26,6 +33,7 @@ export const tagOwnerSpecs: Record<TagOwnerKind, TagOwnerSpec> = {
     kind: "task",
     prefix: "#",
     noun: "task",
+    derivesColor: true,
     route: (id) => ({ name: "Task", params: { id } }),
     create: async (name) => (await useTasksStore().createTaskFromName(name)).tagId,
   },
@@ -33,6 +41,7 @@ export const tagOwnerSpecs: Record<TagOwnerKind, TagOwnerSpec> = {
     kind: "project",
     prefix: "@",
     noun: "project",
+    derivesColor: false,
     route: (id) => ({ name: "Project", params: { id } }),
     create: async (name) => {
       const project = await useProjectsStore().createProject({
@@ -54,6 +63,11 @@ export const allTagOwnerKinds = Object.keys(tagOwnerSpecs) as TagOwnerKind[];
 /** The spec of the tag's owner kind, or undefined for a regular tag. */
 export function tagOwnerSpec(tag: Tag | undefined): TagOwnerSpec | undefined {
   return tag?.owner ? tagOwnerSpecs[tag.owner.kind] : undefined;
+}
+
+/** Whether the tag's color is derived from other tags (see TagOwnerSpec.derivesColor). */
+export function isDerivedTag(tag: Tag): boolean {
+  return !!tagOwnerSpec(tag)?.derivesColor;
 }
 
 /** Whether the tag is owned by an item of this kind. */
