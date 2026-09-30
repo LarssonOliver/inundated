@@ -494,20 +494,47 @@ describe("tags store", () => {
   it.each([
     ["updating", (store: ReturnType<typeof useStore>, tag: Tag) => store.updateTag(tag)],
     ["deleting", (store: ReturnType<typeof useStore>, tag: Tag) => store.deleteTag(tag.id)],
-  ])("refetches cached owned tags after %s a regular tag", async (_, change) => {
-    const regular = makeTag({ id: "r" });
-    const owned = makeTag({ id: "o", color: "#111111", owner: { kind: "task", id: "t" } });
-    const recolored = { ...owned, color: "#222222" };
-    api.createTag.mockResolvedValue(regular);
-    api.updateTag.mockResolvedValue(regular);
-    api.getTagsByIds.mockResolvedValueOnce([owned]).mockResolvedValueOnce([recolored]);
-    const store = useStore();
-    await store.createTag(regular);
-    await store.fetchTagById("o");
+  ])(
+    "refetches cached task tags, but not project tags, after %s a regular tag",
+    async (_, change) => {
+      const regular = makeTag({ id: "r" });
+      const taskTag = makeTag({ id: "o", color: "#111111", owner: { kind: "task", id: "t" } });
+      const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+      const recolored = { ...taskTag, color: "#222222" };
+      api.createTag.mockResolvedValue(regular);
+      api.updateTag.mockResolvedValue(regular);
+      api.getTagsByIds
+        .mockResolvedValueOnce([taskTag, projectTag])
+        .mockResolvedValueOnce([recolored]);
+      const store = useStore();
+      await store.createTag(regular);
+      await Promise.all([store.fetchTagById("o"), store.fetchTagById("p")]);
 
-    await change(store, regular);
-    await vi.waitFor(() => expect(store.getTagById("o")).toEqual(recolored));
-    expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o"]);
+      await change(store, regular);
+      await vi.waitFor(() => expect(store.getTagById("o")).toEqual(recolored));
+      expect(api.getTagsByIds).toHaveBeenCalledTimes(2);
+      expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o"]);
+    },
+  );
+
+  it("forgets the cached tags of a deleted owner, even with a fetch in flight", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    const other = makeTag({ id: "q", owner: { kind: "project", id: "p2" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds
+      .mockResolvedValueOnce([projectTag, other])
+      .mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)));
+    const store = useStore();
+    await Promise.all([store.fetchTagById("p"), store.fetchTagById("q")]);
+
+    const late = store.refreshTag("p");
+    await Promise.resolve();
+    store.forgetTagsOwnedBy({ kind: "project", id: "p1" });
+    resolveLate([projectTag]);
+    await late;
+
+    expect(store.getTagById("p")).toBeUndefined();
+    expect(store.getTagById("q")).toEqual(other);
   });
 
   it("doesn't refetch owned tags after updating an owned tag", async () => {

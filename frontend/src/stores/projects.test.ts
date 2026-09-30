@@ -4,8 +4,9 @@ import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
 import { __test__ } from "@/stores/projects";
 
-const refreshOwnedTags = vi.fn();
-vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshOwnedTags }) }));
+const refreshTag = vi.fn();
+const forgetTagsOwnedBy = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag, forgetTagsOwnedBy }) }));
 
 function project(partial?: Partial<Project>): Project {
   return {
@@ -36,25 +37,26 @@ describe("projects store", () => {
     };
 
     useStore = __test__.createProjectsStore(api);
-    refreshOwnedTags.mockReset();
+    refreshTag.mockReset();
+    forgetTagsOwnedBy.mockReset();
   });
 
-  it("refreshes cached owned tags after updating a project", async () => {
-    api.updateProject.mockResolvedValue(project({ name: "Renamed" }));
+  it("refreshes the project's own tag after updating a project", async () => {
+    api.updateProject.mockResolvedValue({ ...project({ name: "Renamed" }), tagId: "own" });
 
     const store = useStore();
     await store.updateProject(project({ name: "Renamed" }));
 
-    expect(refreshOwnedTags).toHaveBeenCalledOnce();
+    expect(refreshTag).toHaveBeenCalledExactlyOnceWith("own");
   });
 
-  it("refreshes cached owned tags after deleting a project", async () => {
+  it("forgets the project's own tag after deleting a project", async () => {
     api.deleteProject.mockResolvedValue();
 
     const store = useStore();
     await store.deleteProject("p1");
 
-    expect(refreshOwnedTags).toHaveBeenCalledOnce();
+    expect(forgetTagsOwnedBy).toHaveBeenCalledExactlyOnceWith({ kind: "project", id: "p1" });
   });
 
   it("leaves the tags alone when the server refuses to delete a project", async () => {
@@ -63,7 +65,7 @@ describe("projects store", () => {
     const store = useStore();
     await expect(store.deleteProject("p1")).rejects.toThrow();
 
-    expect(refreshOwnedTags).not.toHaveBeenCalled();
+    expect(forgetTagsOwnedBy).not.toHaveBeenCalled();
   });
 
   it("fetches and stores first page of projects", async () => {

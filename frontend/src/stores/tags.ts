@@ -3,7 +3,7 @@ import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
-import type { Tag, TagStats } from "@/model";
+import { isDerivedTag, type Tag, type TagOwner, type TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -352,16 +352,33 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Refreshes every cached owned tag, after a change that may have
-     * altered some: a regular or project tag that task tag colors derive
-     * from, or a project write, which renames, recolors, archives or
-     * deletes its project tag.
+     * Refreshes every cached tag whose color derives from other tags (see
+     * isDerivedTag), after a change to a regular tag that one may derive
+     * its color from.
      */
-    async function refreshOwnedTags(): Promise<void> {
-      const owned = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
-        .filter((tag) => tag.owner)
+    async function refreshDerivedTags(): Promise<void> {
+      const derived = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
+        .filter(isDerivedTag)
         .map((tag) => tag.id);
-      await Promise.all([...new Set(owned)].map(refreshTag));
+      await Promise.all([...new Set(derived)].map(refreshTag));
+    }
+
+    /**
+     * Drops the cached tags of an owner that's been deleted, whose tags
+     * went with it, so they stop showing. A fetch of one still in flight
+     * can't bring it back.
+     *
+     * @param owner - The deleted owner.
+     */
+    function forgetTagsOwnedBy(owner: TagOwner): void {
+      for (const cache of [tags.value, individuallyFetchedTags.value]) {
+        for (const tag of [...cache.values()]) {
+          if (tag.owner?.kind === owner.kind && tag.owner.id === owner.id) {
+            cache.delete(tag.id);
+            nextIndividualFetchSeq(tag.id);
+          }
+        }
+      }
     }
 
     /**
@@ -432,7 +449,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const { id, ...patch } = tag;
       const updated = await api.updateTag(id, patch);
       tags.value.set(updated.id, updated);
-      if (!updated.owner) void refreshOwnedTags();
+      if (!updated.owner) void refreshDerivedTags();
       return copyTag(updated);
     }
 
@@ -447,7 +464,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const owned = !!getTagById(id)?.owner;
       await api.deleteTag(id);
       tags.value.delete(id);
-      if (!owned) void refreshOwnedTags();
+      if (!owned) void refreshDerivedTags();
     }
 
     /**
@@ -486,7 +503,8 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       fetchDetailedTagById,
       fetchTagById,
       refreshTag,
-      refreshOwnedTags,
+      refreshDerivedTags,
+      forgetTagsOwnedBy,
       searchTags,
       searchTagsOnServer,
       updateTag,

@@ -190,8 +190,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
 
     /**
      * Updates an existing project. Its project tag follows its name, color
-     * and archived state, and task tags may derive their color from it, so
-     * the cached owned tags are refreshed.
+     * and archived state, so the cached copy of it is refreshed.
      *
      * @param project - The project to update, identified by project.id.
      *
@@ -202,15 +201,14 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       const { id, ...fields } = project;
       const updated = await api.updateProject(id, fields);
       projects.value.set(updated.id, updated);
-      void useTagsStore().refreshOwnedTags();
+      if (updated.tagId) void useTagsStore().refreshTag(updated.tagId);
       return copyProject(updated);
     }
 
     /**
      * Deletes a project by its ID, along with its project tag. The server
-     * refuses (409) when time is attributed to the project; archive it
-     * instead. The cached owned tags are refreshed, which drops the deleted
-     * project tag.
+     * refuses (409) when time is logged under its project tag; archive it
+     * instead. The cached copy of its project tag is dropped.
      *
      * @param id - The ID of the project to delete.
      *
@@ -219,7 +217,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     async function deleteProject(id: string): Promise<void> {
       await api.deleteProject(id);
       projects.value.delete(id);
-      void useTagsStore().refreshOwnedTags();
+      useTagsStore().forgetTagsOwnedBy({ kind: "project", id });
     }
 
     async function fetchProjectStats(
