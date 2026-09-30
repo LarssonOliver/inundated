@@ -205,24 +205,60 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
-	q := `
-		UPDATE projects
-		SET deleted_at = now()
+	lockProject := `
+		SELECT tag_id FROM projects
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-		RETURNING tag_id`
+		FOR UPDATE`
 
 	return r.withTx(ctx, func(tx Querier) error {
 		var tagId uuid.UUID
-		err := tx.QueryRow(ctx, q, args...).Scan(&tagId)
+		err := tx.QueryRow(ctx, lockProject, args...).Scan(&tagId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("DeleteProject %s: %w", id, model.ErrNotFound)
 		}
 		if err != nil {
 			return fmt.Errorf("DeleteProject: %w", err)
 		}
-		// The project tag goes with its project; deleting it drops it from
-		// task_effective_tags (see migration 0016), so the time it
-		// attributed counts toward nothing anymore.
+
+		// Lock the project's effective tags before checking for attributed
+		// time: a timespan or task attaching one of them share-locks it (see
+		// tagsInScope), so it either commits first and shows up below, or
+		// waits and then finds the project gone.
+		rows, err := tx.Query(ctx, `
+			SELECT id FROM tags
+			WHERE id IN (SELECT tag_id FROM project_effective_tags WHERE project_id = $1)
+				AND deleted_at IS NULL
+			ORDER BY id FOR UPDATE`, id)
+		if err != nil {
+			return fmt.Errorf("DeleteProject lock tags: %w", err)
+		}
+		tagIds, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+		if err != nil {
+			return fmt.Errorf("DeleteProject lock tags: %w", err)
+		}
+
+		// A project with time attributed to it can only be archived:
+		// deleting its project tag would leave that time counting toward
+		// nothing.
+		timespanOwnerSQL, checkArgs := ownerPredicate("t.user_id", scope, []any{tagIds})
+		var attributed bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM timespans t
+				WHERE t.deleted_at IS NULL
+					AND `+timespanOwnerSQL+`
+					AND `+timespanHasEffectiveTagSQL("t.id", "$1")+`
+			)`, checkArgs...).Scan(&attributed); err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+		if attributed {
+			return fmt.Errorf("DeleteProject %s: has attributed time: %w", id, model.ErrConflict)
+		}
+
+		if _, err := tx.Exec(ctx, `UPDATE projects SET deleted_at = now() WHERE id = $1`, id); err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+		// The project tag goes with its project.
 		if _, err := tx.Exec(ctx, `UPDATE tags SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, tagId); err != nil {
 			return fmt.Errorf("DeleteProject tag: %w", err)
 		}

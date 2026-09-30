@@ -2004,6 +2004,14 @@ func (response DeleteProject404Response) VisitDeleteProjectResponse(w http.Respo
 	return nil
 }
 
+type DeleteProject409Response struct {
+}
+
+func (response DeleteProject409Response) VisitDeleteProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(409)
+	return nil
+}
+
 type GetProjectRequestObject struct {
 	ProjectId ProjectIdPath `json:"projectId"`
 	Params    GetProjectParams

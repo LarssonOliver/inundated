@@ -207,8 +207,10 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     }
 
     /**
-     * Deletes a project by its ID, along with its project tag. The cached
-     * owned tags are refreshed, which drops the deleted project tag.
+     * Deletes a project by its ID, along with its project tag. The server
+     * refuses (409) when time is attributed to the project; archive it
+     * instead. The cached owned tags are refreshed, which drops the deleted
+     * project tag.
      *
      * @param id - The ID of the project to delete.
      *

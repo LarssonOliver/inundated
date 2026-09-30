@@ -89,6 +89,8 @@ example().catch(console.error);
 
 Delete project
 
+Deletes a project along with its project tag. Projects with time attributed to them can\&#39;t be deleted; archive them instead. 
+
 ### Example
 
 ```ts
@@ -149,6 +151,7 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **204** | Deleted |  -  |
 | **404** | Not found |  -  |
+| **409** | Time is attributed to the project. Archive it instead.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

@@ -74,6 +74,8 @@ func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeletePr
 
 	if errors.Is(err, model.ErrNotFound) {
 		return api.DeleteProject404Response{}, nil
+	} else if errors.Is(err, model.ErrConflict) {
+		return api.DeleteProject409Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}

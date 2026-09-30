@@ -98,6 +98,9 @@ type ProjectRepository interface {
 	// resets to its zero value (e.g. an omitted/false Archived unarchives
 	// the project).
 	UpdateProject(ctx context.Context, scope model.OwnerScope, project model.Project) (model.Project, error)
+	// DeleteProject deletes the project and its project tag. It fails with
+	// model.ErrConflict when any time is attributed to the project (see
+	// model.Project.EffectiveTagIds); such a project can only be archived.
 	DeleteProject(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 }
 

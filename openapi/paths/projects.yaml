@@ -82,6 +82,9 @@ projects-id:
   delete:
     tags: [projects]
     summary: Delete project
+    description: >
+      Deletes a project along with its project tag. Projects with time
+      attributed to them can't be deleted; archive them instead.
     operationId: deleteProject
     security:
       - sessionCookie: []
@@ -90,6 +93,9 @@ projects-id:
         description: Deleted
       "404":
         description: Not found
+      "409":
+        description: >
+          Time is attributed to the project. Archive it instead.
 
 projects-id-stats:
   get:

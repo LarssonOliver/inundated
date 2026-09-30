@@ -83,18 +83,19 @@ func TestProjectTagContract(t *testing.T) {
 			require.NoError(t, err)
 
 			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
-			logTime := func(d time.Duration, tagId uuid.UUID) {
-				_, err := repo.CreateTimespan(ctx, testScope, model.Timespan{
+			logTime := func(d time.Duration, tagId uuid.UUID) uuid.UUID {
+				span, err := repo.CreateTimespan(ctx, testScope, model.Timespan{
 					StartTime: start, EndTime: start.Add(d), TagIds: []uuid.UUID{tagId},
 				})
 				require.NoError(t, err)
 				start = start.Add(d)
+				return span.Id
 			}
 			other, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "other", Color: "#88c0d0"})
 			require.NoError(t, err)
-			logTime(time.Hour, website.TagId) // straight on the project
-			logTime(2*time.Hour, child.TagId) // on a subtask of a task carrying @Website
-			logTime(4*time.Hour, other.Id)    // not the project's
+			direct := logTime(time.Hour, website.TagId) // straight on the project
+			onTask := logTime(2*time.Hour, child.TagId) // on a subtask of a task carrying @Website
+			logTime(4*time.Hour, other.Id)              // not the project's
 
 			total, err := repo.GetTotalDurationByTags(ctx, testScope, website.EffectiveTagIds())
 			require.NoError(t, err)
@@ -119,11 +120,49 @@ func TestProjectTagContract(t *testing.T) {
 			_, err = repo.UpdateProject(ctx, testScope, website)
 			require.ErrorIs(t, err, model.ErrInvalidReference)
 
+			// A project with time attributed to it can't be deleted, whether
+			// the time is on the project or on one of its tasks.
+			website.TagIds = nil
+			require.ErrorIs(t, repo.DeleteProject(ctx, testScope, website.Id), model.ErrConflict)
+			require.NoError(t, repo.DeleteTimespan(ctx, testScope, direct))
+			require.ErrorIs(t, repo.DeleteProject(ctx, testScope, website.Id), model.ErrConflict)
+			require.NoError(t, repo.DeleteTimespan(ctx, testScope, onTask))
+
 			// Once the project is deleted, its tasks no longer belong to it.
 			require.NoError(t, repo.DeleteProject(ctx, testScope, website.Id))
 			ids, err = repo.ListTaskProjectIds(ctx, testScope, []uuid.UUID{parent.Id, child.Id})
 			require.NoError(t, err)
 			require.Empty(t, ids)
+		})
+
+		t.Run(repoName+"DeleteRefusesTimeThroughLinkedTags", func(t *testing.T) {
+			repo := newRepo(t)
+
+			label, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "client", Color: "#88c0d0"})
+			require.NoError(t, err)
+			project, err := repo.CreateProject(ctx, testScope, model.Project{
+				Name: "Website", Color: "#bf616a", TagIds: []uuid.UUID{label.Id},
+			})
+			require.NoError(t, err)
+			start := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			span, err := repo.CreateTimespan(ctx, testScope, model.Timespan{
+				StartTime: start, EndTime: start.Add(time.Hour), TagIds: []uuid.UUID{label.Id},
+			})
+			require.NoError(t, err)
+
+			// Time reaching the project through a linked tag counts too; the
+			// project can still be archived.
+			require.ErrorIs(t, repo.DeleteProject(ctx, testScope, project.Id), model.ErrConflict)
+			project.Archived = true
+			_, err = repo.UpdateProject(ctx, testScope, project)
+			require.NoError(t, err)
+			_, err = repo.GetTag(ctx, testScope, project.TagId)
+			require.NoError(t, err)
+
+			require.NoError(t, repo.DeleteTimespan(ctx, testScope, span.Id))
+			require.NoError(t, repo.DeleteProject(ctx, testScope, project.Id))
+			_, err = repo.GetProject(ctx, testScope, project.Id)
+			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 	}
 

@@ -9,6 +9,7 @@
         <ProjectEdit
           v-model="project"
           :is-new-project="isNewProject"
+          :error-message="errorMessage"
           @create="createProject"
           @save="saveProject"
           @delete="deleteProject"
@@ -34,6 +35,7 @@ import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
+import { ResponseError } from "@/api/generated";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -44,8 +46,10 @@ const isNewProject = computed(() => route.name === "New Project");
 // Reactive state
 const project = ref(newProjectWithDefaults());
 const notFound = ref(false);
+const errorMessage = ref("");
 
 async function updateProject(id: string) {
+  errorMessage.value = "";
   // First try to get the project from the store if it's cached
   const storeResult = projectsStore.getProjectById(id);
   if (storeResult) {
@@ -103,10 +107,14 @@ async function createProject() {
 }
 
 async function deleteProject() {
+  errorMessage.value = "";
   try {
     await projectsStore.deleteProject(project.value.id);
   } catch (error) {
-    console.error("Error deleting project:", error);
+    errorMessage.value =
+      error instanceof ResponseError && error.response.status === 409
+        ? "Time is attributed to this project, so it can't be deleted. Archive it instead."
+        : "Couldn't delete the project.";
     return; // Only navigate away if deletion was successful
   }
 

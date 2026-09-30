@@ -22,6 +22,7 @@
     <div class="button-container" v-else>
       <button class="btn-info" @click="$emit('create', model)">Create</button>
     </div>
+    <p v-if="props.errorMessage" class="error">{{ props.errorMessage }}</p>
   </div>
 
   <ConfirmationPopup
@@ -46,6 +47,7 @@ const model = defineModel<Project>({ default: newProjectWithDefaults() });
 
 const props = defineProps<{
   isNewProject?: boolean;
+  errorMessage?: string;
 }>();
 
 const emit = defineEmits<{
@@ -78,6 +80,10 @@ function toggleArchived() {
   margin-top: 2em;
   display: flex;
   gap: 1em;
+}
+
+.error {
+  color: var(--nord11);
 }
 
 :deep(.searchbox-container) {

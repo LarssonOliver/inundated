@@ -498,16 +498,31 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 
 // ── DeleteProject ────────────────────────────────────────────────────────────
 
+// expectDeleteProjectLocks expects DeleteProject to lock the project and its
+// effective tags, then check for attributed time, answering attributed.
+func expectDeleteProjectLocks(mock pgxmock.PgxPoolIface, id, tagId uuid.UUID, attributed bool) {
+	mock.ExpectBegin()
+	mock.ExpectQuery(`SELECT tag_id FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2 FOR UPDATE`).
+		WithArgs(id, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"tag_id"}).AddRow(tagId))
+	mock.ExpectQuery(`SELECT id FROM tags WHERE id IN \(SELECT tag_id FROM project_effective_tags WHERE project_id = \$1\) AND deleted_at IS NULL ORDER BY id FOR UPDATE`).
+		WithArgs(id).
+		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(tagId))
+	mock.ExpectQuery(`SELECT EXISTS`).
+		WithArgs([]uuid.UUID{tagId}, *testScope.UserID()).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(attributed))
+}
+
 func TestDeleteProject_Success(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	id := uuid.New()
-
 	tagId := uuid.New()
-	mock.ExpectBegin()
-	mock.ExpectQuery(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2 RETURNING tag_id`).
-		WithArgs(id, *testScope.UserID()).
-		WillReturnRows(pgxmock.NewRows([]string{"tag_id"}).AddRow(tagId))
+
+	expectDeleteProjectLocks(mock, id, tagId, false)
+	mock.ExpectExec(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1`).
+		WithArgs(id).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	mock.ExpectExec(`UPDATE tags SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL`).
 		WithArgs(tagId).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
@@ -516,13 +531,24 @@ func TestDeleteProject_Success(t *testing.T) {
 	require.NoError(t, repo.DeleteProject(ctx, testScope, id))
 }
 
+func TestDeleteProject_AttributedTime(t *testing.T) {
+	ctx := context.Background()
+	repo, mock := newMock(t)
+	id := uuid.New()
+
+	expectDeleteProjectLocks(mock, id, uuid.New(), true)
+	mock.ExpectRollback()
+
+	require.ErrorIs(t, repo.DeleteProject(ctx, testScope, id), model.ErrConflict)
+}
+
 func TestDeleteProject_NotFound(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	id := uuid.New()
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`UPDATE projects SET deleted_at = now\(\) WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2 RETURNING tag_id`).
+	mock.ExpectQuery(`SELECT tag_id FROM projects WHERE id = \$1 AND deleted_at IS NULL AND user_id = \$2 FOR UPDATE`).
 		WithArgs(id, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"tag_id"}))
 	mock.ExpectRollback()
