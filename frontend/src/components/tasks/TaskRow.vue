@@ -211,9 +211,9 @@ const formatMs = useDurationFormat(() => settingsStore.settings);
 // The task's own tag, for showing its name as the same outlined "#name"
 // pill used everywhere else a task tag appears. The server derives its color
 // from the task's regular tags, so it's read from the tags store (the
-// store batches the fetches, so a list of rows costs one request). Whoever
-// updates the task refetches a cached task tag the update makes stale (see
-// refreshTaskTagsAfter), so the row only fetches one that isn't cached yet.
+// store batches the fetches, so a list of rows costs one request). The tasks
+// store refetches a cached task tag an update makes stale (see
+// ownerWritten), so the row only fetches one that isn't cached yet.
 // The default color shows only until that fetch resolves.
 const taskOwnTag = computed(() => tagsStore.getTagById(props.task.tagId));
 

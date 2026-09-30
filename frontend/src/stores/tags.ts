@@ -12,6 +12,24 @@ function copyTag(tag: Tag): Tag {
   return { ...tag };
 }
 
+/**
+ * A write to an item that owns a tag (see TagOwner), which can leave cached
+ * owned tags stale. Every such write is reported to the tags store's
+ * ownerWritten, which works out what to refetch or drop.
+ */
+export interface TagOwnerWrite {
+  owner: TagOwner;
+  /** The owner's own tag, when the write may have changed how it shows. */
+  tagId?: string;
+  /** The owner was deleted, and its tag with it. */
+  deleted?: boolean;
+  /**
+   * The write may have reached other owners of the same kind too, e.g.
+   * closing a task also closes its subtasks, and deleting it deletes them.
+   */
+  cascades?: boolean;
+}
+
 export interface PaginationState {
   limit: number;
   offset: number;
@@ -389,12 +407,24 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Refreshes every cached tag owned by an item of this kind, after a
-     * change that can reach owners besides the one changed (e.g. closing a
-     * task also closes its subtasks, which archives their task tags).
+     * Brings the cached owned tags up to date after a write to their owner:
+     * a deleted owner's tags are dropped, a write that can reach other
+     * owners of the same kind refetches every cached tag of that kind, and
+     * any other write refetches the owner's own tag.
      *
-     * @param kind - The owner kind whose tags to refresh.
+     * @param write - The write, as its owner's store reports it.
+     *
+     * @returns A promise that resolves once any refetch settles.
      */
+    async function ownerWritten(write: TagOwnerWrite): Promise<void> {
+      if (write.deleted) forgetTagsOwnedBy(write.owner);
+      if (write.cascades) {
+        await refreshTagsOwnedByKind(write.owner.kind);
+      } else if (write.tagId && !write.deleted) {
+        await refreshTag(write.tagId);
+      }
+    }
+
     async function refreshTagsOwnedByKind(kind: TagOwnerKind): Promise<void> {
       await refreshCachedTags((tag) => tag.owner?.kind === kind);
     }
@@ -406,13 +436,9 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       await Promise.all([...new Set(ids)].map(refreshTag));
     }
 
-    /**
-     * Drops the cached tags of an owner that's been deleted, whose tags
-     * went with it, so they stop showing. A fetch of one still in flight
-     * can't bring it back, whether or not it was cached.
-     *
-     * @param owner - The deleted owner.
-     */
+    // Drops the cached tags of an owner that's been deleted, whose tags went
+    // with it, so they stop showing. A fetch of one still in flight can't
+    // bring it back, whether or not it was cached.
     function forgetTagsOwnedBy(owner: TagOwner): void {
       deletedOwners.add(ownerKey(owner));
       for (const cache of [tags.value, individuallyFetchedTags.value]) {
@@ -554,8 +580,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       fetchTagById,
       refreshTag,
       refreshDerivedTags,
-      refreshTagsOwnedByKind,
-      forgetTagsOwnedBy,
+      ownerWritten,
       searchTags,
       searchTagsOnServer,
       updateTag,

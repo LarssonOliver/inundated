@@ -52,7 +52,7 @@ import { computed, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { CloseReason, Project, Task } from "@/model";
 import { tasksApi } from "@/api";
-import { useTasksStore, taskTree, isTaskOverdue, refreshTaskTagsAfter } from "@/stores/tasks";
+import { useTasksStore, taskTree, isTaskOverdue } from "@/stores/tasks";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import TaskRow from "@/components/tasks/TaskRow.vue";
@@ -124,11 +124,10 @@ async function addTask() {
   await load();
 }
 
-// Changes go straight to the API rather than through the tasks store, whose
-// close and reopen reload the full task list this page doesn't show. The
-// project's own list is reloaded instead: closing or reopening can cascade
-// to subtasks or parents, and retagging can move a task in or out of the
-// project.
+// The tasks store's close and reopen would reload the full task list, which
+// this page doesn't show. The project's own list is reloaded instead:
+// closing or reopening can cascade to subtasks or parents, and retagging can
+// move a task in or out of the project.
 async function closeTask(task: Task, reason: CloseReason | null) {
   const patch: TaskPatch = reason ? { closed: true, closeReason: reason } : { closed: false };
   await applyPatch(task, patch, reason ? "Couldn't close the task." : "Couldn't reopen the task.");
@@ -141,12 +140,11 @@ async function updateTask(task: Task, patch: TaskPatch) {
 async function applyPatch(task: Task, patch: TaskPatch, failure: string) {
   errorMessage.value = "";
   try {
-    await tasksApi.updateTask(task.id, patch);
+    await tasksStore.updateTask(task.id, patch, { reloadList: false });
   } catch {
     errorMessage.value = failure;
     return;
   }
-  void refreshTaskTagsAfter(task.tagId, patch);
   await load();
 }
 

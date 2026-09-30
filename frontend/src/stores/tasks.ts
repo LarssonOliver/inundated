@@ -3,7 +3,7 @@ import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
-import { useTagsStore } from "@/stores/tags";
+import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
@@ -64,22 +64,17 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
 }
 
 /**
- * Refreshes the cached task tags a task update can make stale. A task tag
- * takes its name from its task and its color from the task's regular tags,
- * and is archived while the task is closed. Closing or reopening a task
- * cascades to its subtasks or parents, so every cached task tag is
- * refreshed then.
- *
- * @param taskTagId - The updated task's own tag.
- * @param patch - The update applied to the task.
+ * What a task update does to cached task tags (see TagOwnerWrite), or
+ * undefined when it leaves them alone. A task tag takes its name from its
+ * task and its color from the task's regular tags, and is archived while
+ * the task is closed. Closing or reopening a task cascades to its subtasks
+ * or parents.
  */
-export async function refreshTaskTagsAfter(taskTagId: string, patch: TaskPatch): Promise<void> {
-  const tagsStore = useTagsStore();
-  if (patch.closed !== undefined) {
-    await tagsStore.refreshTagsOwnedByKind("task");
-  } else if (patch.name !== undefined || patch.tagIds !== undefined) {
-    await tagsStore.refreshTag(taskTagId);
-  }
+function taskTagWrite(task: Task, patch: TaskPatch): TagOwnerWrite | undefined {
+  const owner = { kind: "task", id: task.id } as const;
+  if (patch.closed !== undefined) return { owner, cascades: true };
+  if (patch.name !== undefined || patch.tagIds !== undefined) return { owner, tagId: task.tagId };
+  return undefined;
 }
 
 function createTasksStore(api: TasksApi) {
@@ -163,15 +158,21 @@ function createTasksStore(api: TasksApi) {
      * Updates a task. Closing or reopening one also changes its subtasks or
      * parents on the server, so the individually-fetched cache is dropped
      * (a fresh fetch is needed to see those cascading effects) and the list
-     * is reloaded afterwards. Cached task tags the update affects are
-     * refetched (see refreshTaskTagsAfter).
+     * is reloaded afterwards, unless reloadList is false because the caller
+     * shows its own list and reloads that instead. Cached task tags the
+     * update affects are refetched (see taskTagWrite).
      */
-    async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
+    async function updateTask(
+      id: string,
+      patch: TaskPatch,
+      { reloadList = true }: { reloadList?: boolean } = {},
+    ): Promise<Task> {
       const updated = await api.updateTask(id, patch);
-      void refreshTaskTagsAfter(updated.tagId, patch);
+      const tagWrite = taskTagWrite(updated, patch);
+      if (tagWrite) void useTagsStore().ownerWritten(tagWrite);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
-        await fetchTasks();
+        if (reloadList) await fetchTasks();
         return copyTask(updated);
       }
 

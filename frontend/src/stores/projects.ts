@@ -201,7 +201,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       const { id, ...fields } = project;
       const updated = await api.updateProject(id, fields);
       projects.value.set(updated.id, updated);
-      if (updated.tagId) void useTagsStore().refreshTag(updated.tagId);
+      void useTagsStore().ownerWritten({ owner: { kind: "project", id }, tagId: updated.tagId });
       return copyProject(updated);
     }
 
@@ -217,7 +217,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     async function deleteProject(id: string): Promise<void> {
       await api.deleteProject(id);
       projects.value.delete(id);
-      useTagsStore().forgetTagsOwnedBy({ kind: "project", id });
+      void useTagsStore().ownerWritten({ owner: { kind: "project", id }, deleted: true });
     }
 
     async function fetchProjectStats(

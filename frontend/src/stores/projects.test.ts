@@ -4,9 +4,8 @@ import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
 import { __test__ } from "@/stores/projects";
 
-const refreshTag = vi.fn();
-const forgetTagsOwnedBy = vi.fn();
-vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag, forgetTagsOwnedBy }) }));
+const ownerWritten = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten }) }));
 
 function project(partial?: Partial<Project>): Project {
   return {
@@ -37,8 +36,7 @@ describe("projects store", () => {
     };
 
     useStore = __test__.createProjectsStore(api);
-    refreshTag.mockReset();
-    forgetTagsOwnedBy.mockReset();
+    ownerWritten.mockReset();
   });
 
   it("refreshes the project's own tag after updating a project", async () => {
@@ -47,7 +45,10 @@ describe("projects store", () => {
     const store = useStore();
     await store.updateProject(project({ name: "Renamed" }));
 
-    expect(refreshTag).toHaveBeenCalledExactlyOnceWith("own");
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "project", id: "p1" },
+      tagId: "own",
+    });
   });
 
   it("forgets the project's own tag after deleting a project", async () => {
@@ -56,7 +57,10 @@ describe("projects store", () => {
     const store = useStore();
     await store.deleteProject("p1");
 
-    expect(forgetTagsOwnedBy).toHaveBeenCalledExactlyOnceWith({ kind: "project", id: "p1" });
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "project", id: "p1" },
+      deleted: true,
+    });
   });
 
   it("leaves the tags alone when the server refuses to delete a project", async () => {
@@ -65,7 +69,7 @@ describe("projects store", () => {
     const store = useStore();
     await expect(store.deleteProject("p1")).rejects.toThrow();
 
-    expect(forgetTagsOwnedBy).not.toHaveBeenCalled();
+    expect(ownerWritten).not.toHaveBeenCalled();
   });
 
   it("fetches and stores first page of projects", async () => {

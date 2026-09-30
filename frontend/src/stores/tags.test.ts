@@ -558,7 +558,7 @@ describe("tags store", () => {
 
     const late = store.refreshTag("p");
     await Promise.resolve();
-    store.forgetTagsOwnedBy({ kind: "project", id: "p1" });
+    void store.ownerWritten({ owner: { kind: "project", id: "p1" }, deleted: true });
     resolveLate([projectTag]);
     await late;
 
@@ -574,14 +574,26 @@ describe("tags store", () => {
 
     const late = store.fetchTagById("p");
     await Promise.resolve();
-    store.forgetTagsOwnedBy({ kind: "project", id: "p1" });
+    void store.ownerWritten({ owner: { kind: "project", id: "p1" }, deleted: true });
     resolveLate([projectTag]);
     await late;
 
     expect(store.getTagById("p")).toBeUndefined();
   });
 
-  it("refreshes every cached tag of one owner kind", async () => {
+  it("refetches the owner's own tag after a write that only changes it", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    const renamed = { ...projectTag, name: "renamed" };
+    api.getTagsByIds.mockResolvedValueOnce([projectTag]).mockResolvedValueOnce([renamed]);
+    const store = useStore();
+    await store.fetchTagById("p");
+
+    await store.ownerWritten({ owner: { kind: "project", id: "p1" }, tagId: "p" });
+
+    expect(store.getTagById("p")).toEqual(renamed);
+  });
+
+  it("refreshes every cached tag of one owner kind after a cascading write", async () => {
     const taskTag = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
     const otherTaskTag = makeTag({ id: "o2", owner: { kind: "task", id: "t2" } });
     const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
@@ -591,7 +603,7 @@ describe("tags store", () => {
     const store = useStore();
     await Promise.all(["o", "o2", "p"].map((id) => store.fetchTagById(id)));
 
-    await store.refreshTagsOwnedByKind("task");
+    await store.ownerWritten({ owner: { kind: "task", id: "t" }, cascades: true });
 
     expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o", "o2"]);
     expect(store.getTagById("o")?.archived).toBe(true);

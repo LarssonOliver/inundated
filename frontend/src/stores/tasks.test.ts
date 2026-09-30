@@ -4,9 +4,8 @@ import type { Task } from "@/model";
 import type { TasksApi } from "@/api/tasks";
 import { __test__, isTaskOverdue, taskTree } from "@/stores/tasks";
 
-const refreshTag = vi.fn();
-const refreshTagsOwnedByKind = vi.fn();
-vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshTag, refreshTagsOwnedByKind }) }));
+const ownerWritten = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten }) }));
 
 function task(partial: Partial<Task> & { id: string }): Task {
   return {
@@ -71,8 +70,7 @@ describe("tasks store", () => {
     };
 
     useStore = __test__.createTasksStore(api);
-    refreshTag.mockReset();
-    refreshTagsOwnedByKind.mockReset();
+    ownerWritten.mockReset();
   });
 
   it("fetches open tasks by default and closed ones when asked", async () => {
@@ -135,7 +133,10 @@ describe("tasks store", () => {
     const store = useStore();
     await store.updateTask("a", { tagIds: new Set(["x"]) });
 
-    expect(refreshTag).toHaveBeenCalledWith("tag-a");
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      tagId: "tag-a",
+    });
   });
 
   it("refreshes the task tag when the task is renamed", async () => {
@@ -144,7 +145,10 @@ describe("tasks store", () => {
     const store = useStore();
     await store.updateTask("a", { name: "renamed" });
 
-    expect(refreshTag).toHaveBeenCalledWith("tag-a");
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      tagId: "tag-a",
+    });
   });
 
   it("refreshes every task tag when closing can cascade to other tasks", async () => {
@@ -154,7 +158,23 @@ describe("tasks store", () => {
     const store = useStore();
     await store.closeTask("a");
 
-    expect(refreshTagsOwnedByKind).toHaveBeenCalledWith("task");
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      cascades: true,
+    });
+  });
+
+  it("leaves the list alone after closing when asked not to reload it", async () => {
+    api.updateTask.mockResolvedValue(task({ id: "a", closed: true }));
+
+    const store = useStore();
+    await store.updateTask("a", { closed: true, closeReason: "done" }, { reloadList: false });
+
+    expect(api.listAllTasks).not.toHaveBeenCalled();
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      cascades: true,
+    });
   });
 
   it("doesn't refresh the task tag when nothing it shows changes", async () => {
@@ -163,8 +183,7 @@ describe("tasks store", () => {
     const store = useStore();
     await store.updateTask("a", { dueDate: "2026-10-01" });
 
-    expect(refreshTag).not.toHaveBeenCalled();
-    expect(refreshTagsOwnedByKind).not.toHaveBeenCalled();
+    expect(ownerWritten).not.toHaveBeenCalled();
   });
 
   it("keeps a task fetched individually in cache after a non-status edit", async () => {
