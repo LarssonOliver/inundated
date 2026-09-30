@@ -290,7 +290,14 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const byId = new Map(fetched.map((tag) => [tag.id, tag]));
       for (const [id, waiters] of batch) {
         const tag = byId.get(id);
-        if (tag) cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
+        if (tag) {
+          cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
+        } else if (individualFetchSeq.get(id) === seqs.get(id)) {
+          // Gone on the server (e.g. a project tag whose project was
+          // deleted), so a cached copy would only keep showing a tag that no
+          // longer exists.
+          individuallyFetchedTags.value.delete(id);
+        }
         for (const waiter of waiters) {
           if (tag) waiter.resolve(copyTag(tag));
           else waiter.reject(new Error(`Tag ${id} not found`));
@@ -329,7 +336,8 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * Refetches a tag if it's cached, so a tag whose color the server
      * derives from other tags (e.g. a task tag, from its task's regular
      * tags) doesn't keep showing a stale color after those tags change. The
-     * cached tag stays in place until the fresh one arrives.
+     * cached tag stays in place until the fresh one arrives, and is
+     * dropped if the server no longer has it.
      *
      * @param id - The ID of the tag to refresh.
      *
@@ -344,8 +352,10 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
-     * Refreshes every cached owned tag, whose derived color may depend on a
-     * regular tag that just changed.
+     * Refreshes every cached owned tag, after a change that may have
+     * altered some: a regular or project tag that task tag colors derive
+     * from, or a project write, which renames, recolors, archives or
+     * deletes its project tag.
      */
     async function refreshOwnedTags(): Promise<void> {
       const owned = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
@@ -475,6 +485,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       fetchDetailedTagById,
       fetchTagById,
       refreshTag,
+      refreshOwnedTags,
       searchTags,
       searchTagsOnServer,
       updateTag,

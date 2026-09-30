@@ -483,6 +483,14 @@ describe("tags store", () => {
     expect(store.getTagById("1")).toEqual(cached);
   });
 
+  it("drops a cached tag the server no longer has on refresh", async () => {
+    api.getTagsByIds.mockResolvedValueOnce([makeTag({ id: "1" })]).mockResolvedValueOnce([]);
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toBeUndefined();
+  });
+
   it.each([
     ["updating", (store: ReturnType<typeof useStore>, tag: Tag) => store.updateTag(tag)],
     ["deleting", (store: ReturnType<typeof useStore>, tag: Tag) => store.deleteTag(tag.id)],

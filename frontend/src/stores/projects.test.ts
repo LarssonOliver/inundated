@@ -4,6 +4,9 @@ import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
 import { __test__ } from "@/stores/projects";
 
+const refreshOwnedTags = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ refreshOwnedTags }) }));
+
 function project(partial?: Partial<Project>): Project {
   return {
     id: partial?.id ?? "p1",
@@ -33,6 +36,34 @@ describe("projects store", () => {
     };
 
     useStore = __test__.createProjectsStore(api);
+    refreshOwnedTags.mockReset();
+  });
+
+  it("refreshes cached owned tags after updating a project", async () => {
+    api.updateProject.mockResolvedValue(project({ name: "Renamed" }));
+
+    const store = useStore();
+    await store.updateProject(project({ name: "Renamed" }));
+
+    expect(refreshOwnedTags).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes cached owned tags after deleting a project", async () => {
+    api.deleteProject.mockResolvedValue();
+
+    const store = useStore();
+    await store.deleteProject("p1");
+
+    expect(refreshOwnedTags).toHaveBeenCalledOnce();
+  });
+
+  it("leaves the tags alone when the server refuses to delete a project", async () => {
+    api.deleteProject.mockRejectedValue(new Error("conflict"));
+
+    const store = useStore();
+    await expect(store.deleteProject("p1")).rejects.toThrow();
+
+    expect(refreshOwnedTags).not.toHaveBeenCalled();
   });
 
   it("fetches and stores first page of projects", async () => {
