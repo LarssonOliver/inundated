@@ -411,6 +411,37 @@ describe("tags store", () => {
     expect(api.getTagsByIds).toHaveBeenNthCalledWith(2, ["2"]);
   });
 
+  it("keeps the newest fetchTagById result when responses arrive out of order", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.getTagsByIds
+      .mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)))
+      .mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    const first = store.fetchTagById("1");
+    await Promise.resolve();
+    await store.fetchTagById("1");
+    resolveStale([stale]);
+    await first;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
+  it("keeps the newest result across fetchTagById and fetchDetailedTagById", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222", totalTimeMs: 1000 });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.getTagsByIds.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)));
+    api.getTag.mockResolvedValueOnce(fresh);
+    const store = useStore();
+    const first = store.fetchTagById("1");
+    await Promise.resolve();
+    await store.fetchDetailedTagById("1");
+    resolveStale([stale]);
+    await first;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
   it("rejects fetchTagById for an id the server doesn't return", async () => {
     const t1 = makeTag({ id: "1" });
     api.getTagsByIds.mockResolvedValue([t1]);
