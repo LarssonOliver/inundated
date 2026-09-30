@@ -187,7 +187,10 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
-		if _, err := q.Exec(ctx, `UPDATE tags SET name = $2, color = $3 WHERE id = $1`, updated.TagId, updated.Name, updated.Color); err != nil {
+		// Skipping an unchanged tag avoids locking it against the timespan
+		// and task writes that share-lock it (see tagsInScope).
+		syncTag := `UPDATE tags SET name = $2, color = $3 WHERE id = $1 AND (name, color) IS DISTINCT FROM ($2, $3)`
+		if _, err := q.Exec(ctx, syncTag, updated.TagId, updated.Name, updated.Color); err != nil {
 			return fmt.Errorf("UpdateProject tag: %w", err)
 		}
 		return setLinkedTags(ctx, q, "project_tags", "project_id", updated.Id, project.TagIds)

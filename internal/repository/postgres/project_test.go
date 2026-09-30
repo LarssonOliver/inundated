@@ -83,7 +83,7 @@ func expectCreateProjectTag(mock pgxmock.PgxPoolIface, p model.Project) {
 // expectRenameProjectTag registers UpdateProject's write of p's name and
 // color to its project tag.
 func expectRenameProjectTag(mock pgxmock.PgxPoolIface, p model.Project) {
-	mock.ExpectExec(`UPDATE tags SET name = \$2, color = \$3 WHERE id = \$1`).
+	mock.ExpectExec(`UPDATE tags SET name = \$2, color = \$3 WHERE id = \$1 AND \(name, color\) IS DISTINCT FROM \(\$2, \$3\)`).
 		WithArgs(p.TagId, p.Name, p.Color).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 }
