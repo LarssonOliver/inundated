@@ -204,29 +204,24 @@ const tagsStore = useTagsStore();
 const formatMs = useDurationFormat(() => settingsStore.settings);
 
 // The task's own tag, for showing its name as the same outlined "#name"
-// pill used everywhere else a task tag appears. Its color is a per-tag
-// customizable field (not always the server's default), so it has to be
-// resolved from the real tag rather than assumed - starts from the store's
-// cache (instant if already loaded elsewhere) and falls back to the
-// default color only until the fetch resolves.
-const taskOwnTag = ref<Tag | null>(tagsStore.getTagById(props.task.tagId) ?? null);
-
-async function loadTaskOwnTag() {
-  try {
-    taskOwnTag.value = await tagsStore.fetchTagById(props.task.tagId);
-  } catch {
-    // Leave the fallback color in place.
-  }
-}
-
-if (!taskOwnTag.value) loadTaskOwnTag();
+// pill used everywhere else a task tag appears. The server derives its color
+// from the task's regular tags, so it's read from the tags store (the
+// store batches the fetches, so a list of rows costs one request) and
+// refetched whenever those tags change. The default color shows only until
+// the first fetch resolves.
+const taskOwnTag = computed(() => tagsStore.getTagById(props.task.tagId));
 
 watch(
-  () => props.task.tagId,
-  (tagId) => {
-    taskOwnTag.value = tagsStore.getTagById(tagId) ?? null;
-    if (!taskOwnTag.value) loadTaskOwnTag();
+  () => [props.task.tagId, [...props.task.tagIds].sort().join(",")] as const,
+  ([tagId, tagIds], previous) => {
+    // A cached tag is current until the task's regular tags change.
+    const tagsChanged = previous !== undefined && previous[1] !== tagIds;
+    if (!tagsChanged && taskOwnTag.value) return;
+    tagsStore.fetchTagById(tagId).catch(() => {
+      // Leave the cached or fallback color in place.
+    });
   },
+  { immediate: true },
 );
 
 const taskTagPreview = computed<Tag>(() => ({

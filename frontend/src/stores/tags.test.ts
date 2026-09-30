@@ -369,23 +369,60 @@ describe("tags store", () => {
 
   it("fetches a tag by ID without requesting detailed stats", async () => {
     const plainTag = makeTag({ id: "1", name: "plain" });
-    api.getTag.mockResolvedValue(plainTag);
+    api.getTagsByIds.mockResolvedValue([plainTag]);
     const store = useStore();
     const result = await store.fetchTagById("1");
-    expect(api.getTag).toHaveBeenCalledWith("1", false);
+    expect(api.getTagsByIds).toHaveBeenCalledWith(["1"]);
+    expect(api.getTag).not.toHaveBeenCalled();
     expect(result).toEqual(plainTag);
   });
 
   it("caches the result of fetchTagById for getTagById", async () => {
     const plainTag = makeTag({ id: "1", name: "plain" });
-    api.getTag.mockResolvedValue(plainTag);
+    api.getTagsByIds.mockResolvedValue([plainTag]);
     const store = useStore();
     await store.fetchTagById("1");
     expect(store.getTagById("1")).toEqual(plainTag);
   });
 
+  it("batches fetchTagById calls made in the same tick into one request", async () => {
+    const t1 = makeTag({ id: "1" });
+    const t2 = makeTag({ id: "2" });
+    api.getTagsByIds.mockResolvedValue([t1, t2]);
+    const store = useStore();
+    const results = await Promise.all([
+      store.fetchTagById("1"),
+      store.fetchTagById("2"),
+      store.fetchTagById("1"),
+    ]);
+    expect(api.getTagsByIds).toHaveBeenCalledOnce();
+    expect(api.getTagsByIds).toHaveBeenCalledWith(["1", "2"]);
+    expect(results).toEqual([t1, t2, t1]);
+  });
+
+  it("sends fetchTagById calls from later ticks as a new request", async () => {
+    const t1 = makeTag({ id: "1" });
+    const t2 = makeTag({ id: "2" });
+    api.getTagsByIds.mockResolvedValueOnce([t1]).mockResolvedValueOnce([t2]);
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.fetchTagById("2");
+    expect(api.getTagsByIds).toHaveBeenNthCalledWith(1, ["1"]);
+    expect(api.getTagsByIds).toHaveBeenNthCalledWith(2, ["2"]);
+  });
+
+  it("rejects fetchTagById for an id the server doesn't return", async () => {
+    const t1 = makeTag({ id: "1" });
+    api.getTagsByIds.mockResolvedValue([t1]);
+    const store = useStore();
+    const found = store.fetchTagById("1");
+    const missing = store.fetchTagById("missing");
+    await expect(found).resolves.toEqual(t1);
+    await expect(missing).rejects.toThrow();
+  });
+
   it("throws if fetching a tag by ID fails", async () => {
-    api.getTag.mockRejectedValue(new Error());
+    api.getTagsByIds.mockRejectedValue(new Error());
     const store = useStore();
     await expect(store.fetchTagById("missing")).rejects.toThrow();
   });
