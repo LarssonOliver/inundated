@@ -303,11 +303,16 @@ function createTasksStore(api: TasksApi) {
     }
 
     /**
-     * Deletes a task and its subtasks. The server refuses (409) when any of
-     * them has logged time.
+     * Deletes a task and its subtasks, along with their task tags. The
+     * server refuses (409) when any of them has logged time.
      */
     async function deleteTask(id: string): Promise<void> {
       await api.deleteTask(id);
+      void useTagsStore().ownerWritten({
+        owner: { kind: "task", id },
+        deleted: true,
+        cascades: true,
+      });
       individuallyFetchedTasks.value.delete(id);
       await fetchTasks();
     }

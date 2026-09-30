@@ -353,6 +353,20 @@ describe("tasks store", () => {
     expect(api.moveTask).not.toHaveBeenCalled();
   });
 
+  it("forgets the tags of a deleted task and its subtasks", async () => {
+    api.deleteTask.mockResolvedValue();
+    api.listAllTasks.mockResolvedValue([]);
+
+    const store = useStore();
+    await store.deleteTask("a");
+
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      deleted: true,
+      cascades: true,
+    });
+  });
+
   it("keeps a task in place when the server refuses to delete it", async () => {
     api.listAllTasks.mockResolvedValue([task({ id: "a" })]);
     api.deleteTask.mockRejectedValue(new Error("409"));
@@ -362,5 +376,6 @@ describe("tasks store", () => {
     await expect(store.deleteTask("a")).rejects.toThrow();
 
     expect(store.getTaskById("a")).toBeDefined();
+    expect(ownerWritten).not.toHaveBeenCalled();
   });
 });

@@ -581,6 +581,28 @@ describe("tags store", () => {
     expect(store.getTagById("p")).toBeUndefined();
   });
 
+  it("drops the tags of the owners a delete cascades to, even with a fetch in flight", async () => {
+    const taskTag = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    const subtaskTag = makeTag({ id: "o2", owner: { kind: "task", id: "t2" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds
+      .mockResolvedValueOnce([taskTag, subtaskTag])
+      .mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)))
+      .mockResolvedValueOnce([]);
+    const store = useStore();
+    await Promise.all([store.fetchTagById("o"), store.fetchTagById("o2")]);
+
+    // A search sent before the delete answers after it.
+    const late = store.fetchTagById("o2");
+    await Promise.resolve();
+    await store.ownerWritten({ owner: { kind: "task", id: "t" }, deleted: true, cascades: true });
+    resolveLate([subtaskTag]);
+    await late;
+
+    expect(store.getTagById("o")).toBeUndefined();
+    expect(store.getTagById("o2")).toBeUndefined();
+  });
+
   it("refetches the owner's own tag after a write that only changes it", async () => {
     const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
     const renamed = { ...projectTag, name: "renamed" };
