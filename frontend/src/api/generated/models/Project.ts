@@ -26,6 +26,12 @@ export interface Project {
      */
     id: string;
     /**
+     * The project's own project tag, shown as "@name". Time spans and tasks carrying it count toward the project, like those carrying any of tagIds, which never include it. Its name, color and archived state follow the project.
+     * @type {string}
+     * @memberof Project
+     */
+    tagId: string;
+    /**
      * 
      * @type {string}
      * @memberof Project
@@ -74,6 +80,7 @@ export interface Project {
  */
 export function instanceOfProject(value: object): value is Project {
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('tagId' in value) || value['tagId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('color' in value) || value['color'] === undefined) return false;
     if (!('archived' in value) || value['archived'] === undefined) return false;
@@ -91,6 +98,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
     return {
         
         'id': json['id'],
+        'tagId': json['tagId'],
         'name': json['name'],
         'color': json['color'],
         'timeBudgetHours': json['timeBudgetHours'] == null ? undefined : json['timeBudgetHours'],
@@ -113,6 +121,7 @@ export function ProjectToJSONTyped(value?: Project | null, ignoreDiscriminator: 
     return {
         
         'id': value['id'],
+        'tagId': value['tagId'],
         'name': value['name'],
         'color': value['color'],
         'timeBudgetHours': value['timeBudgetHours'],

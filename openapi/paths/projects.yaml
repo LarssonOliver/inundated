@@ -82,6 +82,11 @@ projects-id:
   delete:
     tags: [projects]
     summary: Delete project
+    description: >
+      Deletes a project along with its project tag. Projects with time
+      logged under their project tag (directly, or on a task carrying it)
+      can't be deleted; archive them instead. Time reaching a project only
+      through its linked tags doesn't prevent deleting it.
     operationId: deleteProject
     security:
       - sessionCookie: []
@@ -90,6 +95,10 @@ projects-id:
         description: Deleted
       "404":
         description: Not found
+      "409":
+        description: >
+          Time is logged under the project tag. Archive the project
+          instead.
 
 projects-id-stats:
   get:

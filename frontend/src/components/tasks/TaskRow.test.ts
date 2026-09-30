@@ -11,6 +11,7 @@ vi.mock("@/api", async (importOriginal) => {
 });
 
 import TaskRow from "./TaskRow.vue";
+import { useTagsStore } from "@/stores/tags";
 
 const task = (overrides: Partial<Task>): Task => ({
   id: "k1",
@@ -59,27 +60,19 @@ test("rows fetch their task tags in one request", async () => {
   expect(second.find(".pill").text()).toBe("#a3be8c");
 });
 
-test("refetches the task tag when the task's regular tags change", async () => {
+test("shows a refreshed task tag color without refetching it itself", async () => {
   getTagsByIds.mockResolvedValue([taskTag("tk1", "#5e81ac")]);
   const wrapper = mountRow(task({}));
   await flushPromises();
   expect(wrapper.find(".pill").text()).toBe("#5e81ac");
 
+  // Whoever updates the task refreshes its tag, so the row doesn't also
+  // refetch it when the new tags arrive.
   getTagsByIds.mockResolvedValue([taskTag("tk1", "#ebcb8b")]);
+  await useTagsStore().refreshTag("tk1");
   await wrapper.setProps({ task: task({ tagIds: new Set(["l1"]) }) });
   await flushPromises();
 
   expect(getTagsByIds).toHaveBeenCalledTimes(2);
   expect(wrapper.find(".pill").text()).toBe("#ebcb8b");
-});
-
-test("doesn't refetch when the task changes but its regular tags don't", async () => {
-  getTagsByIds.mockResolvedValue([taskTag("tk1", "#5e81ac")]);
-  const wrapper = mountRow(task({ tagIds: new Set(["l1"]) }));
-  await flushPromises();
-
-  await wrapper.setProps({ task: task({ name: "Renamed", tagIds: new Set(["l1"]) }) });
-  await flushPromises();
-
-  expect(getTagsByIds).toHaveBeenCalledOnce();
 });

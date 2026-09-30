@@ -2,7 +2,7 @@ import type { Tag, TagOwnerKind, TagStats } from "@/model";
 import {
   TagsApi as GeneratedTagsApi,
   GetTagIncludeEnum,
-  ListTagsKindEnum,
+  type ListTagsKindEnum,
   type StatsMetric,
 } from "@/api/generated";
 import { ApiConfig } from "@/api/config";
@@ -20,9 +20,16 @@ export interface PaginatedTagsResponse {
   pagination: PaginationMetadata;
 }
 
-/** Which tags a search returns: regular tags, task tags, or both. */
-/** Regular tags (label), the tags of one owner kind, or every tag (all). */
+/**
+ * Regular tags (label), the tags of one owner kind, or every tag (all).
+ * Each is one of the API's kinds, and is sent as is: a TagOwnerKind the
+ * API doesn't know fails to type check in toApiKinds.
+ */
 export type TagKind = "label" | TagOwnerKind | "all";
+
+function toApiKinds(kinds: TagKind | readonly TagKind[]): Set<ListTagsKindEnum> {
+  return new Set<ListTagsKindEnum>(typeof kinds === "string" ? [kinds] : kinds);
+}
 
 export interface TagsApi {
   listTags(): Promise<Tag[]>;
@@ -32,19 +39,21 @@ export interface TagsApi {
     includeArchived?: boolean,
   ): Promise<PaginatedTagsResponse>;
   /**
-   * Searches tags by name on the server (case-insensitive substring match),
-   * regular tags first, then by name.
+   * Searches tags of one or more kinds by name on the server
+   * (case-insensitive substring match), in name order. Several kinds take
+   * turns filling the results, so one kind's matches can't crowd another's
+   * out.
    */
   searchTags(
     query: string,
-    kind: TagKind,
+    kinds: TagKind | readonly TagKind[],
     includeArchived?: boolean,
     limit?: number,
   ): Promise<Tag[]>;
   /** Same as searchTags, but paginated so the full match set can be walked. */
   searchTagsPaginated(
     query: string,
-    kind: TagKind,
+    kinds: TagKind | readonly TagKind[],
     includeArchived: boolean,
     limit: number,
     offset: number,
@@ -97,7 +106,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
 
     async searchTags(
       query: string,
-      kind: TagKind,
+      kinds: TagKind | readonly TagKind[],
       includeArchived: boolean = false,
       limit: number = 20,
     ): Promise<Tag[]> {
@@ -106,14 +115,14 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
         offset: 0,
         includeArchived,
         q: query,
-        kind: ListTagsKindEnum[kind === "label" ? "Label" : kind === "task" ? "Task" : "All"],
+        kind: toApiKinds(kinds),
       });
       return mapFromApiArray(tagMapper, response.data);
     },
 
     async searchTagsPaginated(
       query: string,
-      kind: TagKind,
+      kinds: TagKind | readonly TagKind[],
       includeArchived: boolean,
       limit: number,
       offset: number,
@@ -123,7 +132,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
         offset,
         includeArchived,
         q: query,
-        kind: ListTagsKindEnum[kind === "label" ? "Label" : kind === "task" ? "Task" : "All"],
+        kind: toApiKinds(kinds),
       });
       return {
         data: mapFromApiArray(tagMapper, response.data),
@@ -147,7 +156,7 @@ function createTagsApi(api: GeneratedTagsApi = defaultGeneratedApi): TagsApi {
             limit: MAX_IDS_PER_REQUEST,
             offset: 0,
             includeArchived: true,
-            kind: ListTagsKindEnum.All,
+            kind: toApiKinds("all"),
             ids: new Set(chunk),
           }),
         ),

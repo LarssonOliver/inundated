@@ -82,6 +82,7 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 		name     string
 		deleteFn func(ctx context.Context, id uuid.UUID) error
 		request  uuid.UUID
+		want     api.DeleteProjectResponseObject
 		wantErr  bool
 	}{
 		{
@@ -90,7 +91,23 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 				return nil
 			},
 			request: uuid.New(),
-			wantErr: false,
+			want:    api.DeleteProject204Response{},
+		},
+		{
+			name: "not found",
+			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+				return model.ErrNotFound
+			},
+			request: uuid.New(),
+			want:    api.DeleteProject404Response{},
+		},
+		{
+			name: "attributed time",
+			deleteFn: func(ctx context.Context, id uuid.UUID) error {
+				return model.ErrConflict
+			},
+			request: uuid.New(),
+			want:    api.DeleteProject409Response{},
 		},
 		{
 			name: "service error",
@@ -112,7 +129,7 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 			}
 
 			ta := handlers.NewProjectHandler(svc)
-			_, gotErr := ta.DeleteProject(context.Background(), request)
+			got, gotErr := ta.DeleteProject(context.Background(), request)
 
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -122,6 +139,9 @@ func TestProjectHandler_DeleteProject(t *testing.T) {
 			}
 			if tt.wantErr {
 				t.Fatal("DeleteProject() succeeded unexpectedly")
+			}
+			if got != tt.want {
+				t.Errorf("DeleteProject() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}

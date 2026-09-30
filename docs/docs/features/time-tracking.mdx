@@ -37,6 +37,18 @@ directly, it's a lens over the tags assigned to it. This lets you reorganize
 which tags roll up into which project without touching any historical time
 entries.
 
+Every project also owns a **project tag**, named after the project and
+drawn as an outlined pill starting with `@`. A time entry or task carrying
+it counts toward the project directly, with no shared tag needed:
+
+- Type `@` in a tag field to see only projects.
+- Type `@` and a new name, then press Enter, to create a project on the
+  spot, colored from its name.
+
+A project tag takes its project's name, color and archived state, and goes
+away with the project. Project tags aren't listed on the Tags page, and a
+project can't carry another project's tag.
+
 Projects and tags can each be archived independently, which hides them from
 pickers without deleting their history.
 

@@ -21,7 +21,7 @@ func (s *ServiceImpl) GetProjectStats(ctx context.Context, input GetProjectStats
 		return model.ProjectStats{}, err
 	}
 
-	result, err := s.computeTimeSpentSeries(ctx, scope, project.TagIds, input.IntervalRaw, input.GranularityRaw, input.TimezoneRaw, input.Now)
+	result, err := s.computeTimeSpentSeries(ctx, scope, project.EffectiveTagIds(), input.IntervalRaw, input.GranularityRaw, input.TimezoneRaw, input.Now)
 	if err != nil {
 		return model.ProjectStats{}, err
 	}

@@ -156,6 +156,7 @@ export class ProjectsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Deletes a project along with its project tag. Projects with time logged under their project tag (directly, or on a task carrying it) can\'t be deleted; archive them instead. Time reaching a project only through its linked tags doesn\'t prevent deleting it. 
      * Delete project
      */
     async deleteProjectRaw(requestParameters: DeleteProjectRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -166,6 +167,7 @@ export class ProjectsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Deletes a project along with its project tag. Projects with time logged under their project tag (directly, or on a task carrying it) can\'t be deleted; archive them instead. Time reaching a project only through its linked tags doesn\'t prevent deleting it. 
      * Delete project
      */
     async deleteProject(requestParameters: DeleteProjectRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

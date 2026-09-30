@@ -260,7 +260,10 @@ func TestMemoryStore_CreateUserAdoptingOrphans_FirstUserClaimsResources(t *testi
 	user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
 	_, adoption, err := store.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
-	require.Equal(t, model.OrphanAdoption{Projects: 1, Tags: 1, Timespans: 1}, adoption)
+	// The project's own project tag is adopted along with it.
+	require.Equal(t, model.OrphanAdoption{Projects: 1, Tags: 2, Timespans: 1}, adoption)
+	gotProjectTag, _ := store.GetTag(ctx, model.UserScope(user.Id), project.TagId)
+	require.NotNil(t, gotProjectTag.UserId)
 
 	gotTag, _ := store.GetTag(ctx, model.UserScope(user.Id), tag.Id)
 	require.NotNil(t, gotTag.UserId)

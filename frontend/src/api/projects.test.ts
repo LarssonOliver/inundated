@@ -30,13 +30,14 @@ describe("projects API", () => {
       data: [
         {
           id: "1",
+          tagId: "tag-1",
           name: "A",
           color: "#111",
           timeBudgetHours: 2,
           tagIds: new Set(["2"]),
           archived: false,
         },
-        { id: "2", name: "B", color: "#222", tagIds: new Set(), archived: false },
+        { id: "2", tagId: "tag-2", name: "B", color: "#222", tagIds: new Set(), archived: false },
       ],
       pagination: { limit: 50, offset: 0, total: 2 },
     });
@@ -47,13 +48,14 @@ describe("projects API", () => {
     expect(result).toEqual([
       {
         id: "1",
+        tagId: "tag-1",
         name: "A",
         color: "#111",
         timeBudgetHours: 2,
         tagIds: new Set(["2"]),
         archived: false,
       },
-      { id: "2", name: "B", color: "#222", tagIds: new Set(), archived: false },
+      { id: "2", tagId: "tag-2", name: "B", color: "#222", tagIds: new Set(), archived: false },
     ]);
 
     expect(api.listProjects).toHaveBeenCalledOnce();
@@ -64,6 +66,7 @@ describe("projects API", () => {
       data: [
         {
           id: "1",
+          tagId: "tag-1",
           name: "A",
           color: "#111",
           timeBudgetHours: 2,
@@ -80,6 +83,7 @@ describe("projects API", () => {
     expect(result.data).toEqual([
       {
         id: "1",
+        tagId: "tag-1",
         name: "A",
         color: "#111",
         timeBudgetHours: 2,
@@ -111,6 +115,7 @@ describe("projects API", () => {
   it("getProject returns mapped project when found", async () => {
     api.getProject.mockResolvedValue({
       id: "abc",
+      tagId: "tag-abc",
       name: "Test",
       color: "#fff",
       tagIds: new Set(),
@@ -122,6 +127,7 @@ describe("projects API", () => {
 
     expect(result).toEqual({
       id: "abc",
+      tagId: "tag-abc",
       name: "Test",
       color: "#fff",
       tagIds: new Set(),
@@ -134,6 +140,7 @@ describe("projects API", () => {
   it("createProject maps domain input and output correctly", async () => {
     api.createProject.mockResolvedValue({
       id: "new-id",
+      tagId: "tag-new-id",
       name: "New",
       color: "#000",
       tagIds: new Set(),
@@ -154,6 +161,7 @@ describe("projects API", () => {
 
     expect(result).toEqual({
       id: "new-id",
+      tagId: "tag-new-id",
       name: "New",
       color: "#000",
       tagIds: new Set(),
@@ -164,6 +172,7 @@ describe("projects API", () => {
   it("updateProject maps partial update correctly", async () => {
     api.updateProject.mockResolvedValue({
       id: "1",
+      tagId: "tag-1",
       name: "Updated",
       color: "#123",
       archived: false,
@@ -181,6 +190,7 @@ describe("projects API", () => {
 
     expect(result).toEqual({
       id: "1",
+      tagId: "tag-1",
       name: "Updated",
       color: "#123",
       tagIds: new Set(),
@@ -191,6 +201,7 @@ describe("projects API", () => {
   it("updateProject can toggle archived", async () => {
     api.updateProject.mockResolvedValue({
       id: "1",
+      tagId: "tag-1",
       name: "Updated",
       color: "#123",
       archived: true,

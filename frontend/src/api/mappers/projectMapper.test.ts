@@ -8,6 +8,7 @@ describe("projectMapper", () => {
     it("maps a full API Project to a domain Project", () => {
       const apiProject: Api.Project = {
         id: "550e8400-e29b-41d4-a716-446655440000",
+        tagId: "tag-550e8400-e29b-41d4-a716-446655440000",
         name: "My Project",
         color: "#ff0000",
         timeBudgetHours: 42,
@@ -23,6 +24,7 @@ describe("projectMapper", () => {
 
       expect(result).toEqual({
         id: "550e8400-e29b-41d4-a716-446655440000",
+        tagId: "tag-550e8400-e29b-41d4-a716-446655440000",
         name: "My Project",
         color: "#ff0000",
         timeBudgetHours: 42,
@@ -38,6 +40,7 @@ describe("projectMapper", () => {
     it("maps missing tagIds to an empty Set", () => {
       const apiProject: Api.Project = {
         id: "550e8400-e29b-41d4-a716-446655440001",
+        tagId: "tag-550e8400-e29b-41d4-a716-446655440001",
         name: "No Tags",
         color: "#000000",
         timeBudgetHours: 10,
@@ -49,38 +52,6 @@ describe("projectMapper", () => {
 
       expect(result.tagIds).toBeInstanceOf(Set);
       expect(result.tagIds.size).toBe(0);
-    });
-  });
-
-  describe("toApi", () => {
-    it("maps a full domain Project to an API Project", () => {
-      const domainProject: Project = {
-        id: "550e8400-e29b-41d4-a716-446655440002",
-        name: "Domain Project",
-        color: "#00ff00",
-        timeBudgetHours: 100,
-        tagIds: new Set([
-          "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-        ]),
-        totalTimeMs: 987654321,
-        archived: false,
-      };
-
-      const result = projectMapper.toApi(domainProject);
-
-      expect(result).toEqual({
-        id: "550e8400-e29b-41d4-a716-446655440002",
-        name: "Domain Project",
-        color: "#00ff00",
-        timeBudgetHours: 100,
-        tagIds: new Set([
-          "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-        ]),
-        totalTimeMs: undefined,
-        archived: false,
-      });
     });
   });
 });

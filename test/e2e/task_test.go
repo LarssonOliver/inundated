@@ -224,14 +224,26 @@ func TestTag_TaskTagsInList(t *testing.T) {
 		}
 		return ids
 	}
-	kind := func(k ListTagsParamsKind) *ListTagsParamsKind { return &k }
+	kind := func(kinds ...ListTagsParamsKind) *TagKindQuery {
+		q := TagKindQuery{}
+		for _, k := range kinds {
+			q = append(q, string(k))
+		}
+		return &q
+	}
 
 	// Regular tags only by default.
 	require.NotContains(t, listed(&ListTagsParams{Limit: new(100)}), taskTagId)
 	require.Contains(t, listed(&ListTagsParams{Limit: new(100), Kind: kind(ListTagsParamsKindAll)}), taskTagId)
 	require.Equal(t, []openapi_types.UUID{taskTagId}, listed(&ListTagsParams{Kind: kind(ListTagsParamsKindTask), Q: ptr("zebra CROSSING")}))
 
-	resp, err := client.ListTagsWithResponse(ctx, &ListTagsParams{Kind: kind("everything")})
+	// Several kinds at once.
+	labelResp, err := client.CreateTagWithResponse(ctx, CreateTagJSONRequestBody{Name: "Zebra stripes", Color: "#88c0d0"})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []openapi_types.UUID{labelResp.JSON201.Id, taskTagId},
+		listed(&ListTagsParams{Kind: kind(ListTagsParamsKindTask, ListTagsParamsKindLabel), Q: ptr("zebra")}))
+
+	resp, err := client.ListTagsWithResponse(ctx, &ListTagsParams{Kind: kind(ListTagsParamsKindLabel, "everything")})
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode())
 

@@ -37,7 +37,7 @@ TagOwner:
 TagOwnerKind:
   type: string
   description: The kind of item that owns an owned tag.
-  enum: [task]
+  enum: [task, project]
 
 CreateTag:
   type: object

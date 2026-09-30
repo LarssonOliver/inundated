@@ -345,8 +345,8 @@ async function example() {
     includeArchived: true,
     // string | Only return tags whose name contains this text, ignoring case.  (optional)
     q: q_example,
-    // 'label' | 'task' | 'all' | Which tags to return: regular tags (label), the tags owned by one kind of item (task, see TagOwnerKind), or every tag (all). Defaults to label.  (optional)
-    kind: kind_example,
+    // Set<'label' | 'task' | 'project' | 'all'> | Which kinds of tags to return, comma-separated: regular tags (label), the tags owned by one kind of item (task or project, see TagOwnerKind), or every tag (all). Defaults to label. Several kinds take turns filling each page, the first tag of each kind by name, then the second of each, and so on, so one kind\'s matches can\'t crowd another\'s out.  (optional)
+    kind: ...,
     // Set<string> | Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind=all to get owned tags too.  (optional)
     ids: ...,
   } satisfies ListTagsRequest;
@@ -372,7 +372,7 @@ example().catch(console.error);
 | **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
 | **includeArchived** | `boolean` | Whether to include archived items in the results. Defaults to false, so archived items are hidden unless explicitly requested.  | [Optional] [Defaults to `false`] |
 | **q** | `string` | Only return tags whose name contains this text, ignoring case.  | [Optional] [Defaults to `undefined`] |
-| **kind** | `label`, `task`, `all` | Which tags to return: regular tags (label), the tags owned by one kind of item (task, see TagOwnerKind), or every tag (all). Defaults to label.  | [Optional] [Defaults to `&#39;label&#39;`] [Enum: label, task, all] |
+| **kind** | `label`, `task`, `project`, `all` | Which kinds of tags to return, comma-separated: regular tags (label), the tags owned by one kind of item (task or project, see TagOwnerKind), or every tag (all). Defaults to label. Several kinds take turns filling each page, the first tag of each kind by name, then the second of each, and so on, so one kind\&#39;s matches can\&#39;t crowd another\&#39;s out.  | [Optional] [Enum: label, task, project, all] |
 | **ids** | `Set<string>` | Only return the tags with these ids, comma-separated. The other filters still apply, so pass kind&#x3D;all to get owned tags too.  | [Optional] |
 
 ### Return type

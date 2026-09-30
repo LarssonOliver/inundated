@@ -3,6 +3,7 @@ import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
+import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
@@ -60,6 +61,20 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
   };
   visit(undefined, 0);
   return rows;
+}
+
+/**
+ * What a task update does to cached task tags (see TagOwnerWrite), or
+ * undefined when it leaves them alone. A task tag takes its name from its
+ * task and its color from the task's regular tags, and is archived while
+ * the task is closed. Closing or reopening a task cascades to its subtasks
+ * or parents.
+ */
+function taskTagWrite(task: Task, patch: TaskPatch): TagOwnerWrite | undefined {
+  const owner = { kind: "task", id: task.id } as const;
+  if (patch.closed !== undefined) return { owner, cascades: true };
+  if (patch.name !== undefined || patch.tagIds !== undefined) return { owner, tagId: task.tagId };
+  return undefined;
 }
 
 function createTasksStore(api: TasksApi) {
@@ -143,13 +158,21 @@ function createTasksStore(api: TasksApi) {
      * Updates a task. Closing or reopening one also changes its subtasks or
      * parents on the server, so the individually-fetched cache is dropped
      * (a fresh fetch is needed to see those cascading effects) and the list
-     * is reloaded afterwards.
+     * is reloaded afterwards, unless reloadList is false because the caller
+     * shows its own list and reloads that instead. Cached task tags the
+     * update affects are refetched (see taskTagWrite).
      */
-    async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
+    async function updateTask(
+      id: string,
+      patch: TaskPatch,
+      { reloadList = true }: { reloadList?: boolean } = {},
+    ): Promise<Task> {
       const updated = await api.updateTask(id, patch);
+      const tagWrite = taskTagWrite(updated, patch);
+      if (tagWrite) void useTagsStore().ownerWritten(tagWrite);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
-        await fetchTasks();
+        if (reloadList) await fetchTasks();
         return copyTask(updated);
       }
 
@@ -280,11 +303,16 @@ function createTasksStore(api: TasksApi) {
     }
 
     /**
-     * Deletes a task and its subtasks. The server refuses (409) when any of
-     * them has logged time.
+     * Deletes a task and its subtasks, along with their task tags. The
+     * server refuses (409) when any of them has logged time.
      */
     async function deleteTask(id: string): Promise<void> {
       await api.deleteTask(id);
+      void useTagsStore().ownerWritten({
+        owner: { kind: "task", id },
+        deleted: true,
+        cascades: true,
+      });
       individuallyFetchedTasks.value.delete(id);
       await fetchTasks();
     }

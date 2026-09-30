@@ -52,7 +52,12 @@
     <span v-if="task.closeReason === 'ignored'" class="badge">Ignored</span>
 
     <div ref="tagsFieldEl" class="task-tags">
-      <TagListEmbedded v-if="editingField === 'tags'" v-model="tagsDraft" labels-only />
+      <TagListEmbedded
+        v-if="editingField === 'tags'"
+        v-model="tagsDraft"
+        :owner-kinds="['project']"
+        :create-owners="['project']"
+      />
       <button
         v-else
         class="field-trigger tags-trigger"
@@ -206,19 +211,18 @@ const formatMs = useDurationFormat(() => settingsStore.settings);
 // The task's own tag, for showing its name as the same outlined "#name"
 // pill used everywhere else a task tag appears. The server derives its color
 // from the task's regular tags, so it's read from the tags store (the
-// store batches the fetches, so a list of rows costs one request) and
-// refetched whenever those tags change. The default color shows only until
-// the first fetch resolves.
+// store batches the fetches, so a list of rows costs one request). The tasks
+// store refetches a cached task tag an update makes stale (see
+// ownerWritten), so the row only fetches one that isn't cached yet.
+// The default color shows only until that fetch resolves.
 const taskOwnTag = computed(() => tagsStore.getTagById(props.task.tagId));
 
 watch(
-  () => [props.task.tagId, [...props.task.tagIds].sort().join(",")] as const,
-  ([tagId, tagIds], previous) => {
-    // A cached tag is current until the task's regular tags change.
-    const tagsChanged = previous !== undefined && previous[1] !== tagIds;
-    if (!tagsChanged && taskOwnTag.value) return;
+  () => props.task.tagId,
+  (tagId) => {
+    if (taskOwnTag.value) return;
     tagsStore.fetchTagById(tagId).catch(() => {
-      // Leave the cached or fallback color in place.
+      // Leave the fallback color in place.
     });
   },
   { immediate: true },

@@ -35,14 +35,15 @@ const project: Project = {
   name: "Website",
   color: "#88c0d0",
   tagIds: new Set(["l1"]),
+  tagId: "pt1",
   totalTimeMs: 5 * 3600000,
   taskTimeMs: 3 * 3600000,
   archived: false,
 };
 
-function mountTasks(assignTask = vi.fn().mockResolvedValue(undefined)) {
+function mountTasks(p: Project = project) {
   return mount(ProjectTasks, {
-    props: { project, assignTask },
+    props: { project: p },
     global: {
       stubs: {
         TaskRow: {
@@ -73,33 +74,33 @@ test("lists the project's tasks and splits its time", async () => {
   expect(wrapper.text()).toContain("Additional 2h");
 });
 
-test("quick-add creates a task and assigns its tag", async () => {
+test("quick-add creates a task carrying the project tag", async () => {
   listAllTasks.mockResolvedValue([]);
   createTask.mockResolvedValue(task({ id: "k9", name: "Blog post", tagId: "tk9" }));
-  const assignTask = vi.fn().mockResolvedValue(undefined);
-  const wrapper = mountTasks(assignTask);
+  const wrapper = mountTasks();
   await flushPromises();
 
+  listAllTasks.mockResolvedValue([task({ id: "k9", name: "Blog post", tagId: "tk9" })]);
   await wrapper.find("input").setValue("  Blog post ");
   await wrapper.find("form").trigger("submit");
   await flushPromises();
 
-  expect(createTask).toHaveBeenCalledWith({ name: "Blog post", parentId: undefined });
-  expect(assignTask).toHaveBeenCalledWith("tk9");
+  expect(createTask).toHaveBeenCalledWith({ name: "Blog post", tagIds: new Set(["pt1"]) });
+  expect(wrapper.findAll(".row").map((row) => row.text())).toEqual(["Blog post"]);
   expect(wrapper.find(".error").exists()).toBe(false);
 });
 
-test("says so when a created task can't be assigned", async () => {
+test("says so when the task can't be created", async () => {
   listAllTasks.mockResolvedValue([]);
-  createTask.mockResolvedValue(task({ id: "k9", name: "Blog post", tagId: "tk9" }));
-  const wrapper = mountTasks(vi.fn().mockRejectedValue(new Error("boom")));
+  createTask.mockRejectedValue(new Error("boom"));
+  const wrapper = mountTasks();
   await flushPromises();
 
   await wrapper.find("input").setValue("Blog post");
   await wrapper.find("form").trigger("submit");
   await flushPromises();
 
-  expect(wrapper.find(".error").text()).toContain("couldn't add it to this project");
+  expect(wrapper.find(".error").text()).toContain("Couldn't create the task");
 });
 
 test("keeps only the latest of overlapping loads", async () => {

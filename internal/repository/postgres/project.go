@@ -19,13 +19,13 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
 	q := `
-		SELECT id, name, color, time_budget, user_id, archived_at
+		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
 
 	var p model.Project
 	var archivedAt *time.Time
-	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt)
+	err := r.db.QueryRow(ctx, q, args...).Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt, &p.TagId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Project{}, fmt.Errorf("GetProject %s: %w", id, model.ErrNotFound)
 	}
@@ -57,7 +57,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 
 	dataOwnerSQL, args := ownerPredicate("user_id", scope, []any{params.Limit, params.Offset})
 	dataQ := `
-		SELECT id, name, color, time_budget, user_id, archived_at
+		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
 		ORDER BY name
@@ -74,7 +74,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 	for rows.Next() {
 		var p model.Project
 		var archivedAt *time.Time
-		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Color, &p.TimeBudget, &p.UserId, &archivedAt, &p.TagId); err != nil {
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		p.Archived = archivedAt != nil
@@ -124,12 +124,21 @@ func (r *PostgresStore) CreateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("CreateProject: %w", model.ErrInvalidReference)
 		}
 
+		// The project tag's name and color follow the project's.
+		tagId := uuid.New()
+		if _, err := q.Exec(ctx,
+			`INSERT INTO tags (id, name, color, user_id) VALUES ($1, $2, $3, $4)`,
+			tagId, project.Name, project.Color, scope.UserID(),
+		); err != nil {
+			return fmt.Errorf("CreateProject tag: %w", err)
+		}
+
 		const insert = `
-			INSERT INTO projects (id, name, color, time_budget, user_id)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, name, color, time_budget, user_id`
-		if err := q.QueryRow(ctx, insert, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID()).
-			Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId); err != nil {
+			INSERT INTO projects (id, name, color, time_budget, user_id, tag_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, name, color, time_budget, user_id, tag_id`
+		if err := q.QueryRow(ctx, insert, project.Id, project.Name, project.Color, project.TimeBudget, scope.UserID(), tagId).
+			Scan(&created.Id, &created.Name, &created.Color, &created.TimeBudget, &created.UserId, &created.TagId); err != nil {
 			return fmt.Errorf("CreateProject: %w", err)
 		}
 		return setLinkedTags(ctx, q, "project_tags", "project_id", created.Id, project.TagIds)
@@ -167,10 +176,10 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			UPDATE projects SET name = $2, color = $3, time_budget = $4,
 				archived_at = CASE WHEN $5 THEN COALESCE(archived_at, now()) ELSE NULL END
 			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-			RETURNING id, name, color, time_budget, user_id, archived_at`
+			RETURNING id, name, color, time_budget, user_id, archived_at, tag_id`
 		var archivedAt *time.Time
 		err = q.QueryRow(ctx, update, args...).
-			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId, &archivedAt)
+			Scan(&updated.Id, &updated.Name, &updated.Color, &updated.TimeBudget, &updated.UserId, &archivedAt, &updated.TagId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("UpdateProject %s: %w", project.Id, model.ErrNotFound)
 		}
@@ -178,6 +187,12 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
+		// Skipping an unchanged tag avoids locking it against the task
+		// tree changes that share-lock it (see refresh_task_effective_tags).
+		syncTag := `UPDATE tags SET name = $2, color = $3 WHERE id = $1 AND (name, color) IS DISTINCT FROM ($2, $3)`
+		if _, err := q.Exec(ctx, syncTag, updated.TagId, updated.Name, updated.Color); err != nil {
+			return fmt.Errorf("UpdateProject tag: %w", err)
+		}
 		return setLinkedTags(ctx, q, "project_tags", "project_id", updated.Id, project.TagIds)
 	})
 	if err != nil {
@@ -193,19 +208,65 @@ func (r *PostgresStore) DeleteProject(ctx context.Context, scope model.OwnerScop
 	}
 
 	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
-	q := `
-		UPDATE projects
-		SET deleted_at = now()
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
+	lockProject := `
+		SELECT tag_id FROM projects
+		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
+		FOR UPDATE`
 
-	res, err := r.db.Exec(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("DeleteProject: %w", err)
-	}
-	if res.RowsAffected() == 0 {
-		return fmt.Errorf("DeleteProject %s: %w", id, model.ErrNotFound)
-	}
-	return nil
+	return r.withTx(ctx, func(tx Querier) error {
+		var tagId uuid.UUID
+		err := tx.QueryRow(ctx, lockProject, args...).Scan(&tagId)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("DeleteProject %s: %w", id, model.ErrNotFound)
+		}
+		if err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+
+		// Lock the project tag before checking for attributed time. A
+		// timespan or task attaching it locks it (see tagsInScope),
+		// as does a task tree change that makes it a task's effective tag
+		// (see refresh_task_effective_tags), so each of those either
+		// commits first and shows up below, or waits and then finds the
+		// tag deleted. A timespan attaching the task tag of a task that
+		// carries it needs no lock: it writes nothing that names the
+		// project tag, and deleting the tag drops it from every task's
+		// effective tags, so a timespan committing after this check counts
+		// toward nothing, just as if it had been logged after the delete.
+		// Locking only this tag, after the project row, keeps the order
+		// UpdateProject takes them in.
+		if _, err := tx.Exec(ctx, `SELECT id FROM tags WHERE id = $1 FOR UPDATE`, tagId); err != nil {
+			return fmt.Errorf("DeleteProject lock tag: %w", err)
+		}
+
+		// A project with time attributed to its project tag can only be
+		// archived: deleting the tag would leave that time counting toward
+		// nothing. Time reaching it only through its linked tags stays with
+		// those tags.
+		timespanOwnerSQL, checkArgs := ownerPredicate("t.user_id", scope, []any{[]uuid.UUID{tagId}})
+		var attributed bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM timespans t
+				WHERE t.deleted_at IS NULL
+					AND `+timespanOwnerSQL+`
+					AND `+timespanHasEffectiveTagSQL("t.id", "$1")+`
+			)`, checkArgs...).Scan(&attributed); err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+		if attributed {
+			return fmt.Errorf("DeleteProject %s: has attributed time: %w", id, model.ErrConflict)
+		}
+
+		if _, err := tx.Exec(ctx, `UPDATE projects SET deleted_at = now() WHERE id = $1`, id); err != nil {
+			return fmt.Errorf("DeleteProject: %w", err)
+		}
+		// The project tag goes with its project.
+		if _, err := tx.Exec(ctx, `UPDATE tags SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, tagId); err != nil {
+			return fmt.Errorf("DeleteProject tag: %w", err)
+		}
+		return nil
+	})
 }
 
 // projectTagIds returns the live tag IDs linked to a project (see
@@ -239,12 +300,17 @@ func (r *PostgresStore) tagsInScope(ctx context.Context, q Querier, scope model.
 		WHERE t.id = ANY($1) AND t.deleted_at IS NULL
 			AND (o.tag_id IS NULL OR o.kind = ANY($2))
 			AND ` + ownerSQL
-	// Share-lock the tags until the caller's transaction ends, so a
+	// Key-share-lock the tags until the caller's transaction ends, so a
 	// concurrent delete (of the tag, or of the owner of an owned tag)
 	// either waits for this write or has already happened and fails the
-	// deleted_at check above. Locking in id order avoids deadlocking with
-	// DeleteTask, which locks its task tags the same way.
-	query += ` ORDER BY t.id FOR SHARE OF t`
+	// deleted_at check above. Every delete locks its tags FOR UPDATE first,
+	// the only mode this conflicts with. A plain share lock would also
+	// block renames: UpdateTask and UpdateProject each rewrite their own
+	// owned tag after checking the others, so a project linking a task's
+	// tag and that task carrying the project's tag would deadlock.
+	// Locking in id order avoids deadlocking with DeleteTask, which locks
+	// its task tags the same way.
+	query += ` ORDER BY t.id FOR KEY SHARE OF t`
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("tagsInScope: %w", err)

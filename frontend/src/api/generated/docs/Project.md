@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `id` | string
+`tagId` | string
 `name` | string
 `color` | string
 `timeBudgetHours` | number
@@ -23,6 +24,7 @@ import type { Project } from ''
 // TODO: Update the object below with actual values
 const example = {
   "id": null,
+  "tagId": null,
   "name": null,
   "color": null,
   "timeBudgetHours": null,

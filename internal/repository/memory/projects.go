@@ -33,15 +33,25 @@ func (t *MemoryStore) CreateProject(ctx context.Context, scope model.OwnerScope,
 	}
 
 	newId := uuid.New()
+	// The project tag's name and color follow the project's.
+	tag := model.Tag{
+		Id:     uuid.New(),
+		Name:   project.Name,
+		Color:  project.Color,
+		UserId: scope.UserID(),
+		Owner:  &model.TagOwner{Kind: model.TagOwnerProject, Id: newId},
+	}
 	newProject := model.Project{
 		Id:         newId,
 		Name:       project.Name,
 		Color:      project.Color,
 		TimeBudget: project.TimeBudget,
+		TagId:      tag.Id,
 		TagIds:     tagIds,
 		UserId:     scope.UserID(),
 	}
 
+	t.tags = append(t.tags, tag)
 	t.projects = append(t.projects, newProject)
 	return newProject, nil
 }
@@ -106,7 +116,12 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 	}
 
 	project.UserId = t.projects[idx].UserId
+	project.TagId = t.projects[idx].TagId
 	t.projects[idx] = project
+	if tagIdx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == project.TagId }); tagIdx != -1 {
+		t.tags[tagIdx].Name = project.Name
+		t.tags[tagIdx].Color = project.Color
+	}
 	return project, nil
 }
 
@@ -122,6 +137,19 @@ func (t *MemoryStore) DeleteProject(ctx context.Context, scope model.OwnerScope,
 		return model.ErrNotFound
 	}
 
+	// A project with time attributed to its project tag can only be
+	// archived. Time reaching it only through its linked tags stays with
+	// those tags.
+	tagId := t.projects[idx].TagId
+	projectTag := map[uuid.UUID]struct{}{tagId: {}}
+	for _, span := range t.timespans {
+		if matchesScope(span.UserId, scope) && t.timespanHasAnyTag(span, projectTag) {
+			return model.ErrConflict
+		}
+	}
+
+	// The project tag goes with its project.
 	t.projects = slices.Delete(t.projects, idx, idx+1)
+	t.deleteTags(func(id uuid.UUID) bool { return id == tagId })
 	return nil
 }

@@ -75,6 +75,7 @@ func aProject() model.Project {
 		Name:       "Alpha",
 		Color:      "#00ff00",
 		TimeBudget: dur(8 * time.Hour),
+		TagId:      uuid.New(),
 		TagIds:     []uuid.UUID{uuid.New(), uuid.New()},
 	}
 }

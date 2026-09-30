@@ -3,13 +3,32 @@ import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
-import type { Tag, TagStats } from "@/model";
+import { isDerivedTag } from "@/helpers/tagOwners";
+import type { Tag, TagOwner, TagOwnerKind, TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 function copyTag(tag: Tag): Tag {
   return { ...tag };
+}
+
+/**
+ * A write to an item that owns a tag (see TagOwner), which can leave cached
+ * owned tags stale. Every such write is reported to the tags store's
+ * ownerWritten, which works out what to refetch or drop.
+ */
+export interface TagOwnerWrite {
+  owner: TagOwner;
+  /** The owner's own tag, when the write may have changed how it shows. */
+  tagId?: string;
+  /** The owner was deleted, and its tag with it. */
+  deleted?: boolean;
+  /**
+   * The write may have reached other owners of the same kind too, e.g.
+   * closing a task also closes its subtasks, and deleting it deletes them.
+   */
+  cascades?: boolean;
 }
 
 export interface PaginationState {
@@ -253,20 +272,65 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       return copyTag(detailedTag);
     }
 
-    // The latest request sequence number sent per tag id, across
-    // fetchTagById and fetchDetailedTagById. Responses can arrive out of
-    // order, so only the newest request's response may update the cache;
-    // otherwise an older response could overwrite a fresher tag.
+    // Requests that can cache a tag for getTagById (fetchTagById,
+    // fetchDetailedTagById and searchTagsOnServer) are numbered in the
+    // order they're sent, and individualFetchSeq holds, per tag id, the
+    // number of the newest one known to concern it. Responses can arrive
+    // out of order, so a response may only update the cache when no newer
+    // request for that tag was sent; otherwise an older response could
+    // overwrite a fresher tag.
+    let lastFetchSeq = 0;
     const individualFetchSeq = new Map<string, number>();
 
+    function nextFetchSeq(): number {
+      return ++lastFetchSeq;
+    }
+
     function nextIndividualFetchSeq(id: string): number {
-      const seq = (individualFetchSeq.get(id) ?? 0) + 1;
+      const seq = nextFetchSeq();
       individualFetchSeq.set(id, seq);
       return seq;
     }
 
+    /** Whether a response to request seq is the newest word on tag id. */
+    function isNewestFetch(id: string, seq: number): boolean {
+      return seq >= (individualFetchSeq.get(id) ?? 0);
+    }
+
+    // Owners deleted in this session (see forgetTagsOwnedBy), as
+    // "kind:id". Their tags are refused by the cache, so a fetch sent before
+    // the delete can't bring one back, even one that wasn't cached yet.
+    const deletedOwners = ref(new Set<string>());
+    // Tags deleted in this session, by deleteTag or on the server (found
+    // gone by a fetch). Reactive, like deletedOwners, for isTagDeleted.
+    const deletedTagIds = ref(new Set<string>());
+
+    /**
+     * Whether the tag is known to be deleted, by id or with its owner. A
+     * tag getTagById doesn't return may only be left out of the listing
+     * (e.g. an archived one); a copy of a deleted one should stop showing.
+     *
+     * @param tag - The tag, or a copy of it saved earlier.
+     */
+    function isTagDeleted(tag: Tag): boolean {
+      return (
+        deletedTagIds.value.has(tag.id) ||
+        (!!tag.owner && deletedOwners.value.has(ownerKey(tag.owner)))
+      );
+    }
+
+    function ownerKey(owner: TagOwner): string {
+      return `${owner.kind}:${owner.id}`;
+    }
+
     function cacheIndividuallyFetchedTag(id: string, seq: number, tag: Tag): void {
-      if (individualFetchSeq.get(id) === seq) individuallyFetchedTags.value.set(id, tag);
+      if (!isNewestFetch(id, seq)) return;
+      if (tag.owner && deletedOwners.value.has(ownerKey(tag.owner))) return;
+      // A search only learns which tags it concerns from its response, so
+      // it claims them here, which also discards older fetches of them
+      // still in flight.
+      individualFetchSeq.set(id, seq);
+      individuallyFetchedTags.value.set(id, tag);
     }
 
     type TagFetchWaiter = { resolve: (tag: Tag) => void; reject: (error: unknown) => void };
@@ -290,7 +354,15 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const byId = new Map(fetched.map((tag) => [tag.id, tag]));
       for (const [id, waiters] of batch) {
         const tag = byId.get(id);
-        if (tag) cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
+        if (tag) {
+          cacheIndividuallyFetchedTag(id, seqs.get(id)!, tag);
+        } else if (isNewestFetch(id, seqs.get(id)!)) {
+          // Gone on the server (e.g. a project tag whose project was
+          // deleted), so a cached copy would only keep showing a tag that no
+          // longer exists.
+          individuallyFetchedTags.value.delete(id);
+          deletedTagIds.value.add(id);
+        }
         for (const waiter of waiters) {
           if (tag) waiter.resolve(copyTag(tag));
           else waiter.reject(new Error(`Tag ${id} not found`));
@@ -326,6 +398,79 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     }
 
     /**
+     * Refetches a tag if it's cached, so a tag whose color the server
+     * derives from other tags (e.g. a task tag, from its task's regular
+     * tags) doesn't keep showing a stale color after those tags change. The
+     * cached tag stays in place until the fresh one arrives, and is
+     * dropped if the server no longer has it.
+     *
+     * @param id - The ID of the tag to refresh.
+     *
+     * @returns A promise that resolves once the refetch settles (or at once
+     *   if the tag isn't cached).
+     */
+    async function refreshTag(id: string): Promise<void> {
+      if (!getTagById(id)) return;
+      await fetchTagById(id).catch(() => {
+        // Keep the cached tag.
+      });
+    }
+
+    /**
+     * Refreshes every cached tag whose color derives from other tags (see
+     * isDerivedTag), after a change to a regular tag that one may derive
+     * its color from.
+     */
+    async function refreshDerivedTags(): Promise<void> {
+      await refreshCachedTags(isDerivedTag);
+    }
+
+    /**
+     * Brings the cached owned tags up to date after a write to their owner:
+     * a deleted owner's tags are dropped, a write that can reach other
+     * owners of the same kind refetches every cached tag of that kind, and
+     * any other write refetches the owner's own tag.
+     *
+     * @param write - The write, as its owner's store reports it.
+     *
+     * @returns A promise that resolves once any refetch settles.
+     */
+    async function ownerWritten(write: TagOwnerWrite): Promise<void> {
+      if (write.deleted) forgetTagsOwnedBy(write.owner);
+      if (write.cascades) {
+        await refreshTagsOwnedByKind(write.owner.kind);
+      } else if (write.tagId && !write.deleted) {
+        await refreshTag(write.tagId);
+      }
+    }
+
+    async function refreshTagsOwnedByKind(kind: TagOwnerKind): Promise<void> {
+      await refreshCachedTags((tag) => tag.owner?.kind === kind);
+    }
+
+    async function refreshCachedTags(filter: (tag: Tag) => boolean): Promise<void> {
+      const ids = [...tags.value.values(), ...individuallyFetchedTags.value.values()]
+        .filter(filter)
+        .map((tag) => tag.id);
+      await Promise.all([...new Set(ids)].map(refreshTag));
+    }
+
+    // Drops the cached tags of an owner that's been deleted, whose tags went
+    // with it, so they stop showing. A fetch of one still in flight can't
+    // bring it back, whether or not it was cached.
+    function forgetTagsOwnedBy(owner: TagOwner): void {
+      deletedOwners.value.add(ownerKey(owner));
+      for (const cache of [tags.value, individuallyFetchedTags.value]) {
+        for (const tag of [...cache.values()]) {
+          if (tag.owner?.kind === owner.kind && tag.owner.id === owner.id) {
+            cache.delete(tag.id);
+            nextIndividualFetchSeq(tag.id);
+          }
+        }
+      }
+    }
+
+    /**
      * Searches for tags based on a query string. The search is
      * case-insensitive. Exact matches rank first, followed by prefix
      * matches, substring matches, and finally typo-tolerant fuzzy matches;
@@ -351,24 +496,32 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
     /**
      * Searches for tags by name on the server, so tags beyond the locally
      * cached page are found too, and caches the results for getTagById.
-     * Unless only task tags are wanted, typo-tolerant matches from the local
-     * cache are merged in, since the server only matches substrings. Results
-     * are ranked like searchTags, best match first.
+     * The kinds are searched in one request, taking turns filling its
+     * results, so one kind's matches can't crowd another's out of the
+     * server's result limit. When regular tags are
+     * wanted, typo-tolerant matches from the local cache (which only holds
+     * regular tags) are merged in, since the server only matches
+     * substrings. Results are ranked like searchTags, best match first.
      *
      * @param query - The search query string.
-     * @param kind - Whether to search regular tags, task tags, or both.
+     * @param kinds - Which kinds of tags to search (see TagKind).
      *
      * @returns A promise that resolves to the matching tags.
      */
-    async function searchTagsOnServer(query: string, kind: TagKind): Promise<Tag[]> {
+    async function searchTagsOnServer(
+      query: string,
+      kinds: TagKind | readonly TagKind[],
+    ): Promise<Tag[]> {
       const q = query.trim();
-      const found = await api.searchTags(q, kind);
+      const kindList: readonly TagKind[] = typeof kinds === "string" ? [kinds] : kinds;
+      const seq = nextFetchSeq();
+      const found = await api.searchTags(q, kindList);
       for (const tag of found) {
-        individuallyFetchedTags.value.set(tag.id, tag);
+        cacheIndividuallyFetchedTag(tag.id, seq, tag);
       }
 
       const byId = new Map(found.map((tag) => [tag.id, tag]));
-      if (kind !== "task" && q) {
+      if (kindList.some((kind) => kind === "label" || kind === "all") && q) {
         for (const tag of searchTags(q)) {
           if (!byId.has(tag.id)) byId.set(tag.id, tag);
         }
@@ -392,6 +545,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const { id, ...patch } = tag;
       const updated = await api.updateTag(id, patch);
       tags.value.set(updated.id, updated);
+      if (!updated.owner) void refreshDerivedTags();
       return copyTag(updated);
     }
 
@@ -403,8 +557,12 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the tag is deleted.
      */
     async function deleteTag(id: string): Promise<void> {
+      const owned = !!getTagById(id)?.owner;
       await api.deleteTag(id);
       tags.value.delete(id);
+      individuallyFetchedTags.value.delete(id);
+      deletedTagIds.value.add(id);
+      if (!owned) void refreshDerivedTags();
     }
 
     /**
@@ -440,8 +598,12 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       createTag,
       createTagFromName,
       getTagById,
+      isTagDeleted,
       fetchDetailedTagById,
       fetchTagById,
+      refreshTag,
+      refreshDerivedTags,
+      ownerWritten,
       searchTags,
       searchTagsOnServer,
       updateTag,

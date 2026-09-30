@@ -54,6 +54,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
@@ -73,6 +74,8 @@ func (p *ProjectHandler) DeleteProject(ctx context.Context, request api.DeletePr
 
 	if errors.Is(err, model.ErrNotFound) {
 		return api.DeleteProject404Response{}, nil
+	} else if errors.Is(err, model.ErrConflict) {
+		return api.DeleteProject409Response{}, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -97,6 +100,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
@@ -141,6 +145,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 	for _, project := range page.Data {
 		apiProject := api.Project{
 			Id:              project.Id,
+			TagId:           project.TagId,
 			Name:            project.Name,
 			Color:           project.Color,
 			TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
@@ -208,6 +213,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 
 	apiProject := api.Project{
 		Id:              reply.Id,
+		TagId:           reply.TagId,
 		Name:            reply.Name,
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),

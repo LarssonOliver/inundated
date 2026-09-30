@@ -36,7 +36,11 @@
         <input v-model="draft.estimateHours" type="number" min="0" step="0.25" />
 
         <p class="field-label">Tags</p>
-        <TagListEmbedded v-model="draft.tagIds" labels-only />
+        <TagListEmbedded
+          v-model="draft.tagIds"
+          :owner-kinds="['project']"
+          :create-owners="['project']"
+        />
 
         <div class="button-container">
           <button class="btn-info" :disabled="!draft.name.trim()" @click="save">Save</button>
@@ -154,7 +158,12 @@ const route = useRoute();
 const router = useRouter();
 
 const task = ref<Task | null>(null);
-const taskTag = ref<Tag | null>(null);
+// Read from the tags store rather than kept locally, so the color the server
+// derives from the task's regular tags updates once the store refetches it
+// after a save.
+const taskTag = computed<Tag | null>(() =>
+  task.value ? (tagsStore.getTagById(task.value.tagId) ?? null) : null,
+);
 const parent = ref<Task | null>(null);
 const projects = ref<Project[]>([]);
 const subtasks = ref<Task[]>([]);
@@ -209,7 +218,7 @@ async function load(id: string) {
   notFound.value = false;
   applyTask(loaded);
 
-  const [tag, parentTask, subtaskList] = await Promise.all([
+  const [, parentTask, subtaskList] = await Promise.all([
     tagsStore.fetchTagById(loaded.tagId).catch(() => null),
     loaded.parentId
       ? (tasksStore.getTaskById(loaded.parentId) ??
@@ -219,11 +228,15 @@ async function load(id: string) {
     projectsStore.fetchProjects().catch(() => undefined),
   ]);
   if (token !== loadToken) return;
-  taskTag.value = tag;
   parent.value = parentTask;
   subtasks.value = subtaskList;
+  await showProjects(loaded.projectIds, token);
+}
+
+/** Resolves the projects a task belongs to for the Projects section. */
+async function showProjects(projectIds: Set<string> | undefined, token: number) {
   const resolvedProjects = await Promise.all(
-    [...(loaded.projectIds ?? [])].map(
+    [...(projectIds ?? [])].map(
       (projectId) =>
         projectsStore.getProjectById(projectId) ??
         projectsStore.fetchProjectById(projectId).catch(() => undefined),
@@ -258,13 +271,25 @@ async function save() {
     estimateHours: estimate === "" ? null : Number(estimate),
   });
   if (token !== loadToken) return;
-  // Editing never changes closed state, parent, tag or projects, so merge
-  // the response over the existing task rather than reloading everything.
+  // Editing never changes closed state, parent or own tag, so merge the
+  // response over the existing task rather than reloading everything.
   applyTask({
     ...updated,
     totalTimeMs: priorTask.totalTimeMs,
     projectIds: priorTask.projectIds,
   });
+
+  // Changing its tags can move the task into or out of a project (an
+  // "@project" tag, or a tag a project is linked to), so its projects are
+  // fetched again.
+  const tagsChanged =
+    updated.tagIds.size !== priorTask.tagIds.size ||
+    [...updated.tagIds].some((id) => !priorTask.tagIds.has(id));
+  if (!tagsChanged) return;
+  const detailed = await tasksStore.fetchDetailedTaskById(priorTask.id).catch(() => null);
+  if (token !== loadToken || !detailed || !task.value) return;
+  task.value = { ...task.value, projectIds: detailed.projectIds };
+  await showProjects(detailed.projectIds, token);
 }
 
 /**

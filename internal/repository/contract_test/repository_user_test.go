@@ -187,7 +187,8 @@ func TestUserRepositoryContract(t *testing.T) {
 			created, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 			require.NoError(t, err)
 			require.Equal(t, user.Sub, created.Sub)
-			require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 4}, adoption)
+			// Each project's own project tag is adopted along with it.
+			require.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2 + 3, Timespans: 4}, adoption)
 		})
 
 		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsTasks", func(t *testing.T) {
@@ -237,7 +238,8 @@ func TestUserRepositoryContract(t *testing.T) {
 				Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First",
 			})
 			require.NoError(t, err)
-			require.Equal(t, 3, first.Total())
+			// A tag, a project with its project tag, and a timespan.
+			require.Equal(t, 4, first.Total())
 
 			// New resources created after the first user still land unowned
 			// (ownership is not threaded through the create path yet), but the

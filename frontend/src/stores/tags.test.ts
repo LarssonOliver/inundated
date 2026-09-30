@@ -306,6 +306,8 @@ describe("tags store", () => {
     expect(api.deleteTag).toHaveBeenCalledWith("1");
     expect(store.getTagById("1")).toBeUndefined();
     expect(store.tags).toHaveLength(0);
+    expect(store.isTagDeleted(tag)).toBe(true);
+    expect(store.isTagDeleted(makeTag({ id: "2" }))).toBe(false);
   });
 
   it("only issue one API call when fetching tags multiple times", async () => {
@@ -442,6 +444,35 @@ describe("tags store", () => {
     expect(store.getTagById("1")).toEqual(fresh);
   });
 
+  it("keeps a search's result over an older fetch that resolves after it", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.getTagsByIds.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)));
+    api.searchTags.mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    const first = store.fetchTagById("1");
+    await Promise.resolve();
+    await store.searchTagsOnServer("tag", "all");
+    resolveStale([stale]);
+    await first;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
+  it("keeps a fetch's result over an older search that resolves after it", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    let resolveStale!: (tags: Tag[]) => void;
+    api.searchTags.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveStale = resolve)));
+    api.getTagsByIds.mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    const search = store.searchTagsOnServer("tag", "all");
+    await store.fetchTagById("1");
+    resolveStale([stale]);
+    await search;
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
   it("rejects fetchTagById for an id the server doesn't return", async () => {
     const t1 = makeTag({ id: "1" });
     api.getTagsByIds.mockResolvedValue([t1]);
@@ -456,6 +487,162 @@ describe("tags store", () => {
     api.getTagsByIds.mockRejectedValue(new Error());
     const store = useStore();
     await expect(store.fetchTagById("missing")).rejects.toThrow();
+  });
+
+  it("refetches a cached tag on refresh", async () => {
+    const stale = makeTag({ id: "1", color: "#111111" });
+    const fresh = makeTag({ id: "1", color: "#222222" });
+    api.getTagsByIds.mockResolvedValueOnce([stale]).mockResolvedValueOnce([fresh]);
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toEqual(fresh);
+  });
+
+  it("doesn't fetch an uncached tag on refresh", async () => {
+    const store = useStore();
+    await store.refreshTag("1");
+    expect(api.getTagsByIds).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cached tag when a refresh fails", async () => {
+    const cached = makeTag({ id: "1" });
+    api.getTagsByIds.mockResolvedValueOnce([cached]).mockRejectedValueOnce(new Error());
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toEqual(cached);
+  });
+
+  it("drops a cached tag the server no longer has on refresh", async () => {
+    api.getTagsByIds.mockResolvedValueOnce([makeTag({ id: "1" })]).mockResolvedValueOnce([]);
+    const store = useStore();
+    await store.fetchTagById("1");
+    await store.refreshTag("1");
+    expect(store.getTagById("1")).toBeUndefined();
+  });
+
+  it.each([
+    ["updating", (store: ReturnType<typeof useStore>, tag: Tag) => store.updateTag(tag)],
+    ["deleting", (store: ReturnType<typeof useStore>, tag: Tag) => store.deleteTag(tag.id)],
+  ])(
+    "refetches cached task tags, but not project tags, after %s a regular tag",
+    async (_, change) => {
+      const regular = makeTag({ id: "r" });
+      const taskTag = makeTag({ id: "o", color: "#111111", owner: { kind: "task", id: "t" } });
+      const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+      const recolored = { ...taskTag, color: "#222222" };
+      api.createTag.mockResolvedValue(regular);
+      api.updateTag.mockResolvedValue(regular);
+      api.getTagsByIds
+        .mockResolvedValueOnce([taskTag, projectTag])
+        .mockResolvedValueOnce([recolored]);
+      const store = useStore();
+      await store.createTag(regular);
+      await Promise.all([store.fetchTagById("o"), store.fetchTagById("p")]);
+
+      await change(store, regular);
+      await vi.waitFor(() => expect(store.getTagById("o")).toEqual(recolored));
+      expect(api.getTagsByIds).toHaveBeenCalledTimes(2);
+      expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o"]);
+    },
+  );
+
+  it("forgets the cached tags of a deleted owner, even with a fetch in flight", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    const other = makeTag({ id: "q", owner: { kind: "project", id: "p2" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds
+      .mockResolvedValueOnce([projectTag, other])
+      .mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)));
+    const store = useStore();
+    await Promise.all([store.fetchTagById("p"), store.fetchTagById("q")]);
+
+    const late = store.refreshTag("p");
+    await Promise.resolve();
+    void store.ownerWritten({ owner: { kind: "project", id: "p1" }, deleted: true });
+    resolveLate([projectTag]);
+    await late;
+
+    expect(store.getTagById("p")).toBeUndefined();
+    expect(store.getTagById("q")).toEqual(other);
+  });
+
+  it("doesn't cache a deleted owner's tag from a fetch sent before it was cached", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds.mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)));
+    const store = useStore();
+
+    const late = store.fetchTagById("p");
+    await Promise.resolve();
+    void store.ownerWritten({ owner: { kind: "project", id: "p1" }, deleted: true });
+    resolveLate([projectTag]);
+    await late;
+
+    expect(store.getTagById("p")).toBeUndefined();
+  });
+
+  it("drops the tags of the owners a delete cascades to, even with a fetch in flight", async () => {
+    const taskTag = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    const subtaskTag = makeTag({ id: "o2", owner: { kind: "task", id: "t2" } });
+    let resolveLate: (tags: Tag[]) => void = () => {};
+    api.getTagsByIds
+      .mockResolvedValueOnce([taskTag, subtaskTag])
+      .mockReturnValueOnce(new Promise<Tag[]>((resolve) => (resolveLate = resolve)))
+      .mockResolvedValueOnce([]);
+    const store = useStore();
+    await Promise.all([store.fetchTagById("o"), store.fetchTagById("o2")]);
+
+    // A search sent before the delete answers after it.
+    const late = store.fetchTagById("o2");
+    await Promise.resolve();
+    await store.ownerWritten({ owner: { kind: "task", id: "t" }, deleted: true, cascades: true });
+    resolveLate([subtaskTag]);
+    await late;
+
+    expect(store.getTagById("o")).toBeUndefined();
+    expect(store.getTagById("o2")).toBeUndefined();
+  });
+
+  it("refetches the owner's own tag after a write that only changes it", async () => {
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    const renamed = { ...projectTag, name: "renamed" };
+    api.getTagsByIds.mockResolvedValueOnce([projectTag]).mockResolvedValueOnce([renamed]);
+    const store = useStore();
+    await store.fetchTagById("p");
+
+    await store.ownerWritten({ owner: { kind: "project", id: "p1" }, tagId: "p" });
+
+    expect(store.getTagById("p")).toEqual(renamed);
+  });
+
+  it("refreshes every cached tag of one owner kind after a cascading write", async () => {
+    const taskTag = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    const otherTaskTag = makeTag({ id: "o2", owner: { kind: "task", id: "t2" } });
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    api.getTagsByIds
+      .mockResolvedValueOnce([taskTag, otherTaskTag, projectTag])
+      .mockResolvedValueOnce([{ ...taskTag, archived: true }, otherTaskTag]);
+    const store = useStore();
+    await Promise.all(["o", "o2", "p"].map((id) => store.fetchTagById(id)));
+
+    await store.ownerWritten({ owner: { kind: "task", id: "t" }, cascades: true });
+
+    expect(api.getTagsByIds).toHaveBeenLastCalledWith(["o", "o2"]);
+    expect(store.getTagById("o")?.archived).toBe(true);
+  });
+
+  it("doesn't refetch owned tags after updating an owned tag", async () => {
+    const owned = makeTag({ id: "o", owner: { kind: "task", id: "t" } });
+    api.getTagsByIds.mockResolvedValue([owned]);
+    api.updateTag.mockResolvedValue(owned);
+    const store = useStore();
+    await store.fetchTagById("o");
+
+    await store.updateTag(owned);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(api.getTagsByIds).toHaveBeenCalledOnce();
   });
 
   it("fetches tag stats via the API", async () => {
@@ -638,7 +825,7 @@ describe("tags store", () => {
     await store.fetchTags();
     const result = await store.searchTagsOnServer("wrok", "all");
 
-    expect(api.searchTags).toHaveBeenCalledWith("wrok", "all");
+    expect(api.searchTags).toHaveBeenCalledWith("wrok", ["all"]);
     // The server's substring hit ranks above the cache's typo match.
     expect(result.map((t) => t.id)).toEqual(["remote", "cached"]);
     // Server results are cached for getTagById without entering the list.
@@ -646,20 +833,42 @@ describe("tags store", () => {
     expect(store.tags.map((t) => t.id)).toEqual(["cached"]);
   });
 
-  it("searches only task tags on the server when asked for tasks", async () => {
-    const cached = makeTag({ id: "cached", name: "work" });
-    const task = makeTag({ id: "task", name: "work on report", owner: { kind: "task", id: "t1" } });
+  it("searches several kinds in one request and ranks the results together", async () => {
+    const label = makeTag({ id: "label", name: "web label" });
+    const project = makeTag({ id: "project", name: "web", owner: { kind: "project", id: "p1" } });
     api.listTagsPaginated.mockResolvedValue({
-      data: [cached],
-      pagination: { limit: 50, offset: 0, total: 1 },
+      data: [],
+      pagination: { limit: 50, offset: 0, total: 0 },
     });
-    api.searchTags.mockResolvedValue([task]);
+    api.searchTags.mockResolvedValue([label, project]);
 
     const store = useStore();
     await store.fetchTags();
-    const result = await store.searchTagsOnServer("work", "task");
+    const result = await store.searchTagsOnServer("web", ["label", "project"]);
 
-    expect(api.searchTags).toHaveBeenCalledWith("work", "task");
-    expect(result.map((t) => t.id)).toEqual(["task"]);
+    expect(api.searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "project"]);
+    // The exact match ranks first.
+    expect(result.map((t) => t.id)).toEqual(["project", "label"]);
+    expect(store.getTagById("project")).toEqual(project);
   });
+
+  it.each(["task", "project"] as const)(
+    "searches only %s tags on the server when asked for them",
+    async (kind) => {
+      const cached = makeTag({ id: "cached", name: "work" });
+      const owned = makeTag({ id: "owned", name: "work on report", owner: { kind, id: "o1" } });
+      api.listTagsPaginated.mockResolvedValue({
+        data: [cached],
+        pagination: { limit: 50, offset: 0, total: 1 },
+      });
+      api.searchTags.mockResolvedValue([owned]);
+
+      const store = useStore();
+      await store.fetchTags();
+      const result = await store.searchTagsOnServer("work", kind);
+
+      expect(api.searchTags).toHaveBeenCalledWith("work", [kind]);
+      expect(result.map((t) => t.id)).toEqual(["owned"]);
+    },
+  );
 });

@@ -213,10 +213,17 @@ tagKindQuery:
   in: query
   required: false
   description: >
-    Which tags to return: regular tags (label), the tags owned by one kind
-    of item (task, see TagOwnerKind), or every tag (all). Defaults to
-    label.
+    Which kinds of tags to return, comma-separated: regular tags (label),
+    the tags owned by one kind of item (task or project, see TagOwnerKind),
+    or every tag (all). Defaults to label. Several kinds take turns filling
+    each page, the first tag of each kind by name, then the second of each,
+    and so on, so one kind's matches can't crowd another's out.
+  style: form
+  explode: false
   schema:
-    type: string
-    enum: [label, task, all]
-    default: label
+    type: array
+    items:
+      type: string
+      enum: [label, task, project, all]
+    uniqueItems: true
+    default: [label]

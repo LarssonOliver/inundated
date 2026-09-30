@@ -367,7 +367,7 @@ func (t *MemoryStore) taskProjectIds(scope model.OwnerScope, task model.Task) []
 		if !matchesScope(project.UserId, scope) {
 			continue
 		}
-		if slices.ContainsFunc(project.TagIds, func(tagId uuid.UUID) bool {
+		if slices.ContainsFunc(project.EffectiveTagIds(), func(tagId uuid.UUID) bool {
 			_, ok := effective[tagId]
 			return ok
 		}) {

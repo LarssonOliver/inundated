@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tag } from "@/model";
-import { isOwnedBy, parseOwnerQuery, tagOwnerRoute, tagOwnerSpec } from "./tagOwners";
+import { isDerivedTag, isOwnedBy, parseOwnerQuery, tagOwnerRoute, tagOwnerSpec } from "./tagOwners";
 
 const label: Tag = { id: "l1", name: "Design", color: "#bf616a", archived: false };
 const taskTag: Tag = {
@@ -18,6 +18,12 @@ describe("tagOwners", () => {
     expect(tagOwnerSpec(undefined)).toBeUndefined();
   });
 
+  it("tells which tags take their color from other tags", () => {
+    expect(isDerivedTag(taskTag)).toBe(true);
+    expect(isDerivedTag({ ...label, owner: { kind: "project", id: "project-1" } })).toBe(false);
+    expect(isDerivedTag(label)).toBe(false);
+  });
+
   it("tells owned tags apart by kind", () => {
     expect(isOwnedBy(taskTag, "task")).toBe(true);
     expect(isOwnedBy(label, "task")).toBe(false);
@@ -26,6 +32,10 @@ describe("tagOwners", () => {
   it("routes an owned tag to its owner", () => {
     expect(tagOwnerRoute(taskTag)).toEqual({ name: "Task", params: { id: "task-1" } });
     expect(tagOwnerRoute(label)).toBeUndefined();
+    expect(tagOwnerRoute({ ...label, owner: { kind: "project", id: "project-1" } })).toEqual({
+      name: "Project",
+      params: { id: "project-1" },
+    });
   });
 
   it("parses a prefixed picker query into kind and name", () => {
@@ -34,6 +44,12 @@ describe("tagOwners", () => {
       name: "write report",
     });
     expect(parseOwnerQuery("#")).toMatchObject({ spec: { kind: "task" }, name: "" });
+    expect(parseOwnerQuery("@ website")).toMatchObject({
+      spec: { kind: "project", prefix: "@" },
+      name: "website",
+    });
     expect(parseOwnerQuery("design")).toBeNull();
+    // Only the given kinds' prefixes count.
+    expect(parseOwnerQuery("@website", ["task"])).toBeNull();
   });
 });

@@ -183,7 +183,7 @@ func TestTagService_DerivedTagColors(t *testing.T) {
 				return sources, nil
 			},
 		}
-		got, err := service.NewService(repo).ListTags(context.Background(), model.TagListParams{Kind: model.TagKindAll})
+		got, err := service.NewService(repo).ListTags(context.Background(), model.TagListParams{Kinds: []model.TagKind{model.TagKindAll}})
 		require.NoError(t, err)
 		require.Equal(t, [][]uuid.UUID{{tagA.Id, tagB.Id, tagC.Id}}, calls)
 		var colors []string

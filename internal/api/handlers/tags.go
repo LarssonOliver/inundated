@@ -108,10 +108,13 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 		params.Query = *request.Params.Q
 	}
 	if request.Params.Kind != nil {
-		if !request.Params.Kind.Valid() {
-			return api.ListTags400Response{}, nil
+		for _, k := range *request.Params.Kind {
+			kind := model.TagKind(k)
+			if !kind.Valid() {
+				return api.ListTags400Response{}, nil
+			}
+			params.Kinds = append(params.Kinds, kind)
 		}
-		params.Kind = model.TagKind(*request.Params.Kind)
 	}
 	if request.Params.Ids != nil {
 		if len(*request.Params.Ids) > 100 {

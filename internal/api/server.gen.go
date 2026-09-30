@@ -820,7 +820,7 @@ func (siw *ServerInterfaceWrapper) ListTags(w http.ResponseWriter, r *http.Reque
 
 	// ------------- Optional query parameter "kind" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -2001,6 +2001,14 @@ type DeleteProject404Response struct {
 
 func (response DeleteProject404Response) VisitDeleteProjectResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
+	return nil
+}
+
+type DeleteProject409Response struct {
+}
+
+func (response DeleteProject409Response) VisitDeleteProjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(409)
 	return nil
 }
 

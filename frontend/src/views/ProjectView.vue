@@ -9,13 +9,14 @@
         <ProjectEdit
           v-model="project"
           :is-new-project="isNewProject"
+          :error-message="errorMessage"
           @create="createProject"
           @save="saveProject"
           @delete="deleteProject"
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectTasks :project="project" :assign-task="assignTask" />
+        <ProjectTasks :project="project" />
       </div>
       <div v-if="!isNewProject" class="card">
         <ProjectStats :project="project" />
@@ -34,6 +35,7 @@ import { watch, ref, computed } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
+import { ResponseError } from "@/api/generated";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -44,8 +46,10 @@ const isNewProject = computed(() => route.name === "New Project");
 // Reactive state
 const project = ref(newProjectWithDefaults());
 const notFound = ref(false);
+const errorMessage = ref("");
 
 async function updateProject(id: string) {
+  errorMessage.value = "";
   // First try to get the project from the store if it's cached
   const storeResult = projectsStore.getProjectById(id);
   if (storeResult) {
@@ -81,32 +85,20 @@ async function saveProject() {
   await updateProject(project.value.id);
 }
 
-// Assigns a task by adding its task tag to the saved project, leaving any
-// unsaved edits in the form alone. Errors reach ProjectTasks, which shows
-// them.
-async function assignTask(taskTagId: string) {
-  const saved = await projectsStore.fetchDetailedProjectById(project.value.id);
-  saved.tagIds.add(taskTagId);
-  await projectsStore.updateProject(saved);
-  const updated = await projectsStore.fetchDetailedProjectById(project.value.id);
-  project.value = {
-    ...project.value,
-    tagIds: new Set([...project.value.tagIds, taskTagId]),
-    totalTimeMs: updated.totalTimeMs,
-    taskTimeMs: updated.taskTimeMs,
-  };
-}
-
 async function createProject() {
   const newProject = await projectsStore.createProject(project.value);
   router.push({ name: "Project", params: { id: newProject.id } });
 }
 
 async function deleteProject() {
+  errorMessage.value = "";
   try {
     await projectsStore.deleteProject(project.value.id);
   } catch (error) {
-    console.error("Error deleting project:", error);
+    errorMessage.value =
+      error instanceof ResponseError && error.response.status === 409
+        ? "Time is logged under this project's own tag, so it can't be deleted. Archive it instead."
+        : "Couldn't delete the project.";
     return; // Only navigate away if deletion was successful
   }
 

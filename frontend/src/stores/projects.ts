@@ -1,5 +1,6 @@
 import { projectsApi, type ProjectsApi } from "@/api/projects";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
+import { useTagsStore } from "@/stores/tags";
 import type { Project, ProjectStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -188,7 +189,8 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     }
 
     /**
-     * Updates an existing project.
+     * Updates an existing project. Its project tag follows its name, color
+     * and archived state, so the cached copy of it is refreshed.
      *
      * @param project - The project to update, identified by project.id.
      *
@@ -199,11 +201,14 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
       const { id, ...fields } = project;
       const updated = await api.updateProject(id, fields);
       projects.value.set(updated.id, updated);
+      void useTagsStore().ownerWritten({ owner: { kind: "project", id }, tagId: updated.tagId });
       return copyProject(updated);
     }
 
     /**
-     * Deletes a project by its ID.
+     * Deletes a project by its ID, along with its project tag. The server
+     * refuses (409) when time is logged under its project tag; archive it
+     * instead. The cached copy of its project tag is dropped.
      *
      * @param id - The ID of the project to delete.
      *
@@ -212,6 +217,7 @@ function createProjectsStore(api: ProjectsApi, now: () => number = () => Date.no
     async function deleteProject(id: string): Promise<void> {
       await api.deleteProject(id);
       projects.value.delete(id);
+      void useTagsStore().ownerWritten({ owner: { kind: "project", id }, deleted: true });
     }
 
     async function fetchProjectStats(

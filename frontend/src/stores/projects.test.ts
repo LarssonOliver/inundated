@@ -4,6 +4,9 @@ import type { Project } from "@/model";
 import type { ProjectsApi } from "@/api/projects";
 import { __test__ } from "@/stores/projects";
 
+const ownerWritten = vi.fn();
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten }) }));
+
 function project(partial?: Partial<Project>): Project {
   return {
     id: partial?.id ?? "p1",
@@ -33,6 +36,40 @@ describe("projects store", () => {
     };
 
     useStore = __test__.createProjectsStore(api);
+    ownerWritten.mockReset();
+  });
+
+  it("refreshes the project's own tag after updating a project", async () => {
+    api.updateProject.mockResolvedValue({ ...project({ name: "Renamed" }), tagId: "own" });
+
+    const store = useStore();
+    await store.updateProject(project({ name: "Renamed" }));
+
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "project", id: "p1" },
+      tagId: "own",
+    });
+  });
+
+  it("forgets the project's own tag after deleting a project", async () => {
+    api.deleteProject.mockResolvedValue();
+
+    const store = useStore();
+    await store.deleteProject("p1");
+
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "project", id: "p1" },
+      deleted: true,
+    });
+  });
+
+  it("leaves the tags alone when the server refuses to delete a project", async () => {
+    api.deleteProject.mockRejectedValue(new Error("conflict"));
+
+    const store = useStore();
+    await expect(store.deleteProject("p1")).rejects.toThrow();
+
+    expect(ownerWritten).not.toHaveBeenCalled();
   });
 
   it("fetches and stores first page of projects", async () => {

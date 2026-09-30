@@ -18,7 +18,8 @@
  * @export
  */
 export const TagOwnerKind = {
-    Task: 'task'
+    Task: 'task',
+    Project: 'project'
 } as const;
 export type TagOwnerKind = typeof TagOwnerKind[keyof typeof TagOwnerKind];
 

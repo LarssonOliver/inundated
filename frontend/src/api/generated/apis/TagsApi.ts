@@ -70,7 +70,7 @@ export interface ListTagsRequest {
     offset?: number;
     includeArchived?: boolean;
     q?: string;
-    kind?: ListTagsKindEnum;
+    kind?: Set<ListTagsKindEnum>;
     ids?: Set<string>;
 }
 
@@ -317,7 +317,7 @@ export class TagsApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['kind'] != null) {
-            queryParameters['kind'] = requestParameters['kind'];
+            queryParameters['kind'] = Array.from(requestParameters['kind'])!.join(runtime.COLLECTION_FORMATS["csv"]);
         }
 
         if (requestParameters['ids'] != null) {
@@ -425,6 +425,7 @@ export type GetTagIncludeEnum = typeof GetTagIncludeEnum[keyof typeof GetTagIncl
 export const ListTagsKindEnum = {
     Label: 'label',
     Task: 'task',
+    Project: 'project',
     All: 'all'
 } as const;
 export type ListTagsKindEnum = typeof ListTagsKindEnum[keyof typeof ListTagsKindEnum];
