@@ -3,10 +3,12 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { Task } from "@/model";
 
-const { getTask, listAllTasks, route } = vi.hoisted(() => ({
+const { getTask, listAllTasks, router } = vi.hoisted(() => ({
   getTask: vi.fn(),
   listAllTasks: vi.fn(),
-  route: { name: "Task", params: { id: "k1" } },
+  // Filled in by the vue-router mock: a reactive route, so a test can
+  // move the page to another task.
+  router: {} as { route: { name: string; params: { id: string } } },
 }));
 
 vi.mock("@/api", async (importOriginal) => ({
@@ -27,7 +29,11 @@ vi.mock("@/stores/projects", () => ({
     fetchProjectById: vi.fn(),
   }),
 }));
-vi.mock("vue-router", () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("vue-router", async () => {
+  const { reactive } = await import("vue");
+  router.route = reactive({ name: "Task", params: { id: "k1" } });
+  return { useRoute: () => router.route, useRouter: () => ({ push: vi.fn() }) };
+});
 
 import TaskView from "./TaskView.vue";
 
@@ -64,6 +70,7 @@ function mountView() {
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  router.route.params.id = "k1";
   getTask.mockReset();
   listAllTasks.mockReset();
   listAllTasks.mockResolvedValue([]);
@@ -93,4 +100,17 @@ test("shows the task reopened when reopening a subtask reopened it", async () =>
   await flushPromises();
 
   expect(wrapper.find(".closed-badge").exists()).toBe(false);
+});
+
+test("starts the subtask list afresh for each task", async () => {
+  getTask.mockImplementation(async (id: string) => task({ id }));
+  const wrapper = mountView();
+  await flushPromises();
+  const first = wrapper.findComponent(TaskListStub).vm;
+
+  router.route.params.id = "k2";
+  await flushPromises();
+
+  // A new list instance, so text typed in the old one's add box is gone.
+  expect(wrapper.findComponent(TaskListStub).vm).not.toBe(first);
 });

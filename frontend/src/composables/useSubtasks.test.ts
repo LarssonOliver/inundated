@@ -106,3 +106,14 @@ test("creates a direct subtask", async () => {
 
   expect(createTask).toHaveBeenCalledWith({ name: "Hero", parentId: "root" });
 });
+
+test("hides closed subtasks again when the task changes", async () => {
+  listAllTasks.mockResolvedValue(tree);
+  const { id, source } = setup();
+  source.setShowClosed(true);
+
+  id.value = "other";
+  await flushPromises();
+
+  expect(source.showClosed.value).toBe(false);
+});

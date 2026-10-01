@@ -41,7 +41,15 @@ export function useSubtasks(taskId: () => string | undefined): TaskListSource {
     }
   }
 
-  watch(taskId, () => void reload(), { immediate: true });
+  // Each task's subtasks start out as a freshly opened page shows them.
+  watch(
+    taskId,
+    (_id, previousId) => {
+      if (previousId !== undefined) showClosed.value = false;
+      void reload();
+    },
+    { immediate: true },
+  );
 
   return {
     tasks: computed(() => descendants.value.filter((task) => showClosed.value || !task.closed)),

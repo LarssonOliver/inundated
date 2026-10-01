@@ -72,6 +72,7 @@
         </div>
 
         <TaskList
+          :key="task.id"
           class="subtasks"
           :source="subtaskSource"
           :addable="!task.closed"
