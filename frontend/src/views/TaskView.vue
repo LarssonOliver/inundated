@@ -319,14 +319,15 @@ async function reopen() {
 /**
  * Refreshes this task after its subtask list changed something: reopening
  * a subtask reopens this task too, and closing or moving one changes its
- * time.
+ * time. Nothing the list does changes the fields the form edits, so the
+ * form's draft is left alone, keeping any unsaved edits in it.
  */
 async function refreshTask() {
   if (!task.value) return;
   const token = loadToken;
   const loaded = await tasksStore.fetchDetailedTaskById(task.value.id).catch(() => null);
   if (token !== loadToken || !loaded) return;
-  applyTask(loaded);
+  task.value = loaded;
 }
 
 async function deleteTask() {
