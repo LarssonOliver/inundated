@@ -262,3 +262,15 @@ test("doesn't work out the move buttons again while typing a new task's name", a
 
   expect(shiftTarget).not.toHaveBeenCalled();
 });
+
+test("says there are no open tasks while closed ones are hidden", async () => {
+  const wrapper = mount(TaskList, {
+    props: { source: fakeSource([]), emptyText: "Nothing here.", emptyOpenText: "Nothing open." },
+    global: { stubs: { TaskRow: TaskRowStub } },
+  });
+  expect(wrapper.find(".empty").text()).toBe("Nothing open.");
+
+  await wrapper.find('input[type="checkbox"]').setValue(true);
+
+  expect(wrapper.find(".empty").text()).toBe("Nothing here.");
+});

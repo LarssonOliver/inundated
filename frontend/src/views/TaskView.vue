@@ -78,6 +78,7 @@
           :addable="!task.closed"
           add-placeholder="Add a subtask..."
           empty-text="No subtasks."
+          empty-open-text="No open subtasks."
           @changed="refreshTask"
         >
           <template #title><p class="field-label">Subtasks</p></template>

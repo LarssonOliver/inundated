@@ -4,6 +4,7 @@
     :source="source"
     add-placeholder="Add a task to this project..."
     empty-text="No tasks yet. Tasks join this project when they carry one of its tags, or when their own tag is added to the project."
+    empty-open-text="No open tasks. Tasks join this project when they carry one of its tags, or when their own tag is added to the project."
   >
     <template #title>
       <div class="header">

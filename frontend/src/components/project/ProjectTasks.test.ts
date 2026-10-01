@@ -139,3 +139,14 @@ test("lists closed tasks too once Show Closed is on", async () => {
 
   expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1", includeClosed: true });
 });
+
+test("says there are no open tasks until Show Closed is on", async () => {
+  listAllTasks.mockResolvedValue([]);
+  const wrapper = mountTasks();
+  await flushPromises();
+  expect(wrapper.find(".empty").text()).toMatch(/^No open tasks\./);
+
+  await wrapper.find('input[type="checkbox"]').setValue(true);
+  await flushPromises();
+  expect(wrapper.find(".empty").text()).toMatch(/^No tasks yet\./);
+});

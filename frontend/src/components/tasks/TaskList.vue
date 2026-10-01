@@ -21,7 +21,9 @@
       <button type="submit" class="btn-info" :disabled="!newTaskName.trim()">Add</button>
     </form>
 
-    <p v-if="isEmpty" class="empty">{{ emptyText }}</p>
+    <p v-if="isEmpty" class="empty">
+      {{ source.showClosed.value ? emptyText : (emptyOpenText ?? emptyText) }}
+    </p>
     <p v-if="source.loadFailed.value" class="error">Couldn't load the tasks.</p>
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
@@ -66,6 +68,8 @@ const props = withDefaults(
     source: TaskListSource;
     /** Shown when there are no tasks to list. */
     emptyText: string;
+    /** Shown instead of emptyText while closed tasks are hidden. */
+    emptyOpenText?: string;
     addPlaceholder?: string;
     /** False hides the add box, e.g. under a closed task. */
     addable?: boolean;
