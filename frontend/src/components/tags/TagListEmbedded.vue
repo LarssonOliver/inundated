@@ -69,8 +69,27 @@ const {
    * accidentally create one just because someone typed a leading prefix.
    */
   createOwners?: readonly TagOwnerKind[];
+  /**
+   * The kinds of owned tags left out of this list's pills, e.g. a project's
+   * task tags in the project list, where they'd crowd out its regular tags.
+   * They stay in the model, so editing the visible tags keeps them, but the
+   * picker neither offers nor creates them either, since a tag picked or
+   * created there would silently vanish. None by default.
+   */
   hideOwnerKinds?: readonly TagOwnerKind[];
 }>();
+
+// ownerKinds and createOwners without the hidden kinds (see hideOwnerKinds).
+const offeredOwnerKinds = computed(() =>
+  ownerKinds.filter((kind) => !hideOwnerKinds.includes(kind)),
+);
+const creatableOwnerKinds = computed(() =>
+  createOwners.filter((kind) => !hideOwnerKinds.includes(kind)),
+);
+
+function isHidden(tag: Tag): boolean {
+  return !!tag.owner && hideOwnerKinds.includes(tag.owner.kind);
+}
 
 const tagsStore = useTagsStore();
 const tasksStore = useTasksStore();
@@ -84,8 +103,7 @@ const tasksStore = useTasksStore();
 const resolvedTags = ref<Tag[]>([]);
 const tags = computed(() =>
   resolvedTags.value
-    .filter((tag) => !tagsStore.isTagDeleted(tag))
-    .filter((tag) => !tag.owner || !hideOwnerKinds.includes(tag.owner.kind))
+    .filter((tag) => !tagsStore.isTagDeleted(tag) && !isHidden(tag))
     .map((tag) => tagsStore.getTagById(tag.id) ?? tag),
 );
 // Raw, unfiltered server results for the current query. Filtered into
@@ -96,7 +114,7 @@ const rawSearchResults = ref<Tag[]>([]);
 const tagSearchResult = computed(() =>
   rawSearchResults.value
     .filter((tag) => !tag.archived && !model.value.has(tag.id))
-    .filter((tag) => !tag.owner || ownerKinds.includes(tag.owner.kind))
+    .filter((tag) => !tag.owner || offeredOwnerKinds.value.includes(tag.owner.kind))
     .slice(0, 8),
 );
 
@@ -109,7 +127,7 @@ const tagSearchResult = computed(() =>
  * requires createOwners, guarded separately below.
  */
 function ownerQuery(query: string) {
-  return parseOwnerQuery(query, ownerKinds);
+  return parseOwnerQuery(query, offeredOwnerKinds.value);
 }
 
 /**
@@ -124,7 +142,7 @@ function namesUnofferedOwner(query: string): boolean {
 
 /** Whether this picker may create an owner of the kind the query names. */
 function canCreateOwner(owner: NonNullable<ReturnType<typeof ownerQuery>>): boolean {
-  return createOwners.includes(owner.spec.kind);
+  return creatableOwnerKinds.value.includes(owner.spec.kind);
 }
 
 // Tracks the live search box text (updated per keystroke, ahead of the
@@ -145,7 +163,7 @@ const canCreateFromCurrentQuery = computed(() => {
 // regular tags and each owned kind offered, which take turns filling the
 // server's results so one kind's matches can't crowd another's out. Kinds
 // the picker doesn't offer aren't searched at all.
-const searchedKinds = computed<TagKind[]>(() => ["label", ...ownerKinds]);
+const searchedKinds = computed<TagKind[]>(() => ["label", ...offeredOwnerKinds.value]);
 
 // Guards against overlapping searches: a slower response for an older query
 // (including a search cleared out from under it) must not replace the

@@ -449,3 +449,65 @@ test("only offers the owned tag kinds it is given", async () => {
   expect(searchTags).toHaveBeenCalledExactlyOnceWith("@web", ["label"]);
   expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
 });
+
+test("hides pills of hidden owner kinds but keeps them in the model", async () => {
+  const label = tag({ id: "label", name: "client" });
+  const taskTag = tag({ id: "task-tag", name: "Write report", owner: { kind: "task", id: "t1" } });
+  const projectTag = tag({
+    id: "project-tag",
+    name: "Website",
+    owner: { kind: "project", id: "p1" },
+  });
+  listTagsPaginated.mockResolvedValue({ ...emptyPage(), data: [label] });
+  getTagsByIds.mockResolvedValue([taskTag, projectTag]);
+
+  const wrapper = mount(TagListEmbedded, {
+    props: {
+      modelValue: new Set(["label", "task-tag", "project-tag"]),
+      hideOwnerKinds: ["task"],
+    },
+  });
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("client");
+  expect(wrapper.text()).toContain("@Website");
+  expect(wrapper.text()).not.toContain("Write report");
+
+  // Removing a visible tag leaves the hidden one assigned.
+  const clientPill = wrapper
+    .findAllComponents({ name: "TagItem" })
+    .find((pill) => pill.text().includes("client"));
+  clientPill!.vm.$emit("close", label);
+  await flushPromises();
+  const emitted = wrapper.emitted("update:modelValue");
+  expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["task-tag", "project-tag"]));
+});
+
+test("neither offers nor creates tags of hidden owner kinds", async () => {
+  listTagsPaginated.mockResolvedValue(emptyPage());
+  searchTags.mockResolvedValue([
+    tag({ id: "label", name: "web label" }),
+    tag({ id: "task-tag", name: "web task", owner: { kind: "task", id: "task-1" } }),
+  ]);
+
+  const wrapper = mount(TagListEmbedded, {
+    props: { modelValue: new Set<string>(), createOwners: ["task"], hideOwnerKinds: ["task"] },
+  });
+  await flushPromises();
+
+  const input = wrapper.find("input");
+  await input.trigger("focus");
+  await input.setValue("web");
+  await settleSearch();
+
+  // Picking a task tag here would make it vanish at once.
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "project"]);
+  expect(wrapper.text()).toContain("web label");
+  expect(wrapper.text()).not.toContain("web task");
+
+  // Likewise for creating one, even though createOwners allows it.
+  await input.setValue("#web");
+  await settleSearch();
+  expect(searchTags).toHaveBeenLastCalledWith("#web", ["label"]);
+  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
+});
