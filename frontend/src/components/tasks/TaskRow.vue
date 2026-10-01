@@ -126,6 +126,16 @@
 
     <div v-if="orderable" class="order-buttons">
       <button
+        v-if="removable"
+        class="icon-button"
+        title="Remove from project"
+        :aria-label="`Remove ${task.name} from project`"
+        :disabled="disabled"
+        @click="$emit('remove')"
+      >
+        <MaterialIcon icon="link_off" size="1.1em" />
+      </button>
+      <button
         class="icon-button"
         title="Outdent"
         :disabled="disabled || !canOutdent"
@@ -141,10 +151,20 @@
       >
         <MaterialIcon icon="format_indent_increase" size="1.1em" />
       </button>
-      <button class="icon-button" title="Move up" :disabled="disabled" @click="$emit('shift', -1)">
+      <button
+        class="icon-button"
+        title="Move up"
+        :disabled="disabled || !canShiftUp"
+        @click="$emit('shift', -1)"
+      >
         <MaterialIcon icon="arrow_upward" size="1.1em" />
       </button>
-      <button class="icon-button" title="Move down" :disabled="disabled" @click="$emit('shift', 1)">
+      <button
+        class="icon-button"
+        title="Move down"
+        :disabled="disabled || !canShiftDown"
+        @click="$emit('shift', 1)"
+      >
         <MaterialIcon icon="arrow_downward" size="1.1em" />
       </button>
     </div>
@@ -179,10 +199,16 @@ const props = withDefaults(
     depth: number;
     /** True while any row's move/indent/outdent is in flight. */
     disabled?: boolean;
-    /** False for the first row in this open/closed section. */
+    /** False when indenting has nowhere to go (see indentTarget). */
     canIndent: boolean;
-    /** False for a top-level task. */
+    /** False when outdenting has nowhere to go or would leave the list. */
     canOutdent: boolean;
+    /** False for the first of its listed siblings. */
+    canShiftUp?: boolean;
+    /** False for the last of its listed siblings. */
+    canShiftDown?: boolean;
+    /** Shows a "Remove from project" button, which emits remove. */
+    removable?: boolean;
     isOverdue: boolean;
     /**
      * False hides the move and indent buttons, for lists that show only
@@ -190,7 +216,7 @@ const props = withDefaults(
      */
     orderable?: boolean;
   }>(),
-  { orderable: true },
+  { orderable: true, canShiftUp: true, canShiftDown: true, removable: false },
 );
 
 const emit = defineEmits<{
@@ -200,6 +226,7 @@ const emit = defineEmits<{
   indent: [];
   outdent: [];
   update: [patch: TaskPatch];
+  remove: [];
 }>();
 
 const settingsStore = useSettingsStore();
