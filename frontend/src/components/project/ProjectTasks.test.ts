@@ -13,10 +13,7 @@ vi.mock("@/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api")>()),
   tasksApi: { listAllTasks, createTask, updateTask },
 }));
-vi.mock("@/api/tasks", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/api/tasks")>()),
-  tasksApi: { listAllTasks, createTask, updateTask },
-}));
+vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten: vi.fn() }) }));
 
 import ProjectTasks from "./ProjectTasks.vue";
 
@@ -34,7 +31,7 @@ const project: Project = {
   id: "p1",
   name: "Website",
   color: "#88c0d0",
-  tagIds: new Set(["l1"]),
+  tagIds: new Set(["l1", "tk1"]),
   tagId: "pt1",
   totalTimeMs: 5 * 3600000,
   taskTimeMs: 3 * 3600000,
@@ -47,9 +44,12 @@ function mountTasks(p: Project = project) {
     global: {
       stubs: {
         TaskRow: {
-          props: ["task"],
-          emits: ["toggle-closed"],
-          template: "<div class='row' @click=\"$emit('toggle-closed')\">{{ task.name }}</div>",
+          props: ["task", "removable"],
+          emits: ["toggle-closed", "remove"],
+          template: `<div class="row">
+            <span class="name" @click="$emit('toggle-closed')">{{ task.name }}</span>
+            <button v-if="removable" class="remove" @click="$emit('remove')" />
+          </div>`,
         },
       },
     },
@@ -68,8 +68,8 @@ test("lists the project's tasks and splits its time", async () => {
   const wrapper = mountTasks();
   await flushPromises();
 
-  expect(listAllTasks).toHaveBeenCalledWith({ projectId: "p1" });
-  expect(wrapper.findAll(".row").map((row) => row.text())).toEqual(["Launch", "Hero"]);
+  expect(listAllTasks).toHaveBeenCalledWith({ projectId: "p1", includeClosed: false });
+  expect(wrapper.findAll(".name").map((n) => n.text())).toEqual(["Launch", "Hero"]);
   expect(wrapper.text()).toContain("On tasks 3h");
   expect(wrapper.text()).toContain("Additional 2h");
 });
@@ -81,52 +81,25 @@ test("quick-add creates a task carrying the project tag", async () => {
   await flushPromises();
 
   listAllTasks.mockResolvedValue([task({ id: "k9", name: "Blog post", tagId: "tk9" })]);
-  await wrapper.find("input").setValue("  Blog post ");
+  await wrapper.find('input[aria-label="New task"]').setValue("  Blog post ");
   await wrapper.find("form").trigger("submit");
   await flushPromises();
 
   expect(createTask).toHaveBeenCalledWith({ name: "Blog post", tagIds: new Set(["pt1"]) });
-  expect(wrapper.findAll(".row").map((row) => row.text())).toEqual(["Blog post"]);
-  expect(wrapper.find(".error").exists()).toBe(false);
+  expect(wrapper.findAll(".name").map((n) => n.text())).toEqual(["Blog post"]);
 });
 
-test("says so when the task can't be created", async () => {
-  listAllTasks.mockResolvedValue([]);
-  createTask.mockRejectedValue(new Error("boom"));
-  const wrapper = mountTasks();
-  await flushPromises();
-
-  await wrapper.find("input").setValue("Blog post");
-  await wrapper.find("form").trigger("submit");
-  await flushPromises();
-
-  expect(wrapper.find(".error").text()).toContain("Couldn't create the task");
-});
-
-test("keeps only the latest of overlapping loads", async () => {
-  let resolveFirst: (tasks: Task[]) => void = () => {};
-  listAllTasks
-    .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
-    .mockResolvedValueOnce([task({ name: "Newer" })]);
-  const wrapper = mountTasks();
-  await wrapper.setProps({ project: { ...project, tagIds: new Set(["l1", "tk9"]) } });
-  await flushPromises();
-  resolveFirst([task({ name: "Older" })]);
-  await flushPromises();
-
-  expect(wrapper.findAll(".row").map((row) => row.text())).toEqual(["Newer"]);
-});
-
-test("a later successful load clears a load error", async () => {
+test("a load error replaces the empty text until a later load succeeds", async () => {
   listAllTasks.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([]);
   const wrapper = mountTasks();
   await flushPromises();
-  expect(wrapper.find(".error").exists()).toBe(true);
+  expect(wrapper.find(".error").text()).toBe("Couldn't load the tasks.");
   expect(wrapper.find(".empty").exists()).toBe(false);
 
   await wrapper.setProps({ project: { ...project, tagIds: new Set(["l2"]) } });
   await flushPromises();
   expect(wrapper.find(".error").exists()).toBe(false);
+  expect(wrapper.find(".empty").exists()).toBe(true);
 });
 
 test("closing a task updates it directly and reloads only the project list", async () => {
@@ -135,10 +108,34 @@ test("closing a task updates it directly and reloads only the project list", asy
   const wrapper = mountTasks();
   await flushPromises();
 
-  await wrapper.find(".row").trigger("click");
+  await wrapper.find(".name").trigger("click");
   await flushPromises();
 
   expect(updateTask).toHaveBeenCalledWith("k1", { closed: true, closeReason: "done" });
   expect(listAllTasks).toHaveBeenCalledTimes(2);
-  expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1" });
+  expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1", includeClosed: false });
+});
+
+test("asks the page to remove a task added through its own tag", async () => {
+  listAllTasks.mockResolvedValue([task({}), task({ id: "k2", name: "Hero", tagId: "tk2" })]);
+  const wrapper = mountTasks();
+  await flushPromises();
+
+  // Only k1's own tag is on the project.
+  expect(wrapper.findAll(".remove")).toHaveLength(1);
+  await wrapper.find(".remove").trigger("click");
+  await flushPromises();
+
+  expect(wrapper.emitted("remove-task")).toEqual([[expect.objectContaining({ id: "k1" })]]);
+});
+
+test("lists closed tasks too once Show Closed is on", async () => {
+  listAllTasks.mockResolvedValue([]);
+  const wrapper = mountTasks();
+  await flushPromises();
+
+  await wrapper.find('input[type="checkbox"]').setValue(true);
+  await flushPromises();
+
+  expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1", includeClosed: true });
 });

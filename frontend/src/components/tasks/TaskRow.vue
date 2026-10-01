@@ -124,7 +124,7 @@
       </button>
     </div>
 
-    <div v-if="orderable" class="order-buttons">
+    <div class="order-buttons">
       <button
         v-if="removable"
         class="icon-button"
@@ -210,13 +210,8 @@ const props = withDefaults(
     /** Shows a "Remove from project" button, which emits remove. */
     removable?: boolean;
     isOverdue: boolean;
-    /**
-     * False hides the move and indent buttons, for lists that show only
-     * some of a task's siblings (e.g. a project's tasks).
-     */
-    orderable?: boolean;
   }>(),
-  { orderable: true, canShiftUp: true, canShiftDown: true, removable: false },
+  { canShiftUp: true, canShiftDown: true, removable: false },
 );
 
 const emit = defineEmits<{
