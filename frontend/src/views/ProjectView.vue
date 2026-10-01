@@ -63,17 +63,29 @@ function showProject(project: Project) {
   draft.value = { ...project, tagIds: new Set(project.tagIds) };
 }
 
+// Guards against overlapping loads: a load superseded by a newer one, or
+// started before a task tag change (see setTaskTag), must not replace what
+// the page shows with its older copy.
+let loadToken = 0;
+
 async function loadProject(id: string) {
+  const token = ++loadToken;
   errorMessage.value = "";
   // First show the cached project, if any, while the detailed one (with
   // total time) loads.
   const cached = projectsStore.getProjectById(id);
   if (cached) showProject(cached);
   try {
-    showProject(await projectsStore.fetchDetailedProjectById(id));
+    const detailed = await projectsStore.fetchDetailedProjectById(id);
+    if (token === loadToken) showProject(detailed);
   } catch {
-    notFound.value = true;
+    if (token === loadToken) notFound.value = true;
   }
+}
+
+/** Whether the page still shows the project with this id. */
+function isShowing(projectId: string): boolean {
+  return route.params.id === projectId;
 }
 
 watch(
@@ -102,7 +114,12 @@ function saveProject() {
  * edits stay in the draft for Save, which then keeps the change.
  */
 function setTaskTag(tagId: string, present: boolean) {
+  // The page can move to another project while this waits its turn or its
+  // requests run; the change is for the project shown now, and must never
+  // land on another one.
+  const projectId = saved.value.id;
   return enqueueWrite(async () => {
+    if (!isShowing(projectId)) return;
     errorMessage.value = "";
     let updated: Project;
     try {
@@ -116,6 +133,10 @@ function setTaskTag(tagId: string, present: boolean) {
         : "Couldn't remove the task from the project.";
       return;
     }
+    if (!isShowing(projectId)) return;
+    // A load still in flight started before this change, so its copy of
+    // the project is out of date.
+    loadToken++;
     // The reply has no time totals, so the old ones show until the
     // detailed project, whose task time the change moves, is refetched.
     saved.value = {
@@ -125,7 +146,8 @@ function setTaskTag(tagId: string, present: boolean) {
     };
     draft.value.tagIds = withTag(draft.value.tagIds, tagId, present);
     try {
-      saved.value = await projectsStore.fetchDetailedProjectById(updated.id);
+      const detailed = await projectsStore.fetchDetailedProjectById(updated.id);
+      if (isShowing(projectId)) saved.value = detailed;
     } catch {
       // Keeps the reply, without fresh totals.
     }

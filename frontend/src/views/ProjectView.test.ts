@@ -3,17 +3,24 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { Project, Task } from "@/model";
 
-const { getProject, updateProject, route } = vi.hoisted(() => ({
+const { getProject, updateProject, router } = vi.hoisted(() => ({
   getProject: vi.fn(),
   updateProject: vi.fn(),
-  route: { name: "Project", params: { id: "p1" } },
+  // Filled in by the vue-router mock: a reactive route, so a test can
+  // move the page to another project.
+  router: {} as { route: { name: string; params: { id: string } } },
 }));
 
 vi.mock("@/api/projects", () => ({ projectsApi: { getProject, updateProject } }));
 vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten: vi.fn() }) }));
-vi.mock("vue-router", () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("vue-router", async () => {
+  const { reactive } = await import("vue");
+  router.route = reactive({ name: "Project", params: { id: "p1" } });
+  return { useRoute: () => router.route, useRouter: () => ({ push: vi.fn() }) };
+});
 
 import ProjectView from "./ProjectView.vue";
+import { useProjectsStore } from "@/stores/projects";
 
 const ProjectEditStub = {
   name: "ProjectEdit",
@@ -31,6 +38,15 @@ const ProjectTasksStub = {
 
 // What the server holds: updates change it, and fetches return it.
 let server: Project;
+// Another project, to move the page to.
+const other: Project = {
+  id: "p2",
+  name: "Blog",
+  color: "#a3be8c",
+  tagIds: new Set(["l7"]),
+  tagId: "pt2",
+  archived: false,
+};
 
 function mountView() {
   return mount(ProjectView, {
@@ -42,6 +58,7 @@ function mountView() {
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  router.route.params.id = "p1";
   server = {
     id: "p1",
     name: "Website",
@@ -51,7 +68,10 @@ beforeEach(() => {
     archived: false,
   };
   getProject.mockReset();
-  getProject.mockImplementation(async () => ({ ...server, tagIds: new Set(server.tagIds) }));
+  getProject.mockImplementation(async (id: string) => {
+    const project = id === "p2" ? other : server;
+    return { ...project, tagIds: new Set(project.tagIds) };
+  });
   updateProject.mockReset();
   updateProject.mockImplementation(async (id: string, fields: Partial<Project>) => {
     server = { ...server, ...fields, id, tagIds: new Set(fields.tagIds ?? server.tagIds) };
@@ -145,4 +165,46 @@ test("removes a task through the task list", async () => {
   expect((wrapper.findComponent(ProjectEditStub).props("modelValue") as Project).tagIds).toEqual(
     new Set(["l1"]),
   );
+});
+
+test("a project load that lands after a task tag change doesn't undo it", async () => {
+  // The cached project shows while the detailed one loads.
+  await useProjectsStore().updateProject(server);
+  const stale = { ...server, tagIds: new Set(server.tagIds) };
+  let finishLoad: (project: Project) => void = () => {};
+  getProject.mockImplementationOnce(() => new Promise((resolve) => (finishLoad = resolve)));
+  const wrapper = mountView();
+  await flushPromises();
+  const edit = wrapper.findComponent(ProjectEditStub);
+
+  edit.vm.$emit("task-tag-change", "tk9", true);
+  await flushPromises();
+  finishLoad(stale);
+  await flushPromises();
+
+  expect(wrapper.find(".saved-tags").text()).toBe("l1,tk9");
+  expect((edit.props("modelValue") as Project).tagIds).toEqual(new Set(["l1", "tk9"]));
+});
+
+test("a task tag change that finishes after moving to another project leaves it alone", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  let finishUpdate: () => void = () => {};
+  updateProject.mockImplementationOnce(
+    (id: string, fields: Partial<Project>) =>
+      new Promise((resolve) => (finishUpdate = () => resolve({ ...server, ...fields, id }))),
+  );
+
+  wrapper.findComponent(ProjectEditStub).vm.$emit("task-tag-change", "tk9", true);
+  await flushPromises();
+  router.route.params.id = "p2";
+  await flushPromises();
+  finishUpdate();
+  await flushPromises();
+
+  expect(wrapper.find(".saved-tags").text()).toBe("l7");
+  expect(wrapper.findComponent(ProjectEditStub).props("modelValue")).toMatchObject({
+    id: "p2",
+    tagIds: new Set(["l7"]),
+  });
 });
