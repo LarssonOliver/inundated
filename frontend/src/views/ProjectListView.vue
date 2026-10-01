@@ -9,9 +9,11 @@
       <div class="project-card" :class="{ archived: project.archived }">
         <div class="color-bar" :style="{ backgroundColor: project.color }">
           <div class="project-item">
-            <router-link class="project-name" :to="`/projects/${project.id}`">
-              {{ project.name }}
-            </router-link>
+            <TagLink
+              class="project-name"
+              :tag="projectTagPreview(project)"
+              :to="`/projects/${project.id}`"
+            />
             <TagListEmbedded v-model="project.tagIds" :hide-owner-kinds="['task']" read-only />
           </div>
         </div>
@@ -40,7 +42,9 @@ import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useArchivableList } from "@/composables/useArchivableList";
+import type { Project, Tag } from "@/model";
 
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
@@ -57,6 +61,19 @@ const { showArchived, sorted: sortedProjects } = useArchivableList(
 );
 
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
+
+// The project's own project tag, built from the project rather than
+// fetched: a project tag takes its name and color from its project, so
+// the pill is right without a request per row and follows edits at once.
+function projectTagPreview(project: Project): Tag {
+  return {
+    id: project.tagId ?? project.id,
+    name: project.name,
+    color: project.color,
+    archived: project.archived,
+    owner: { kind: "project", id: project.id },
+  };
+}
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
 </script>
@@ -128,10 +145,7 @@ input[type="button"]:hover {
 }
 
 .project-name {
-  font-weight: 600;
-  margin: 0 2em 0 1em;
-  font-size: 1.1em;
-  align-content: center;
-  padding: 0 0.5em;
+  margin: 0 1.5em 0 0.5em;
+  align-self: center;
 }
 </style>

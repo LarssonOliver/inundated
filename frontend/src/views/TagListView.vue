@@ -9,10 +9,7 @@
       <div class="tag-card" :class="{ archived: tag.archived }">
         <div class="color-bar" :style="{ backgroundColor: tag.color }">
           <div class="tag-item">
-            <router-link class="tag-name" :to="`/tags/${tag.id}`">
-              {{ tag.name }}
-            </router-link>
-            <TagItem :tag="tag" />
+            <TagLink class="tag-name" :tag="tag" :to="`/tags/${tag.id}`" />
           </div>
         </div>
       </div>
@@ -41,7 +38,7 @@ import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useArchivableList } from "@/composables/useArchivableList";
 
-import TagItem from "@/components/tags/TagItem.vue";
+import TagLink from "@/components/tags/TagLink.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 
@@ -127,10 +124,7 @@ input[type="button"]:hover {
 }
 
 .tag-name {
-  font-weight: 600;
-  margin: 0 2em 0 1em;
-  font-size: 1.1em;
-  align-content: center;
-  padding: 0 0.5em;
+  margin-left: 0.5em;
+  align-self: center;
 }
 </style>

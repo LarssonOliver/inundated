@@ -21,6 +21,7 @@ declare module 'vue' {
     SkeletonLoader: typeof import('./src/components/SkeletonLoader.vue')['default']
     TagEdit: typeof import('./src/components/tags/TagEdit.vue')['default']
     TagItem: typeof import('./src/components/tags/TagItem.vue')['default']
+    TagLink: typeof import('./src/components/tags/TagLink.vue')['default']
     TagListEmbedded: typeof import('./src/components/tags/TagListEmbedded.vue')['default']
     TagStats: typeof import('./src/components/tags/TagStats.vue')['default']
     TaskCheckbox: typeof import('./src/components/inputs/TaskCheckbox.vue')['default']

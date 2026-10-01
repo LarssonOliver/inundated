@@ -35,9 +35,7 @@
         @keydown.escape="cancelName"
       />
       <template v-else>
-        <router-link class="task-name-link" :to="`/tasks/${task.id}`">
-          <TagItem :tag="taskTagPreview" />
-        </router-link>
+        <TagLink class="task-name-link" :tag="taskTagPreview" :to="`/tasks/${task.id}`" />
         <button
           class="field-trigger name-edit-btn"
           title="Rename"
@@ -168,7 +166,7 @@ import {
 } from "@/helpers/dates";
 import { nord10 } from "@/helpers/nord";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
-import TagItem from "@/components/tags/TagItem.vue";
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
 
@@ -392,26 +390,6 @@ function startEditTags() {
   display: flex;
   align-items: center;
   gap: 0.3em;
-}
-
-/* Neutralizes the global `a` styling (padding, hover background) so the
-   pill inside - the only thing providing this link's visuals - isn't
-   doubled up with a mismatched box around it. */
-.task-name-link {
-  padding: 0;
-  border-radius: var(--radius-md);
-  color: inherit;
-  transition: opacity var(--transition-fast);
-}
-
-.task-name-link:hover,
-.task-name-link:focus {
-  background-color: transparent;
-  opacity: 0.8;
-}
-
-.task-name-link:focus-visible {
-  box-shadow: var(--focus-ring);
 }
 
 .name-edit-btn,
