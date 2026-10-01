@@ -483,7 +483,7 @@ test("hides pills of hidden owner kinds but keeps them in the model", async () =
   expect(emitted?.[emitted.length - 1]?.[0]).toEqual(new Set(["task-tag", "project-tag"]));
 });
 
-test("neither offers nor creates tags of hidden owner kinds", async () => {
+test("still offers tags of hidden owner kinds that ownerKinds includes", async () => {
   listTagsPaginated.mockResolvedValue(emptyPage());
   searchTags.mockResolvedValue([
     tag({ id: "label", name: "web label" }),
@@ -491,7 +491,7 @@ test("neither offers nor creates tags of hidden owner kinds", async () => {
   ]);
 
   const wrapper = mount(TagListEmbedded, {
-    props: { modelValue: new Set<string>(), createOwners: ["task"], hideOwnerKinds: ["task"] },
+    props: { modelValue: new Set<string>(), ownerKinds: ["task"], hideOwnerKinds: ["task"] },
   });
   await flushPromises();
 
@@ -500,14 +500,7 @@ test("neither offers nor creates tags of hidden owner kinds", async () => {
   await input.setValue("web");
   await settleSearch();
 
-  // Picking a task tag here would make it vanish at once.
-  expect(searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "project"]);
-  expect(wrapper.text()).toContain("web label");
-  expect(wrapper.text()).not.toContain("web task");
-
-  // Likewise for creating one, even though createOwners allows it.
-  await input.setValue("#web");
-  await settleSearch();
-  expect(searchTags).toHaveBeenLastCalledWith("#web", ["label"]);
-  expect(wrapper.find('[data-testid="create-row"]').exists()).toBe(false);
+  // The page shows a picked task elsewhere (the project page's task list).
+  expect(searchTags).toHaveBeenCalledExactlyOnceWith("web", ["label", "task"]);
+  expect(wrapper.text()).toContain("#web task");
 });
