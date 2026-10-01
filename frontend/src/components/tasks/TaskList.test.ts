@@ -16,8 +16,14 @@ vi.mock("@/api", async (importOriginal) => ({
   tasksApi: { listAllTasks, updateTask, moveTask },
 }));
 vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten: vi.fn() }) }));
+// Passes through to the real move helpers, counting their calls.
+vi.mock("@/helpers/taskMoves", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/helpers/taskMoves")>();
+  return { ...original, shiftTarget: vi.fn(original.shiftTarget) };
+});
 
 import TaskList from "./TaskList.vue";
+import { shiftTarget } from "@/helpers/taskMoves";
 
 // Ranks follow ids, so the listed order is easy to read off them.
 const task = (overrides: Partial<Task> & { id: string }): Task => ({
@@ -246,4 +252,13 @@ test("shows the empty text only when nothing is listed, loading or failed", () =
   const failed = mountList(fakeSource([], { loadFailed: ref(true) }));
   expect(failed.find(".empty").exists()).toBe(false);
   expect(failed.find(".error").text()).toBe("Couldn't load the tasks.");
+});
+
+test("doesn't work out the move buttons again while typing a new task's name", async () => {
+  const wrapper = mountList(fakeSource([task({ id: "a" }), task({ id: "b" })]));
+  vi.mocked(shiftTarget).mockClear();
+
+  await wrapper.find('input[aria-label="New task"]').setValue("Blog post");
+
+  expect(shiftTarget).not.toHaveBeenCalled();
 });

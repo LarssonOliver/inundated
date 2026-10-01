@@ -33,10 +33,10 @@
         :task="task"
         :depth="depth"
         :disabled="movingTaskId !== null"
-        :can-shift-up="!!shiftTarget(section.rows, task.id, -1)"
-        :can-shift-down="!!shiftTarget(section.rows, task.id, 1)"
-        :can-indent="!!indentTarget(section.rows, task.id)"
-        :can-outdent="!!outdentWithinList(section.rows, task)"
+        :can-shift-up="moveButtons.get(task.id)?.up ?? false"
+        :can-shift-down="moveButtons.get(task.id)?.down ?? false"
+        :can-indent="moveButtons.get(task.id)?.indent ?? false"
+        :can-outdent="moveButtons.get(task.id)?.outdent ?? false"
         :removable="source.canRemove?.(task) ?? false"
         :is-overdue="isTaskOverdue(task)"
         @toggle-closed="toggleClosed(task)"
@@ -107,6 +107,27 @@ const isEmpty = computed(
     openRows.value.length === 0 &&
     closedRows.value.length === 0,
 );
+
+// Which move buttons each listed task gets, worked out once per change to
+// the list: each takes a pass over its tree, so doing it on every render
+// (e.g. every keystroke in the add box) adds up on a long list.
+const moveButtons = computed(() => {
+  const buttons = new Map<
+    string,
+    { up: boolean; down: boolean; indent: boolean; outdent: boolean }
+  >();
+  for (const { rows } of sections.value) {
+    for (const { task } of rows) {
+      buttons.set(task.id, {
+        up: !!shiftTarget(rows, task.id, -1),
+        down: !!shiftTarget(rows, task.id, 1),
+        indent: !!indentTarget(rows, task.id),
+        outdent: !!outdentWithinList(rows, task),
+      });
+    }
+  }
+  return buttons;
+});
 
 /** Where outdenting places the task, unless that would take it out of the list. */
 function outdentWithinList(rows: readonly TreeRow[], task: Task): MoveTarget | null {
