@@ -211,13 +211,17 @@ function edit(task: Task, patch: TaskPatch) {
   return update(task, patch, "Couldn't save the change.");
 }
 
+// The source reloads once the task is out. A source may also report its own
+// failures instead of rejecting, as the project page does in its form.
 async function remove(task: Task) {
   errorMessage.value = "";
   try {
     await props.source.remove?.(task);
   } catch {
     errorMessage.value = "Couldn't remove the task.";
+    return;
   }
+  emit("changed");
 }
 
 async function addTask() {

@@ -274,3 +274,19 @@ test("says there are no open tasks while closed ones are hidden", async () => {
 
   expect(wrapper.find(".empty").text()).toBe("Nothing here.");
 });
+
+test("tells the page after removing a task, and says so when it can't", async () => {
+  const remove = vi.fn(async () => {});
+  const source = fakeSource([task({ id: "a" })], { canRemove: () => true, remove });
+  const wrapper = mountList(source);
+
+  await rowNamed(wrapper, "a").find(".remove").trigger("click");
+  await flushPromises();
+  expect(wrapper.emitted("changed")).toHaveLength(1);
+
+  remove.mockRejectedValueOnce(new Error("offline"));
+  await rowNamed(wrapper, "a").find(".remove").trigger("click");
+  await flushPromises();
+  expect(wrapper.find(".error").text()).toBe("Couldn't remove the task.");
+  expect(wrapper.emitted("changed")).toHaveLength(1);
+});
