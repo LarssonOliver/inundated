@@ -10,6 +10,7 @@
           v-model="draft"
           :is-new-project="isNewProject"
           :error-message="errorMessage"
+          :pending-tag-ids="pendingTaskTagIds"
           @create="createProject"
           @save="saveProject"
           @delete="deleteProject"
@@ -57,6 +58,9 @@ const errorMessage = ref("");
 // Saves and task tag changes run one at a time, so each starts from the
 // project the one before it saved.
 const enqueueWrite = createSerialQueue();
+// Task tags whose addition hasn't landed yet, so the form's picker doesn't
+// offer them again meanwhile.
+const pendingTaskTagIds = ref(new Set<string>());
 
 function showProject(project: Project) {
   saved.value = project;
@@ -118,7 +122,8 @@ function setTaskTag(tagId: string, present: boolean) {
   // requests run; the change is for the project shown now, and must never
   // land on another one.
   const projectId = saved.value.id;
-  return enqueueWrite(async () => {
+  if (present) pendingTaskTagIds.value.add(tagId);
+  const change = enqueueWrite(async () => {
     if (!isShowing(projectId)) return;
     errorMessage.value = "";
     let updated: Project;
@@ -151,6 +156,9 @@ function setTaskTag(tagId: string, present: boolean) {
     } catch {
       // Keeps the reply, without fresh totals.
     }
+  });
+  return change.finally(() => {
+    if (present) pendingTaskTagIds.value.delete(tagId);
   });
 }
 

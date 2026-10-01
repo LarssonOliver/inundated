@@ -26,13 +26,14 @@ const TagPickerStub = {
 function mountEdit(
   archived = false,
   errorMessage?: string,
-  { tagIds = new Set<string>(), isNewProject = false } = {},
+  { tagIds = new Set<string>(), isNewProject = false, pendingTagIds = new Set<string>() } = {},
 ) {
   return mount(ProjectEdit, {
     props: {
       modelValue: { ...newProjectWithDefaults(), id: "p1", name: "Existing", archived, tagIds },
       errorMessage,
       isNewProject,
+      pendingTagIds,
     },
     global: {
       stubs: { TagListEmbedded: TagPickerStub },
@@ -106,4 +107,18 @@ test("hides task tags in the picker, where the task list shows them", () => {
 test("on a new project, shows task tags in the picker, since there's no task list yet", () => {
   const picker = mountEdit(false, undefined, { isNewProject: true }).findComponent(TagPickerStub);
   expect(picker.attributes("hide-owner-kinds")).toBe("");
+});
+
+test("doesn't offer a task tag again while it's being added", () => {
+  const wrapper = mountEdit(false, undefined, {
+    tagIds: new Set(["l1"]),
+    pendingTagIds: new Set(["tk9"]),
+  });
+  const picker = wrapper.findComponent(TagPickerStub);
+  expect(picker.props("modelValue")).toEqual(new Set(["l1", "tk9"]));
+
+  picker.vm.$emit("update:modelValue", new Set(["l1", "tk9", "l2"]));
+
+  expect(wrapper.emitted("task-tag-change")).toBeUndefined();
+  expect(wrapper.props("modelValue")!.tagIds).toEqual(new Set(["l1", "l2"]));
 });

@@ -54,6 +54,11 @@ const model = defineModel<Project>({ default: newProjectWithDefaults() });
 const props = defineProps<{
   isNewProject?: boolean;
   errorMessage?: string;
+  /**
+   * Task tags being added to the project right now, which the picker treats
+   * as picked already so it doesn't offer them again meanwhile.
+   */
+  pendingTagIds?: ReadonlySet<string>;
 }>();
 
 const emit = defineEmits<{
@@ -73,10 +78,13 @@ const tagsStore = useTagsStore();
 // isn't on the server yet and has no task list, so there every tag waits for
 // Create and shows as a pill.
 const pickerTagIds = computed({
-  get: () => model.value.tagIds,
+  get: () =>
+    props.pendingTagIds?.size
+      ? new Set([...model.value.tagIds, ...props.pendingTagIds])
+      : model.value.tagIds,
   set: (next: Set<string>) => {
-    const current = model.value.tagIds;
-    const kept = new Set(current);
+    const current = pickerTagIds.value;
+    const kept = new Set(model.value.tagIds);
     for (const id of next) if (!current.has(id)) applyTagChange(id, true, kept);
     for (const id of current) if (!next.has(id)) applyTagChange(id, false, kept);
     model.value.tagIds = kept;

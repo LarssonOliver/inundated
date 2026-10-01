@@ -24,7 +24,7 @@ import { useProjectsStore } from "@/stores/projects";
 
 const ProjectEditStub = {
   name: "ProjectEdit",
-  props: ["modelValue", "isNewProject", "errorMessage"],
+  props: ["modelValue", "isNewProject", "errorMessage", "pendingTagIds"],
   emits: ["save", "create", "delete", "task-tag-change", "update:modelValue"],
   template: "<p class='error'>{{ errorMessage }}</p>",
 };
@@ -207,4 +207,23 @@ test("a task tag change that finishes after moving to another project leaves it 
     id: "p2",
     tagIds: new Set(["l7"]),
   });
+});
+
+test("marks a task tag as being added until its save lands", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  let finishUpdate: () => void = () => {};
+  updateProject.mockImplementationOnce(
+    (id: string, fields: Partial<Project>) =>
+      new Promise((resolve) => (finishUpdate = () => resolve({ ...server, ...fields, id }))),
+  );
+  const edit = wrapper.findComponent(ProjectEditStub);
+
+  edit.vm.$emit("task-tag-change", "tk9", true);
+  await flushPromises();
+  expect(edit.props("pendingTagIds")).toEqual(new Set(["tk9"]));
+
+  finishUpdate();
+  await flushPromises();
+  expect(edit.props("pendingTagIds")).toEqual(new Set());
 });
