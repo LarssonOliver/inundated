@@ -10,7 +10,11 @@
     <input v-model="model.timeBudgetHours" type="number" />
 
     <p class="field-label">Tags</p>
-    <TagListEmbedded v-model="pickerTagIds" :owner-kinds="['task']" :hide-owner-kinds="['task']" />
+    <TagListEmbedded
+      v-model="pickerTagIds"
+      :owner-kinds="['task']"
+      :hide-owner-kinds="isNewProject ? [] : ['task']"
+    />
 
     <div class="button-container" v-if="!props.isNewProject">
       <button class="btn-info" @click="$emit('save', model)">Save</button>
@@ -66,7 +70,8 @@ const tagsStore = useTagsStore();
 // The project's task tags aren't shown in the picker but as its task list,
 // and change on the server right away (see ProjectView's setTaskTag), so
 // the task list shows them at once; other tags wait for Save. A new project
-// isn't on the server yet, so there every tag waits for Create.
+// isn't on the server yet and has no task list, so there every tag waits for
+// Create and shows as a pill.
 const pickerTagIds = computed({
   get: () => model.value.tagIds,
   set: (next: Set<string>) => {

@@ -102,3 +102,8 @@ test("hides task tags in the picker, where the task list shows them", () => {
   const picker = mountEdit().findComponent(TagPickerStub);
   expect(picker.attributes("hide-owner-kinds")).toBe("task");
 });
+
+test("on a new project, shows task tags in the picker, since there's no task list yet", () => {
+  const picker = mountEdit(false, undefined, { isNewProject: true }).findComponent(TagPickerStub);
+  expect(picker.attributes("hide-owner-kinds")).toBe("");
+});
