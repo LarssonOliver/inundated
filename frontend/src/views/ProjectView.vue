@@ -7,19 +7,20 @@
     <div class="content">
       <div class="project-edit card">
         <ProjectEdit
-          v-model="project"
+          v-model="draft"
           :is-new-project="isNewProject"
           :error-message="errorMessage"
           @create="createProject"
           @save="saveProject"
           @delete="deleteProject"
+          @task-tag-change="setTaskTag"
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectTasks :project="project" />
+        <ProjectTasks :project="saved" @remove-task="(task) => setTaskTag(task.tagId, false)" />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectStats :project="project" />
+        <ProjectStats :project="saved" />
       </div>
     </div>
   </div>
@@ -36,6 +37,8 @@ import { useProjectsStore } from "@/stores/projects";
 import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
 import { ResponseError } from "@/api/generated";
+import { createSerialQueue } from "@/helpers/serialQueue";
+import type { Project } from "@/model";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -43,25 +46,31 @@ const route = useRoute();
 
 const isNewProject = computed(() => route.name === "New Project");
 
-// Reactive state
-const project = ref(newProjectWithDefaults());
+// The project as the server last returned it, which the task list and the
+// stats show, and the form's draft of it, which holds unsaved edits. Task
+// tags change on the server right away (see setTaskTag), so the task list
+// can show them without waiting for Save.
+const saved = ref(newProjectWithDefaults());
+const draft = ref(newProjectWithDefaults());
 const notFound = ref(false);
 const errorMessage = ref("");
+// Saves and task tag changes run one at a time, so each starts from the
+// project the one before it saved.
+const enqueueWrite = createSerialQueue();
 
-async function updateProject(id: string) {
+function showProject(project: Project) {
+  saved.value = project;
+  draft.value = { ...project, tagIds: new Set(project.tagIds) };
+}
+
+async function loadProject(id: string) {
   errorMessage.value = "";
-  // First try to get the project from the store if it's cached
-  const storeResult = projectsStore.getProjectById(id);
-  if (storeResult) {
-    project.value = storeResult;
-  }
-
-  // Get detailed project info from the server to ensure we have the latest data (including total time)
+  // First show the cached project, if any, while the detailed one (with
+  // total time) loads.
+  const cached = projectsStore.getProjectById(id);
+  if (cached) showProject(cached);
   try {
-    const result = await projectsStore.fetchDetailedProjectById(id);
-    if (result) {
-      project.value = result;
-    }
+    showProject(await projectsStore.fetchDetailedProjectById(id));
   } catch {
     notFound.value = true;
   }
@@ -75,25 +84,70 @@ watch(
       return;
     }
 
-    updateProject(newId as string);
+    void loadProject(newId as string);
   },
   { immediate: true },
 );
 
-async function saveProject() {
-  await projectsStore.updateProject(project.value);
-  await updateProject(project.value.id);
+function saveProject() {
+  return enqueueWrite(async () => {
+    await projectsStore.updateProject(draft.value);
+    await loadProject(draft.value.id);
+  });
+}
+
+/**
+ * Adds a task's own tag to the project, or removes it, on the server right
+ * away. Only that tag changes: the rest is sent as last saved, so unsaved
+ * edits stay in the draft for Save, which then keeps the change.
+ */
+function setTaskTag(tagId: string, present: boolean) {
+  return enqueueWrite(async () => {
+    errorMessage.value = "";
+    let updated: Project;
+    try {
+      updated = await projectsStore.updateProject({
+        ...saved.value,
+        tagIds: withTag(saved.value.tagIds, tagId, present),
+      });
+    } catch {
+      errorMessage.value = present
+        ? "Couldn't add the task to the project."
+        : "Couldn't remove the task from the project.";
+      return;
+    }
+    // The reply has no time totals, so the old ones show until the
+    // detailed project, whose task time the change moves, is refetched.
+    saved.value = {
+      ...updated,
+      totalTimeMs: saved.value.totalTimeMs,
+      taskTimeMs: saved.value.taskTimeMs,
+    };
+    draft.value.tagIds = withTag(draft.value.tagIds, tagId, present);
+    try {
+      saved.value = await projectsStore.fetchDetailedProjectById(updated.id);
+    } catch {
+      // Keeps the reply, without fresh totals.
+    }
+  });
+}
+
+function withTag(tagIds: Set<string>, tagId: string, present: boolean): Set<string> {
+  const next = new Set(tagIds);
+  if (present) next.add(tagId);
+  else next.delete(tagId);
+  return next;
 }
 
 async function createProject() {
-  const newProject = await projectsStore.createProject(project.value);
+  const newProject = await projectsStore.createProject(draft.value);
   router.push({ name: "Project", params: { id: newProject.id } });
 }
 
 async function deleteProject() {
   errorMessage.value = "";
   try {
-    await projectsStore.deleteProject(project.value.id);
+    await projectsStore.deleteProject(saved.value.id);
   } catch (error) {
     errorMessage.value =
       error instanceof ResponseError && error.response.status === 409

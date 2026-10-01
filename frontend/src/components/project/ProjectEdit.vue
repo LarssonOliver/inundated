@@ -10,7 +10,7 @@
     <input v-model="model.timeBudgetHours" type="number" />
 
     <p class="field-label">Tags</p>
-    <TagListEmbedded v-model="model.tagIds" :owner-kinds="['task']" />
+    <TagListEmbedded v-model="pickerTagIds" :owner-kinds="['task']" :hide-owner-kinds="['task']" />
 
     <div class="button-container" v-if="!props.isNewProject">
       <button class="btn-info" @click="$emit('save', model)">Save</button>
@@ -40,7 +40,9 @@ import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import ColorInput from "@/components/inputs/ColorInput.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
 import type { Project } from "@/model";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { isOwnedBy } from "@/helpers/tagOwners";
+import { useTagsStore } from "@/stores/tags";
 import { newProjectWithDefaults } from "@/helpers/project";
 
 const model = defineModel<Project>({ default: newProjectWithDefaults() });
@@ -54,9 +56,44 @@ const emit = defineEmits<{
   (e: "create", tag: Project): void;
   (e: "save", tag: Project): void;
   (e: "delete", tag: Project): void;
+  (e: "task-tag-change", tagId: string, present: boolean): void;
 }>();
 
 const showDeletionConfirmation = ref(false);
+
+const tagsStore = useTagsStore();
+
+// The project's task tags aren't shown in the picker but as its task list,
+// and change on the server right away (see ProjectView's setTaskTag), so
+// the task list shows them at once; other tags wait for Save. A new project
+// isn't on the server yet, so there every tag waits for Create.
+const pickerTagIds = computed({
+  get: () => model.value.tagIds,
+  set: (next: Set<string>) => {
+    const current = model.value.tagIds;
+    const kept = new Set(current);
+    for (const id of next) if (!current.has(id)) applyTagChange(id, true, kept);
+    for (const id of current) if (!next.has(id)) applyTagChange(id, false, kept);
+    model.value.tagIds = kept;
+  },
+});
+
+function applyTagChange(id: string, present: boolean, kept: Set<string>) {
+  if (!props.isNewProject && isTaskTag(id)) {
+    emit("task-tag-change", id, present);
+    return;
+  }
+  if (present) kept.add(id);
+  else kept.delete(id);
+}
+
+// The picker has loaded every tag before it reaches the model (a search
+// result, a created tag, or an assigned tag it resolved), so the tags store
+// knows its kind. One it somehow doesn't know is treated as a label.
+function isTaskTag(id: string): boolean {
+  const tag = tagsStore.getTagById(id);
+  return !!tag && isOwnedBy(tag, "task");
+}
 
 function toggleArchived() {
   model.value.archived = !model.value.archived;
