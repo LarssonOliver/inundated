@@ -201,6 +201,55 @@ describe("tasks store", () => {
     );
   });
 
+  it("computes a queued move's target only after the move before it has reloaded", async () => {
+    const events: string[] = [];
+    api.moveTask.mockResolvedValue(task({ id: "a" }));
+    const reload = vi.fn(async () => {
+      events.push("reload");
+    });
+
+    const store = useStore();
+    const first = store.moveTask(
+      "a",
+      () => {
+        events.push("target a");
+        return { afterTaskId: "b" };
+      },
+      { reload },
+    );
+    const second = store.moveTask(
+      "c",
+      () => {
+        events.push("target c");
+        return { parentId: "p", afterTaskId: "a" };
+      },
+      { reload },
+    );
+    await Promise.all([first, second]);
+
+    expect(events).toEqual(["target a", "reload", "target c", "reload"]);
+    expect(api.moveTask).toHaveBeenNthCalledWith(1, "a", undefined, "b");
+    expect(api.moveTask).toHaveBeenNthCalledWith(2, "c", "p", "a");
+    expect(api.listAllTasks).not.toHaveBeenCalled();
+  });
+
+  it("skips a move whose target is null", async () => {
+    const reload = vi.fn(async () => {});
+    await useStore().moveTask("a", () => null, { reload });
+
+    expect(api.moveTask).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads the full list after a move by default", async () => {
+    api.moveTask.mockResolvedValue(task({ id: "a" }));
+    api.listAllTasks.mockResolvedValue([task({ id: "a" })]);
+
+    await useStore().moveTask("a", () => ({ afterTaskId: "b" }));
+
+    expect(api.listAllTasks).toHaveBeenCalledOnce();
+  });
+
   it("serializes concurrent shiftTask calls so the second sees the first's applied move", async () => {
     api.listAllTasks
       .mockResolvedValueOnce([

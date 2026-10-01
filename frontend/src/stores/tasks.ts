@@ -1,6 +1,8 @@
 import { tasksApi, type NewTask, type TasksApi } from "@/api";
 import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
+import { createSerialQueue } from "@/helpers/serialQueue";
+import type { MoveTarget } from "@/helpers/taskMoves";
 import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
 import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
@@ -258,31 +260,32 @@ function createTasksStore(api: TasksApi) {
       await moveTaskRaw(id, parent.parentId, parent.id);
     }
 
-    // Serializes moveTask/shiftTask so a second call always sees the first
-    // one's fully-applied result (both its server move and the refetch that
-    // follows) before computing its own target or re-fetching - otherwise a
-    // second move can compute its target from a stale local order, and its
-    // own fetchTasks() call can be deduped away (as a duplicate of the
+    // Serializes moves so a second one always sees the first one's fully
+    // applied result (both its server move and the reload that follows)
+    // before computing its own target or reloading - otherwise a second
+    // move can compute its target from a stale order, and its own
+    // fetchTasks() call can be deduped away (as a duplicate of the
     // still-in-flight first one) by useSupersededFetch, silently dropping
     // its result.
-    let taskMoveQueue: Promise<void> = Promise.resolve();
-
-    function serializeTaskMove<T>(fn: () => Promise<T>): Promise<T> {
-      const run = taskMoveQueue.then(fn, fn);
-      taskMoveQueue = run.then(
-        () => undefined,
-        () => undefined,
-      );
-      return run;
-    }
+    const serializeTaskMove = createSerialQueue();
 
     /**
-     * Moves a task under parentId (top level when unset), directly after
-     * afterTaskId (first when unset). Siblings may be re-ranked, so the list
-     * is reloaded afterwards.
+     * Moves a task to where target says, then reloads: the full list, or
+     * reload when given (a list that loads its own tasks). target runs when
+     * this move's turn comes, after the move before it has reloaded, so it
+     * sees the order that move left; a null target skips the move.
      */
-    function moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
-      return serializeTaskMove(() => moveTaskRaw(id, parentId, afterTaskId));
+    function moveTask(
+      id: string,
+      target: () => MoveTarget | null,
+      { reload = fetchTasks }: { reload?: () => Promise<void> } = {},
+    ): Promise<void> {
+      return serializeTaskMove(async () => {
+        const to = target();
+        if (!to) return;
+        await api.moveTask(id, to.parentId, to.afterTaskId);
+        await reload();
+      });
     }
 
     /**
