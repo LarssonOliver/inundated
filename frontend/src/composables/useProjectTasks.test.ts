@@ -133,3 +133,11 @@ test("creates a task carrying the project tag", async () => {
 
   expect(createTask).toHaveBeenCalledWith({ name: "Blog post", tagIds: new Set(["pt1"]) });
 });
+
+test("offers no way to create a task until the project has a project tag", () => {
+  const { current, source } = setup(project({ tagId: undefined }));
+  expect(source.create).toBeUndefined();
+
+  current.value = project();
+  expect(source.create).toBeTypeOf("function");
+});

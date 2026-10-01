@@ -68,11 +68,14 @@ export function useProjectTasks(
     isLoading,
     loadFailed,
     reload,
-    // A new task joins the project by carrying its project tag.
-    create: async (name) => {
+    // A new task joins the project by carrying its project tag, so there's
+    // no way to create one (and TaskList shows no add box) without it.
+    get create() {
       const projectTagId = project().tagId;
-      if (!projectTagId) throw new Error("Project has no project tag");
-      await tasksStore.createTask({ name, tagIds: new Set([projectTagId]) });
+      if (!projectTagId) return undefined;
+      return async (name: string) => {
+        await tasksStore.createTask({ name, tagIds: new Set([projectTagId]) });
+      };
     },
     // A task in the project only through its parent leaves it when moved
     // out from under a listed task.
