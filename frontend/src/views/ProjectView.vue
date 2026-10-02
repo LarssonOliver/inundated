@@ -18,7 +18,11 @@
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectTasks :project="saved" @remove-task="(task) => setTaskTag(task.tagId, false)" />
+        <ProjectTasks
+          :project="saved"
+          @remove-task="(task) => setTaskTag(task.tagId, false)"
+          @changed="refreshTotals"
+        />
       </div>
       <div v-if="!isNewProject" class="card">
         <ProjectStats :project="saved" />
@@ -175,6 +179,23 @@ function setTaskTag(tagId: string, present: boolean) {
   return change.finally(() => {
     if (present) pendingTaskTagIds.value.delete(tagId);
   });
+}
+
+/**
+ * Refetches the project's time totals after its task list changed something
+ * that moves them, e.g. a task created or retagged into the project. Only the
+ * totals change, so the form keeps any unsaved edits.
+ */
+async function refreshTotals() {
+  const projectId = saved.value.id;
+  const token = loadToken;
+  const detailed = await projectsStore.fetchDetailedProjectById(projectId).catch(() => null);
+  if (!detailed || token !== loadToken || !isShowing(projectId)) return;
+  saved.value = {
+    ...saved.value,
+    totalTimeMs: detailed.totalTimeMs,
+    taskTimeMs: detailed.taskTimeMs,
+  };
 }
 
 function withTag(tagIds: Set<string>, tagId: string, present: boolean): Set<string> {

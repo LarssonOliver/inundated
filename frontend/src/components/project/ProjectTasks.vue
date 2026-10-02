@@ -5,6 +5,7 @@
     add-placeholder="Add a task to this project..."
     empty-text="No tasks yet. Tasks join this project when they carry one of its tags, or when their own tag is added to the project."
     empty-open-text="No open tasks. Tasks join this project when they carry one of its tags, or when their own tag is added to the project."
+    @changed="emit('changed')"
   >
     <template #title>
       <div class="header">
@@ -35,8 +36,12 @@ const props = defineProps<{
   project: Project;
 }>();
 
-/** The page removes a task's own tag from the project (see ProjectView). */
-const emit = defineEmits<{ "remove-task": [task: Task] }>();
+const emit = defineEmits<{
+  /** The page removes a task's own tag from the project (see ProjectView). */
+  "remove-task": [task: Task];
+  /** A task changed in a way that can change the project's time totals. */
+  changed: [];
+}>();
 
 const settingsStore = useSettingsStore();
 const formatMs = useDurationFormat(() => settingsStore.settings);
