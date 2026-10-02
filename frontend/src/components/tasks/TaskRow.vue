@@ -126,10 +126,10 @@
 
     <div class="order-buttons">
       <button
-        v-if="removable"
+        v-if="removeLabel"
         class="icon-button"
-        title="Remove from project"
-        :aria-label="`Remove ${task.name} from project`"
+        :title="removeLabel"
+        :aria-label="`${removeLabel}: ${task.name}`"
         :disabled="disabled"
         @click="$emit('remove')"
       >
@@ -207,11 +207,11 @@ const props = withDefaults(
     canShiftUp?: boolean;
     /** False for the last of its listed siblings. */
     canShiftDown?: boolean;
-    /** Shows a "Remove from project" button, which emits remove. */
-    removable?: boolean;
+    /** Shows a remove button with this label, which emits remove. */
+    removeLabel?: string;
     isOverdue: boolean;
   }>(),
-  { canShiftUp: true, canShiftDown: true, removable: false },
+  { canShiftUp: true, canShiftDown: true },
 );
 
 const emit = defineEmits<{

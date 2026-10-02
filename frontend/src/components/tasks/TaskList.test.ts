@@ -52,7 +52,15 @@ function fakeSource(tasks: Task[], overrides: Partial<TaskListSource> = {}) {
 }
 
 const TaskRowStub = {
-  props: ["task", "disabled", "canShiftUp", "canShiftDown", "canIndent", "canOutdent", "removable"],
+  props: [
+    "task",
+    "disabled",
+    "canShiftUp",
+    "canShiftDown",
+    "canIndent",
+    "canOutdent",
+    "removeLabel",
+  ],
   emits: ["shift", "indent", "outdent", "toggle-closed", "ignore", "update", "remove"],
   template: `
     <div class="row">
@@ -62,7 +70,7 @@ const TaskRowStub = {
       <button class="indent" :disabled="disabled || !canIndent" @click="$emit('indent')" />
       <button class="outdent" :disabled="disabled || !canOutdent" @click="$emit('outdent')" />
       <button class="close" @click="$emit('toggle-closed')" />
-      <button v-if="removable" class="remove" @click="$emit('remove')" />
+      <button v-if="removeLabel" class="remove" :title="removeLabel" @click="$emit('remove')" />
     </div>`,
 };
 
@@ -198,6 +206,7 @@ test("offers removal only where the source allows it, and removes through the so
   const wrapper = mountList(source);
 
   expect(rowNamed(wrapper, "b").find(".remove").exists()).toBe(false);
+  expect(rowNamed(wrapper, "a").find(".remove").attributes("title")).toBe("Remove");
   await rowNamed(wrapper, "a").find(".remove").trigger("click");
   await flushPromises();
 
