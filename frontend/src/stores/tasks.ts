@@ -1,6 +1,8 @@
 import { tasksApi, type NewTask, type TasksApi } from "@/api";
 import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
+import { createSerialQueue } from "@/helpers/serialQueue";
+import type { MoveTarget } from "@/helpers/taskMoves";
 import { toLocalDay } from "@/helpers/dates";
 import type { Task } from "@/model";
 import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
@@ -92,17 +94,29 @@ function createTasksStore(api: TasksApi) {
       Array.from(tasks.value.values()).map(copyTask),
     );
 
+    // Numbers each fresh fetch, so its key matches no other fetch's.
+    let freshFetches = 0;
+
     /**
      * Fetches every task (closed ones too when includeClosed is set), with
-     * its total time, replacing the local list.
+     * its total time, replacing the local list. Joins a matching fetch
+     * already in flight unless fresh is set, as it must be after a write: a
+     * fetch sent before the write landed doesn't show it. Resolves once the
+     * list shows this fetch or a newer one that superseded it.
      */
-    async function fetchTasks(): Promise<void> {
-      const key = `all:${includeClosed.value}`;
+    async function fetchTasks({ fresh = false }: { fresh?: boolean } = {}): Promise<void> {
+      const key = `all:${includeClosed.value}` + (fresh ? `:${++freshFetches}` : "");
       await supersededFetch.run(key, async () => {
         const result = await api.listAllTasks({ includeClosed: includeClosed.value });
         if (supersededFetch.isStale(key)) return;
         tasks.value = new Map(result.map((task) => [task.id, task]));
       });
+      if (supersededFetch.isStale(key)) await supersededFetch.settled();
+    }
+
+    /** Reloads the list after a write (see fetchTasks). */
+    function reloadAfterWrite(): Promise<void> {
+      return fetchTasks({ fresh: true });
     }
 
     /**
@@ -126,15 +140,6 @@ function createTasksStore(api: TasksApi) {
       const task = await api.getTask(id, true);
       individuallyFetchedTasks.value.set(id, task);
       return copyTask(task);
-    }
-
-    /**
-     * Fetches a task's direct subtasks, closed ones included, bypassing the
-     * list's includeClosed filter.
-     */
-    async function fetchSubtasks(parentId: string): Promise<Task[]> {
-      const subtasks = await api.listAllTasks({ parentId, includeClosed: true });
-      return subtasks.map(copyTask).sort(compareByRank);
     }
 
     async function createTask(task: NewTask): Promise<Task> {
@@ -172,7 +177,7 @@ function createTasksStore(api: TasksApi) {
       if (tagWrite) void useTagsStore().ownerWritten(tagWrite);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
-        if (reloadList) await fetchTasks();
+        if (reloadList) await reloadAfterWrite();
         return copyTask(updated);
       }
 
@@ -198,108 +203,31 @@ function createTasksStore(api: TasksApi) {
       return await updateTask(id, { closed: false });
     }
 
-    async function moveTaskRaw(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
-      const moved = await api.moveTask(id, parentId, afterTaskId);
-      await fetchTasks();
-      return copyTask(moved);
-    }
-
-    async function shiftTaskRaw(id: string, delta: -1 | 1): Promise<void> {
-      const task = tasks.value.get(id);
-      if (!task) return;
-      // Open and closed tasks render as separate lists (see TaskListView), so
-      // moving one must only ever reorder it among same-status siblings.
-      const siblings = taskTree(readOnlyTasks.value)
-        .map((row) => row.task)
-        .filter((t) => t.parentId === task.parentId && t.closed === task.closed);
-      const index = siblings.findIndex((t) => t.id === id);
-      const target = index + delta;
-      if (index === -1 || target < 0 || target >= siblings.length) return;
-
-      // Moving up places it after the sibling two above (or first); moving
-      // down places it after the next sibling.
-      const others = siblings.filter((t) => t.id !== id);
-      const after = target === 0 ? undefined : others[target - 1];
-      await moveTaskRaw(id, task.parentId, after?.id);
-    }
+    // Serializes moves so a second one always sees the first one's fully
+    // applied result (both its server move and the reload that follows)
+    // before computing its own target - otherwise it can compute its target
+    // from a stale order.
+    const serializeTaskMove = createSerialQueue();
 
     /**
-     * Makes a task the last child of the task immediately above it (within
-     * its own open/closed section, depth-first order) - a standard outliner
-     * "indent". A no-op if there's no row above it.
+     * Moves a task to where target says, then reloads: the full list, or
+     * reload when given (a list that loads its own tasks). target runs when
+     * this move's turn comes, after the move before it has reloaded, so it
+     * sees the order that move left; a null target skips the move. Resolves
+     * to whether the task moved.
      */
-    async function indentTaskRaw(id: string): Promise<void> {
-      const task = tasks.value.get(id);
-      if (!task) return;
-      const sectionRows = taskTree(readOnlyTasks.value.filter((t) => t.closed === task.closed));
-      const index = sectionRows.findIndex((row) => row.task.id === id);
-      if (index <= 0) return;
-
-      const newParent = sectionRows[index - 1].task;
-      const lastChild = sectionRows
-        .map((row) => row.task)
-        .filter((t) => t.parentId === newParent.id && t.id !== id)
-        .at(-1);
-      await moveTaskRaw(id, newParent.id, lastChild?.id);
-    }
-
-    /**
-     * Makes a task a sibling of its current parent, placed directly after
-     * it - a standard outliner "outdent". A no-op on a top-level task.
-     */
-    async function outdentTaskRaw(id: string): Promise<void> {
-      const task = tasks.value.get(id);
-      if (!task?.parentId) return;
-      const parent = tasks.value.get(task.parentId);
-      // Closing only cascades parent -> child, so a closed task can have an
-      // open parent; outdenting must still only ever place it among
-      // same-status siblings (see shiftTaskRaw/indentTaskRaw above).
-      if (!parent || parent.closed !== task.closed) return;
-      await moveTaskRaw(id, parent.parentId, parent.id);
-    }
-
-    // Serializes moveTask/shiftTask so a second call always sees the first
-    // one's fully-applied result (both its server move and the refetch that
-    // follows) before computing its own target or re-fetching - otherwise a
-    // second move can compute its target from a stale local order, and its
-    // own fetchTasks() call can be deduped away (as a duplicate of the
-    // still-in-flight first one) by useSupersededFetch, silently dropping
-    // its result.
-    let taskMoveQueue: Promise<void> = Promise.resolve();
-
-    function serializeTaskMove<T>(fn: () => Promise<T>): Promise<T> {
-      const run = taskMoveQueue.then(fn, fn);
-      taskMoveQueue = run.then(
-        () => undefined,
-        () => undefined,
-      );
-      return run;
-    }
-
-    /**
-     * Moves a task under parentId (top level when unset), directly after
-     * afterTaskId (first when unset). Siblings may be re-ranked, so the list
-     * is reloaded afterwards.
-     */
-    function moveTask(id: string, parentId?: string, afterTaskId?: string): Promise<Task> {
-      return serializeTaskMove(() => moveTaskRaw(id, parentId, afterTaskId));
-    }
-
-    /**
-     * Moves a task one step up or down among its siblings in the list.
-     */
-    function shiftTask(id: string, delta: -1 | 1): Promise<void> {
-      return serializeTaskMove(() => shiftTaskRaw(id, delta));
-    }
-
-    /** See indentTaskRaw. */
-    function indentTask(id: string): Promise<void> {
-      return serializeTaskMove(() => indentTaskRaw(id));
-    }
-
-    /** See outdentTaskRaw. */
-    function outdentTask(id: string): Promise<void> {
-      return serializeTaskMove(() => outdentTaskRaw(id));
+    function moveTask(
+      id: string,
+      target: () => MoveTarget | null,
+      { reload = reloadAfterWrite }: { reload?: () => Promise<void> } = {},
+    ): Promise<boolean> {
+      return serializeTaskMove(async () => {
+        const to = target();
+        if (!to) return false;
+        await api.moveTask(id, to.parentId, to.afterTaskId);
+        await reload();
+        return true;
+      });
     }
 
     /**
@@ -314,7 +242,7 @@ function createTasksStore(api: TasksApi) {
         cascades: true,
       });
       individuallyFetchedTasks.value.delete(id);
-      await fetchTasks();
+      await reloadAfterWrite();
     }
 
     return {
@@ -325,16 +253,12 @@ function createTasksStore(api: TasksApi) {
       fetchTasks,
       getTaskById,
       fetchDetailedTaskById,
-      fetchSubtasks,
       createTask,
       createTaskFromName,
       updateTask,
       closeTask,
       reopenTask,
       moveTask,
-      shiftTask,
-      indentTask,
-      outdentTask,
       deleteTask,
     };
   });

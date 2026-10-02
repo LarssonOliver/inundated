@@ -9,10 +9,12 @@
       <div class="project-card" :class="{ archived: project.archived }">
         <div class="color-bar" :style="{ backgroundColor: project.color }">
           <div class="project-item">
-            <router-link class="project-name" :to="`/projects/${project.id}`">
-              {{ project.name }}
-            </router-link>
-            <TagListEmbedded v-model="project.tagIds" read-only />
+            <TagLink
+              class="project-name"
+              :tag="projectTagPreview(project)"
+              :to="`/projects/${project.id}`"
+            />
+            <TagListEmbedded v-model="project.tagIds" :hide-owner-kinds="['task']" read-only />
           </div>
         </div>
       </div>
@@ -40,7 +42,9 @@ import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useArchivableList } from "@/composables/useArchivableList";
+import { projectTagPreview } from "@/helpers/project";
 
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import SkeletonLoader from "@/components/SkeletonLoader.vue";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
@@ -128,10 +132,7 @@ input[type="button"]:hover {
 }
 
 .project-name {
-  font-weight: 600;
-  margin: 0 2em 0 1em;
-  font-size: 1.1em;
-  align-content: center;
-  padding: 0 0.5em;
+  margin: 0 1.5em 0 0.5em;
+  align-self: center;
 }
 </style>

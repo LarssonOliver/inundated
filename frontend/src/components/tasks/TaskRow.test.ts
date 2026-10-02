@@ -31,9 +31,16 @@ const taskTag = (id: string, color: string): Tag => ({
   owner: { kind: "task", id: "k1" },
 });
 
-function mountRow(t: Task) {
+function mountRow(t: Task, extraProps: Record<string, unknown> = {}) {
   return mount(TaskRow, {
-    props: { task: t, depth: 0, canIndent: false, canOutdent: false, isOverdue: false },
+    props: {
+      task: t,
+      depth: 0,
+      canIndent: false,
+      canOutdent: false,
+      isOverdue: false,
+      ...extraProps,
+    },
     global: {
       stubs: {
         TagItem: { props: ["tag"], template: "<i class='pill'>{{ tag.color }}</i>" },
@@ -75,4 +82,25 @@ test("shows a refreshed task tag color without refetching it itself", async () =
 
   expect(getTagsByIds).toHaveBeenCalledTimes(2);
   expect(wrapper.find(".pill").text()).toBe("#ebcb8b");
+});
+
+test("disables moving up or down past the ends of its siblings", () => {
+  getTagsByIds.mockResolvedValue([]);
+  const wrapper = mountRow(task({}), { canShiftUp: false, canShiftDown: true });
+
+  expect(wrapper.find('[title="Move up"]').attributes("disabled")).toBeDefined();
+  expect(wrapper.find('[title="Move down"]').attributes("disabled")).toBeUndefined();
+});
+
+test("offers removal, under the given label, only when given one", async () => {
+  getTagsByIds.mockResolvedValue([]);
+  expect(mountRow(task({})).findAll(".order-buttons button")).toHaveLength(4);
+
+  const wrapper = mountRow(task({}), { removeLabel: "Drop" });
+  expect(wrapper.findAll(".order-buttons button")).toHaveLength(5);
+  const button = wrapper.find('[title="Drop"]');
+  expect(button.attributes("aria-label")).toBe(`Drop: ${task({}).name}`);
+  await button.trigger("click");
+
+  expect(wrapper.emitted("remove")).toHaveLength(1);
 });

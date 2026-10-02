@@ -335,7 +335,7 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "third"})
 			require.NoError(t, err)
-			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "sub-a", ParentId: &first.Id})
+			subA, err := repo.CreateTask(ctx, testScope, model.Task{Name: "sub-a", ParentId: &first.Id})
 			require.NoError(t, err)
 			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "sub-b", ParentId: &first.Id, DueDate: day(2026, 4, 1)})
 			require.NoError(t, err)
@@ -348,6 +348,21 @@ func TestTaskRepositoryContract(t *testing.T) {
 			sub, err := repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), ParentId: &first.Id})
 			require.NoError(t, err)
 			require.Equal(t, []string{"sub-a", "sub-b"}, names(sub.Data))
+
+			// A closed grandchild: deeper than ParentId reaches, and closed.
+			nested, err := repo.CreateTask(ctx, testScope, model.Task{Name: "sub-a-1", ParentId: &subA.Id})
+			require.NoError(t, err)
+			_, err = repo.UpdateTask(ctx, testScope, nested.Id, model.TaskPatch{Closed: new(true)})
+			require.NoError(t, err)
+
+			subtree, err := repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), AncestorId: &first.Id})
+			require.NoError(t, err)
+			require.Equal(t, []string{"sub-a", "sub-b"}, names(subtree.Data))
+
+			subtree, err = repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), AncestorId: &first.Id, IncludeClosed: true})
+			require.NoError(t, err)
+			require.Equal(t, 3, subtree.TotalCount)
+			require.ElementsMatch(t, []string{"sub-a", "sub-b", "sub-a-1"}, names(subtree.Data))
 
 			byTag, err := repo.ListTasks(ctx, testScope, model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), TagId: &label.Id})
 			require.NoError(t, err)

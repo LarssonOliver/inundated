@@ -51,6 +51,33 @@ describe("useSupersededFetch", () => {
     await Promise.all([firstPromise, secondPromise]);
   });
 
+  it("settled waits for the newest run, even one started while waiting", async () => {
+    const { run, settled } = useSupersededFetch();
+    const finish: Array<() => void> = [];
+    const slow = () => new Promise<void>((resolve) => finish.push(resolve));
+    let done = false;
+
+    void run("a", slow);
+    const waiting = settled().then(() => (done = true));
+    void run("b", slow);
+    finish[0]();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(done).toBe(false);
+
+    finish[1]();
+    await waiting;
+    expect(done).toBe(true);
+  });
+
+  it("settled doesn't reject when the run it waits for fails", async () => {
+    const { run, settled } = useSupersededFetch();
+    const failing = run("a", () => Promise.reject(new Error("offline")));
+
+    await expect(settled()).resolves.toBeUndefined();
+    await expect(failing).rejects.toThrow("offline");
+  });
+
   it("a slower stale run's caller can skip applying its result", async () => {
     let resolveStale: (value: string) => void;
     const staleFetch = new Promise<string>((resolve) => {

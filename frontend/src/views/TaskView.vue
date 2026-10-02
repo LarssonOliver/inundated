@@ -42,6 +42,19 @@
           :create-owners="['project']"
         />
 
+        <p class="field-label">Projects</p>
+        <p v-if="projects.length === 0" class="muted">
+          Not in any project. Add this task's tag to a project to assign it.
+        </p>
+        <div v-else class="project-links">
+          <TagLink
+            v-for="project in projects"
+            :key="project.id"
+            :tag="projectTagPreview(project)"
+            :to="`/projects/${project.id}`"
+          />
+        </div>
+
         <div class="button-container">
           <button class="btn-info" :disabled="!draft.name.trim()" @click="save">Save</button>
           <template v-if="!task.closed">
@@ -54,42 +67,19 @@
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
       </div>
 
-      <div class="card summary">
-        <p class="field-label">Projects</p>
-        <p v-if="projects.length === 0" class="muted">
-          Not in any project. Add this task's tag to a project to assign it.
-        </p>
-        <div class="project-links">
-          <router-link
-            v-for="project in projects"
-            :key="project.id"
-            class="project-chip"
-            :to="`/projects/${project.id}`"
-          >
-            <span class="project-chip-dot" :style="{ backgroundColor: project.color }" />
-            {{ project.name }}
-          </router-link>
-        </div>
-
-        <p class="field-label">Subtasks</p>
-        <div
-          v-for="child in subtasks"
-          :key="child.id"
-          class="subtask"
-          :class="{ closed: child.closed }"
+      <div class="card">
+        <TaskList
+          :key="task.id"
+          class="subtasks"
+          :source="subtaskSource"
+          :addable="!task.closed"
+          add-placeholder="Add a subtask..."
+          empty-text="No subtasks."
+          empty-open-text="No open subtasks."
+          @changed="refreshTask"
         >
-          <TaskCheckbox
-            :checked="child.closed"
-            :variant="child.closeReason === 'ignored' ? 'ignored' : 'success'"
-            :aria-label="child.closed ? `Reopen ${child.name}` : `Mark ${child.name} done`"
-            @change="toggleSubtask(child)"
-          />
-          <router-link :to="`/tasks/${child.id}`">{{ child.name }}</router-link>
-        </div>
-        <form v-if="!task.closed" class="quick-add" @submit.prevent="addSubtask">
-          <input v-model="newSubtaskName" type="text" placeholder="Add a subtask..." />
-          <button type="submit" class="btn-info" :disabled="!newSubtaskName.trim()">Add</button>
-        </form>
+          <template #title><h2>Subtasks</h2></template>
+        </TaskList>
       </div>
 
       <div v-if="taskTag" class="card">
@@ -132,12 +122,15 @@ import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import { formatDatePickerInput, fromLocalDay, toLocalDay } from "@/helpers/dates";
+import { projectTagPreview } from "@/helpers/project";
 import TagItem from "@/components/tags/TagItem.vue";
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
 import UsageMeter from "@/components/stats/UsageMeter.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
-import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
+import TaskList from "@/components/tasks/TaskList.vue";
+import { useSubtasks } from "@/composables/useSubtasks";
 import NotFoundView from "./NotFoundView.vue";
 
 import { VueDatePicker } from "@vuepic/vue-datepicker";
@@ -158,6 +151,7 @@ const route = useRoute();
 const router = useRouter();
 
 const task = ref<Task | null>(null);
+const subtaskSource = useSubtasks(() => task.value?.id);
 // Read from the tags store rather than kept locally, so the color the server
 // derives from the task's regular tags updates once the store refetches it
 // after a save.
@@ -166,11 +160,9 @@ const taskTag = computed<Tag | null>(() =>
 );
 const parent = ref<Task | null>(null);
 const projects = ref<Project[]>([]);
-const subtasks = ref<Task[]>([]);
 const notFound = ref(false);
 const errorMessage = ref("");
 const showDeletionConfirmation = ref(false);
-const newSubtaskName = ref("");
 const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: "", tagIds: new Set() });
 
 const formatMs = useDurationFormat(() => settingsStore.settings);
@@ -218,18 +210,16 @@ async function load(id: string) {
   notFound.value = false;
   applyTask(loaded);
 
-  const [, parentTask, subtaskList] = await Promise.all([
+  const [, parentTask] = await Promise.all([
     tagsStore.fetchTagById(loaded.tagId).catch(() => null),
     loaded.parentId
       ? (tasksStore.getTaskById(loaded.parentId) ??
         tasksStore.fetchDetailedTaskById(loaded.parentId).catch(() => null))
       : null,
-    tasksStore.fetchSubtasks(id).catch(() => []),
     projectsStore.fetchProjects().catch(() => undefined),
   ]);
   if (token !== loadToken) return;
   parent.value = parentTask;
-  subtasks.value = subtaskList;
   await showProjects(loaded.projectIds, token);
 }
 
@@ -300,13 +290,12 @@ async function refreshAfterStatusChange() {
   if (!task.value) return;
   const id = task.value.id;
   const token = loadToken;
-  const [loaded, subtaskList] = await Promise.all([
+  const [loaded] = await Promise.all([
     tasksStore.fetchDetailedTaskById(id),
-    tasksStore.fetchSubtasks(id),
+    subtaskSource.reload(),
   ]);
   if (token !== loadToken) return;
   applyTask(loaded);
-  subtasks.value = subtaskList;
   if (loaded.parentId) {
     const parentTask =
       tasksStore.getTaskById(loaded.parentId) ??
@@ -328,36 +317,18 @@ async function reopen() {
   await refreshAfterStatusChange();
 }
 
-async function toggleSubtask(child: Task) {
-  if (child.closed) {
-    await tasksStore.reopenTask(child.id);
-  } else {
-    await tasksStore.closeTask(child.id, "done");
-  }
-  // Reopening a subtask can cascade to reopen the viewed task itself, so its
-  // own state needs refreshing too, not just the subtask list.
-  if (task.value) {
-    const id = task.value.id;
-    const token = loadToken;
-    const [loaded, subtaskList] = await Promise.all([
-      tasksStore.fetchDetailedTaskById(id),
-      tasksStore.fetchSubtasks(id),
-    ]);
-    if (token !== loadToken) return;
-    applyTask(loaded);
-    subtasks.value = subtaskList;
-  }
-}
-
-async function addSubtask() {
-  if (!task.value || !newSubtaskName.value.trim()) return;
-  const id = task.value.id;
+/**
+ * Refreshes this task after its subtask list changed something: reopening
+ * a subtask reopens this task too, and closing or moving one changes its
+ * time. Nothing the list does changes the fields the form edits, so the
+ * form's draft is left alone, keeping any unsaved edits in it.
+ */
+async function refreshTask() {
+  if (!task.value) return;
   const token = loadToken;
-  await tasksStore.createTaskFromName(newSubtaskName.value, id);
-  newSubtaskName.value = "";
-  const subtaskList = await tasksStore.fetchSubtasks(id);
-  if (token !== loadToken) return;
-  subtasks.value = subtaskList;
+  const loaded = await tasksStore.fetchDetailedTaskById(task.value.id).catch(() => null);
+  if (token !== loadToken || !loaded) return;
+  task.value = loaded;
 }
 
 async function deleteTask() {
@@ -452,69 +423,12 @@ async function deleteTask() {
 .project-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6em;
-}
-
-.project-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.35em 0.75em;
-  background-color: var(--nord1);
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  color: var(--nord5);
-  transition:
-    background-color var(--transition-fast),
-    transform var(--transition-fast);
-}
-
-.project-chip:hover {
-  background-color: var(--nord2);
-  transform: translateY(-1px);
-}
-
-.project-chip-dot {
-  width: 0.6em;
-  height: 0.6em;
-  border-radius: 50%;
-  flex: none;
-}
-
-.subtask input[type="checkbox"] {
-  width: 1.1em;
-  height: 1.1em;
-  flex: none;
-  margin: 0;
-  cursor: pointer;
-}
-
-.subtask {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.2em 0;
-}
-
-.subtask.closed a {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.quick-add {
-  display: flex;
-  gap: 1em;
   margin-top: 0.5em;
-  max-width: 400px;
 }
 
-.quick-add input {
-  flex: 1;
-}
-
-.quick-add button {
-  flex: none;
-  width: 6em;
+.subtasks :deep(.task-row) {
+  background-color: var(--nord1);
+  box-shadow: none;
 }
 
 :deep(.searchbox-container) {

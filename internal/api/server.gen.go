@@ -1141,6 +1141,19 @@ func (siw *ServerInterfaceWrapper) ListTasks(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// ------------- Optional query parameter "ancestorId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ancestorId", r.URL.Query(), &params.AncestorId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ancestorId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ancestorId", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "tagId" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "tagId", r.URL.Query(), &params.TagId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})

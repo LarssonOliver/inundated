@@ -35,9 +35,7 @@
         @keydown.escape="cancelName"
       />
       <template v-else>
-        <router-link class="task-name-link" :to="`/tasks/${task.id}`">
-          <TagItem :tag="taskTagPreview" />
-        </router-link>
+        <TagLink class="task-name-link" :tag="taskTagPreview" :to="`/tasks/${task.id}`" />
         <button
           class="field-trigger name-edit-btn"
           title="Rename"
@@ -126,7 +124,17 @@
       </button>
     </div>
 
-    <div v-if="orderable" class="order-buttons">
+    <div class="order-buttons">
+      <button
+        v-if="removeLabel"
+        class="icon-button"
+        :title="removeLabel"
+        :aria-label="`${removeLabel}: ${task.name}`"
+        :disabled="disabled"
+        @click="$emit('remove')"
+      >
+        <MaterialIcon icon="link_off" size="1.1em" />
+      </button>
       <button
         class="icon-button"
         title="Outdent"
@@ -143,10 +151,20 @@
       >
         <MaterialIcon icon="format_indent_increase" size="1.1em" />
       </button>
-      <button class="icon-button" title="Move up" :disabled="disabled" @click="$emit('shift', -1)">
+      <button
+        class="icon-button"
+        title="Move up"
+        :disabled="disabled || !canShiftUp"
+        @click="$emit('shift', -1)"
+      >
         <MaterialIcon icon="arrow_upward" size="1.1em" />
       </button>
-      <button class="icon-button" title="Move down" :disabled="disabled" @click="$emit('shift', 1)">
+      <button
+        class="icon-button"
+        title="Move down"
+        :disabled="disabled || !canShiftDown"
+        @click="$emit('shift', 1)"
+      >
         <MaterialIcon icon="arrow_downward" size="1.1em" />
       </button>
     </div>
@@ -168,7 +186,7 @@ import {
 } from "@/helpers/dates";
 import { nord10 } from "@/helpers/nord";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
-import TagItem from "@/components/tags/TagItem.vue";
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TaskCheckbox from "@/components/inputs/TaskCheckbox.vue";
 
@@ -181,18 +199,19 @@ const props = withDefaults(
     depth: number;
     /** True while any row's move/indent/outdent is in flight. */
     disabled?: boolean;
-    /** False for the first row in this open/closed section. */
+    /** False when indenting has nowhere to go (see indentTarget). */
     canIndent: boolean;
-    /** False for a top-level task. */
+    /** False when outdenting has nowhere to go or would leave the list. */
     canOutdent: boolean;
+    /** False for the first of its listed siblings. */
+    canShiftUp?: boolean;
+    /** False for the last of its listed siblings. */
+    canShiftDown?: boolean;
+    /** Shows a remove button with this label, which emits remove. */
+    removeLabel?: string;
     isOverdue: boolean;
-    /**
-     * False hides the move and indent buttons, for lists that show only
-     * some of a task's siblings (e.g. a project's tasks).
-     */
-    orderable?: boolean;
   }>(),
-  { orderable: true },
+  { canShiftUp: true, canShiftDown: true },
 );
 
 const emit = defineEmits<{
@@ -202,6 +221,7 @@ const emit = defineEmits<{
   indent: [];
   outdent: [];
   update: [patch: TaskPatch];
+  remove: [];
 }>();
 
 const settingsStore = useSettingsStore();
@@ -392,26 +412,6 @@ function startEditTags() {
   display: flex;
   align-items: center;
   gap: 0.3em;
-}
-
-/* Neutralizes the global `a` styling (padding, hover background) so the
-   pill inside - the only thing providing this link's visuals - isn't
-   doubled up with a mismatched box around it. */
-.task-name-link {
-  padding: 0;
-  border-radius: var(--radius-md);
-  color: inherit;
-  transition: opacity var(--transition-fast);
-}
-
-.task-name-link:hover,
-.task-name-link:focus {
-  background-color: transparent;
-  opacity: 0.8;
-}
-
-.task-name-link:focus-visible {
-  box-shadow: var(--focus-ring);
 }
 
 .name-edit-btn,

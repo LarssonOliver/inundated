@@ -132,6 +132,16 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 	if params.ParentId != nil {
 		b.add("parent_id =", *params.ParentId)
 	}
+	if params.AncestorId != nil {
+		b.addExpr(`id IN (
+			WITH RECURSIVE sub AS (
+				SELECT id FROM tasks WHERE parent_id = $? AND deleted_at IS NULL
+				UNION
+				SELECT c.id FROM tasks c JOIN sub ON c.parent_id = sub.id
+				WHERE c.deleted_at IS NULL
+			)
+			SELECT id FROM sub)`, *params.AncestorId)
+	}
 	if params.TagId != nil {
 		b.addExpr(`id IN (SELECT kt.task_id FROM task_tags kt JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL WHERE kt.tag_id = $?)`, *params.TagId)
 	}

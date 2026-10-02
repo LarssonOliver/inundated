@@ -52,6 +52,7 @@ const {
   readOnly,
   ownerKinds = allTagOwnerKinds,
   createOwners = [],
+  hideOwnerKinds = [],
 } = defineProps<{
   readOnly?: boolean;
   /**
@@ -68,7 +69,20 @@ const {
    * accidentally create one just because someone typed a leading prefix.
    */
   createOwners?: readonly TagOwnerKind[];
+  /**
+   * The kinds of owned tags left out of this list's pills, for a page that
+   * shows them elsewhere: e.g. the project page lists its task tags as its
+   * task list. They stay in the model, so editing the visible tags keeps
+   * them, and the picker still offers and creates them as ownerKinds and
+   * createOwners allow. Only hide a kind the page shows elsewhere, since a
+   * tag of it picked here would otherwise seem to vanish. None by default.
+   */
+  hideOwnerKinds?: readonly TagOwnerKind[];
 }>();
+
+function isHidden(tag: Tag): boolean {
+  return !!tag.owner && hideOwnerKinds.includes(tag.owner.kind);
+}
 
 const tagsStore = useTagsStore();
 const tasksStore = useTasksStore();
@@ -82,7 +96,7 @@ const tasksStore = useTasksStore();
 const resolvedTags = ref<Tag[]>([]);
 const tags = computed(() =>
   resolvedTags.value
-    .filter((tag) => !tagsStore.isTagDeleted(tag))
+    .filter((tag) => !tagsStore.isTagDeleted(tag) && !isHidden(tag))
     .map((tag) => tagsStore.getTagById(tag.id) ?? tag),
 );
 // Raw, unfiltered server results for the current query. Filtered into

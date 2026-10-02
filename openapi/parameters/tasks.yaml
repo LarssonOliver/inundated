@@ -25,6 +25,15 @@ parentId:
     type: string
     format: uuid
 
+ancestorId:
+  name: ancestorId
+  in: query
+  required: false
+  description: Only list subtasks of this task, at any depth.
+  schema:
+    type: string
+    format: uuid
+
 tagIdFilter:
   name: tagId
   in: query
