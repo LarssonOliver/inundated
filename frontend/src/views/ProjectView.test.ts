@@ -32,7 +32,7 @@ const ProjectEditStub = {
 const ProjectTasksStub = {
   name: "ProjectTasks",
   props: ["project"],
-  emits: ["remove-task"],
+  emits: ["remove-task", "changed"],
   template: "<div class='saved-tags'>{{ [...project.tagIds].sort().join(',') }}</div>",
 };
 
@@ -261,4 +261,22 @@ test("a Save that waits behind a task tag change lands on its own project after 
     id: "p2",
     name: "Blog",
   });
+});
+
+test("refreshes the project's time totals when its task list changes, keeping unsaved edits", async () => {
+  server.totalTimeMs = 5 * 3600000;
+  server.taskTimeMs = 3 * 3600000;
+  const wrapper = mountView();
+  await flushPromises();
+  const edit = wrapper.findComponent(ProjectEditStub);
+  (edit.props("modelValue") as Project).name = "Unsaved";
+
+  server.taskTimeMs = 4 * 3600000;
+  wrapper.findComponent(ProjectTasksStub).vm.$emit("changed");
+  await flushPromises();
+
+  expect(wrapper.findComponent(ProjectTasksStub).props("project")).toMatchObject({
+    taskTimeMs: 4 * 3600000,
+  });
+  expect((edit.props("modelValue") as Project).name).toBe("Unsaved");
 });

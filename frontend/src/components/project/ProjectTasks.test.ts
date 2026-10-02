@@ -44,11 +44,11 @@ function mountTasks(p: Project = project) {
     global: {
       stubs: {
         TaskRow: {
-          props: ["task", "removable"],
+          props: ["task", "removeLabel"],
           emits: ["toggle-closed", "remove"],
           template: `<div class="row">
             <span class="name" @click="$emit('toggle-closed')">{{ task.name }}</span>
-            <button v-if="removable" class="remove" @click="$emit('remove')" />
+            <button v-if="removeLabel" class="remove" :title="removeLabel" @click="$emit('remove')" />
           </div>`,
         },
       },
@@ -114,6 +114,8 @@ test("closing a task updates it directly and reloads only the project list", asy
   expect(updateTask).toHaveBeenCalledWith("k1", { closed: true, closeReason: "done" });
   expect(listAllTasks).toHaveBeenCalledTimes(2);
   expect(listAllTasks).toHaveBeenLastCalledWith({ projectId: "p1", includeClosed: false });
+  // So the page can refresh the project's time totals.
+  expect(wrapper.emitted("changed")).toHaveLength(1);
 });
 
 test("asks the page to remove a task added through its own tag", async () => {
@@ -123,6 +125,7 @@ test("asks the page to remove a task added through its own tag", async () => {
 
   // Only k1's own tag is on the project.
   expect(wrapper.findAll(".remove")).toHaveLength(1);
+  expect(wrapper.find(".remove").attributes("title")).toBe("Remove from project");
   await wrapper.find(".remove").trigger("click");
   await flushPromises();
 
