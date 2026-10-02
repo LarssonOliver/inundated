@@ -14,6 +14,8 @@ export type NewTask = Pick<Task, "name"> &
 export interface TaskListFilter {
   includeClosed?: boolean;
   parentId?: string;
+  /** Only subtasks of this task, at any depth. */
+  ancestorId?: string;
   projectId?: string;
   /** Only tasks due on or after this date (YYYY-MM-DD). */
   dueFrom?: string;

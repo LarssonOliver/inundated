@@ -39,27 +39,41 @@ const tree = [
   task({ id: "o1", parentId: "other" }),
 ];
 
+/** Answers listAllTasks like the server: the ancestorId's subtree, closed tasks included. */
+function serve(tasks: Task[]) {
+  return ({ ancestorId }: { ancestorId?: string }) => {
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    const under = (t: Task): boolean => {
+      const parent = t.parentId ? byId.get(t.parentId) : undefined;
+      return t.parentId === ancestorId || (!!parent && under(parent));
+    };
+    return Promise.resolve(tasks.filter(under));
+  };
+}
+
 beforeEach(() => {
   setActivePinia(createPinia());
   listAllTasks.mockReset();
   createTask.mockReset();
 });
 
-test("lists the task's descendants, nested ones too, and nothing else", async () => {
-  listAllTasks.mockResolvedValue(tree);
+test("loads only the task's subtree, nested and closed subtasks included", async () => {
+  listAllTasks.mockImplementation(serve(tree));
   const { source } = setup();
   await flushPromises();
 
-  expect(listAllTasks).toHaveBeenCalledWith({ includeClosed: true });
+  expect(listAllTasks).toHaveBeenCalledWith({ ancestorId: "root", includeClosed: true });
   expect(source.tasks.value.map((t) => t.id)).toEqual(["a", "a1"]);
 });
 
 test("lists closed subtasks only while showClosed is on, but still finds open ones under them", async () => {
-  listAllTasks.mockResolvedValue([
-    task({ id: "root" }),
-    task({ id: "c", parentId: "root", closed: true }),
-    task({ id: "c1", parentId: "c" }),
-  ]);
+  listAllTasks.mockImplementation(
+    serve([
+      task({ id: "root" }),
+      task({ id: "c", parentId: "root", closed: true }),
+      task({ id: "c1", parentId: "c" }),
+    ]),
+  );
   const { source } = setup();
   await flushPromises();
   expect(source.tasks.value.map((t) => t.id)).toEqual(["c1"]);
@@ -71,7 +85,7 @@ test("lists closed subtasks only while showClosed is on, but still finds open on
 });
 
 test("keeps a direct subtask from being moved out of the tree", async () => {
-  listAllTasks.mockResolvedValue(tree);
+  listAllTasks.mockImplementation(serve(tree));
   const { source } = setup();
   await flushPromises();
   const [a, a1] = source.tasks.value;
@@ -86,19 +100,31 @@ test("loads the new task's subtree when the task changes, ignoring the older loa
   let resolveFirst: (tasks: Task[]) => void = () => {};
   listAllTasks
     .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
-    .mockResolvedValueOnce(tree);
+    .mockImplementation(serve(tree));
   const { id, source } = setup();
 
   id.value = "other";
   await flushPromises();
-  resolveFirst(tree);
+  resolveFirst(await serve(tree)({ ancestorId: "root" }));
   await flushPromises();
 
   expect(source.tasks.value.map((t) => t.id)).toEqual(["o1"]);
 });
 
+test("drops the previous task's subtasks as soon as the task changes", async () => {
+  listAllTasks.mockImplementationOnce(serve(tree)).mockReturnValue(new Promise(() => {}));
+  const { id, source } = setup();
+  await flushPromises();
+  expect(source.tasks.value.map((t) => t.id)).toEqual(["a", "a1"]);
+
+  id.value = "other";
+  await flushPromises();
+
+  expect(source.tasks.value).toEqual([]);
+});
+
 test("creates a direct subtask", async () => {
-  listAllTasks.mockResolvedValue(tree);
+  listAllTasks.mockImplementation(serve(tree));
   createTask.mockResolvedValue(task({ id: "new", parentId: "root" }));
   const { source } = setup();
 
@@ -108,7 +134,7 @@ test("creates a direct subtask", async () => {
 });
 
 test("hides closed subtasks again when the task changes", async () => {
-  listAllTasks.mockResolvedValue(tree);
+  listAllTasks.mockImplementation(serve(tree));
   const { id, source } = setup();
   source.setShowClosed(true);
 
