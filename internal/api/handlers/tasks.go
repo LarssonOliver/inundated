@@ -92,6 +92,7 @@ func (h *TaskHandler) ListTasks(ctx context.Context, request api.ListTasksReques
 		params.IncludeClosed = *request.Params.IncludeClosed
 	}
 	params.ParentId = request.Params.ParentId
+	params.AncestorId = request.Params.AncestorId
 	params.TagId = request.Params.TagId
 	params.ProjectId = request.Params.ProjectId
 	params.DueFrom = dateToTime(request.Params.DueFrom)

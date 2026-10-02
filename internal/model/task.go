@@ -106,7 +106,9 @@ type TaskListParams struct {
 	PaginationParams
 	IncludeClosed bool
 	ParentId      *uuid.UUID
-	TagId         *uuid.UUID
+	// AncestorId keeps the task's subtasks at any depth, not the task itself.
+	AncestorId *uuid.UUID
+	TagId      *uuid.UUID
 	// ProjectId keeps the tasks that belong to the project; see
 	// Task.ProjectIds.
 	ProjectId *uuid.UUID

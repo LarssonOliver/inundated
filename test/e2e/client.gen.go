@@ -584,6 +584,9 @@ type User struct {
 // WeekStartDay The first day of the week for calendar/report views.
 type WeekStartDay string
 
+// AncestorId defines model for ancestorId.
+type AncestorId = openapi_types.UUID
+
 // Code defines model for code.
 type Code = string
 
@@ -781,6 +784,9 @@ type ListTasksParams struct {
 
 	// ParentId Only list direct subtasks of this task.
 	ParentId *ParentId `form:"parentId,omitempty" json:"parentId,omitempty"`
+
+	// AncestorId Only list subtasks of this task, at any depth.
+	AncestorId *AncestorId `form:"ancestorId,omitempty" json:"ancestorId,omitempty"`
 
 	// TagId Only list tasks carrying this regular tag.
 	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`
@@ -2562,6 +2568,18 @@ func NewListTasksRequest(server string, params *ListTasksParams) (*http.Request,
 		if params.ParentId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "parentId", *params.ParentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.AncestorId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ancestorId", *params.AncestorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {

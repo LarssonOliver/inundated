@@ -11,6 +11,7 @@ tasks:
       - $ref: "../parameters/shared.yaml#/offset"
       - $ref: "../parameters/tasks.yaml#/includeClosed"
       - $ref: "../parameters/tasks.yaml#/parentId"
+      - $ref: "../parameters/tasks.yaml#/ancestorId"
       - $ref: "../parameters/tasks.yaml#/tagIdFilter"
       - $ref: "../parameters/tasks.yaml#/projectIdFilter"
       - $ref: "../parameters/tasks.yaml#/dueFrom"
