@@ -125,13 +125,16 @@ test("keeps a task in the list after a move only while it's still in the project
   expect(source.keepsInList!(k1, undefined)).toBe(true);
 });
 
-test("creates a task carrying the project tag", async () => {
+test("creates a task carrying the project tag, then lists it", async () => {
   createTask.mockResolvedValue(task({ id: "k9" }));
   const { source } = setup();
+  await flushPromises();
 
+  listAllTasks.mockResolvedValue([task({ id: "k9" })]);
   await source.create!("Blog post");
 
   expect(createTask).toHaveBeenCalledWith({ name: "Blog post", tagIds: new Set(["pt1"]) });
+  expect(source.tasks.value.map((t) => t.id)).toEqual(["k9"]);
 });
 
 test("offers no way to create a task until the project has a project tag", () => {

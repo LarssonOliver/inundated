@@ -94,17 +94,29 @@ function createTasksStore(api: TasksApi) {
       Array.from(tasks.value.values()).map(copyTask),
     );
 
+    // Numbers each fresh fetch, so its key matches no other fetch's.
+    let freshFetches = 0;
+
     /**
      * Fetches every task (closed ones too when includeClosed is set), with
-     * its total time, replacing the local list.
+     * its total time, replacing the local list. Joins a matching fetch
+     * already in flight unless fresh is set, as it must be after a write: a
+     * fetch sent before the write landed doesn't show it. Resolves once the
+     * list shows this fetch or a newer one that superseded it.
      */
-    async function fetchTasks(): Promise<void> {
-      const key = `all:${includeClosed.value}`;
+    async function fetchTasks({ fresh = false }: { fresh?: boolean } = {}): Promise<void> {
+      const key = `all:${includeClosed.value}` + (fresh ? `:${++freshFetches}` : "");
       await supersededFetch.run(key, async () => {
         const result = await api.listAllTasks({ includeClosed: includeClosed.value });
         if (supersededFetch.isStale(key)) return;
         tasks.value = new Map(result.map((task) => [task.id, task]));
       });
+      if (supersededFetch.isStale(key)) await supersededFetch.settled();
+    }
+
+    /** Reloads the list after a write (see fetchTasks). */
+    function reloadAfterWrite(): Promise<void> {
+      return fetchTasks({ fresh: true });
     }
 
     /**
@@ -165,7 +177,7 @@ function createTasksStore(api: TasksApi) {
       if (tagWrite) void useTagsStore().ownerWritten(tagWrite);
       if (patch.closed !== undefined || patch.closeReason !== undefined) {
         individuallyFetchedTasks.value.delete(id);
-        if (reloadList) await fetchTasks();
+        if (reloadList) await reloadAfterWrite();
         return copyTask(updated);
       }
 
@@ -193,29 +205,28 @@ function createTasksStore(api: TasksApi) {
 
     // Serializes moves so a second one always sees the first one's fully
     // applied result (both its server move and the reload that follows)
-    // before computing its own target or reloading - otherwise a second
-    // move can compute its target from a stale order, and its own
-    // fetchTasks() call can be deduped away (as a duplicate of the
-    // still-in-flight first one) by useSupersededFetch, silently dropping
-    // its result.
+    // before computing its own target - otherwise it can compute its target
+    // from a stale order.
     const serializeTaskMove = createSerialQueue();
 
     /**
      * Moves a task to where target says, then reloads: the full list, or
      * reload when given (a list that loads its own tasks). target runs when
      * this move's turn comes, after the move before it has reloaded, so it
-     * sees the order that move left; a null target skips the move.
+     * sees the order that move left; a null target skips the move. Resolves
+     * to whether the task moved.
      */
     function moveTask(
       id: string,
       target: () => MoveTarget | null,
-      { reload = fetchTasks }: { reload?: () => Promise<void> } = {},
-    ): Promise<void> {
+      { reload = reloadAfterWrite }: { reload?: () => Promise<void> } = {},
+    ): Promise<boolean> {
       return serializeTaskMove(async () => {
         const to = target();
-        if (!to) return;
+        if (!to) return false;
         await api.moveTask(id, to.parentId, to.afterTaskId);
         await reload();
+        return true;
       });
     }
 
@@ -231,7 +242,7 @@ function createTasksStore(api: TasksApi) {
         cascades: true,
       });
       individuallyFetchedTasks.value.delete(id);
-      await fetchTasks();
+      await reloadAfterWrite();
     }
 
     return {

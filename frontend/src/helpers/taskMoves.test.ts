@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/model";
 import { taskTree } from "@/stores/tasks";
-import { indentTarget, outdentTarget, shiftTarget } from "./taskMoves";
+import { indentTarget, listMoves, outdentTarget, shiftTarget } from "./taskMoves";
 
 // Ranks follow ids, so a list's order is easy to read off its ids.
 function task(partial: Partial<Task> & { id: string }): Task {
@@ -126,5 +126,34 @@ describe("outdentTarget", () => {
     const child = task({ id: "c", parentId: "p" });
     const openRows = taskTree([parent, child].filter((t) => !t.closed));
     expect(outdentTarget(openRows, "c")).toBeNull();
+  });
+});
+
+describe("listMoves", () => {
+  it("gives every task the same moves as asking for each one", () => {
+    const rows = taskTree([
+      task({ id: "a" }),
+      task({ id: "a1", parentId: "a" }),
+      task({ id: "a2", parentId: "a" }),
+      task({ id: "a21", parentId: "a2" }),
+      task({ id: "b" }),
+      task({ id: "b1", parentId: "b" }),
+      task({ id: "c" }),
+      task({ id: "o1", parentId: "x" }),
+      task({ id: "o2", parentId: "y" }),
+      task({ id: "o3", parentId: "x" }),
+    ]);
+
+    const moves = listMoves(rows);
+
+    expect(moves.size).toBe(rows.length);
+    for (const { task: t } of rows) {
+      expect(moves.get(t.id), t.id).toEqual({
+        up: shiftTarget(rows, t.id, -1),
+        down: shiftTarget(rows, t.id, 1),
+        indent: indentTarget(rows, t.id),
+        outdent: outdentTarget(rows, t.id),
+      });
+    }
   });
 });

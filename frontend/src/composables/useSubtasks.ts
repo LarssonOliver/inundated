@@ -35,6 +35,9 @@ export function useSubtasks(taskId: () => string | undefined): TaskListSource {
     }
   }
 
+  // Looked up for every listed task when TaskList works out its move buttons.
+  const subtreeIds = computed(() => new Set(subtree.value.map((task) => task.id)));
+
   // Each task's subtasks start out as a freshly opened page shows them.
   watch(
     taskId,
@@ -60,11 +63,12 @@ export function useSubtasks(taskId: () => string | undefined): TaskListSource {
     reload,
     create: async (name) => {
       const parentId = taskId();
-      if (parentId) await tasksStore.createTaskFromName(name, parentId);
+      if (!parentId) return;
+      await tasksStore.createTaskFromName(name, parentId);
+      await reload();
     },
     // Outdenting a direct subtask would move it out of the tree.
     keepsInList: (_task, newParentId) =>
-      newParentId !== undefined &&
-      (newParentId === taskId() || subtree.value.some((task) => task.id === newParentId)),
+      newParentId !== undefined && (newParentId === taskId() || subtreeIds.value.has(newParentId)),
   };
 }

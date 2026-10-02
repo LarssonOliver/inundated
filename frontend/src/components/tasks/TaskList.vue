@@ -58,7 +58,13 @@ import { computed, ref } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { Task } from "@/model";
 import type { TaskListSource } from "@/composables/taskListSource";
-import { indentTarget, outdentTarget, shiftTarget, type MoveTarget } from "@/helpers/taskMoves";
+import {
+  indentTarget,
+  listMoves,
+  outdentTarget,
+  shiftTarget,
+  type MoveTarget,
+} from "@/helpers/taskMoves";
 import { isTaskOverdue, taskTree, useTasksStore, type TaskRow as TreeRow } from "@/stores/tasks";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 import TaskRow from "@/components/tasks/TaskRow.vue";
@@ -78,9 +84,9 @@ const props = withDefaults(
 );
 
 /**
- * Emitted after every action that succeeds, so the page can refresh what
- * it shows outside the list (e.g. the task whose subtasks these are, which
- * reopening one of them reopens too).
+ * Emitted after every action that changes a task, except removing one (see
+ * remove), so the page can refresh what it shows outside the list (e.g. the
+ * task whose subtasks these are, which reopening one of them reopens too).
  */
 const emit = defineEmits<{ changed: [] }>();
 
@@ -113,29 +119,29 @@ const isEmpty = computed(
 );
 
 // Which move buttons each listed task gets, worked out once per change to
-// the list: each takes a pass over its tree, so doing it on every render
-// (e.g. every keystroke in the add box) adds up on a long list.
+// the list rather than on every render (e.g. every keystroke in the add box).
 const moveButtons = computed(() => {
   const buttons = new Map<
     string,
     { up: boolean; down: boolean; indent: boolean; outdent: boolean }
   >();
   for (const { rows } of sections.value) {
+    const moves = listMoves(rows);
     for (const { task } of rows) {
+      const { up, down, indent, outdent } = moves.get(task.id)!;
       buttons.set(task.id, {
-        up: !!shiftTarget(rows, task.id, -1),
-        down: !!shiftTarget(rows, task.id, 1),
-        indent: !!indentTarget(rows, task.id),
-        outdent: !!outdentWithinList(rows, task),
+        up: !!up,
+        down: !!down,
+        indent: !!indent,
+        outdent: !!keptInList(task, outdent),
       });
     }
   }
   return buttons;
 });
 
-/** Where outdenting places the task, unless that would take it out of the list. */
-function outdentWithinList(rows: readonly TreeRow[], task: Task): MoveTarget | null {
-  const target = outdentTarget(rows, task.id);
+/** An outdent target, unless moving there would take the task out of the list. */
+function keptInList(task: Task, target: MoveTarget | null): MoveTarget | null {
   if (!target || props.source.keepsInList?.(task, target.parentId) === false) return null;
   return target;
 }
@@ -153,7 +159,7 @@ async function move(
   errorMessage.value = "";
   movingTaskId.value = task.id;
   try {
-    await tasksStore.moveTask(
+    const moved = await tasksStore.moveTask(
       task.id,
       () => {
         const current = props.source.tasks.value.find((t) => t.id === task.id);
@@ -162,7 +168,7 @@ async function move(
       },
       { reload: props.source.reload },
     );
-    emit("changed");
+    if (moved) emit("changed");
   } catch {
     errorMessage.value = failure;
   } finally {
@@ -179,12 +185,17 @@ function indent(task: Task) {
 }
 
 function outdent(task: Task) {
-  return move(task, outdentWithinList, "Couldn't outdent the task.");
+  return move(
+    task,
+    (rows, t) => keptInList(t, outdentTarget(rows, t.id)),
+    "Couldn't outdent the task.",
+  );
 }
 
 // The store's own list isn't reloaded: the source reloads what it lists
-// instead. Closing and reopening cascade on the server, and a tag edit can
-// move a task in or out of a project, so it always reloads.
+// instead, unless it says the change doesn't need it. Closing and reopening
+// cascade on the server, and a tag edit can move a task in or out of a
+// project.
 async function update(task: Task, patch: TaskPatch, failure: string) {
   errorMessage.value = "";
   try {
@@ -193,7 +204,7 @@ async function update(task: Task, patch: TaskPatch, failure: string) {
     errorMessage.value = failure;
     return;
   }
-  await props.source.reload();
+  if (props.source.reloadsAfter?.(patch) ?? true) await props.source.reload();
   emit("changed");
 }
 
@@ -211,17 +222,16 @@ function edit(task: Task, patch: TaskPatch) {
   return update(task, patch, "Couldn't save the change.");
 }
 
-// The source reloads once the task is out. A source may also report its own
-// failures instead of rejecting, as the project page does in its form.
+// The source reloads once the task is out, and takes care of whatever else
+// removing it changes (the project page refetches its time totals), so this
+// doesn't emit "changed".
 async function remove(task: Task) {
   errorMessage.value = "";
   try {
     await props.source.remove?.(task);
   } catch {
     errorMessage.value = "Couldn't remove the task.";
-    return;
   }
-  emit("changed");
 }
 
 async function addTask() {
@@ -235,7 +245,6 @@ async function addTask() {
     return;
   }
   newTaskName.value = "";
-  await props.source.reload();
   emit("changed");
 }
 </script>

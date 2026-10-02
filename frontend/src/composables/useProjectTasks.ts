@@ -1,7 +1,7 @@
 import { tasksApi } from "@/api";
 import type { Project, Task } from "@/model";
 import { useTasksStore } from "@/stores/tasks";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { TaskListSource } from "./taskListSource";
 
 /**
@@ -53,6 +53,9 @@ export function useProjectTasks(
     { immediate: true },
   );
 
+  // Looked up for every listed task when TaskList works out its move buttons.
+  const listedIds = computed(() => new Set(tasks.value.map((task) => task.id)));
+
   /** Whether the task is in the project through its own tags, not just an ancestor's. */
   function inProjectOnItsOwn(task: Task): boolean {
     const { tagId, tagIds } = project();
@@ -75,13 +78,13 @@ export function useProjectTasks(
       if (!projectTagId) return undefined;
       return async (name: string) => {
         await tasksStore.createTask({ name, tagIds: new Set([projectTagId]) });
+        await reload();
       };
     },
     // A task in the project only through its parent leaves it when moved
     // out from under a listed task.
     keepsInList: (task, newParentId) =>
-      inProjectOnItsOwn(task) ||
-      (newParentId !== undefined && tasks.value.some((t) => t.id === newParentId)),
+      inProjectOnItsOwn(task) || (newParentId !== undefined && listedIds.value.has(newParentId)),
     removeLabel: "Remove from project",
     canRemove: (task) => project().tagIds.has(task.tagId),
     remove,

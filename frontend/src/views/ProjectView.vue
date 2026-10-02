@@ -14,15 +14,11 @@
           @create="createProject"
           @save="saveProject"
           @delete="deleteProject"
-          @task-tag-change="setTaskTag"
+          @task-tag-change="pickTaskTag"
         />
       </div>
       <div v-if="!isNewProject" class="card">
-        <ProjectTasks
-          :project="saved"
-          @remove-task="(task) => setTaskTag(task.tagId, false)"
-          @changed="refreshTotals"
-        />
+        <ProjectTasks :project="saved" :remove-task="removeTask" @changed="refreshTotals" />
       </div>
       <div v-if="!isNewProject" class="card">
         <ProjectStats :project="saved" />
@@ -43,7 +39,7 @@ import { useRoute, useRouter } from "vue-router";
 import { newProjectWithDefaults } from "@/helpers/project";
 import { ResponseError } from "@/api/generated";
 import { createSerialQueue } from "@/helpers/serialQueue";
-import type { Project } from "@/model";
+import type { Project, Task } from "@/model";
 
 const projectsStore = useProjectsStore();
 const router = useRouter();
@@ -62,9 +58,14 @@ const errorMessage = ref("");
 // Saves and task tag changes run one at a time, so each starts from the
 // project the one before it saved.
 const enqueueWrite = createSerialQueue();
-// Task tags whose addition hasn't landed yet, so the form's picker doesn't
-// offer them again meanwhile.
-const pendingTaskTagIds = ref(new Set<string>());
+// Task tags whose addition hasn't landed yet, by project, so the form's
+// picker doesn't offer them again meanwhile. The form can move on to
+// another project while one is pending, and that one's picker must still
+// offer it.
+const pendingTaskTags = ref(new Map<string, Set<string>>());
+const pendingTaskTagIds = computed(
+  () => pendingTaskTags.value.get(saved.value.id) ?? new Set<string>(),
+);
 
 function showProject(project: Project) {
   saved.value = project;
@@ -91,9 +92,23 @@ async function loadProject(id: string) {
   }
 }
 
-/** Whether the page still shows the project with this id. */
-function isShowing(projectId: string): boolean {
+/** Whether the page is open on the project with this id, loaded or not. */
+function isOpenOn(projectId: string): boolean {
   return route.params.id === projectId;
+}
+
+/**
+ * Whether the page shows the project with this id: open on it, and not still
+ * showing another project while it loads. Only then is `saved` its latest
+ * copy.
+ */
+function isShowing(projectId: string): boolean {
+  return isOpenOn(projectId) && saved.value.id === projectId;
+}
+
+/** The latest copy of a project: the one shown, or a fresh one from the server. */
+async function latestProject(projectId: string): Promise<Project> {
+  return isShowing(projectId) ? saved.value : await projectsStore.fetchProjectById(projectId);
 }
 
 watch(
@@ -112,52 +127,72 @@ watch(
 /**
  * Saves the form's edits as they are when Save is clicked: the page can move
  * to another project before the save's turn comes, and the edits must land
- * on the project they were made to.
+ * on the project they were made to. A failure shows in the form, naming the
+ * project once the page has moved away from it.
  */
-function saveProject() {
+function saveProject(): Promise<void> {
   const edits: Project = { ...draft.value, tagIds: new Set(draft.value.tagIds) };
   // Task tag changes queued before this save land on the server first
   // without reaching these edits, so the save applies them to its tags.
   const savedTagIds = new Set(saved.value.tagIds);
   return enqueueWrite(async () => {
-    const latest = isShowing(edits.id)
-      ? saved.value
-      : await projectsStore.fetchProjectById(edits.id);
-    const tagIds = new Set(edits.tagIds);
-    for (const id of latest.tagIds) if (!savedTagIds.has(id)) tagIds.add(id);
-    for (const id of savedTagIds) if (!latest.tagIds.has(id)) tagIds.delete(id);
-    await projectsStore.updateProject({ ...edits, tagIds });
-    if (isShowing(edits.id)) await loadProject(edits.id);
+    try {
+      const latest = await latestProject(edits.id);
+      const tagIds = new Set(edits.tagIds);
+      for (const id of latest.tagIds) if (!savedTagIds.has(id)) tagIds.add(id);
+      for (const id of savedTagIds) if (!latest.tagIds.has(id)) tagIds.delete(id);
+      await projectsStore.updateProject({ ...edits, tagIds });
+    } catch {
+      errorMessage.value = isOpenOn(edits.id)
+        ? "Couldn't save the project."
+        : `Couldn't save the project "${edits.name}".`;
+      return;
+    }
+    if (isOpenOn(edits.id)) await loadProject(edits.id);
+  });
+}
+
+/**
+ * Adds a task tag picked in the form to the project, or removes one, showing
+ * a failure in the form.
+ */
+function pickTaskTag(tagId: string, present: boolean) {
+  const { id: projectId, name } = saved.value;
+  errorMessage.value = "";
+  setTaskTag(tagId, present).catch(() => {
+    const change = present ? "add the task to" : "remove the task from";
+    errorMessage.value = isOpenOn(projectId)
+      ? `Couldn't ${change} the project.`
+      : `Couldn't ${change} the project "${name}".`;
   });
 }
 
 /**
  * Adds a task's own tag to the project, or removes it, on the server right
- * away. Only that tag changes: the rest is sent as last saved, so unsaved
- * edits stay in the draft for Save, which then keeps the change.
+ * away, rejecting if that fails. Only that tag changes: the rest is sent as
+ * last saved, so unsaved edits stay in the draft for Save, which then keeps
+ * the change.
  */
-function setTaskTag(tagId: string, present: boolean) {
-  // The page can move to another project while this waits its turn or its
-  // requests run; the change is for the project shown now, and must never
-  // land on another one.
+function setTaskTag(tagId: string, present: boolean): Promise<void> {
+  // The change is for the project the form shows now, which may be on its
+  // way out while another loads. Like a Save, it lands on that project even
+  // if the page has moved on by the time its turn comes, and never on
+  // another one.
   const projectId = saved.value.id;
-  if (present) pendingTaskTagIds.value.add(tagId);
+  if (present) setPending(projectId, tagId, true);
   const change = enqueueWrite(async () => {
-    if (!isShowing(projectId)) return;
-    errorMessage.value = "";
-    let updated: Project;
-    try {
-      updated = await projectsStore.updateProject({
-        ...saved.value,
-        tagIds: withTag(saved.value.tagIds, tagId, present),
-      });
-    } catch {
-      errorMessage.value = present
-        ? "Couldn't add the task to the project."
-        : "Couldn't remove the task from the project.";
+    const latest = await latestProject(projectId);
+    const updated = await projectsStore.updateProject({
+      ...latest,
+      tagIds: withTag(latest.tagIds, tagId, present),
+    });
+    if (!isOpenOn(projectId)) return;
+    if (!isShowing(projectId)) {
+      // The page came back to the project and is loading it, maybe from
+      // before this change.
+      await loadProject(projectId);
       return;
     }
-    if (!isShowing(projectId)) return;
     // A load still in flight started before this change, so its copy of
     // the project is out of date.
     loadToken++;
@@ -177,8 +212,21 @@ function setTaskTag(tagId: string, present: boolean) {
     }
   });
   return change.finally(() => {
-    if (present) pendingTaskTagIds.value.delete(tagId);
+    if (present) setPending(projectId, tagId, false);
   });
+}
+
+/** Takes a task out of the project, from its row in the task list. */
+function removeTask(task: Task): Promise<void> {
+  return setTaskTag(task.tagId, false);
+}
+
+function setPending(projectId: string, tagId: string, pending: boolean) {
+  const tagIds = pendingTaskTags.value.get(projectId) ?? new Set<string>();
+  if (pending) tagIds.add(tagId);
+  else tagIds.delete(tagId);
+  if (tagIds.size > 0) pendingTaskTags.value.set(projectId, tagIds);
+  else pendingTaskTags.value.delete(projectId);
 }
 
 /**

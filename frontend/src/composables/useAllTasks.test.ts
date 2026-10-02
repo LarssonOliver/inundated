@@ -71,3 +71,28 @@ test("creates a task from its name", async () => {
 
   expect(createTask).toHaveBeenCalledWith({ name: "Blog post", parentId: undefined });
 });
+
+test("a reload after a change doesn't settle for a load sent before it", async () => {
+  let finishFirst: (tasks: Task[]) => void = () => {};
+  listAllTasks
+    .mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
+    .mockResolvedValueOnce([task({ name: "Moved" })]);
+  const source = setup();
+
+  const reloaded = source.reload();
+  finishFirst([task({})]);
+  await reloaded;
+
+  expect(listAllTasks).toHaveBeenCalledTimes(2);
+  expect(source.tasks.value.map((t) => t.name)).toEqual(["Moved"]);
+});
+
+test("reloads only after the edits the store doesn't apply in place", () => {
+  listAllTasks.mockResolvedValue([]);
+  const source = setup();
+
+  expect(source.reloadsAfter!({ name: "Renamed" })).toBe(false);
+  expect(source.reloadsAfter!({ tagIds: new Set(["l1"]) })).toBe(false);
+  expect(source.reloadsAfter!({ closed: true, closeReason: "done" })).toBe(true);
+  expect(source.reloadsAfter!({ closed: false })).toBe(true);
+});

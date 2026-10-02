@@ -233,12 +233,53 @@ describe("tasks store", () => {
     expect(api.listAllTasks).not.toHaveBeenCalled();
   });
 
-  it("skips a move whose target is null", async () => {
+  it("skips a move whose target is null, saying it didn't move", async () => {
     const reload = vi.fn(async () => {});
-    await useStore().moveTask("a", () => null, { reload });
+    expect(await useStore().moveTask("a", () => null, { reload })).toBe(false);
 
     expect(api.moveTask).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("says a move that happened moved", async () => {
+    api.moveTask.mockResolvedValue(task({ id: "a" }));
+    const reload = vi.fn(async () => {});
+    expect(await useStore().moveTask("a", () => ({ afterTaskId: "b" }), { reload })).toBe(true);
+  });
+
+  it("joins a fetch in flight, but not after a write", async () => {
+    let finishFirst: (tasks: Task[]) => void = () => {};
+    api.listAllTasks
+      .mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
+      .mockResolvedValue([task({ id: "a", name: "after" })]);
+    const store = useStore();
+
+    const first = store.fetchTasks();
+    const joined = store.fetchTasks();
+    expect(api.listAllTasks).toHaveBeenCalledOnce();
+
+    const fresh = store.fetchTasks({ fresh: true });
+    expect(api.listAllTasks).toHaveBeenCalledTimes(2);
+    finishFirst([task({ id: "a", name: "before" })]);
+    await Promise.all([first, joined, fresh]);
+    expect(store.tasks.map((t) => t.name)).toEqual(["after"]);
+  });
+
+  it("resolves a superseded fetch only once the fetch that superseded it lands", async () => {
+    const finish: Array<(tasks: Task[]) => void> = [];
+    api.listAllTasks.mockImplementation(() => new Promise((resolve) => finish.push(resolve)));
+    const store = useStore();
+    let firstDone = false;
+
+    const first = store.fetchTasks({ fresh: true }).then(() => (firstDone = true));
+    const second = store.fetchTasks({ fresh: true });
+    finish[0]([task({ id: "a", name: "older" })]);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(firstDone).toBe(false);
+
+    finish[1]([task({ id: "a", name: "newer" })]);
+    await Promise.all([first, second]);
+    expect(store.tasks.map((t) => t.name)).toEqual(["newer"]);
   });
 
   it("reloads the full list after a move by default", async () => {

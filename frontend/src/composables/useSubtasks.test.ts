@@ -123,14 +123,17 @@ test("drops the previous task's subtasks as soon as the task changes", async () 
   expect(source.tasks.value).toEqual([]);
 });
 
-test("creates a direct subtask", async () => {
+test("creates a direct subtask, then lists it", async () => {
   listAllTasks.mockImplementation(serve(tree));
   createTask.mockResolvedValue(task({ id: "new", parentId: "root" }));
   const { source } = setup();
+  await flushPromises();
 
+  listAllTasks.mockImplementation(serve([...tree, task({ id: "new", parentId: "root" })]));
   await source.create!("Hero");
 
   expect(createTask).toHaveBeenCalledWith({ name: "Hero", parentId: "root" });
+  expect(source.tasks.value.map((t) => t.id)).toContain("new");
 });
 
 test("hides closed subtasks again when the task changes", async () => {

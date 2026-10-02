@@ -50,5 +50,19 @@ export function useSupersededFetch() {
     }
   }
 
-  return { isLoading, isStale, run };
+  /**
+   * Resolves once no run is in flight, including runs started while
+   * waiting, so a caller whose run was superseded can wait for the run that
+   * superseded it to land. Never rejects: that run's caller sees its
+   * failure.
+   */
+  async function settled(): Promise<void> {
+    while (pending.value) {
+      const current = pending.value;
+      await current.catch(() => {});
+      if (pending.value === current) return;
+    }
+  }
+
+  return { isLoading, isStale, run, settled };
 }

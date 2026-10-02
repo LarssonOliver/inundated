@@ -1,3 +1,4 @@
+import type { Task } from "@/model";
 import type { TaskRow } from "@/stores/tasks";
 
 /**
@@ -13,6 +14,66 @@ export interface MoveTarget {
 // returns null when the move has nowhere to go, so a list can disable the
 // button instead of offering a move that does nothing.
 
+/** Where each listed task sits, for looking tasks up without a scan. */
+interface RowIndex {
+  rows: readonly TaskRow[];
+  /** Each task's position in rows. */
+  rowOf: Map<string, number>;
+  /** Listed tasks by their real parent (top level when unset), in listed order. */
+  children: Map<string | undefined, Task[]>;
+  /** Each task's position among its listed siblings. */
+  siblingOf: Map<string, number>;
+}
+
+function indexRows(rows: readonly TaskRow[]): RowIndex {
+  const rowOf = new Map<string, number>();
+  const children = new Map<string | undefined, Task[]>();
+  const siblingOf = new Map<string, number>();
+  rows.forEach(({ task }, i) => {
+    rowOf.set(task.id, i);
+    const siblings = children.get(task.parentId) ?? [];
+    siblingOf.set(task.id, siblings.length);
+    siblings.push(task);
+    children.set(task.parentId, siblings);
+  });
+  return { rows, rowOf, children, siblingOf };
+}
+
+function shiftIn(index: RowIndex, id: string, delta: -1 | 1): MoveTarget | null {
+  const i = index.siblingOf.get(id);
+  if (i === undefined) return null;
+  const { parentId } = index.rows[index.rowOf.get(id)!].task;
+  const siblings = index.children.get(parentId)!;
+  const target = i + delta;
+  if (target < 0 || target >= siblings.length) return null;
+  // Moving up places it after the sibling two above (or first); moving
+  // down places it after the next sibling.
+  const after = delta < 0 ? siblings[i - 2] : siblings[i + 1];
+  return { parentId, afterTaskId: after?.id };
+}
+
+function indentIn(index: RowIndex, id: string): MoveTarget | null {
+  const i = index.rowOf.get(id);
+  if (i === undefined || i === 0) return null;
+  const task = index.rows[i].task;
+  const parent = index.rows[i - 1].task;
+  const children = index.children.get(parent.id) ?? [];
+  const lastChild = children.at(-1)?.id === id ? children.at(-2) : children.at(-1);
+  // An only child indented under its own parent would stay where it is.
+  if (parent.id === task.parentId && !lastChild) return null;
+  return { parentId: parent.id, afterTaskId: lastChild?.id };
+}
+
+function outdentIn(index: RowIndex, id: string): MoveTarget | null {
+  const i = index.rowOf.get(id);
+  const task = i === undefined ? undefined : index.rows[i].task;
+  if (!task?.parentId) return null;
+  const parentRow = index.rowOf.get(task.parentId);
+  if (parentRow === undefined) return null;
+  const parent = index.rows[parentRow].task;
+  return { parentId: parent.parentId, afterTaskId: parent.id };
+}
+
 /**
  * Where moving a task one step up (-1) or down (1) among its siblings
  * places it. Only listed siblings count, and only those with the task's
@@ -27,16 +88,7 @@ export function shiftTarget(
   id: string,
   delta: -1 | 1,
 ): MoveTarget | null {
-  const task = rows.find((row) => row.task.id === id)?.task;
-  if (!task) return null;
-  const siblings = rows.map((row) => row.task).filter((t) => t.parentId === task.parentId);
-  const target = siblings.findIndex((t) => t.id === id) + delta;
-  if (target < 0 || target >= siblings.length) return null;
-
-  // Moving up places it after the sibling two above (or first); moving
-  // down places it after the next sibling.
-  const others = siblings.filter((t) => t.id !== id);
-  return { parentId: task.parentId, afterTaskId: target === 0 ? undefined : others[target - 1].id };
+  return shiftIn(indexRows(rows), id, delta);
 }
 
 /**
@@ -45,17 +97,7 @@ export function shiftTarget(
  * be the task's own parent, which moves the task after its siblings.
  */
 export function indentTarget(rows: readonly TaskRow[], id: string): MoveTarget | null {
-  const index = rows.findIndex((row) => row.task.id === id);
-  if (index <= 0) return null;
-  const task = rows[index].task;
-  const parent = rows[index - 1].task;
-  const lastChild = rows
-    .map((row) => row.task)
-    .filter((t) => t.parentId === parent.id && t.id !== id)
-    .at(-1);
-  // An only child indented under its own parent would stay where it is.
-  if (parent.id === task.parentId && !lastChild) return null;
-  return { parentId: parent.id, afterTaskId: lastChild?.id };
+  return indentIn(indexRows(rows), id);
 }
 
 /**
@@ -65,9 +107,32 @@ export function indentTarget(rows: readonly TaskRow[], id: string): MoveTarget |
  * open/closed tree must not be crossed.
  */
 export function outdentTarget(rows: readonly TaskRow[], id: string): MoveTarget | null {
-  const task = rows.find((row) => row.task.id === id)?.task;
-  if (!task?.parentId) return null;
-  const parent = rows.find((row) => row.task.id === task.parentId)?.task;
-  if (!parent) return null;
-  return { parentId: parent.parentId, afterTaskId: parent.id };
+  return outdentIn(indexRows(rows), id);
+}
+
+/** Every move a listed task can make, as the functions above give them. */
+export interface TaskMoves {
+  up: MoveTarget | null;
+  down: MoveTarget | null;
+  indent: MoveTarget | null;
+  outdent: MoveTarget | null;
+}
+
+/**
+ * The moves of every task in rows, by task id. Indexes rows once, where
+ * calling the functions above for each task would scan rows for each.
+ */
+export function listMoves(rows: readonly TaskRow[]): Map<string, TaskMoves> {
+  const index = indexRows(rows);
+  return new Map(
+    rows.map(({ task: { id } }) => [
+      id,
+      {
+        up: shiftIn(index, id, -1),
+        down: shiftIn(index, id, 1),
+        indent: indentIn(index, id),
+        outdent: outdentIn(index, id),
+      },
+    ]),
+  );
 }

@@ -34,11 +34,14 @@ import TaskList from "@/components/tasks/TaskList.vue";
 const props = defineProps<{
   /** The project as last saved, which the server lists its tasks by. */
   project: Project;
+  /**
+   * Removes a task's own tag from the project, which the page owns (see
+   * ProjectView), resolving once it's removed.
+   */
+  removeTask: (task: Task) => Promise<void>;
 }>();
 
 const emit = defineEmits<{
-  /** The page removes a task's own tag from the project (see ProjectView). */
-  "remove-task": [task: Task];
   /** A task changed in a way that can change the project's time totals. */
   changed: [];
 }>();
@@ -47,7 +50,7 @@ const settingsStore = useSettingsStore();
 const formatMs = useDurationFormat(() => settingsStore.settings);
 
 const source = useProjectTasks(() => props.project, {
-  remove: async (task) => emit("remove-task", task),
+  remove: (task) => props.removeTask(task),
 });
 
 const taskTimeMs = computed(() => props.project.taskTimeMs ?? 0);

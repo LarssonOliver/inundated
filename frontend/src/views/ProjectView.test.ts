@@ -1,5 +1,5 @@
-import { beforeEach, expect, test, vi } from "vitest";
-import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { Project, Task } from "@/model";
 
@@ -31,8 +31,8 @@ const ProjectEditStub = {
 
 const ProjectTasksStub = {
   name: "ProjectTasks",
-  props: ["project"],
-  emits: ["remove-task", "changed"],
+  props: ["project", "removeTask"],
+  emits: ["changed"],
   template: "<div class='saved-tags'>{{ [...project.tagIds].sort().join(',') }}</div>",
 };
 
@@ -47,6 +47,10 @@ const other: Project = {
   tagId: "pt2",
   archived: false,
 };
+
+// A view left mounted would keep loading projects as the next test moves
+// the route.
+enableAutoUnmount(afterEach);
 
 function mountView() {
   return mount(ProjectView, {
@@ -154,8 +158,8 @@ test("removes a task through the task list", async () => {
   await flushPromises();
 
   const removed: Partial<Task> = { id: "k9", tagId: "tk9" };
-  wrapper.findComponent(ProjectTasksStub).vm.$emit("remove-task", removed);
-  await flushPromises();
+  const removeTask = wrapper.findComponent(ProjectTasksStub).props("removeTask");
+  await removeTask(removed);
 
   expect(updateProject).toHaveBeenCalledWith(
     "p1",
@@ -279,4 +283,87 @@ test("refreshes the project's time totals when its task list changes, keeping un
     taskTimeMs: 4 * 3600000,
   });
   expect((edit.props("modelValue") as Project).name).toBe("Unsaved");
+});
+
+test("a task list removal rejects when it fails, leaving the form's error to the list", async () => {
+  server.tagIds = new Set(["l1", "tk9"]);
+  const wrapper = mountView();
+  await flushPromises();
+  updateProject.mockRejectedValueOnce(new Error("offline"));
+
+  const removeTask = wrapper.findComponent(ProjectTasksStub).props("removeTask");
+  await expect(removeTask({ id: "k9", tagId: "tk9" })).rejects.toThrow("offline");
+
+  expect(wrapper.find(".error").text()).toBe("");
+  expect(wrapper.find(".saved-tags").text()).toBe("l1,tk9");
+});
+
+test("says so when a Save fails", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  updateProject.mockRejectedValueOnce(new Error("offline"));
+
+  wrapper.findComponent(ProjectEditStub).vm.$emit("save");
+  await flushPromises();
+
+  expect(wrapper.find(".error").text()).toBe("Couldn't save the project.");
+});
+
+test("names the project when a Save fails after moving away from it", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  let failUpdate: () => void = () => {};
+  updateProject.mockImplementationOnce(
+    () => new Promise((_resolve, reject) => (failUpdate = () => reject(new Error("offline")))),
+  );
+
+  wrapper.findComponent(ProjectEditStub).vm.$emit("save");
+  await flushPromises();
+  router.route.params.id = "p2";
+  await flushPromises();
+  failUpdate();
+  await flushPromises();
+
+  expect(wrapper.find(".error").text()).toBe('Couldn\'t save the project "Website".');
+});
+
+test("a task tag picked while the next project loads lands on the project the form shows", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  let finishLoad: (project: Project) => void = () => {};
+  getProject.mockImplementationOnce(() => new Promise((resolve) => (finishLoad = resolve)));
+  let finishUpdate: () => void = () => {};
+  updateProject.mockImplementationOnce(
+    (id: string, fields: Partial<Project>) =>
+      new Promise((resolve) => {
+        finishUpdate = () => {
+          server = { ...server, ...fields, id, tagIds: new Set(fields.tagIds) };
+          resolve({ ...server, tagIds: new Set(server.tagIds) });
+        };
+      }),
+  );
+  const edit = wrapper.findComponent(ProjectEditStub);
+
+  // p2 isn't cached, so the form still shows p1 while it loads.
+  router.route.params.id = "p2";
+  await flushPromises();
+  expect(edit.props("modelValue")).toMatchObject({ id: "p1" });
+  edit.vm.$emit("task-tag-change", "tk9", true);
+  await flushPromises();
+  expect(edit.props("pendingTagIds")).toEqual(new Set(["tk9"]));
+
+  finishLoad({ ...other, tagIds: new Set(other.tagIds) });
+  await flushPromises();
+  // p2's picker still offers the tag.
+  expect(edit.props("pendingTagIds")).toEqual(new Set());
+
+  finishUpdate();
+  await flushPromises();
+  expect(updateProject).toHaveBeenCalledWith(
+    "p1",
+    expect.objectContaining({ name: "Website", tagIds: new Set(["l1", "tk9"]) }),
+  );
+  expect(updateProject).not.toHaveBeenCalledWith("p2", expect.anything());
+  expect(edit.props("modelValue")).toMatchObject({ id: "p2", tagIds: new Set(["l7"]) });
+  expect(wrapper.find(".error").text()).toBe("");
 });

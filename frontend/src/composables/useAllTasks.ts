@@ -24,7 +24,12 @@ export function useAllTasks(): TaskListSource {
     setShowClosed: (value) => void load(() => tasksStore.setIncludeClosed(value)),
     isLoading: computed(() => tasksStore.isLoading),
     loadFailed,
-    reload: () => load(() => tasksStore.fetchTasks()),
+    // Called after a change, which a fetch already in flight wouldn't show.
+    reload: () => load(() => tasksStore.fetchTasks({ fresh: true })),
+    // The store updates its list in place, except that closing or reopening
+    // a task also closes or reopens others on the server.
+    reloadsAfter: (patch) => patch.closed !== undefined || patch.closeReason !== undefined,
+    // The store lists the new task itself.
     create: async (name) => {
       await tasksStore.createTaskFromName(name);
     },

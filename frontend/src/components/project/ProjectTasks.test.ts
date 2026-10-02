@@ -38,9 +38,12 @@ const project: Project = {
   archived: false,
 };
 
-function mountTasks(p: Project = project) {
+function mountTasks(
+  p: Project = project,
+  removeTask = vi.fn<(task: Task) => Promise<void>>(async () => {}),
+) {
   return mount(ProjectTasks, {
-    props: { project: p },
+    props: { project: p, removeTask },
     global: {
       stubs: {
         TaskRow: {
@@ -120,7 +123,8 @@ test("closing a task updates it directly and reloads only the project list", asy
 
 test("asks the page to remove a task added through its own tag", async () => {
   listAllTasks.mockResolvedValue([task({}), task({ id: "k2", name: "Hero", tagId: "tk2" })]);
-  const wrapper = mountTasks();
+  const removeTask = vi.fn<(task: Task) => Promise<void>>(async () => {});
+  const wrapper = mountTasks(project, removeTask);
   await flushPromises();
 
   // Only k1's own tag is on the project.
@@ -129,7 +133,23 @@ test("asks the page to remove a task added through its own tag", async () => {
   await wrapper.find(".remove").trigger("click");
   await flushPromises();
 
-  expect(wrapper.emitted("remove-task")).toEqual([[expect.objectContaining({ id: "k1" })]]);
+  expect(removeTask).toHaveBeenCalledWith(expect.objectContaining({ id: "k1" }));
+  // The page refreshes the totals itself once the task is out.
+  expect(wrapper.emitted("changed")).toBeUndefined();
+});
+
+test("says so when the page can't remove a task", async () => {
+  listAllTasks.mockResolvedValue([task({})]);
+  const wrapper = mountTasks(
+    project,
+    vi.fn(async () => Promise.reject(new Error("offline"))),
+  );
+  await flushPromises();
+
+  await wrapper.find(".remove").trigger("click");
+  await flushPromises();
+
+  expect(wrapper.find(".error").text()).toBe("Couldn't remove the task.");
 });
 
 test("lists closed tasks too once Show Closed is on", async () => {

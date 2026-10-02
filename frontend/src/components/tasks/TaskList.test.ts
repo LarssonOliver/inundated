@@ -19,11 +19,11 @@ vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten: vi.fn() }
 // Passes through to the real move helpers, counting their calls.
 vi.mock("@/helpers/taskMoves", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/helpers/taskMoves")>();
-  return { ...original, shiftTarget: vi.fn(original.shiftTarget) };
+  return { ...original, listMoves: vi.fn(original.listMoves) };
 });
 
 import TaskList from "./TaskList.vue";
-import { shiftTarget } from "@/helpers/taskMoves";
+import { listMoves } from "@/helpers/taskMoves";
 
 // Ranks follow ids, so the listed order is easy to read off them.
 const task = (overrides: Partial<Task> & { id: string }): Task => ({
@@ -159,6 +159,20 @@ test("moves through the store, reloading the source instead of the full list", a
   expect(wrapper.emitted("changed")).toHaveLength(1);
 });
 
+test("doesn't tell the page about a move that turned out to have nowhere to go", async () => {
+  const source = fakeSource([task({ id: "a" }), task({ id: "b" })]);
+  const wrapper = mountList(source);
+
+  // The first task can't move up; the button is disabled, but a move queued
+  // behind another can find itself there by its turn.
+  wrapper.findComponent(TaskRowStub).vm.$emit("shift", -1);
+  await flushPromises();
+
+  expect(moveTask).not.toHaveBeenCalled();
+  expect(source.reload).not.toHaveBeenCalled();
+  expect(wrapper.emitted("changed")).toBeUndefined();
+});
+
 test("disables every row's moves while one is in flight", async () => {
   let finishMove: () => void = () => {};
   moveTask.mockReturnValue(new Promise<void>((resolve) => (finishMove = resolve)));
@@ -213,7 +227,7 @@ test("offers removal only where the source allows it, and removes through the so
   expect(remove).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
 });
 
-test("creates a task from the trimmed name and reloads", async () => {
+test("creates a task from the trimmed name, leaving it to the source to list", async () => {
   const source = fakeSource([]);
   const wrapper = mountList(source);
 
@@ -222,8 +236,27 @@ test("creates a task from the trimmed name and reloads", async () => {
   await flushPromises();
 
   expect(source.create).toHaveBeenCalledWith("Blog post");
-  expect(source.reload).toHaveBeenCalledOnce();
+  expect(source.reload).not.toHaveBeenCalled();
+  expect(wrapper.emitted("changed")).toHaveLength(1);
   expect((wrapper.find('input[aria-label="New task"]').element as HTMLInputElement).value).toBe("");
+});
+
+test("reloads after an edit unless the source says the edit doesn't need it", async () => {
+  updateTask.mockResolvedValue(task({ id: "a", name: "Renamed" }));
+  const always = fakeSource([task({ id: "a" })]);
+  const wrapper = mountList(always);
+  wrapper.findComponent(TaskRowStub).vm.$emit("update", { name: "Renamed" });
+  await flushPromises();
+  expect(always.reload).toHaveBeenCalledOnce();
+
+  const reloadsAfter = vi.fn(() => false);
+  const inPlace = fakeSource([task({ id: "a" })], { reloadsAfter });
+  const other = mountList(inPlace);
+  other.findComponent(TaskRowStub).vm.$emit("update", { name: "Renamed" });
+  await flushPromises();
+  expect(reloadsAfter).toHaveBeenCalledWith({ name: "Renamed" });
+  expect(inPlace.reload).not.toHaveBeenCalled();
+  expect(other.emitted("changed")).toHaveLength(1);
 });
 
 test("says so when the task can't be created", async () => {
@@ -265,11 +298,11 @@ test("shows the empty text only when nothing is listed, loading or failed", () =
 
 test("doesn't work out the move buttons again while typing a new task's name", async () => {
   const wrapper = mountList(fakeSource([task({ id: "a" }), task({ id: "b" })]));
-  vi.mocked(shiftTarget).mockClear();
+  vi.mocked(listMoves).mockClear();
 
   await wrapper.find('input[aria-label="New task"]').setValue("Blog post");
 
-  expect(shiftTarget).not.toHaveBeenCalled();
+  expect(listMoves).not.toHaveBeenCalled();
 });
 
 test("says there are no open tasks while closed ones are hidden", async () => {
@@ -284,18 +317,18 @@ test("says there are no open tasks while closed ones are hidden", async () => {
   expect(wrapper.find(".empty").text()).toBe("Nothing here.");
 });
 
-test("tells the page after removing a task, and says so when it can't", async () => {
+test("leaves what removing a task changes to the source, and says so when it can't", async () => {
   const remove = vi.fn(async () => {});
   const source = fakeSource([task({ id: "a" })], { canRemove: () => true, remove });
   const wrapper = mountList(source);
 
   await rowNamed(wrapper, "a").find(".remove").trigger("click");
   await flushPromises();
-  expect(wrapper.emitted("changed")).toHaveLength(1);
+  expect(wrapper.find(".error").exists()).toBe(false);
 
   remove.mockRejectedValueOnce(new Error("offline"));
   await rowNamed(wrapper, "a").find(".remove").trigger("click");
   await flushPromises();
   expect(wrapper.find(".error").text()).toBe("Couldn't remove the task.");
-  expect(wrapper.emitted("changed")).toHaveLength(1);
+  expect(wrapper.emitted("changed")).toBeUndefined();
 });
