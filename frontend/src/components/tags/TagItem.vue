@@ -63,8 +63,8 @@ const containerClasses = reactive({
 
 .tag-container.owned {
   background-color: transparent;
-  border: 1px solid var(--nord1);
-  padding: calc(0.25em - 2px) calc(0.6em - 2px);
+  border: 1px solid var(--nord2);
+  padding: calc(0.25em - 1px) calc(0.6em - 1px);
   font-size: 1.1em;
 }
 
