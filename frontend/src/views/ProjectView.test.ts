@@ -227,3 +227,38 @@ test("marks a task tag as being added until its save lands", async () => {
   await flushPromises();
   expect(edit.props("pendingTagIds")).toEqual(new Set());
 });
+
+test("a Save that waits behind a task tag change lands on its own project after moving away", async () => {
+  const wrapper = mountView();
+  await flushPromises();
+  const edit = wrapper.findComponent(ProjectEditStub);
+  let finishTagChange: () => void = () => {};
+  updateProject.mockImplementationOnce(
+    (id: string, fields: Partial<Project>) =>
+      new Promise((resolve) => {
+        finishTagChange = () => {
+          server = { ...server, ...fields, id, tagIds: new Set(fields.tagIds) };
+          resolve({ ...server, tagIds: new Set(server.tagIds) });
+        };
+      }),
+  );
+
+  edit.vm.$emit("task-tag-change", "tk9", true);
+  await flushPromises();
+  (edit.props("modelValue") as Project).name = "Renamed";
+  edit.vm.$emit("save");
+  router.route.params.id = "p2";
+  await flushPromises();
+  finishTagChange();
+  await flushPromises();
+
+  expect(updateProject).toHaveBeenLastCalledWith(
+    "p1",
+    expect.objectContaining({ name: "Renamed", tagIds: new Set(["l1", "tk9"]) }),
+  );
+  expect(updateProject).not.toHaveBeenCalledWith("p2", expect.anything());
+  expect(wrapper.findComponent(ProjectEditStub).props("modelValue")).toMatchObject({
+    id: "p2",
+    name: "Blog",
+  });
+});

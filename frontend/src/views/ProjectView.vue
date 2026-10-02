@@ -105,10 +105,25 @@ watch(
   { immediate: true },
 );
 
+/**
+ * Saves the form's edits as they are when Save is clicked: the page can move
+ * to another project before the save's turn comes, and the edits must land
+ * on the project they were made to.
+ */
 function saveProject() {
+  const edits: Project = { ...draft.value, tagIds: new Set(draft.value.tagIds) };
+  // Task tag changes queued before this save land on the server first
+  // without reaching these edits, so the save applies them to its tags.
+  const savedTagIds = new Set(saved.value.tagIds);
   return enqueueWrite(async () => {
-    await projectsStore.updateProject(draft.value);
-    await loadProject(draft.value.id);
+    const latest = isShowing(edits.id)
+      ? saved.value
+      : await projectsStore.fetchProjectById(edits.id);
+    const tagIds = new Set(edits.tagIds);
+    for (const id of latest.tagIds) if (!savedTagIds.has(id)) tagIds.add(id);
+    for (const id of savedTagIds) if (!latest.tagIds.has(id)) tagIds.delete(id);
+    await projectsStore.updateProject({ ...edits, tagIds });
+    if (isShowing(edits.id)) await loadProject(edits.id);
   });
 }
 
