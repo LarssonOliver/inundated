@@ -57,6 +57,7 @@ export interface ListTasksRequest {
     offset?: number;
     includeClosed?: boolean;
     parentId?: string;
+    ancestorId?: string;
     tagId?: string;
     projectId?: string;
     dueFrom?: Date;
@@ -243,6 +244,10 @@ export class TasksApi extends runtime.BaseAPI {
 
         if (requestParameters['parentId'] != null) {
             queryParameters['parentId'] = requestParameters['parentId'];
+        }
+
+        if (requestParameters['ancestorId'] != null) {
+            queryParameters['ancestorId'] = requestParameters['ancestorId'];
         }
 
         if (requestParameters['tagId'] != null) {

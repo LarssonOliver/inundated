@@ -233,7 +233,7 @@ example().catch(console.error);
 
 ## listTasks
 
-> PaginatedTasks listTasks(limit, offset, includeClosed, parentId, tagId, projectId, dueFrom, dueTo, include)
+> PaginatedTasks listTasks(limit, offset, includeClosed, parentId, ancestorId, tagId, projectId, dueFrom, dueTo, include)
 
 List tasks
 
@@ -265,6 +265,8 @@ async function example() {
     includeClosed: true,
     // string | Only list direct subtasks of this task. (optional)
     parentId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Only list subtasks of this task, at any depth. (optional)
+    ancestorId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // string | Only list tasks carrying this regular tag. (optional)
     tagId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // string | Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.  (optional)
@@ -298,6 +300,7 @@ example().catch(console.error);
 | **offset** | `number` | Number of items to skip from the beginning (zero-indexed). | [Optional] [Defaults to `0`] |
 | **includeClosed** | `boolean` | Whether to include closed tasks in the results. Defaults to false.  | [Optional] [Defaults to `false`] |
 | **parentId** | `string` | Only list direct subtasks of this task. | [Optional] [Defaults to `undefined`] |
+| **ancestorId** | `string` | Only list subtasks of this task, at any depth. | [Optional] [Defaults to `undefined`] |
 | **tagId** | `string` | Only list tasks carrying this regular tag. | [Optional] [Defaults to `undefined`] |
 | **projectId** | `string` | Only list tasks that belong to this project: tasks assigned to it, their subtasks, and tasks sharing one of its regular tags.  | [Optional] [Defaults to `undefined`] |
 | **dueFrom** | `Date` | Only list tasks due on or after this day. | [Optional] [Defaults to `undefined`] |

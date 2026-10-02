@@ -575,6 +575,9 @@ type User struct {
 // WeekStartDay The first day of the week for calendar/report views.
 type WeekStartDay string
 
+// AncestorId defines model for ancestorId.
+type AncestorId = openapi_types.UUID
+
 // Code defines model for code.
 type Code = string
 
@@ -772,6 +775,9 @@ type ListTasksParams struct {
 
 	// ParentId Only list direct subtasks of this task.
 	ParentId *ParentId `form:"parentId,omitempty" json:"parentId,omitempty"`
+
+	// AncestorId Only list subtasks of this task, at any depth.
+	AncestorId *AncestorId `form:"ancestorId,omitempty" json:"ancestorId,omitempty"`
 
 	// TagId Only list tasks carrying this regular tag.
 	TagId *TagIdFilter `form:"tagId,omitempty" json:"tagId,omitempty"`

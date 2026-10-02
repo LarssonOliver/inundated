@@ -30,12 +30,23 @@ func (t *MemoryStore) ListTasks(ctx context.Context, scope model.OwnerScope, par
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	var inSubtree map[uuid.UUID]bool
+	if params.AncestorId != nil {
+		inSubtree = map[uuid.UUID]bool{}
+		for _, i := range t.descendants(scope, *params.AncestorId) {
+			inSubtree[t.tasks[i].Id] = true
+		}
+	}
+
 	all := make([]model.Task, 0, len(t.tasks))
 	for _, task := range t.tasks {
 		if !matchesScope(task.UserId, scope) || (!params.IncludeClosed && task.Closed()) {
 			continue
 		}
 		if params.ParentId != nil && (task.ParentId == nil || *task.ParentId != *params.ParentId) {
+			continue
+		}
+		if inSubtree != nil && !inSubtree[task.Id] {
 			continue
 		}
 		if params.TagId != nil && !slices.Contains(task.TagIds, *params.TagId) {
