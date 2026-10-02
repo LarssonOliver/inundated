@@ -92,12 +92,15 @@ test("disables moving up or down past the ends of its siblings", () => {
   expect(wrapper.find('[title="Move down"]').attributes("disabled")).toBeUndefined();
 });
 
-test("offers removal only when removable", async () => {
+test("offers removal, under the given label, only when given one", async () => {
   getTagsByIds.mockResolvedValue([]);
-  expect(mountRow(task({})).find('[title="Remove from project"]').exists()).toBe(false);
+  expect(mountRow(task({})).findAll(".order-buttons button")).toHaveLength(4);
 
-  const wrapper = mountRow(task({}), { removable: true });
-  await wrapper.find('[title="Remove from project"]').trigger("click");
+  const wrapper = mountRow(task({}), { removeLabel: "Drop" });
+  expect(wrapper.findAll(".order-buttons button")).toHaveLength(5);
+  const button = wrapper.find('[title="Drop"]');
+  expect(button.attributes("aria-label")).toBe(`Drop: ${task({}).name}`);
+  await button.trigger("click");
 
   expect(wrapper.emitted("remove")).toHaveLength(1);
 });

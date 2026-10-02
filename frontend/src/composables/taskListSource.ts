@@ -28,6 +28,8 @@ export interface TaskListSource {
    * move stays in the list when absent.
    */
   keepsInList?(task: Task, newParentId: string | undefined): boolean;
+  /** What a row's remove button says, e.g. "Remove from project"; "Remove" when unset. */
+  removeLabel?: string;
   /** Whether the task's row offers to remove it from this scope. */
   canRemove?(task: Task): boolean;
   /** Takes the task out of this scope; the source reloads once it's out. */

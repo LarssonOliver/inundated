@@ -82,6 +82,7 @@ export function useProjectTasks(
     keepsInList: (task, newParentId) =>
       inProjectOnItsOwn(task) ||
       (newParentId !== undefined && tasks.value.some((t) => t.id === newParentId)),
+    removeLabel: "Remove from project",
     canRemove: (task) => project().tagIds.has(task.tagId),
     remove,
   };

@@ -39,7 +39,7 @@
         :can-shift-down="moveButtons.get(task.id)?.down ?? false"
         :can-indent="moveButtons.get(task.id)?.indent ?? false"
         :can-outdent="moveButtons.get(task.id)?.outdent ?? false"
-        :removable="source.canRemove?.(task) ?? false"
+        :remove-label="source.canRemove?.(task) ? (source.removeLabel ?? 'Remove') : undefined"
         :is-overdue="isTaskOverdue(task)"
         @toggle-closed="toggleClosed(task)"
         @ignore="ignore(task)"
