@@ -42,7 +42,7 @@ import { ref, onMounted } from "vue";
 import { nord3 } from "@/helpers/nord";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useArchivableList } from "@/composables/useArchivableList";
-import type { Project, Tag } from "@/model";
+import { projectTagPreview } from "@/helpers/project";
 
 import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
@@ -61,19 +61,6 @@ const { showArchived, sorted: sortedProjects } = useArchivableList(
 );
 
 useInfiniteScroll(projectsStore, sentinelElement, pageSize);
-
-// The project's own project tag, built from the project rather than
-// fetched: a project tag takes its name and color from its project, so
-// the pill is right without a request per row and follows edits at once.
-function projectTagPreview(project: Project): Tag {
-  return {
-    id: project.tagId ?? project.id,
-    name: project.name,
-    color: project.color,
-    archived: project.archived,
-    owner: { kind: "project", id: project.id },
-  };
-}
 
 onMounted(async () => await projectsStore.fetchPage(pageSize, 0));
 </script>

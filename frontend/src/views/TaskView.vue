@@ -42,6 +42,19 @@
           :create-owners="['project']"
         />
 
+        <p class="field-label">Projects</p>
+        <p v-if="projects.length === 0" class="muted">
+          Not in any project. Add this task's tag to a project to assign it.
+        </p>
+        <div v-else class="project-links">
+          <TagLink
+            v-for="project in projects"
+            :key="project.id"
+            :tag="projectTagPreview(project)"
+            :to="`/projects/${project.id}`"
+          />
+        </div>
+
         <div class="button-container">
           <button class="btn-info" :disabled="!draft.name.trim()" @click="save">Save</button>
           <template v-if="!task.closed">
@@ -54,23 +67,7 @@
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
       </div>
 
-      <div class="card summary">
-        <p class="field-label">Projects</p>
-        <p v-if="projects.length === 0" class="muted">
-          Not in any project. Add this task's tag to a project to assign it.
-        </p>
-        <div class="project-links">
-          <router-link
-            v-for="project in projects"
-            :key="project.id"
-            class="project-chip"
-            :to="`/projects/${project.id}`"
-          >
-            <span class="project-chip-dot" :style="{ backgroundColor: project.color }" />
-            {{ project.name }}
-          </router-link>
-        </div>
-
+      <div class="card">
         <TaskList
           :key="task.id"
           class="subtasks"
@@ -81,7 +78,7 @@
           empty-open-text="No open subtasks."
           @changed="refreshTask"
         >
-          <template #title><p class="field-label">Subtasks</p></template>
+          <template #title><h2>Subtasks</h2></template>
         </TaskList>
       </div>
 
@@ -125,7 +122,9 @@ import { useProjectsStore } from "@/stores/projects";
 import { useSettingsStore } from "@/stores/settings";
 import { useDurationFormat } from "@/composables/useDurationFormat";
 import { formatDatePickerInput, fromLocalDay, toLocalDay } from "@/helpers/dates";
+import { projectTagPreview } from "@/helpers/project";
 import TagItem from "@/components/tags/TagItem.vue";
+import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
 import UsageMeter from "@/components/stats/UsageMeter.vue";
@@ -424,37 +423,7 @@ async function deleteTask() {
 .project-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6em;
-}
-
-.project-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.35em 0.75em;
-  background-color: var(--nord1);
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  color: var(--nord5);
-  transition:
-    background-color var(--transition-fast),
-    transform var(--transition-fast);
-}
-
-.project-chip:hover {
-  background-color: var(--nord2);
-  transform: translateY(-1px);
-}
-
-.project-chip-dot {
-  width: 0.6em;
-  height: 0.6em;
-  border-radius: 50%;
-  flex: none;
-}
-
-.subtasks {
-  margin-top: 1em;
+  margin-top: 0.5em;
 }
 
 .subtasks :deep(.task-row) {
