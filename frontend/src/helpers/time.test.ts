@@ -2,6 +2,8 @@ import { test, expect } from "vitest";
 import {
   formatClockTime,
   formatDuration,
+  formatHours,
+  parseHours,
   formatTimeDuration,
   parseClockTime,
   parseGoDuration,
@@ -90,4 +92,27 @@ test("parseGoDuration rejects invalid or non-duration strings", () => {
   expect(parseGoDuration("2hh")).toBeNull();
   expect(parseGoDuration("h")).toBeNull();
   expect(parseGoDuration("2d")).toBeNull();
+});
+
+test("formatHours renders hours and minutes", () => {
+  expect(formatHours(1.5)).toBe("1h 30m");
+  expect(formatHours(0.1)).toBe("6m");
+  expect(formatHours(8)).toBe("8h");
+  expect(formatHours(0)).toBe("0h");
+});
+
+test("parseHours reads durations, clock times and plain hours", () => {
+  expect(parseHours("1h 30m")).toBe(1.5);
+  expect(parseHours("1h30m")).toBe(1.5);
+  expect(parseHours("90m")).toBe(1.5);
+  expect(parseHours("1:30")).toBe(1.5);
+  expect(parseHours("1.5")).toBe(1.5);
+  expect(parseHours(" 2 ")).toBe(2);
+  expect(parseHours(formatHours(0.1))).toBe(0.1);
+});
+
+test("parseHours rejects anything else", () => {
+  for (const input of ["", "abc", "-1", "-1h", "1x", "1:75", "h"]) {
+    expect(parseHours(input)).toBeNull();
+  }
 });
