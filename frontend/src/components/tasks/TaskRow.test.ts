@@ -106,6 +106,7 @@ test("offers removal, under the given label, only when given one", async () => {
 });
 
 test("edits the estimate as hours and minutes", async () => {
+  getTagsByIds.mockResolvedValue([]);
   const wrapper = mountRow(task({ estimateHours: 1.5 }));
   await wrapper.find("button.estimate").trigger("click");
   const input = wrapper.find<HTMLInputElement>(".estimate-input");
@@ -117,6 +118,7 @@ test("edits the estimate as hours and minutes", async () => {
 });
 
 test("ignores an estimate it can't read", async () => {
+  getTagsByIds.mockResolvedValue([]);
   const wrapper = mountRow(task({}));
   await wrapper.find("button.estimate").trigger("click");
   await wrapper.find(".estimate-input").setValue("soon");
