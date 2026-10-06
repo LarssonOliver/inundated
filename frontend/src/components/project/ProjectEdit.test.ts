@@ -122,3 +122,12 @@ test("doesn't offer a task tag again while it's being added", () => {
   expect(wrapper.emitted("task-tag-change")).toBeUndefined();
   expect(wrapper.props("modelValue")!.tagIds).toEqual(new Set(["l1", "l2"]));
 });
+
+test("accepts a time budget in fractions of an hour", async () => {
+  const wrapper = mountEdit();
+  const input = wrapper.find<HTMLInputElement>('input[type="number"]');
+  await input.setValue("0.1");
+  expect(input.element.validity.valid).toBe(true);
+  await wrapper.find(".btn-info").trigger("click");
+  expect(wrapper.emitted("save")?.[0]?.[0]).toMatchObject({ timeBudgetHours: 0.1 });
+});

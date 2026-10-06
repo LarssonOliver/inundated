@@ -108,7 +108,7 @@
           v-model="estimateDraft"
           type="number"
           min="0"
-          step="0.25"
+          step="any"
           class="estimate-input"
           @blur="saveEstimate"
           @keydown.enter="saveEstimate"

@@ -33,7 +33,7 @@
         </div>
 
         <p class="field-label">Estimate (hours)</p>
-        <input v-model="draft.estimateHours" type="number" min="0" step="0.25" />
+        <input v-model="draft.estimateHours" type="number" min="0" step="any" />
 
         <p class="field-label">Tags</p>
         <TagListEmbedded

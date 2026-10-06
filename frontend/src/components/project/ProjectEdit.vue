@@ -7,7 +7,7 @@
     <ColorInput v-model="model.color" />
 
     <p class="field-label">Time Budget</p>
-    <input v-model="model.timeBudgetHours" type="number" />
+    <input v-model="model.timeBudgetHours" type="number" min="0" step="any" />
 
     <p class="field-label">Tags</p>
     <TagListEmbedded
