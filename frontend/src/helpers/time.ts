@@ -114,3 +114,27 @@ export function formatTimeDuration(durationMs: number): string {
   }
   return parts.join(" ");
 }
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Renders an hour amount (a budget or estimate) for editing, e.g. 1.5 as "1h 30m". */
+export function formatHours(hours: number): string {
+  return hours === 0 ? "0h" : formatTimeDuration(Math.round(hours * HOUR_MS));
+}
+
+/**
+ * Parses an hour amount typed as "1h 30m", "90m", "1:30" or a plain number
+ * of hours like "1.5". Returns null for anything else, including negatives.
+ */
+export function parseHours(input: string): number | null {
+  const trimmed = input.trim();
+  if (/^\d+(\.\d+)?$|^\.\d+$/.test(trimmed)) return Number(trimmed);
+
+  const clock = /^(\d+):([0-5]\d)$/.exec(trimmed);
+  if (clock) return Number(clock[1]) + Number(clock[2]) / 60;
+
+  const unsigned = trimmed.replace(/\s+/g, "");
+  if (unsigned.startsWith("-") || unsigned.startsWith("+")) return null;
+  const ms = parseGoDuration(unsigned);
+  return ms === null ? null : ms / HOUR_MS;
+}

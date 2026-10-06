@@ -32,8 +32,8 @@
           />
         </div>
 
-        <p class="field-label">Estimate (hours)</p>
-        <input v-model="draft.estimateHours" type="number" min="0" step="any" />
+        <p class="field-label">Estimate</p>
+        <HoursInput v-model="draft.estimateHours" />
 
         <p class="field-label">Tags</p>
         <TagListEmbedded
@@ -129,6 +129,7 @@ import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
 import UsageMeter from "@/components/stats/UsageMeter.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
+import HoursInput from "@/components/inputs/HoursInput.vue";
 import TaskList from "@/components/tasks/TaskList.vue";
 import { useSubtasks } from "@/composables/useSubtasks";
 import NotFoundView from "./NotFoundView.vue";
@@ -139,7 +140,7 @@ import "@vuepic/vue-datepicker/dist/main.css";
 interface Draft {
   name: string;
   dueDate: string;
-  estimateHours: number | "";
+  estimateHours: number | undefined;
   tagIds: Set<string>;
 }
 
@@ -163,7 +164,7 @@ const projects = ref<Project[]>([]);
 const notFound = ref(false);
 const errorMessage = ref("");
 const showDeletionConfirmation = ref(false);
-const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: "", tagIds: new Set() });
+const draft = ref<Draft>({ name: "", dueDate: "", estimateHours: undefined, tagIds: new Set() });
 
 const formatMs = useDurationFormat(() => settingsStore.settings);
 
@@ -185,7 +186,7 @@ function applyTask(loaded: Task) {
   draft.value = {
     name: loaded.name,
     dueDate: loaded.dueDate ?? "",
-    estimateHours: loaded.estimateHours ?? "",
+    estimateHours: loaded.estimateHours,
     tagIds: new Set(loaded.tagIds),
   };
 }
@@ -246,11 +247,6 @@ watch(
 
 async function save() {
   if (!task.value) return;
-  const estimate = draft.value.estimateHours;
-  if (estimate !== "" && (Number.isNaN(Number(estimate)) || Number(estimate) < 0)) {
-    errorMessage.value = "Estimate must be a non-negative number.";
-    return;
-  }
   errorMessage.value = "";
   const token = loadToken;
   const priorTask = task.value;
@@ -258,7 +254,7 @@ async function save() {
     name: draft.value.name.trim(),
     tagIds: draft.value.tagIds,
     dueDate: draft.value.dueDate || null,
-    estimateHours: estimate === "" ? null : Number(estimate),
+    estimateHours: draft.value.estimateHours ?? null,
   });
   if (token !== loadToken) return;
   // Editing never changes closed state, parent or own tag, so merge the

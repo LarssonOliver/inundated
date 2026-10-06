@@ -106,15 +106,13 @@
         <input
           ref="estimateInputEl"
           v-model="estimateDraft"
-          type="number"
-          min="0"
-          step="any"
+          type="text"
+          placeholder="1h 30m"
           class="estimate-input"
           @blur="saveEstimate"
           @keydown.enter="saveEstimate"
           @keydown.escape="cancelEstimate"
         />
-        <span>h</span>
       </template>
       <button v-else class="field-trigger estimate" :disabled="disabled" @click="startEditEstimate">
         <template v-if="task.estimateHours != null">
@@ -185,6 +183,7 @@ import {
   toLocalDay,
 } from "@/helpers/dates";
 import { nord10 } from "@/helpers/nord";
+import { formatHours, parseHours } from "@/helpers/time";
 import MaterialIcon from "@/components/icons/MaterialIcon.vue";
 import TagLink from "@/components/tags/TagLink.vue";
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
@@ -302,21 +301,19 @@ function cancelName() {
 }
 
 const estimateInputEl = ref<HTMLInputElement>();
-// Vue coerces a type="number" input's v-model to an actual number once it
-// holds a valid value (only staying a string while empty), so this must
-// accept both.
-const estimateDraft = ref<string | number>("");
+const estimateDraft = ref("");
 function startEditEstimate() {
-  estimateDraft.value = props.task.estimateHours ?? "";
+  estimateDraft.value =
+    props.task.estimateHours != null ? formatHours(props.task.estimateHours) : "";
   editingField.value = "estimate";
   nextTick(() => estimateInputEl.value?.focus());
 }
 function saveEstimate() {
   if (editingField.value !== "estimate") return;
   editingField.value = null;
-  const trimmed = String(estimateDraft.value).trim();
-  const value = trimmed === "" ? null : Number(trimmed);
-  if (value !== null && (Number.isNaN(value) || value < 0)) return;
+  const trimmed = estimateDraft.value.trim();
+  const value = trimmed === "" ? null : parseHours(trimmed);
+  if (trimmed !== "" && value === null) return;
   if (value !== (props.task.estimateHours ?? null)) {
     emit("update", { estimateHours: value });
   }
@@ -483,7 +480,7 @@ function startEditTags() {
 }
 
 .estimate-input {
-  width: 4em;
+  width: 5.5em;
 }
 
 .placeholder {
