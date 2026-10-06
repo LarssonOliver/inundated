@@ -125,7 +125,7 @@ test("doesn't offer a task tag again while it's being added", () => {
 
 test("accepts a time budget in hours and minutes", async () => {
   const wrapper = mountEdit();
-  const input = wrapper.findComponent({ name: "HoursInput" }).find("input");
+  const input = wrapper.findComponent({ name: "DurationInput" }).find("input");
   await input.setValue("1h 30m");
   await input.trigger("focusout");
   await wrapper.find(".btn-info").trigger("click");
@@ -134,7 +134,7 @@ test("accepts a time budget in hours and minutes", async () => {
 
 test("shows no budget as empty and saves a cleared one as 0", async () => {
   const wrapper = mountEdit();
-  const input = wrapper.findComponent({ name: "HoursInput" }).find("input");
+  const input = wrapper.findComponent({ name: "DurationInput" }).find("input");
   expect(input.element.value).toBe("");
   await input.setValue("2h");
   await input.trigger("focusout");

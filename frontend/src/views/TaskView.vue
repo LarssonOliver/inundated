@@ -33,7 +33,7 @@
         </div>
 
         <p class="field-label">Estimate</p>
-        <HoursInput v-model="draft.estimateHours" />
+        <DurationInput v-model="draft.estimateHours" />
 
         <p class="field-label">Tags</p>
         <TagListEmbedded
@@ -129,7 +129,7 @@ import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import TagStats from "@/components/tags/TagStats.vue";
 import UsageMeter from "@/components/stats/UsageMeter.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
-import HoursInput from "@/components/inputs/HoursInput.vue";
+import DurationInput from "@/components/inputs/DurationInput.vue";
 import TaskList from "@/components/tasks/TaskList.vue";
 import { useSubtasks } from "@/composables/useSubtasks";
 import NotFoundView from "./NotFoundView.vue";

@@ -8,7 +8,7 @@
 
     <p class="field-label">Time Budget</p>
     <!-- A budget of 0 means none, so it shows as empty. -->
-    <HoursInput
+    <DurationInput
       :model-value="model.timeBudgetHours || undefined"
       @update:model-value="model.timeBudgetHours = $event ?? 0"
     />
@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import ColorInput from "@/components/inputs/ColorInput.vue";
-import HoursInput from "@/components/inputs/HoursInput.vue";
+import DurationInput from "@/components/inputs/DurationInput.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
 import type { Project } from "@/model";
 import { computed, ref } from "vue";
