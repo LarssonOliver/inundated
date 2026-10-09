@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterAll, beforeAll, describe, it, expect, vi } from "vitest";
 import {
   granularityForRange,
   formatBucketLabel,
@@ -24,6 +24,33 @@ describe("granularityForRange", () => {
     const start = new Date(2020, 0, 1);
     const end = new Date(2024, 0, 1);
     expect(granularityForRange(start, end)).toBe("P1Y");
+  });
+
+  it("returns monthly buckets for a whole leap year", () => {
+    const start = new Date(2024, 0, 1);
+    const end = new Date(2024, 11, 31, 23, 59, 59);
+    expect(granularityForRange(start, end)).toBe("P1M");
+  });
+
+  it("returns yearly buckets for a range just over a year", () => {
+    const start = new Date(2024, 0, 1);
+    const end = new Date(2025, 0, 1);
+    expect(granularityForRange(start, end)).toBe("P1Y");
+  });
+
+  describe("across a daylight saving change", () => {
+    beforeAll(() => {
+      vi.stubEnv("TZ", "Europe/Stockholm");
+    });
+    afterAll(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("returns daily buckets for a whole October, which is 31 days and 1 hour long", () => {
+      const start = new Date(2025, 9, 1);
+      const end = new Date(2025, 9, 31, 23, 59, 59);
+      expect(granularityForRange(start, end)).toBe("P1D");
+    });
   });
 });
 

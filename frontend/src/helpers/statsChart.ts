@@ -1,4 +1,5 @@
 import {
+  differenceInCalendarDays,
   endOfMonth,
   endOfWeek,
   endOfYear,
@@ -17,13 +18,16 @@ import { DATE_TOKENS, MONTH_TOKENS } from "@/helpers/dates";
 /**
  * Picks a bucket granularity for a picked date range: daily for up to a
  * month, monthly for up to a year, and yearly beyond that.
+ *
+ * Counts calendar days rather than elapsed time, so a whole month or year
+ * stays within its limit even when a daylight saving change or a leap day
+ * makes it longer than 31 or 365 days of 24 hours.
  */
 export function granularityForRange(start: Date, end: Date): string {
-  const diffMs = end.getTime() - start.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays <= 31) {
+  const days = differenceInCalendarDays(end, start) + 1;
+  if (days <= 31) {
     return "P1D";
-  } else if (diffDays <= 365) {
+  } else if (days <= 366) {
     return "P1M";
   } else {
     return "P1Y";
