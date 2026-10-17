@@ -47,7 +47,7 @@ import { useTagsStore } from "@/stores/tags";
 import { useTasksStore } from "@/stores/tasks";
 import { computed, ref, watch } from "vue";
 
-const model = defineModel<Set<string>>({ default: new Set<string>() });
+const model = defineModel<Set<string>>({ default: () => new Set<string>() });
 const {
   readOnly,
   ownerKinds = allTagOwnerKinds,

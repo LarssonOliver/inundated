@@ -30,7 +30,7 @@ import { useTimespansStore } from "@/stores/timespans";
 const timespansStore = useTimespansStore();
 
 const model = defineModel<Timespan>({
-  default: newTimespanWithDefaults(),
+  default: newTimespanWithDefaults,
 });
 
 const tagIds = computed({

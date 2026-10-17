@@ -54,7 +54,7 @@ import { isOwnedBy } from "@/helpers/tagOwners";
 import { useTagsStore } from "@/stores/tags";
 import { newProjectWithDefaults } from "@/helpers/project";
 
-const model = defineModel<Project>({ default: newProjectWithDefaults() });
+const model = defineModel<Project>({ default: newProjectWithDefaults });
 
 const props = defineProps<{
   isNewProject?: boolean;
