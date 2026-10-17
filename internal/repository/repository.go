@@ -42,9 +42,8 @@ type TagRepository interface {
 	// ListDerivedTagSources maps each derived tag among tagIds in scope to
 	// the tags its color derives from, archived ones included, with Owner
 	// set on owned ones: a task tag's are its task's regular tags and the
-	// project tags of its projects (those whose tag the task carries, and
-	// those carrying the task tag). Tags with no sources, and tags that
-	// aren't derived, are left out.
+	// project tags of its projects, as ListTaskProjectIds finds them. Tags
+	// with no sources, and tags that aren't derived, are left out.
 	ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 

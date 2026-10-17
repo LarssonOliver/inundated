@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Tag } from "@/model";
-import { isDerivedTag, isOwnedBy, parseOwnerQuery, tagOwnerRoute, tagOwnerSpec } from "./tagOwners";
+import {
+  colorsDerivedTags,
+  isDerivedTag,
+  isOwnedBy,
+  parseOwnerQuery,
+  tagOwnerRoute,
+  tagOwnerSpec,
+} from "./tagOwners";
 
 const label: Tag = { id: "l1", name: "Design", color: "#bf616a", archived: false };
 const taskTag: Tag = {
@@ -22,6 +29,12 @@ describe("tagOwners", () => {
     expect(isDerivedTag(taskTag)).toBe(true);
     expect(isDerivedTag({ ...label, owner: { kind: "project", id: "project-1" } })).toBe(false);
     expect(isDerivedTag(label)).toBe(false);
+  });
+
+  it("tells which tags derived tags take their color from", () => {
+    expect(colorsDerivedTags(label)).toBe(true);
+    expect(colorsDerivedTags({ ...label, owner: { kind: "project", id: "project-1" } })).toBe(true);
+    expect(colorsDerivedTags(taskTag)).toBe(false);
   });
 
   it("tells owned tags apart by kind", () => {

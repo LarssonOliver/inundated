@@ -73,6 +73,14 @@ export function tagOwnerSpec(tag: Tag | undefined): TagOwnerSpec | undefined {
   return tag?.owner ? tagOwnerSpecs[tag.owner.kind] : undefined;
 }
 
+/**
+ * Whether derived tags can take their color from the tag: a regular tag,
+ * or an owned one whose kind colors them (see TagOwnerSpec.colorsDerived).
+ */
+export function colorsDerivedTags(tag: Tag): boolean {
+  return !tag.owner || tagOwnerSpecs[tag.owner.kind].colorsDerived;
+}
+
 /** Whether the tag's color is derived from other tags (see TagOwnerSpec.derivesColor). */
 export function isDerivedTag(tag: Tag): boolean {
   return !!tagOwnerSpec(tag)?.derivesColor;

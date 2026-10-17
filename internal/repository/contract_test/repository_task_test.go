@@ -190,19 +190,23 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Len(t, sources[task.TagId], 1)
 			require.True(t, sources[task.TagId][0].Archived)
 
-			// The project tags of the task's projects are sources, whichever
-			// side carries the other's tag, each once.
+			// The project tags of the task's projects are sources, each once,
+			// however the task counts toward them.
 			carried, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Api", Color: "#bf616a"})
 			require.NoError(t, err)
 			carrier, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Web", Color: "#a3be8c", TagIds: []uuid.UUID{task.TagId}})
 			require.NoError(t, err)
 			both, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Both", Color: "#b48ead", TagIds: []uuid.UUID{task.TagId}})
 			require.NoError(t, err)
-			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{TagIds: &[]uuid.UUID{live.Id, carried.TagId, both.TagId}})
+			label, err := repo.CreateTag(ctx, testScope, model.Tag{Name: "label", Color: "#444444"})
+			require.NoError(t, err)
+			byLabel, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Label", Color: "#ebcb8b", TagIds: []uuid.UUID{label.Id}})
+			require.NoError(t, err)
+			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{TagIds: &[]uuid.UUID{live.Id, label.Id, carried.TagId, both.TagId}})
 			require.NoError(t, err)
 			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
 			require.NoError(t, err)
-			require.ElementsMatch(t, []uuid.UUID{live.Id, carried.TagId, carrier.TagId, both.TagId}, tagIdsOf(sources[task.TagId]))
+			require.ElementsMatch(t, []uuid.UUID{live.Id, label.Id, carried.TagId, carrier.TagId, both.TagId, byLabel.TagId}, tagIdsOf(sources[task.TagId]))
 			for _, source := range sources[task.TagId] {
 				if source.Id == carrier.TagId {
 					require.Equal(t, "#a3be8c", source.Color)
@@ -211,11 +215,19 @@ func TestTaskRepositoryContract(t *testing.T) {
 			}
 			require.Equal(t, "#bf616a", model.DerivedTagColor(sources[task.TagId]))
 
+			// A subtask's sources include its parent's projects, but not its
+			// parent's regular tags.
+			subtask, err := repo.CreateTask(ctx, testScope, model.Task{Name: "sub", ParentId: &task.Id})
+			require.NoError(t, err)
+			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{subtask.TagId})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []uuid.UUID{carried.TagId, carrier.TagId, both.TagId, byLabel.TagId}, tagIdsOf(sources[subtask.TagId]))
+
 			// A deleted project is no longer a source.
 			require.NoError(t, repo.DeleteProject(ctx, testScope, both.Id))
 			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
 			require.NoError(t, err)
-			require.ElementsMatch(t, []uuid.UUID{live.Id, carried.TagId, carrier.TagId}, tagIdsOf(sources[task.TagId]))
+			require.ElementsMatch(t, []uuid.UUID{live.Id, label.Id, carried.TagId, carrier.TagId, byLabel.TagId}, tagIdsOf(sources[task.TagId]))
 
 			// Another scope sees none of it.
 			other, err := repo.ListDerivedTagSources(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.TagId})

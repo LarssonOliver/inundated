@@ -192,21 +192,22 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 	}
 
 	// A task tag's sources are its task's regular tags and the project tags
-	// of its projects: those whose tag the task carries, and those that
-	// carry the task tag.
+	// of its projects, as ListTaskProjectIds finds them.
 	ownerSQL, args := ownerPredicate("k.user_id", scope, []any{tagIds})
 	query := `
-		WITH sources AS (
-			SELECT k.tag_id AS derived_id, kt.tag_id AS source_id
+		WITH derived AS (
+			SELECT k.id, k.tag_id, k.user_id
 			FROM tasks k
-			JOIN task_tags kt ON kt.task_id = k.id
 			WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND ` + ownerSQL + `
+		), sources AS (
+			SELECT k.tag_id AS derived_id, kt.tag_id AS source_id
+			FROM derived k
+			JOIN task_tags kt ON kt.task_id = k.id
 			UNION
 			SELECT k.tag_id, p.tag_id
-			FROM tasks k
-			JOIN project_tags pt ON pt.tag_id = k.tag_id
-			JOIN projects p ON p.id = pt.project_id AND p.deleted_at IS NULL
-			WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND ` + ownerSQL + `
+			FROM derived k
+			JOIN task_effective_tags te ON te.task_id = k.id` + taskProjectJoinSQL + `
+			WHERE p.user_id IS NOT DISTINCT FROM k.user_id
 		)
 		SELECT s.derived_id, ` + tagColumnsSQL + `
 		FROM sources s

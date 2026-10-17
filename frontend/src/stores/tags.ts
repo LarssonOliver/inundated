@@ -3,7 +3,7 @@ import { fetchAllPages } from "@/api/pagination";
 import { stringToHexColor } from "@/helpers/colors";
 import { scoreMatch } from "@/helpers/search";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
-import { isDerivedTag, tagOwnerSpecs } from "@/helpers/tagOwners";
+import { colorsDerivedTags, isDerivedTag, tagOwnerSpecs } from "@/helpers/tagOwners";
 import type { Tag, TagOwner, TagOwnerKind, TagStats } from "@/model";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
@@ -550,7 +550,7 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
       const { id, ...patch } = tag;
       const updated = await api.updateTag(id, patch);
       tags.value.set(updated.id, updated);
-      if (!updated.owner) void refreshDerivedTags();
+      if (colorsDerivedTags(updated)) void refreshDerivedTags();
       return copyTag(updated);
     }
 
@@ -562,12 +562,13 @@ function createTagsStore(api: TagsApi, now: () => number = () => Date.now()) {
      * @returns A promise that resolves when the tag is deleted.
      */
     async function deleteTag(id: string): Promise<void> {
-      const owned = !!getTagById(id)?.owner;
+      const cached = getTagById(id);
+      const colorsDerived = !cached || colorsDerivedTags(cached);
       await api.deleteTag(id);
       tags.value.delete(id);
       individuallyFetchedTags.value.delete(id);
       deletedTagIds.value.add(id);
-      if (!owned) void refreshDerivedTags();
+      if (colorsDerived) void refreshDerivedTags();
     }
 
     /**
