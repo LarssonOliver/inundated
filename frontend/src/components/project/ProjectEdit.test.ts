@@ -122,3 +122,24 @@ test("doesn't offer a task tag again while it's being added", () => {
   expect(wrapper.emitted("task-tag-change")).toBeUndefined();
   expect(wrapper.props("modelValue")!.tagIds).toEqual(new Set(["l1", "l2"]));
 });
+
+test("accepts a time budget in hours and minutes", async () => {
+  const wrapper = mountEdit();
+  const input = wrapper.findComponent({ name: "DurationInput" }).find("input");
+  await input.setValue("1h 30m");
+  await input.trigger("focusout");
+  await wrapper.find(".btn-info").trigger("click");
+  expect(wrapper.emitted("save")?.[0]?.[0]).toMatchObject({ timeBudgetHours: 1.5 });
+});
+
+test("shows no budget as empty and saves a cleared one as 0", async () => {
+  const wrapper = mountEdit();
+  const input = wrapper.findComponent({ name: "DurationInput" }).find("input");
+  expect(input.element.value).toBe("");
+  await input.setValue("2h");
+  await input.trigger("focusout");
+  await input.setValue("");
+  await input.trigger("focusout");
+  await wrapper.find(".btn-info").trigger("click");
+  expect(wrapper.emitted("save")?.[0]?.[0]).toMatchObject({ timeBudgetHours: 0 });
+});

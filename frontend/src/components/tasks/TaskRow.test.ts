@@ -104,3 +104,24 @@ test("offers removal, under the given label, only when given one", async () => {
 
   expect(wrapper.emitted("remove")).toHaveLength(1);
 });
+
+test("edits the estimate as hours and minutes", async () => {
+  getTagsByIds.mockResolvedValue([]);
+  const wrapper = mountRow(task({ estimateHours: 1.5 }));
+  await wrapper.find("button.estimate").trigger("click");
+  const input = wrapper.find<HTMLInputElement>(".estimate-input");
+  expect(input.element.value).toBe("1h 30m");
+
+  await input.setValue("45m");
+  await input.trigger("keydown.enter");
+  expect(wrapper.emitted("update")?.[0]).toEqual([{ estimateHours: 0.75 }]);
+});
+
+test("ignores an estimate it can't read", async () => {
+  getTagsByIds.mockResolvedValue([]);
+  const wrapper = mountRow(task({}));
+  await wrapper.find("button.estimate").trigger("click");
+  await wrapper.find(".estimate-input").setValue("soon");
+  await wrapper.find(".estimate-input").trigger("keydown.enter");
+  expect(wrapper.emitted("update")).toBeUndefined();
+});

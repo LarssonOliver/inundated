@@ -7,7 +7,11 @@
     <ColorInput v-model="model.color" />
 
     <p class="field-label">Time Budget</p>
-    <input v-model="model.timeBudgetHours" type="number" />
+    <!-- A budget of 0 means none, so it shows as empty. -->
+    <DurationInput
+      :model-value="model.timeBudgetHours || undefined"
+      @update:model-value="model.timeBudgetHours = $event ?? 0"
+    />
 
     <p class="field-label">Tags</p>
     <TagListEmbedded
@@ -42,6 +46,7 @@
 <script setup lang="ts">
 import TagListEmbedded from "@/components/tags/TagListEmbedded.vue";
 import ColorInput from "@/components/inputs/ColorInput.vue";
+import DurationInput from "@/components/inputs/DurationInput.vue";
 import ConfirmationPopup from "@/components/inputs/ConfirmationPopup.vue";
 import type { Project } from "@/model";
 import { computed, ref } from "vue";
