@@ -103,7 +103,7 @@ const DefaultDerivedTagColor = "#5e81ac"
 
 // IsDerived reports whether the tag's color is derived from other tags (see
 // DerivedTagColor) rather than set on the tag itself. Task tags are derived:
-// they take their color from their task's regular tags.
+// they take their color from their task's projects, else its regular tags.
 func (t Tag) IsDerived() bool {
 	return t.Owner != nil && tagOwnerKinds[t.Owner.Kind].derivesColor
 }
@@ -120,16 +120,28 @@ func CompareTagNames(a, b Tag) int {
 
 // DerivedTagColor is the color of a derived tag whose color comes from
 // sources: that of the first source by CompareTagNames, or
-// DefaultDerivedTagColor when there are none.
+// DefaultDerivedTagColor when there are none. Owned sources (a task's
+// project tags) outrank regular tags, so a task in a project takes the
+// project's color whatever regular tags it has.
 func DerivedTagColor(sources []Tag) string {
 	if len(sources) == 0 {
 		return DefaultDerivedTagColor
 	}
 	first := sources[0]
 	for _, source := range sources[1:] {
-		if CompareTagNames(source, first) < 0 {
+		if compareColorSources(source, first) < 0 {
 			first = source
 		}
 	}
 	return first.Color
+}
+
+func compareColorSources(a, b Tag) int {
+	rank := func(t Tag) int {
+		if t.Owner != nil {
+			return 0
+		}
+		return 1
+	}
+	return cmp.Or(cmp.Compare(rank(a), rank(b)), CompareTagNames(a, b))
 }

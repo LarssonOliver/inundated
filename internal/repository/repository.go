@@ -40,9 +40,10 @@ type TagRepository interface {
 	UpdateTag(ctx context.Context, scope model.OwnerScope, tag model.Tag) (model.Tag, error)
 	DeleteTag(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 	// ListDerivedTagSources maps each derived tag among tagIds in scope to
-	// the regular tags its color derives from, archived ones included: a
-	// task tag's are its task's regular tags. Tags with no sources, and
-	// tags that aren't derived, are left out.
+	// the tags its color derives from, archived ones included, with Owner
+	// set on owned ones: a task tag's are its task's regular tags and the
+	// project tags of its projects, as ListTaskProjectIds finds them. Tags
+	// with no sources, and tags that aren't derived, are left out.
 	ListDerivedTagSources(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 }
 

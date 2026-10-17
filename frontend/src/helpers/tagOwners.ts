@@ -19,9 +19,15 @@ export interface TagOwnerSpec {
   /**
    * Whether the server derives the tags' color from other tags rather than
    * the tag having one of its own (e.g. a task tag's, from its task's
-   * regular tags), so a change to a regular tag can recolor them.
+   * projects or regular tags), so a change to a regular tag can recolor them.
    */
   derivesColor: boolean;
+  /**
+   * Whether the tags are among those derived tags take their color from
+   * (e.g. a project tag, which colors its tasks' tags), so a write to the
+   * owner can recolor derived tags.
+   */
+  colorsDerived: boolean;
   /** Where the owner is shown and edited; the tag's own page redirects here. */
   route: (ownerId: string) => RouteLocationRaw;
   /** Creates a new owner from a tag picker and returns its owned tag's id. */
@@ -34,6 +40,7 @@ export const tagOwnerSpecs: Record<TagOwnerKind, TagOwnerSpec> = {
     prefix: "#",
     noun: "task",
     derivesColor: true,
+    colorsDerived: false,
     route: (id) => ({ name: "Task", params: { id } }),
     create: async (name) => (await useTasksStore().createTaskFromName(name)).tagId,
   },
@@ -42,6 +49,7 @@ export const tagOwnerSpecs: Record<TagOwnerKind, TagOwnerSpec> = {
     prefix: "@",
     noun: "project",
     derivesColor: false,
+    colorsDerived: true,
     route: (id) => ({ name: "Project", params: { id } }),
     create: async (name) => {
       const project = await useProjectsStore().createProject({
@@ -63,6 +71,14 @@ export const allTagOwnerKinds = Object.keys(tagOwnerSpecs) as TagOwnerKind[];
 /** The spec of the tag's owner kind, or undefined for a regular tag. */
 export function tagOwnerSpec(tag: Tag | undefined): TagOwnerSpec | undefined {
   return tag?.owner ? tagOwnerSpecs[tag.owner.kind] : undefined;
+}
+
+/**
+ * Whether derived tags can take their color from the tag: a regular tag,
+ * or an owned one whose kind colors them (see TagOwnerSpec.colorsDerived).
+ */
+export function colorsDerivedTags(tag: Tag): boolean {
+  return !tag.owner || tagOwnerSpecs[tag.owner.kind].colorsDerived;
 }
 
 /** Whether the tag's color is derived from other tags (see TagOwnerSpec.derivesColor). */

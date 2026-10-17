@@ -191,16 +191,29 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 		return out, nil
 	}
 
-	// A task tag's sources are its task's regular tags, not the project
-	// tags it also carries.
+	// A task tag's sources are its task's regular tags and the project tags
+	// of its projects, as ListTaskProjectIds finds them.
 	ownerSQL, args := ownerPredicate("k.user_id", scope, []any{tagIds})
 	query := `
-		SELECT k.tag_id, t.id, t.name, t.color, t.user_id, t.archived_at
-		FROM tasks k
-		JOIN task_tags kt ON kt.task_id = k.id
-		JOIN tags t ON t.id = kt.tag_id AND t.deleted_at IS NULL
+		WITH derived AS (
+			SELECT k.id, k.tag_id, k.user_id
+			FROM tasks k
+			WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND ` + ownerSQL + `
+		), sources AS (
+			SELECT k.tag_id AS derived_id, kt.tag_id AS source_id
+			FROM derived k
+			JOIN task_tags kt ON kt.task_id = k.id
+			UNION
+			SELECT k.tag_id, p.tag_id
+			FROM derived k
+			JOIN task_effective_tags te ON te.task_id = k.id` + taskProjectJoinSQL + `
+			WHERE p.user_id IS NOT DISTINCT FROM k.user_id
+		)
+		SELECT s.derived_id, ` + tagColumnsSQL + `
+		FROM sources s
+		JOIN tags t ON t.id = s.source_id AND t.deleted_at IS NULL
 		LEFT JOIN tag_owners o ON o.tag_id = t.id
-		WHERE k.tag_id = ANY($1) AND k.deleted_at IS NULL AND o.tag_id IS NULL AND ` + ownerSQL
+		WHERE o.tag_id IS NULL OR o.kind = 'project'`
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("ListDerivedTagSources: %w", err)
@@ -211,10 +224,15 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 		var derivedId uuid.UUID
 		var source model.Tag
 		var archivedAt *time.Time
-		if err := rows.Scan(&derivedId, &source.Id, &source.Name, &source.Color, &source.UserId, &archivedAt); err != nil {
+		var ownerKind *string
+		var ownerId *uuid.UUID
+		if err := rows.Scan(&derivedId, &source.Id, &source.Name, &source.Color, &source.UserId, &archivedAt, &ownerKind, &ownerId); err != nil {
 			return nil, fmt.Errorf("ListDerivedTagSources scan: %w", err)
 		}
 		source.Archived = archivedAt != nil
+		if ownerKind != nil && ownerId != nil {
+			source.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
+		}
 		out[derivedId] = append(out[derivedId], source)
 	}
 	return out, rows.Err()

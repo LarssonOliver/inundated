@@ -29,8 +29,10 @@ separate task picker:
 A time entry carrying a task's tag is time logged on that task. An entry can
 carry several task tags, and its time counts toward each of them.
 
-Task tags take their color from the task's first tag, or a default blue when
-the task has none. They aren't listed on the Tags page, and a task can't be
+Task tags take their color from the task's project, or from its first tag
+when it isn't in a project, or a default blue when it has neither. The
+projects that count are the ones listed on the task's page, including those
+of the task above it; in several projects, the first by name gives the color. They aren't listed on the Tags page, and a task can't be
 tagged with another task's tag, though it can carry project `@` tags. Two tasks may share a name.
 
 ## Where task time counts

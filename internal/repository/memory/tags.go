@@ -136,8 +136,8 @@ func (t *MemoryStore) ListDerivedTagSources(ctx context.Context, scope model.Own
 		if !ok || !matchesScope(derived.UserId, scope) || !derived.IsDerived() {
 			continue
 		}
-		// A task tag's sources are its task's regular tags, not the project
-		// tags it also carries.
+		// A task tag's sources are its task's regular tags and the project
+		// tags of its projects, as ListTaskProjectIds finds them.
 		task, ok := lookup.tasks[derived.Owner.Id]
 		if !ok || derived.Owner.Kind != model.TagOwnerTask {
 			continue
@@ -145,6 +145,11 @@ func (t *MemoryStore) ListDerivedTagSources(ctx context.Context, scope model.Own
 		for _, sourceId := range task.TagIds {
 			if source, ok := lookup.tags[sourceId]; ok && source.Owner == nil {
 				out[id] = append(out[id], source)
+			}
+		}
+		for _, projectId := range t.taskProjectIds(scope, task) {
+			if source, ok := lookup.tags[lookup.projects[projectId].TagId]; ok {
+				out[id] = append(out[id], lookup.view(source))
 			}
 		}
 	}

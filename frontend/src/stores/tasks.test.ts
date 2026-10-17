@@ -127,7 +127,7 @@ describe("tasks store", () => {
     expect(api.listAllTasks).toHaveBeenCalledOnce();
   });
 
-  it("refreshes the task tag when the task's tags change", async () => {
+  it("refreshes every task tag when the task's tags change, since subtasks inherit its projects", async () => {
     api.updateTask.mockResolvedValue(task({ id: "a", tagIds: new Set(["x"]) }));
 
     const store = useStore();
@@ -135,7 +135,7 @@ describe("tasks store", () => {
 
     expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
       owner: { kind: "task", id: "a" },
-      tagId: "tag-a",
+      cascades: true,
     });
   });
 
@@ -231,6 +231,22 @@ describe("tasks store", () => {
     expect(api.moveTask).toHaveBeenNthCalledWith(1, "a", undefined, "b");
     expect(api.moveTask).toHaveBeenNthCalledWith(2, "c", "p", "a");
     expect(api.listAllTasks).not.toHaveBeenCalled();
+  });
+
+  it("refreshes every task tag after a move to another parent, but not after a reorder", async () => {
+    const reload = vi.fn(async () => {});
+    const store = useStore();
+
+    api.moveTask.mockResolvedValueOnce(task({ id: "a" }));
+    await store.moveTask("a", () => ({ afterTaskId: "b" }), { reload });
+    expect(ownerWritten).not.toHaveBeenCalled();
+
+    api.moveTask.mockResolvedValueOnce(task({ id: "a", parentId: "p" }));
+    await store.moveTask("a", () => ({ parentId: "p" }), { reload });
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({
+      owner: { kind: "task", id: "a" },
+      cascades: true,
+    });
   });
 
   it("skips a move whose target is null, saying it didn't move", async () => {

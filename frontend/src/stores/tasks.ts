@@ -68,14 +68,15 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
 /**
  * What a task update does to cached task tags (see TagOwnerWrite), or
  * undefined when it leaves them alone. A task tag takes its name from its
- * task and its color from the task's regular tags, and is archived while
- * the task is closed. Closing or reopening a task cascades to its subtasks
- * or parents.
+ * task and its color from the task's projects or regular tags, and is
+ * archived while the task is closed. Closing or reopening a task cascades
+ * to its subtasks or parents, and its tags can put its subtasks in
+ * projects, recoloring them.
  */
 function taskTagWrite(task: Task, patch: TaskPatch): TagOwnerWrite | undefined {
   const owner = { kind: "task", id: task.id } as const;
-  if (patch.closed !== undefined) return { owner, cascades: true };
-  if (patch.name !== undefined || patch.tagIds !== undefined) return { owner, tagId: task.tagId };
+  if (patch.closed !== undefined || patch.tagIds !== undefined) return { owner, cascades: true };
+  if (patch.name !== undefined) return { owner, tagId: task.tagId };
   return undefined;
 }
 
@@ -224,7 +225,12 @@ function createTasksStore(api: TasksApi) {
       return serializeTaskMove(async () => {
         const to = target();
         if (!to) return false;
-        await api.moveTask(id, to.parentId, to.afterTaskId);
+        const parentBefore = getTaskById(id)?.parentId;
+        const moved = await api.moveTask(id, to.parentId, to.afterTaskId);
+        // A new parent can put the task and its subtasks in other projects.
+        if (moved.parentId !== parentBefore) {
+          void useTagsStore().ownerWritten({ owner: { kind: "task", id }, cascades: true });
+        }
         await reload();
         return true;
       });

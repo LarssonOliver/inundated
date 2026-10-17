@@ -20,6 +20,8 @@ func TestDerivedTagColor(t *testing.T) {
 		{"first by name ignoring case", []Tag{{Name: "banana", Color: "#222222"}, {Name: "Apple", Color: "#111111"}}, "#111111"},
 		{"same name folded, then by bytes", []Tag{{Name: "apple", Color: "#222222"}, {Name: "Apple", Color: "#111111"}}, "#111111"},
 		{"same name, then by id", []Tag{{Id: high, Name: "a", Color: "#222222"}, {Id: low, Name: "a", Color: "#111111"}}, "#111111"},
+		{"owned before regular", []Tag{{Name: "a", Color: "#111111"}, {Name: "z", Color: "#222222", Owner: &TagOwner{Kind: TagOwnerProject, Id: low}}}, "#222222"},
+		{"first owned by name", []Tag{{Name: "b", Color: "#222222", Owner: &TagOwner{Kind: TagOwnerProject, Id: low}}, {Name: "a", Color: "#111111", Owner: &TagOwner{Kind: TagOwnerProject, Id: high}}}, "#111111"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
