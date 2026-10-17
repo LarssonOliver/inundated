@@ -3,11 +3,13 @@ when:
     path:
       exclude: 
         - frontend/**
+        - docs/**
   - event: push
     branch: main
     path:
       exclude: 
         - frontend/**
+        - docs/**
 
 variables:
   backend_options: &backend_options
