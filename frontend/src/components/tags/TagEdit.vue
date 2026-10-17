@@ -38,7 +38,7 @@ import type { Tag } from "@/model";
 import { newTagWithDefaults } from "@/helpers/tag";
 import { ref } from "vue";
 
-const model = defineModel<Tag>({ default: newTagWithDefaults() });
+const model = defineModel<Tag>({ default: newTagWithDefaults });
 
 const props = defineProps<{
   isNewTag?: boolean;

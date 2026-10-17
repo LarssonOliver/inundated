@@ -43,7 +43,7 @@ import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 
 const model = defineModel<Timespan>({
-  default: newTimespanWithDefaults(),
+  default: newTimespanWithDefaults,
 });
 
 const settingsStore = useSettingsStore();
