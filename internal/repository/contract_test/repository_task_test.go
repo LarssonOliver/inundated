@@ -190,14 +190,32 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.Len(t, sources[task.TagId], 1)
 			require.True(t, sources[task.TagId][0].Archived)
 
-			// A project tag the task carries isn't a source.
-			project, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Api", Color: "#5e81ac"})
+			// The project tags of the task's projects are sources, whichever
+			// side carries the other's tag, each once.
+			carried, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Api", Color: "#bf616a"})
 			require.NoError(t, err)
-			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{TagIds: &[]uuid.UUID{live.Id, project.TagId}})
+			carrier, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Web", Color: "#a3be8c", TagIds: []uuid.UUID{task.TagId}})
+			require.NoError(t, err)
+			both, err := repo.CreateProject(ctx, testScope, model.Project{Name: "Both", Color: "#b48ead", TagIds: []uuid.UUID{task.TagId}})
+			require.NoError(t, err)
+			_, err = repo.UpdateTask(ctx, testScope, task.Id, model.TaskPatch{TagIds: &[]uuid.UUID{live.Id, carried.TagId, both.TagId}})
 			require.NoError(t, err)
 			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
 			require.NoError(t, err)
-			require.Equal(t, []uuid.UUID{live.Id}, tagIdsOf(sources[task.TagId]))
+			require.ElementsMatch(t, []uuid.UUID{live.Id, carried.TagId, carrier.TagId, both.TagId}, tagIdsOf(sources[task.TagId]))
+			for _, source := range sources[task.TagId] {
+				if source.Id == carrier.TagId {
+					require.Equal(t, "#a3be8c", source.Color)
+					require.Equal(t, &model.TagOwner{Kind: model.TagOwnerProject, Id: carrier.Id}, source.Owner)
+				}
+			}
+			require.Equal(t, "#bf616a", model.DerivedTagColor(sources[task.TagId]))
+
+			// A deleted project is no longer a source.
+			require.NoError(t, repo.DeleteProject(ctx, testScope, both.Id))
+			sources, err = repo.ListDerivedTagSources(ctx, testScope, []uuid.UUID{task.TagId})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []uuid.UUID{live.Id, carried.TagId, carrier.TagId}, tagIdsOf(sources[task.TagId]))
 
 			// Another scope sees none of it.
 			other, err := repo.ListDerivedTagSources(ctx, model.UserScope(uuid.New()), []uuid.UUID{task.TagId})

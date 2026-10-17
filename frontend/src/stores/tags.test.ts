@@ -548,6 +548,24 @@ describe("tags store", () => {
     },
   );
 
+  it("refetches a project's own tag and cached task tags together after a project write", async () => {
+    const taskTag = makeTag({ id: "o", color: "#111111", owner: { kind: "task", id: "t" } });
+    const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
+    const otherProjectTag = makeTag({ id: "q", owner: { kind: "project", id: "p2" } });
+    const recolored = { ...taskTag, color: "#222222" };
+    api.getTagsByIds
+      .mockResolvedValueOnce([taskTag, projectTag, otherProjectTag])
+      .mockResolvedValueOnce([projectTag, recolored]);
+    const store = useStore();
+    await Promise.all(["o", "p", "q"].map((id) => store.fetchTagById(id)));
+
+    await store.ownerWritten({ owner: { kind: "project", id: "p1" }, tagId: "p" });
+
+    expect(store.getTagById("o")).toEqual(recolored);
+    expect(api.getTagsByIds).toHaveBeenCalledTimes(2);
+    expect(new Set(api.getTagsByIds.mock.lastCall?.[0])).toEqual(new Set(["p", "o"]));
+  });
+
   it("forgets the cached tags of a deleted owner, even with a fetch in flight", async () => {
     const projectTag = makeTag({ id: "p", owner: { kind: "project", id: "p1" } });
     const other = makeTag({ id: "q", owner: { kind: "project", id: "p2" } });

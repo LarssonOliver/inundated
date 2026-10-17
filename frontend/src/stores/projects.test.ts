@@ -120,6 +120,7 @@ describe("projects store", () => {
     expect(api.createProject).toHaveBeenCalledWith(input);
     expect(result.id).toBe("new");
     expect(store.getProjectById("new")).toBeDefined();
+    expect(ownerWritten).toHaveBeenCalledExactlyOnceWith({ owner: { kind: "project", id: "new" } });
   });
 
   it("updates a project and replaces it in store", async () => {

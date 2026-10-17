@@ -68,8 +68,8 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
 /**
  * What a task update does to cached task tags (see TagOwnerWrite), or
  * undefined when it leaves them alone. A task tag takes its name from its
- * task and its color from the task's regular tags, and is archived while
- * the task is closed. Closing or reopening a task cascades to its subtasks
+ * task and its color from the task's projects or regular tags, and is
+ * archived while the task is closed. Closing or reopening a task cascades to its subtasks
  * or parents.
  */
 function taskTagWrite(task: Task, patch: TaskPatch): TagOwnerWrite | undefined {
