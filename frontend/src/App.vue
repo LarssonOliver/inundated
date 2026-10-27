@@ -3,13 +3,16 @@ import { onMounted } from "vue";
 import { RouterView } from "vue-router";
 import TheMenu from "./components/TheMenu.vue";
 import LoadingScreen from "./components/LoadingScreen.vue";
+import HistoryToast from "./components/HistoryToast.vue";
 import { useUserStore } from "@/stores/user";
 import { useSettingsStore } from "@/stores/settings";
 import { useStartup, runStartupProbe } from "@/composables/useStartup";
+import { useUndoShortcuts } from "@/composables/useUndoShortcuts";
 
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
 const { isStarting } = useStartup();
+useUndoShortcuts();
 
 onMounted(() => {
   void runStartupProbe(Promise.all([userStore.fetchCurrentUser(), settingsStore.fetchSettings()]));
@@ -30,6 +33,8 @@ onMounted(() => {
         <RouterView />
       </main>
     </div>
+
+    <HistoryToast />
   </template>
 </template>
 
