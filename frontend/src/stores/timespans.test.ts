@@ -3,6 +3,8 @@ import { setActivePinia, createPinia } from "pinia";
 import type { Timespan } from "@/model";
 import type { TimespansApi } from "@/api/timespans";
 import { __test__ } from "@/stores/timespans";
+import { useHistoryStore } from "@/stores/history";
+import { ResponseError } from "@/api/generated";
 
 // Helper to create sample timespans
 function makeTimespan(partial?: Partial<Timespan>): Timespan {
@@ -223,5 +225,120 @@ describe("timespans store", () => {
     await store.fetchPage(50, 50);
 
     expect(store.hasMoreItems()).toBe(false);
+  });
+
+  describe("undo", () => {
+    const start = new Date("2026-10-27T08:00:00Z");
+    const end = new Date("2026-10-27T09:00:00Z");
+    const later = new Date("2026-10-27T10:00:00Z");
+
+    async function storeWith(timespan: Timespan) {
+      api.listTimespansPaginated.mockResolvedValue({
+        data: [timespan],
+        pagination: { limit: 50, offset: 0, total: 1 },
+      });
+      api.updateTimespan.mockImplementation(async (id, fields) => ({
+        ...(fields as Omit<Timespan, "id">),
+        id,
+      }));
+      const store = useStore();
+      await store.fetchTimespans();
+      return store;
+    }
+
+    function statusError(status: number) {
+      return new ResponseError(new Response(null, { status }));
+    }
+
+    it("records an edit and undoes it with the earlier values", async () => {
+      const prior = makeTimespan({ id: "e1", name: "Old", startTime: start, endTime: end });
+      const store = await storeWith(prior);
+      const edited = { ...prior, name: "New", endTime: later };
+      await store.updateTimespan(edited);
+      api.getTimespan.mockResolvedValue(edited);
+
+      expect(await useHistoryStore().undo()).toBe(true);
+
+      expect(api.updateTimespan).toHaveBeenLastCalledWith("e1", {
+        name: "Old",
+        startTime: start,
+        endTime: end,
+        tagIds: prior.tagIds,
+      });
+      expect(store.getTimespanById("e1")).toMatchObject({ name: "Old", endTime: end });
+    });
+
+    it("redoes an undone edit", async () => {
+      const prior = makeTimespan({ id: "e1", tagIds: new Set(["a"]) });
+      const store = await storeWith(prior);
+      const edited = { ...prior, tagIds: new Set(["a", "b"]) };
+      await store.updateTimespan(edited);
+      api.getTimespan.mockResolvedValueOnce(edited).mockResolvedValueOnce(prior);
+      const history = useHistoryStore();
+      await history.undo();
+
+      expect(await history.redo()).toBe(true);
+
+      expect(store.getTimespanById("e1")?.tagIds).toEqual(new Set(["a", "b"]));
+    });
+
+    it("doesn't record an update that changes nothing", async () => {
+      const prior = makeTimespan({ id: "e1" });
+      const store = await storeWith(prior);
+
+      await store.updateTimespan({ ...prior });
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("doesn't record when asked not to", async () => {
+      const prior = makeTimespan({ id: "e1" });
+      const store = await storeWith(prior);
+
+      await store.updateTimespan({ ...prior, name: "New" }, { record: false });
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("refuses to undo when the timespan changed since", async () => {
+      const prior = makeTimespan({ id: "e1", name: "Old" });
+      const store = await storeWith(prior);
+      await store.updateTimespan({ ...prior, name: "New" });
+      api.getTimespan.mockResolvedValue({ ...prior, name: "Changed elsewhere" });
+      api.updateTimespan.mockClear();
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(api.updateTimespan).not.toHaveBeenCalled();
+      expect(history.message?.text).toBe("Can't undo: the timespan was changed since.");
+      expect(history.canUndo).toBe(false);
+    });
+
+    it("refuses to undo when the timespan was deleted", async () => {
+      const prior = makeTimespan({ id: "e1", name: "Old" });
+      const store = await storeWith(prior);
+      await store.updateTimespan({ ...prior, name: "New" });
+      api.getTimespan.mockRejectedValue(statusError(404));
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(history.message?.text).toBe("Can't undo: the timespan was deleted.");
+    });
+
+    it("refuses to undo when a tag can't be attached any more", async () => {
+      const prior = makeTimespan({ id: "e1", tagIds: new Set(["archived"]) });
+      const store = await storeWith(prior);
+      const edited = { ...prior, tagIds: new Set<string>() };
+      await store.updateTimespan(edited);
+      api.getTimespan.mockResolvedValue(edited);
+      api.updateTimespan.mockRejectedValue(statusError(400));
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(history.message?.text).toBe("Can't undo: a tag in it was archived or deleted.");
+    });
   });
 });

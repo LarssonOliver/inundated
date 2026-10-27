@@ -14,6 +14,7 @@ declare module 'vue' {
     ColorInput: typeof import('./src/components/inputs/ColorInput.vue')['default']
     ConfirmationPopup: typeof import('./src/components/inputs/ConfirmationPopup.vue')['default']
     DurationInput: typeof import('./src/components/inputs/DurationInput.vue')['default']
+    HistoryToast: typeof import('./src/components/HistoryToast.vue')['default']
     LoadingScreen: typeof import('./src/components/LoadingScreen.vue')['default']
     MaterialIcon: typeof import('./src/components/icons/MaterialIcon.vue')['default']
     ProjectEdit: typeof import('./src/components/project/ProjectEdit.vue')['default']

@@ -1,8 +1,19 @@
+import { ResponseError } from "@/api/generated";
 import { timespansApi, type TimespansApi } from "@/api/timespans";
 import type { Timespan } from "@/model";
+import {
+  changedFields,
+  EditConflictError,
+  sameFieldValue,
+  useHistoryStore,
+} from "@/stores/history";
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
+
+function isStatus(error: unknown, status: number): boolean {
+  return error instanceof ResponseError && error.response.status === status;
+}
 
 function copyTimespan(timespan: Timespan): Timespan {
   return {
@@ -12,6 +23,10 @@ function copyTimespan(timespan: Timespan): Timespan {
     tagIds: new Set(timespan.tagIds),
   };
 }
+
+/** The fields of a timespan an in-place edit can change, and undo restores. */
+const EDITABLE_FIELDS = ["name", "startTime", "endTime", "tagIds"] as const;
+type EditableField = (typeof EDITABLE_FIELDS)[number];
 
 export interface PaginationState {
   limit: number;
@@ -145,18 +160,74 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
     }
 
     /**
-     * Updates an existing timespan.
+     * Updates an existing timespan. Unless record is false, the change is
+     * recorded for undo (see useHistoryStore), when the timespan is cached
+     * to compare against.
      *
      * @param timespan - The timespan to update, identified by timespan.id.
      *
      * @returns A promise that resolves to the updated timespan, or undefined
      *  if not found.
      */
-    async function updateTimespan(timespan: Timespan): Promise<Timespan> {
-      const { id, ...fields } = timespan;
-      const updated = await api.updateTimespan(id, fields);
+    async function updateTimespan(
+      timespan: Timespan,
+      { record = true }: { record?: boolean } = {},
+    ): Promise<Timespan> {
+      const { id, name, startTime, endTime, tagIds } = timespan;
+      const prior = timespans.value.get(id);
+      const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
       timespans.value.set(updated.id, updated);
+      if (record && prior) recordEdit(prior, updated);
       return copyTimespan(updated);
+    }
+
+    function pickFields(timespan: Timespan, fields: readonly EditableField[]) {
+      const copy = copyTimespan(timespan);
+      return Object.fromEntries(fields.map((field) => [field, copy[field]]));
+    }
+
+    function recordEdit(prior: Timespan, updated: Timespan): void {
+      const fields = changedFields(prior, updated, EDITABLE_FIELDS);
+      if (fields.length === 0) return;
+      useHistoryStore().record({
+        label: "Edit timespan",
+        target: `timespan:${updated.id}`,
+        before: pickFields(prior, fields),
+        after: pickFields(updated, fields),
+        apply: (values, expected) => applyEdit(updated.id, values, expected),
+      });
+    }
+
+    /**
+     * Writes values to a timespan for undo/redo, refusing when the server's
+     * copy no longer holds expected: it changed since (e.g. in another tab)
+     * or was deleted.
+     */
+    async function applyEdit(
+      id: string,
+      values: Record<string, unknown>,
+      expected: Record<string, unknown>,
+    ): Promise<void> {
+      let current: Timespan;
+      try {
+        current = await api.getTimespan(id);
+      } catch (error) {
+        if (isStatus(error, 404)) throw new EditConflictError("the timespan was deleted.");
+        throw error;
+      }
+      const changed = Object.entries(expected).some(
+        ([field, value]) => !sameFieldValue(current[field as EditableField], value),
+      );
+      if (changed) throw new EditConflictError("the timespan was changed since.");
+      try {
+        await updateTimespan({ ...current, ...values }, { record: false });
+      } catch (error) {
+        // The server refuses tags it can't attach any more.
+        if (isStatus(error, 400) && "tagIds" in values) {
+          throw new EditConflictError("a tag in it was archived or deleted.");
+        }
+        throw error;
+      }
     }
 
     /**
