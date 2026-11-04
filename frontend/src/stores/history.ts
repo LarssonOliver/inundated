@@ -51,6 +51,21 @@ export function changedFields<T extends object, K extends keyof T & string>(
 
 interface HistoryEntry extends FieldEdit {
   recordedAt: number;
+  /** The page the edit was made on (see setScope). */
+  scope: string;
+}
+
+/** An edit undo or redo has just written, for views that show the item. */
+export interface AppliedEdit {
+  target: string;
+  fields: Record<string, unknown>;
+  /** Counts up, so writing the same values twice is still a change. */
+  seq: number;
+}
+
+function lastWhere<T>(items: readonly T[], test: (item: T) => boolean): T | undefined {
+  for (let i = items.length - 1; i >= 0; i--) if (test(items[i]!)) return items[i];
+  return undefined;
 }
 
 /** Most edits kept for undo; the oldest are dropped past this. */
@@ -69,8 +84,22 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     /** The entry undo/redo is writing, and whether it still moves across after. */
     let writing: { entry: HistoryEntry; direction: "undo" | "redo"; moves: boolean } | null = null;
 
-    const canUndo = computed(() => undoStack.value.length > 0);
-    const canRedo = computed(() => redoStack.value.length > 0);
+    /**
+     * The page edits are recorded on and undone from. Undo only reaches the
+     * current page's edits, so it never changes something out of sight.
+     */
+    const scope = ref("");
+    const applied = shallowRef<AppliedEdit | null>(null);
+    let appliedSeq = 0;
+
+    const inScope = (entry: HistoryEntry) => entry.scope === scope.value;
+    const canUndo = computed(() => undoStack.value.some(inScope));
+    const canRedo = computed(() => redoStack.value.some(inScope));
+
+    /** Sets the page that edits are recorded on and undone from. */
+    function setScope(value: string): void {
+      scope.value = value;
+    }
 
     function show(text: string, isError = false) {
       message.value = { text, isError, id: ++messageId };
@@ -85,10 +114,10 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     function record(edit: FieldEdit): void {
       const at = now();
       const stack = undoStack.value;
-      const last = stack[stack.length - 1];
-      redoStack.value = [];
+      const last = lastWhere(stack, inScope);
+      redoStack.value = redoStack.value.filter((entry) => !inScope(entry));
       // An undo in flight would otherwise land on the redo stack just cleared.
-      if (writing?.direction === "undo") writing.moves = false;
+      if (writing?.direction === "undo" && inScope(writing.entry)) writing.moves = false;
       if (
         last &&
         last !== writing?.entry &&
@@ -103,11 +132,16 @@ function createHistoryStore(now: () => number = () => Date.now()) {
           before: Object.fromEntries(fields.map((field) => [field, before[field]])),
           after: Object.fromEntries(fields.map((field) => [field, after[field]])),
           recordedAt: at,
+          scope: last.scope,
         };
-        undoStack.value = [...stack.slice(0, -1), ...(fields.length > 0 ? [merged] : [])];
+        undoStack.value = stack.flatMap((entry) =>
+          entry !== last ? [entry] : fields.length > 0 ? [merged] : [],
+        );
         return;
       }
-      undoStack.value = [...stack, { ...edit, recordedAt: at }].slice(-HISTORY_LIMIT);
+      undoStack.value = [...stack, { ...edit, recordedAt: at, scope: scope.value }].slice(
+        -HISTORY_LIMIT,
+      );
     }
 
     /** Drops every entry for an item, e.g. one that no longer exists. */
@@ -127,7 +161,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       return serialize(async () => {
         const from = direction === "undo" ? undoStack : redoStack;
         const to = direction === "undo" ? redoStack : undoStack;
-        const entry = from.value[from.value.length - 1];
+        const entry = lastWhere(from.value, inScope);
         if (!entry) return false;
         const [fields, expected] =
           direction === "undo" ? [entry.before, entry.after] : [entry.after, entry.before];
@@ -154,17 +188,18 @@ function createHistoryStore(now: () => number = () => Date.now()) {
           const moved = { ...entry, recordedAt: -Infinity };
           to.value = [...to.value.slice(0, depth), moved, ...to.value.slice(depth)];
         }
+        applied.value = { target: entry.target, fields, seq: ++appliedSeq };
         show(`${direction === "undo" ? "Undid" : "Redid"}: ${entry.label}`);
         return true;
       });
     }
 
-    /** Undoes the latest edit. Resolves to whether it did. */
+    /** Undoes the current page's latest edit. Resolves to whether it did. */
     function undo(): Promise<boolean> {
       return step("undo");
     }
 
-    /** Redoes the latest undone edit. Resolves to whether it did. */
+    /** Redoes the current page's latest undone edit. Resolves to whether it did. */
     function redo(): Promise<boolean> {
       return step("redo");
     }
@@ -173,7 +208,18 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       message.value = null;
     }
 
-    return { canUndo, canRedo, message, record, forget, undo, redo, dismissMessage };
+    return {
+      canUndo,
+      canRedo,
+      message,
+      applied,
+      setScope,
+      record,
+      forget,
+      undo,
+      redo,
+      dismissMessage,
+    };
   });
 }
 

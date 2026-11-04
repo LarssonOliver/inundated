@@ -5,15 +5,16 @@ import { ref } from "vue";
 import type { Task } from "@/model";
 import type { TaskListSource } from "@/composables/taskListSource";
 
-const { listAllTasks, updateTask, moveTask } = vi.hoisted(() => ({
+const { listAllTasks, getTask, updateTask, moveTask } = vi.hoisted(() => ({
   listAllTasks: vi.fn(),
+  getTask: vi.fn(),
   updateTask: vi.fn(),
   moveTask: vi.fn(),
 }));
 
 vi.mock("@/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api")>()),
-  tasksApi: { listAllTasks, updateTask, moveTask },
+  tasksApi: { listAllTasks, getTask, updateTask, moveTask },
 }));
 vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten: vi.fn() }) }));
 // Passes through to the real move helpers, counting their calls.
@@ -23,6 +24,7 @@ vi.mock("@/helpers/taskMoves", async (importOriginal) => {
 });
 
 import TaskList from "./TaskList.vue";
+import { useHistoryStore } from "@/stores/history";
 import { listMoves } from "@/helpers/taskMoves";
 
 // Ranks follow ids, so the listed order is easy to read off them.
@@ -90,6 +92,7 @@ const enabled = (row: ReturnType<typeof rowNamed>, button: string) =>
 beforeEach(() => {
   setActivePinia(createPinia());
   listAllTasks.mockReset();
+  getTask.mockReset();
   updateTask.mockReset();
   moveTask.mockReset();
 });
@@ -331,4 +334,71 @@ test("leaves what removing a task changes to the source, and says so when it can
   await flushPromises();
   expect(wrapper.find(".error").text()).toBe("Couldn't remove the task.");
   expect(wrapper.emitted("changed")).toBeUndefined();
+});
+
+test("records an in-place edit for undo, and reloads after undoing it", async () => {
+  const shown = task({ id: "a", name: "Old" });
+  const source = fakeSource([shown]);
+  const wrapper = mountList(source);
+  updateTask.mockResolvedValueOnce(task({ id: "a", name: "New" }));
+  wrapper.findComponent(TaskRowStub).vm.$emit("update", { name: "New" });
+  await flushPromises();
+  vi.mocked(source.reload).mockClear();
+  const changedBefore = wrapper.emitted("changed")?.length ?? 0;
+  getTask.mockResolvedValue(task({ id: "a", name: "New" }));
+  updateTask.mockResolvedValueOnce(shown);
+
+  expect(await useHistoryStore().undo()).toBe(true);
+  await flushPromises();
+
+  expect(updateTask).toHaveBeenLastCalledWith("a", { name: "Old" });
+  expect(source.reload).toHaveBeenCalledOnce();
+  expect(wrapper.emitted("changed")).toHaveLength(changedBefore + 1);
+});
+
+test("doesn't record closing a task for undo", async () => {
+  const source = fakeSource([task({ id: "a" })]);
+  const wrapper = mountList(source);
+  updateTask.mockResolvedValue(task({ id: "a", closed: true }));
+
+  await wrapper.find(".close").trigger("click");
+  await flushPromises();
+
+  expect(useHistoryStore().canUndo).toBe(false);
+});
+
+test("reloads after undoing an edit to a task it no longer lists", async () => {
+  const source = fakeSource([task({ id: "b" })]);
+  mountList(source);
+  const history = useHistoryStore();
+  history.record({
+    label: "Edit task",
+    target: "task:a",
+    before: { tagIds: new Set(["project"]) },
+    after: { tagIds: new Set() },
+    apply: async () => {},
+  });
+
+  await history.undo();
+  await flushPromises();
+
+  expect(source.reload).toHaveBeenCalledOnce();
+});
+
+test("ignores undoing other kinds of edits", async () => {
+  const source = fakeSource([task({ id: "a" })]);
+  mountList(source);
+  const history = useHistoryStore();
+  history.record({
+    label: "Edit timespan",
+    target: "timespan:a",
+    before: { name: "Old" },
+    after: { name: "New" },
+    apply: async () => {},
+  });
+
+  await history.undo();
+  await flushPromises();
+
+  expect(source.reload).not.toHaveBeenCalled();
 });
