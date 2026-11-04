@@ -141,9 +141,8 @@ export function parseHours(input: string): number | null {
 
 /**
  * Orders two optional times latest first, for lists of items closed or
- * archived most recently first. A missing time counts as the latest, as
- * for an item just archived whose time the server hasn't sent yet.
+ * archived most recently first.
  */
 export function compareNewestFirst(a?: Date, b?: Date): number {
-  return (b?.getTime() ?? Infinity) - (a?.getTime() ?? Infinity) || 0;
+  return (b?.getTime() ?? 0) - (a?.getTime() ?? 0);
 }
