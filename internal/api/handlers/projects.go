@@ -52,21 +52,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 		return nil, err
 	}
 
-	apiProject := api.Project{
-		Id:              reply.Id,
-		TagId:           reply.TagId,
-		Name:            reply.Name,
-		Color:           reply.Color,
-		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
-		Archived:        reply.Archived,
-		ArchivedAt:      reply.ArchivedAt,
-	}
-
-	if len(reply.TagIds) > 0 {
-		apiProject.TagIds = &reply.TagIds
-	}
-
-	return api.CreateProject201JSONResponse(apiProject), nil
+	return api.CreateProject201JSONResponse(projectToAPI(reply)), nil
 }
 
 // DeleteProject implements [api.ProjectHandler].
@@ -99,15 +85,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 		return nil, err
 	}
 
-	apiProject := api.Project{
-		Id:              reply.Id,
-		TagId:           reply.TagId,
-		Name:            reply.Name,
-		Color:           reply.Color,
-		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
-		Archived:        reply.Archived,
-		ArchivedAt:      reply.ArchivedAt,
-	}
+	apiProject := projectToAPI(reply)
 
 	if includes.TotalTime && reply.TotalTime != nil {
 		TotalTimeMs := int(reply.TotalTime.Milliseconds())
@@ -117,10 +95,6 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 	if includes.TaskTime && reply.TaskTime != nil {
 		taskTimeMs := int(reply.TaskTime.Milliseconds())
 		apiProject.TaskTimeMs = &taskTimeMs
-	}
-
-	if len(reply.TagIds) > 0 {
-		apiProject.TagIds = &reply.TagIds
 	}
 
 	return api.GetProject200JSONResponse(apiProject), nil
@@ -145,19 +119,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 
 	apiProjects := make([]api.Project, 0, len(page.Data))
 	for _, project := range page.Data {
-		apiProject := api.Project{
-			Id:              project.Id,
-			TagId:           project.TagId,
-			Name:            project.Name,
-			Color:           project.Color,
-			TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
-			Archived:        project.Archived,
-			ArchivedAt:      project.ArchivedAt,
-		}
-		if len(project.TagIds) > 0 {
-			apiProject.TagIds = &project.TagIds
-		}
-		apiProjects = append(apiProjects, apiProject)
+		apiProjects = append(apiProjects, projectToAPI(project))
 	}
 
 	response := api.PaginatedProjects{
@@ -214,21 +176,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 		return nil, err
 	}
 
-	apiProject := api.Project{
-		Id:              reply.Id,
-		TagId:           reply.TagId,
-		Name:            reply.Name,
-		Color:           reply.Color,
-		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
-		Archived:        reply.Archived,
-		ArchivedAt:      reply.ArchivedAt,
-	}
-
-	if len(reply.TagIds) > 0 {
-		apiProject.TagIds = &reply.TagIds
-	}
-
-	return api.UpdateProject200JSONResponse(apiProject), nil
+	return api.UpdateProject200JSONResponse(projectToAPI(reply)), nil
 }
 
 // GetProjectStats implements [api.ProjectHandler].
@@ -296,6 +244,24 @@ func mapProjectStatsToAPIResponse(stats model.ProjectStats) api.GetProjectStatsR
 		Unit:        stats.Unit,
 		Series:      series,
 	})
+}
+
+// projectToAPI converts a project, leaving out its time totals, which only
+// GetProject can include.
+func projectToAPI(project model.Project) api.Project {
+	apiProject := api.Project{
+		Id:              project.Id,
+		TagId:           project.TagId,
+		Name:            project.Name,
+		Color:           project.Color,
+		TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
+		Archived:        project.Archived,
+		ArchivedAt:      project.ArchivedAt,
+	}
+	if len(project.TagIds) > 0 {
+		apiProject.TagIds = &project.TagIds
+	}
+	return apiProject
 }
 
 func formatInterval(interval model.BucketRange) string {
