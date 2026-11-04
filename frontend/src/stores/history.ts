@@ -66,6 +66,8 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     const message = ref<{ text: string; isError: boolean; id: number } | null>(null);
     let messageId = 0;
     const serialize = createSerialQueue();
+    /** The entry undo/redo is writing, and whether it still moves across after. */
+    let writing: { entry: HistoryEntry; direction: "undo" | "redo"; moves: boolean } | null = null;
 
     const canUndo = computed(() => undoStack.value.length > 0);
     const canRedo = computed(() => redoStack.value.length > 0);
@@ -77,30 +79,49 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     /**
      * Records an edit that has just been written, clearing the redo stack.
      * An edit to the same item shortly after the previous one merges into
-     * it, so a burst of changes undoes in one step.
+     * it, so a burst of changes undoes in one step; a burst that ends where
+     * it began leaves nothing to undo.
      */
     function record(edit: FieldEdit): void {
       const at = now();
       const stack = undoStack.value;
       const last = stack[stack.length - 1];
       redoStack.value = [];
-      if (last && last.target === edit.target && at - last.recordedAt <= MERGE_WINDOW_MS) {
+      // An undo in flight would otherwise land on the redo stack just cleared.
+      if (writing?.direction === "undo") writing.moves = false;
+      if (
+        last &&
+        last !== writing?.entry &&
+        last.target === edit.target &&
+        at - last.recordedAt <= MERGE_WINDOW_MS
+      ) {
+        const before = { ...edit.before, ...last.before };
+        const after = { ...last.after, ...edit.after };
+        const fields = changedFields(before, after, Object.keys(before));
         const merged: HistoryEntry = {
           ...edit,
-          before: { ...edit.before, ...last.before },
-          after: { ...last.after, ...edit.after },
+          before: Object.fromEntries(fields.map((field) => [field, before[field]])),
+          after: Object.fromEntries(fields.map((field) => [field, after[field]])),
           recordedAt: at,
         };
-        undoStack.value = [...stack.slice(0, -1), merged];
+        undoStack.value = [...stack.slice(0, -1), ...(fields.length > 0 ? [merged] : [])];
         return;
       }
       undoStack.value = [...stack, { ...edit, recordedAt: at }].slice(-HISTORY_LIMIT);
     }
 
+    /** Drops every entry for an item, e.g. one that no longer exists. */
+    function forget(target: string): void {
+      undoStack.value = undoStack.value.filter((entry) => entry.target !== target);
+      redoStack.value = redoStack.value.filter((entry) => entry.target !== target);
+      if (writing?.entry.target === target) writing.moves = false;
+    }
+
     /**
      * Moves the top entry of from to to once its write succeeds. A conflict
      * drops the entry, since it can never apply again; any other failure
-     * leaves it in place to retry.
+     * leaves it in place to retry. An edit can be recorded during the write,
+     * so the entry is found again by identity, and lands below that edit.
      */
     function step(direction: "undo" | "redo"): Promise<boolean> {
       return serialize(async () => {
@@ -111,20 +132,28 @@ function createHistoryStore(now: () => number = () => Date.now()) {
         const [fields, expected] =
           direction === "undo" ? [entry.before, entry.after] : [entry.after, entry.before];
         const verb = direction === "undo" ? "undo" : "redo";
+        const depth = to.value.length;
+        const current = { entry, direction, moves: true };
+        writing = current;
         try {
           await entry.apply(fields, expected);
         } catch (error) {
           if (error instanceof EditConflictError) {
-            from.value = from.value.slice(0, -1);
+            from.value = from.value.filter((other) => other !== entry);
             show(`Can't ${verb}: ${error.message}`, true);
           } else {
             show(`Couldn't ${verb} "${entry.label}". Try again.`, true);
           }
           return false;
+        } finally {
+          writing = null;
         }
-        from.value = from.value.slice(0, -1);
-        // Never merge a later edit into an entry that undo/redo moved.
-        to.value = [...to.value, { ...entry, recordedAt: -Infinity }];
+        from.value = from.value.filter((other) => other !== entry);
+        if (current.moves) {
+          // Never merge a later edit into an entry that undo/redo moved.
+          const moved = { ...entry, recordedAt: -Infinity };
+          to.value = [...to.value.slice(0, depth), moved, ...to.value.slice(depth)];
+        }
         show(`${direction === "undo" ? "Undid" : "Redid"}: ${entry.label}`);
         return true;
       });
@@ -144,7 +173,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       message.value = null;
     }
 
-    return { canUndo, canRedo, message, record, undo, redo, dismissMessage };
+    return { canUndo, canRedo, message, record, forget, undo, redo, dismissMessage };
   });
 }
 

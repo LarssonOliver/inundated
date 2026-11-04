@@ -1,5 +1,6 @@
 import { ResponseError } from "@/api/generated";
 import { timespansApi, type TimespansApi } from "@/api/timespans";
+import { createSerialQueue } from "@/helpers/serialQueue";
 import type { Timespan } from "@/model";
 import {
   changedFields,
@@ -28,6 +29,13 @@ function copyTimespan(timespan: Timespan): Timespan {
 const EDITABLE_FIELDS = ["name", "startTime", "endTime", "tagIds"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 
+/** Why the server refused writing values over current, which it doesn't say. */
+function refusalReason(current: Timespan, values: Record<string, unknown>): string {
+  const { startTime, endTime } = { ...current, ...values };
+  if (endTime <= startTime) return "the timespan would end before it starts.";
+  return "tagIds" in values ? "a tag in it was archived or deleted." : "the server refused it.";
+}
+
 export interface PaginationState {
   limit: number;
   offset: number;
@@ -42,6 +50,8 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
     const lastFetched = ref<number | null>(null);
     const paginationState = ref<PaginationState | null>(null);
     const TTL = 60_000; // 1 minute
+    // Writes run one at a time, so each sees the result of the one before it.
+    const serializeWrite = createSerialQueue();
 
     const readOnlyTimespans = computed<readonly Timespan[]>(() =>
       Array.from(timespans.value.values()).map(copyTimespan),
@@ -160,25 +170,23 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
     }
 
     /**
-     * Updates an existing timespan. Unless record is false, the change is
-     * recorded for undo (see useHistoryStore), when the timespan is cached
-     * to compare against.
+     * Updates an existing timespan. The change is recorded for undo (see
+     * useHistoryStore), when the timespan is cached to compare against.
      *
      * @param timespan - The timespan to update, identified by timespan.id.
      *
      * @returns A promise that resolves to the updated timespan, or undefined
      *  if not found.
      */
-    async function updateTimespan(
-      timespan: Timespan,
-      { record = true }: { record?: boolean } = {},
-    ): Promise<Timespan> {
-      const { id, name, startTime, endTime, tagIds } = timespan;
-      const prior = timespans.value.get(id);
-      const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
-      timespans.value.set(updated.id, updated);
-      if (record && prior) recordEdit(prior, updated);
-      return copyTimespan(updated);
+    function updateTimespan(timespan: Timespan): Promise<Timespan> {
+      return serializeWrite(async () => {
+        const { id, name, startTime, endTime, tagIds } = timespan;
+        const prior = timespans.value.get(id);
+        const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
+        timespans.value.set(updated.id, updated);
+        if (prior) recordEdit(prior, updated);
+        return copyTimespan(updated);
+      });
     }
 
     function pickFields(timespan: Timespan, fields: readonly EditableField[]) {
@@ -201,33 +209,42 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
     /**
      * Writes values to a timespan for undo/redo, refusing when the server's
      * copy no longer holds expected: it changed since (e.g. in another tab)
-     * or was deleted.
+     * or was deleted. Either way the cache catches up with the server.
      */
-    async function applyEdit(
+    function applyEdit(
       id: string,
       values: Record<string, unknown>,
       expected: Record<string, unknown>,
     ): Promise<void> {
-      let current: Timespan;
-      try {
-        current = await api.getTimespan(id);
-      } catch (error) {
-        if (isStatus(error, 404)) throw new EditConflictError("the timespan was deleted.");
-        throw error;
-      }
-      const changed = Object.entries(expected).some(
-        ([field, value]) => !sameFieldValue(current[field as EditableField], value),
-      );
-      if (changed) throw new EditConflictError("the timespan was changed since.");
-      try {
-        await updateTimespan({ ...current, ...values }, { record: false });
-      } catch (error) {
-        // The server refuses tags it can't attach any more.
-        if (isStatus(error, 400) && "tagIds" in values) {
-          throw new EditConflictError("a tag in it was archived or deleted.");
+      return serializeWrite(async () => {
+        try {
+          const current = await api.getTimespan(id);
+          timespans.value.set(id, current);
+          const changed = Object.entries(expected).some(
+            ([field, value]) => !sameFieldValue(current[field as EditableField], value),
+          );
+          if (changed) throw new EditConflictError("the timespan was changed since.");
+          try {
+            const fields = values as Partial<Omit<Timespan, "id">>;
+            timespans.value.set(id, await api.updateTimespan(id, fields));
+          } catch (error) {
+            if (isStatus(error, 400)) throw new EditConflictError(refusalReason(current, values));
+            throw error;
+          }
+        } catch (error) {
+          if (isStatus(error, 404)) {
+            removeTimespan(id);
+            throw new EditConflictError("the timespan was deleted.");
+          }
+          throw error;
         }
-        throw error;
-      }
+      });
+    }
+
+    /** Removes a timespan that no longer exists, with its undo history. */
+    function removeTimespan(id: string): void {
+      timespans.value.delete(id);
+      useHistoryStore().forget(`timespan:${id}`);
     }
 
     /**
@@ -237,9 +254,11 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
      *
      * @returns A promise that resolves when the timespan is deleted.
      */
-    async function deleteTimespan(id: string): Promise<void> {
-      await api.deleteTimespan(id);
-      timespans.value.delete(id);
+    function deleteTimespan(id: string): Promise<void> {
+      return serializeWrite(async () => {
+        await api.deleteTimespan(id);
+        removeTimespan(id);
+      });
     }
 
     return {

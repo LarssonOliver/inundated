@@ -195,6 +195,162 @@ describe("history store", () => {
     expect(order).toEqual(["b", "a start", "a end"]);
   });
 
+  describe("while an undo or redo is writing", () => {
+    /** An apply that stays in flight until released or failed. */
+    function heldApply() {
+      let release!: () => void;
+      let fail!: (error: Error) => void;
+      const apply = vi.fn(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            release = resolve;
+            fail = reject;
+          }),
+      );
+      return { apply, release: () => release(), fail: (error: Error) => fail(error) };
+    }
+
+    async function started(apply: ReturnType<typeof vi.fn>) {
+      await vi.waitFor(() => expect(apply).toHaveBeenCalled());
+      apply.mockClear();
+    }
+
+    it("keeps an edit recorded during an undo, and clears redo", async () => {
+      const store = useStore();
+      const held = heldApply();
+      store.record(edit({ target: "timespan:a", apply: held.apply }));
+      const undoing = store.undo();
+      await started(held.apply);
+      const newer = edit({ target: "timespan:b" });
+
+      store.record(newer);
+      held.release();
+      await undoing;
+
+      expect(store.canRedo).toBe(false);
+      await store.undo();
+      expect(newer.apply).toHaveBeenCalledOnce();
+      expect(held.apply).not.toHaveBeenCalled();
+      expect(store.canUndo).toBe(false);
+    });
+
+    it("doesn't merge an edit into the entry being undone", async () => {
+      const store = useStore();
+      const held = heldApply();
+      store.record(edit({ apply: held.apply }));
+      const undoing = store.undo();
+      await started(held.apply);
+      const newer = edit({ before: { name: "x" }, after: { name: "y" } });
+
+      store.record(newer);
+      held.release();
+      await undoing;
+
+      await store.undo();
+      expect(newer.apply).toHaveBeenCalledWith({ name: "x" }, { name: "y" });
+    });
+
+    it("drops only the conflicting entry when an undo fails", async () => {
+      const store = useStore();
+      const held = heldApply();
+      store.record(edit({ target: "timespan:a", apply: held.apply }));
+      const undoing = store.undo();
+      await started(held.apply);
+      const newer = edit({ target: "timespan:b" });
+
+      store.record(newer);
+      held.fail(new EditConflictError("it changed."));
+      await undoing;
+
+      await store.undo();
+      expect(newer.apply).toHaveBeenCalledOnce();
+      expect(held.apply).not.toHaveBeenCalled();
+    });
+
+    it("puts a redone entry below an edit recorded during the redo", async () => {
+      const store = useStore();
+      const held = heldApply();
+      const order: string[] = [];
+      held.apply.mockImplementationOnce(async () => {
+        order.push("first undo");
+      });
+      store.record(edit({ target: "timespan:a", apply: held.apply }));
+      await store.undo();
+      const redoing = store.redo();
+      await vi.waitFor(() => expect(held.apply).toHaveBeenCalledTimes(2));
+      const newer = edit({
+        target: "timespan:b",
+        apply: vi.fn(async () => {
+          order.push("newer");
+        }),
+      });
+
+      store.record(newer);
+      held.release();
+      await redoing;
+
+      expect(store.canRedo).toBe(false);
+      await store.undo();
+      expect(order).toEqual(["first undo", "newer"]);
+    });
+
+    it("doesn't keep an entry forgotten during its undo", async () => {
+      const store = useStore();
+      const held = heldApply();
+      store.record(edit({ target: "timespan:a", apply: held.apply }));
+      const undoing = store.undo();
+      await started(held.apply);
+
+      store.forget("timespan:a");
+      held.release();
+      await undoing;
+
+      expect(store.canUndo).toBe(false);
+      expect(store.canRedo).toBe(false);
+    });
+  });
+
+  it("forgets every entry for an item, on both stacks", async () => {
+    const store = useStore();
+    const other = edit({ target: "timespan:b" });
+    store.record(edit({ target: "timespan:a" }));
+    store.record(other);
+    store.record(edit({ target: "timespan:a" }));
+    await store.undo();
+    expect(store.canRedo).toBe(true);
+
+    store.forget("timespan:a");
+
+    expect(store.canRedo).toBe(false);
+    await store.undo();
+    expect(other.apply).toHaveBeenCalledOnce();
+    expect(store.canUndo).toBe(false);
+  });
+
+  it("drops a merged edit that cancels itself out", async () => {
+    const store = useStore();
+    const first = edit({ before: { name: "a" }, after: { name: "b" } });
+    const second = edit({ before: { name: "b" }, after: { name: "a" } });
+    store.record(first);
+
+    store.record(second);
+
+    expect(store.canUndo).toBe(false);
+    expect(await store.undo()).toBe(false);
+    expect(second.apply).not.toHaveBeenCalled();
+  });
+
+  it("keeps only the fields of a merged edit that still differ", async () => {
+    const store = useStore();
+    store.record(edit({ before: { name: "a", end: 1 }, after: { name: "b", end: 2 } }));
+    const latest = edit({ before: { name: "b" }, after: { name: "a" } });
+
+    store.record(latest);
+    await store.undo();
+
+    expect(latest.apply).toHaveBeenCalledWith({ end: 1 }, { end: 2 });
+  });
+
   it("dismisses its message", async () => {
     const store = useStore();
     store.record(edit());
