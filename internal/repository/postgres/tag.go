@@ -53,8 +53,7 @@ func scanTag(row pgx.Row) (model.Tag, error) {
 	if err := row.Scan(&t.Id, &t.Name, &t.Color, &t.UserId, &archivedAt, &ownerKind, &ownerId); err != nil {
 		return model.Tag{}, err
 	}
-	t.Archived = archivedAt != nil
-	t.ArchivedAt = archivedAt
+	t.SetArchivedAt(archivedAt)
 	if ownerKind != nil && ownerId != nil {
 		t.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
 	}
@@ -236,8 +235,7 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 		if err := rows.Scan(&derivedId, &source.Id, &source.Name, &source.Color, &source.UserId, &archivedAt, &ownerKind, &ownerId); err != nil {
 			return nil, fmt.Errorf("ListDerivedTagSources scan: %w", err)
 		}
-		source.Archived = archivedAt != nil
-		source.ArchivedAt = archivedAt
+		source.SetArchivedAt(archivedAt)
 		if ownerKind != nil && ownerId != nil {
 			source.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
 		}
@@ -294,8 +292,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 	if err != nil {
 		return model.Tag{}, fmt.Errorf("UpdateTag: %w", err)
 	}
-	updated.Archived = archivedAt != nil
-	updated.ArchivedAt = archivedAt
+	updated.SetArchivedAt(archivedAt)
 	return updated, nil
 }
 
