@@ -33,6 +33,7 @@ func (r *PostgresStore) GetProject(ctx context.Context, scope model.OwnerScope, 
 		return model.Project{}, fmt.Errorf("GetProject: %w", err)
 	}
 	p.Archived = archivedAt != nil
+	p.ArchivedAt = archivedAt
 
 	p.TagIds, err = r.projectTagIds(ctx, r.db, id)
 	if err != nil {
@@ -60,7 +61,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
-		ORDER BY name
+		ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, dataQ, args...)
@@ -78,6 +79,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 			return model.Page[model.Project]{}, fmt.Errorf("ListProjects scan: %w", err)
 		}
 		p.Archived = archivedAt != nil
+		p.ArchivedAt = archivedAt
 		projects = append(projects, p)
 	}
 
@@ -187,6 +189,7 @@ func (r *PostgresStore) UpdateProject(ctx context.Context, scope model.OwnerScop
 			return fmt.Errorf("UpdateProject: %w", err)
 		}
 		updated.Archived = archivedAt != nil
+		updated.ArchivedAt = archivedAt
 		// Skipping an unchanged tag avoids locking it against the task
 		// tree changes that share-lock it (see refresh_task_effective_tags).
 		syncTag := `UPDATE tags SET name = $2, color = $3 WHERE id = $1 AND (name, color) IS DISTINCT FROM ($2, $3)`

@@ -6,6 +6,11 @@ export interface Tag {
   color: string;
   totalTimeMs?: number;
   archived: boolean;
+  /**
+   * When the tag was archived, set while it is. An owned tag takes its
+   * owner's (a task tag's is its task's closedAt).
+   */
+  archivedAt?: Date;
   /** Set on owned tags: the item that owns this tag (see helpers/tagOwners). */
   owner?: TagOwner;
 }

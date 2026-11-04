@@ -4,6 +4,7 @@ import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { createSerialQueue } from "@/helpers/serialQueue";
 import type { MoveTarget } from "@/helpers/taskMoves";
 import { toLocalDay } from "@/helpers/dates";
+import { compareNewestFirst } from "@/helpers/time";
 import type { Task } from "@/model";
 import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
 import { acceptHMRUpdate, defineStore } from "pinia";
@@ -29,10 +30,13 @@ export function compareByRank(a: Task, b: Task): number {
 }
 
 /**
- * Orders tasks as a depth-first tree, each parent followed by its subtasks,
- * siblings by rank. A task whose parent isn't in the list is shown at the
- * top level, so a filtered list never hides it.
+ * Orders closed sibling tasks most recently closed first, then by rank
+ * (subtasks closed with their parent share its time).
  */
+export function compareByClosedAt(a: Task, b: Task): number {
+  return compareNewestFirst(a.closedAt, b.closedAt) || compareByRank(a, b);
+}
+
 /**
  * Whether an open task's due date is before today, in the browser's time
  * zone.
@@ -41,7 +45,15 @@ export function isTaskOverdue(task: Task, today: Date = new Date()): boolean {
   return !task.closed && !!task.dueDate && task.dueDate < toLocalDay(today);
 }
 
-export function taskTree(tasks: readonly Task[]): TaskRow[] {
+/**
+ * Orders tasks as a depth-first tree, each parent followed by its subtasks,
+ * siblings by compare (rank by default). A task whose parent isn't in the
+ * list is shown at the top level, so a filtered list never hides it.
+ */
+export function taskTree(
+  tasks: readonly Task[],
+  compare: (a: Task, b: Task) => number = compareByRank,
+): TaskRow[] {
   const ids = new Set(tasks.map((task) => task.id));
   const children = new Map<string | undefined, Task[]>();
   for (const task of tasks) {
@@ -51,7 +63,7 @@ export function taskTree(tasks: readonly Task[]): TaskRow[] {
     children.set(parent, siblings);
   }
   for (const siblings of children.values()) {
-    siblings.sort(compareByRank);
+    siblings.sort(compare);
   }
 
   const rows: TaskRow[] = [];

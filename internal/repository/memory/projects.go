@@ -1,8 +1,12 @@
 package memory
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -81,6 +85,16 @@ func (t *MemoryStore) ListProjects(ctx context.Context, scope model.OwnerScope, 
 		}
 	}
 
+	// As the Postgres store orders them: active projects by name, then
+	// archived ones most recently archived first.
+	slices.SortFunc(all, func(a, b model.Project) int {
+		return cmp.Or(
+			model.CompareArchived(a.ArchivedAt, b.ArchivedAt),
+			strings.Compare(a.Name, b.Name),
+			bytes.Compare(a.Id[:], b.Id[:]),
+		)
+	})
+
 	total := len(all)
 	start := min(params.Offset, total)
 	end := min(start+params.Limit, total)
@@ -117,6 +131,7 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 
 	project.UserId = t.projects[idx].UserId
 	project.TagId = t.projects[idx].TagId
+	project.ArchivedAt = model.ArchivedAtAfter(t.projects[idx].ArchivedAt, project.Archived, time.Now().UTC())
 	t.projects[idx] = project
 	if tagIdx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == project.TagId }); tagIdx != -1 {
 		t.tags[tagIdx].Name = project.Name

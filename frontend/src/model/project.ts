@@ -16,6 +16,8 @@ export interface Project {
   /** The part of totalTimeMs logged on the project's tasks. */
   taskTimeMs?: number;
   archived: boolean;
+  /** When the project was archived, set while it is. */
+  archivedAt?: Date;
 }
 
 export interface ProjectStats {

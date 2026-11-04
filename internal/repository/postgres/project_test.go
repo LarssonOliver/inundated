@@ -182,7 +182,7 @@ func TestListProjects_ReturnsAll(t *testing.T) {
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(projectColsArchived).
@@ -214,7 +214,7 @@ func TestListProjects_WithPaginationParams(t *testing.T) {
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(projectColsArchived).
@@ -247,7 +247,7 @@ func TestListProjects_Empty(t *testing.T) {
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id = \$3 ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(projectColsArchived),
@@ -273,7 +273,7 @@ func TestListProjects_UnownedScope(t *testing.T) {
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND archived_at IS NULL AND user_id IS NULL ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(projectColsArchived).
@@ -301,7 +301,7 @@ func TestListProjects_IncludeArchived(t *testing.T) {
 		WithArgs(*testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(1))
 
-	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY name LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, color, time_budget, user_id, archived_at, tag_id FROM projects WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(pgxmock.NewRows(projectColsArchived).
 			AddRow(p.Id, p.Name, p.Color, p.TimeBudget, testScope.UserID(), archivedAtPtr, p.TagId))

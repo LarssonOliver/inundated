@@ -18,6 +18,7 @@ export const projectMapper: FromApiMapper<Project, Api.Project> = {
       totalTimeMs: apiModel.totalTimeMs,
       ...(apiModel.taskTimeMs !== undefined && { taskTimeMs: apiModel.taskTimeMs }),
       archived: apiModel.archived,
+      ...(apiModel.archivedAt !== undefined && { archivedAt: apiModel.archivedAt }),
     };
   },
 };

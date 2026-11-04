@@ -107,6 +107,22 @@ test("lists open tasks, and closed ones under their own heading while Show Close
   expect(wrapper.find(".section-heading").text()).toBe("Closed");
 });
 
+test("lists closed tasks most recently closed first, without shifting them", async () => {
+  const closed = (id: string, day: number) =>
+    task({ id, closed: true, closeReason: "done", closedAt: new Date(2026, 10, day) });
+  const source = fakeSource([task({ id: "a" }), closed("x", 1), closed("y", 3), closed("z", 2)]);
+  const wrapper = mountList(source);
+  await wrapper.find('input[type="checkbox"]').setValue(true);
+
+  expect(wrapper.findAll(".name").map((n) => n.text())).toEqual(["a", "y", "z", "x"]);
+  const z = rowNamed(wrapper, "z");
+  expect([enabled(z, "up"), enabled(z, "down"), enabled(z, "indent")]).toEqual([
+    false,
+    false,
+    true,
+  ]);
+});
+
 test("enables each move exactly when it has somewhere to go", () => {
   const wrapper = mountList(
     fakeSource([task({ id: "a" }), task({ id: "a1", parentId: "a" }), task({ id: "b" })]),

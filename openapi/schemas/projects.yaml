@@ -35,6 +35,13 @@ Project:
       description: Whether this project is archived. Archived projects are hidden
         from list views by default and excluded from search/pickers, but keep
         their history and can still be fetched, edited, or deleted directly.
+    archivedAt:
+      type: string
+      format: date-time
+      readOnly: true
+      description: When this project was archived, set while it is.
+        Lists that include archived projects show them after active ones, most
+        recently archived first.
 
 CreateProject:
   type: object

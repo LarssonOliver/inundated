@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -115,10 +116,12 @@ func (l tagLookup) view(tag model.Tag) model.Tag {
 	case model.TagOwnerTask:
 		if task, ok := l.tasks[tag.Owner.Id]; ok {
 			tag.Archived = task.Closed()
+			tag.ArchivedAt = task.ClosedAt
 		}
 	case model.TagOwnerProject:
 		if project, ok := l.projects[tag.Owner.Id]; ok {
 			tag.Archived = project.Archived
+			tag.ArchivedAt = project.ArchivedAt
 		}
 	}
 	return tag
@@ -182,23 +185,36 @@ func (t *MemoryStore) ListTags(ctx context.Context, scope model.OwnerScope, para
 	}
 
 	// Kinds take turns (see model.TagListParams), as the Postgres store
-	// orders them: number each tag within its kind by name, then order by
-	// that number, regular tags first within each turn.
+	// orders them: number each tag within its kind (active and archived
+	// tags apart) by name, or by when it was archived, then order active
+	// tags before archived ones and by that number, regular tags first
+	// within each turn.
 	kindOf := func(tag model.Tag) string {
 		if tag.Owner == nil {
 			return ""
 		}
 		return string(tag.Owner.Kind)
 	}
-	slices.SortStableFunc(all, model.CompareTagNames)
-	turn := make(map[uuid.UUID]int, len(all))
-	perKind := map[string]int{}
-	for _, tag := range all {
-		turn[tag.Id] = perKind[kindOf(tag)]
-		perKind[kindOf(tag)]++
+	type group struct {
+		kind     string
+		archived bool
 	}
 	slices.SortStableFunc(all, func(a, b model.Tag) int {
-		return cmp.Or(cmp.Compare(turn[a.Id], turn[b.Id]), cmp.Compare(kindOf(a), kindOf(b)))
+		return cmp.Or(model.CompareArchived(a.ArchivedAt, b.ArchivedAt), model.CompareTagNames(a, b))
+	})
+	turn := make(map[uuid.UUID]int, len(all))
+	perGroup := map[group]int{}
+	for _, tag := range all {
+		g := group{kindOf(tag), tag.Archived}
+		turn[tag.Id] = perGroup[g]
+		perGroup[g]++
+	}
+	slices.SortStableFunc(all, func(a, b model.Tag) int {
+		return cmp.Or(
+			cmp.Compare(archivedRank(a), archivedRank(b)),
+			cmp.Compare(turn[a.Id], turn[b.Id]),
+			cmp.Compare(kindOf(a), kindOf(b)),
+		)
 	})
 
 	total := len(all)
@@ -234,6 +250,7 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag
 
 	tag.UserId = t.tags[idx].UserId
 	tag.Owner = nil
+	tag.ArchivedAt = model.ArchivedAtAfter(t.tags[idx].ArchivedAt, tag.Archived, time.Now().UTC())
 	t.tags[idx] = tag
 	return tag, nil
 }
@@ -271,4 +288,12 @@ func (t *MemoryStore) deleteTags(isDeleted func(tagId uuid.UUID) bool) {
 	for i := range t.timespans {
 		t.timespans[i].TagIds = slices.DeleteFunc(t.timespans[i].TagIds, isDeleted)
 	}
+}
+
+// archivedRank orders active tags (0) before archived ones (1).
+func archivedRank(tag model.Tag) int {
+	if tag.Archived {
+		return 1
+	}
+	return 0
 }

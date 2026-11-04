@@ -353,10 +353,13 @@ type PaginationDetails struct {
 // Project defines model for Project.
 type Project struct {
 	// Archived Whether this project is archived. Archived projects are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
-	Archived bool               `json:"archived"`
-	Color    HexColor           `json:"color"`
-	Id       openapi_types.UUID `json:"id"`
-	Name     string             `json:"name"`
+	Archived bool `json:"archived"`
+
+	// ArchivedAt When this project was archived, set while it is. Lists that include archived projects show them after active ones, most recently archived first.
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	Color      HexColor           `json:"color"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
 
 	// TagId The project's own project tag, shown as "@name". Time spans and tasks carrying it count toward the project, like those carrying any of tagIds, which never include it. Its name, color and archived state follow the project.
 	TagId  openapi_types.UUID `json:"tagId"`
@@ -422,10 +425,13 @@ type StatsMetric string
 // Tag defines model for Tag.
 type Tag struct {
 	// Archived Whether this tag is archived. Archived tags are hidden from list views by default and excluded from search/pickers, but keep their history and can still be fetched, edited, or deleted directly.
-	Archived bool               `json:"archived"`
-	Color    HexColor           `json:"color"`
-	Id       openapi_types.UUID `json:"id"`
-	Name     string             `json:"name"`
+	Archived bool `json:"archived"`
+
+	// ArchivedAt When this tag was archived, set while it is. An owned tag takes its owner's time, so a task tag's is its task's closedAt. Lists that include archived tags show them after active ones, most recently archived first.
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	Color      HexColor           `json:"color"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
 
 	// Owner Set on owned tags, naming the item that owns the tag, such as the task that owns a task tag. An owned tag's name, color and archived state follow its owner, so it can't be changed through the tag API.
 	Owner       *TagOwner `json:"owner,omitempty"`

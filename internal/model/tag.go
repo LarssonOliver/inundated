@@ -17,6 +17,10 @@ type Tag struct {
 	TotalTime *time.Duration
 	UserId    *uuid.UUID
 	Archived  bool
+	// ArchivedAt is when the tag was archived, set by the store while
+	// Archived is. An owned tag takes it from its owner (a task tag's is
+	// its task's ClosedAt). Ignored on update.
+	ArchivedAt *time.Time
 	// Owner is set on owned tags, naming the item that owns the tag (see
 	// TagOwnerKind). Regular tags have none.
 	Owner *TagOwner

@@ -15,6 +15,7 @@ Name | Type
 `totalTimeMs` | number
 `taskTimeMs` | number
 `archived` | boolean
+`archivedAt` | Date
 
 ## Example
 
@@ -32,6 +33,7 @@ const example = {
   "totalTimeMs": null,
   "taskTimeMs": null,
   "archived": null,
+  "archivedAt": null,
 } satisfies Project
 
 console.log(example)

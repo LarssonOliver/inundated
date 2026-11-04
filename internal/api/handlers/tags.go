@@ -38,10 +38,11 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 	}
 
 	apiTag := api.Tag{
-		Id:       reply.Id,
-		Name:     reply.Name,
-		Color:    reply.Color,
-		Archived: reply.Archived,
+		Id:         reply.Id,
+		Name:       reply.Name,
+		Color:      reply.Color,
+		Archived:   reply.Archived,
+		ArchivedAt: reply.ArchivedAt,
 	}
 
 	return api.CreateTag201JSONResponse(apiTag), nil
@@ -77,11 +78,12 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 	}
 
 	apiTag := api.Tag{
-		Id:       reply.Id,
-		Name:     reply.Name,
-		Color:    reply.Color,
-		Archived: reply.Archived,
-		Owner:    tagOwnerToAPI(reply.Owner),
+		Id:         reply.Id,
+		Name:       reply.Name,
+		Color:      reply.Color,
+		Archived:   reply.Archived,
+		ArchivedAt: reply.ArchivedAt,
+		Owner:      tagOwnerToAPI(reply.Owner),
 	}
 
 	if includes.TotalTime {
@@ -132,11 +134,12 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 	apiTags := make([]api.Tag, 0, len(page.Data))
 	for _, tag := range page.Data {
 		apiTag := api.Tag{
-			Id:       tag.Id,
-			Name:     tag.Name,
-			Color:    tag.Color,
-			Archived: tag.Archived,
-			Owner:    tagOwnerToAPI(tag.Owner),
+			Id:         tag.Id,
+			Name:       tag.Name,
+			Color:      tag.Color,
+			Archived:   tag.Archived,
+			ArchivedAt: tag.ArchivedAt,
+			Owner:      tagOwnerToAPI(tag.Owner),
 		}
 		apiTags = append(apiTags, apiTag)
 	}
@@ -181,10 +184,11 @@ func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequest
 	}
 
 	apiTag := api.Tag{
-		Id:       reply.Id,
-		Name:     reply.Name,
-		Color:    reply.Color,
-		Archived: reply.Archived,
+		Id:         reply.Id,
+		Name:       reply.Name,
+		Color:      reply.Color,
+		Archived:   reply.Archived,
+		ArchivedAt: reply.ArchivedAt,
 	}
 
 	return api.UpdateTag200JSONResponse(apiTag), nil

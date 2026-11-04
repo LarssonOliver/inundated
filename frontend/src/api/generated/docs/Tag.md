@@ -12,6 +12,7 @@ Name | Type
 `totalTimeMs` | number
 `owner` | [TagOwner](TagOwner.md)
 `archived` | boolean
+`archivedAt` | Date
 
 ## Example
 
@@ -26,6 +27,7 @@ const example = {
   "totalTimeMs": null,
   "owner": null,
   "archived": null,
+  "archivedAt": null,
 } satisfies Tag
 
 console.log(example)

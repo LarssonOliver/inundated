@@ -138,3 +138,12 @@ export function parseHours(input: string): number | null {
   const ms = parseGoDuration(unsigned);
   return ms === null ? null : ms / HOUR_MS;
 }
+
+/**
+ * Orders two optional times latest first, for lists of items closed or
+ * archived most recently first. A missing time counts as the latest, as
+ * for an item just archived whose time the server hasn't sent yet.
+ */
+export function compareNewestFirst(a?: Date, b?: Date): number {
+  return (b?.getTime() ?? Infinity) - (a?.getTime() ?? Infinity) || 0;
+}

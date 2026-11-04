@@ -65,7 +65,13 @@ import {
   shiftTarget,
   type MoveTarget,
 } from "@/helpers/taskMoves";
-import { isTaskOverdue, taskTree, useTasksStore, type TaskRow as TreeRow } from "@/stores/tasks";
+import {
+  compareByClosedAt,
+  isTaskOverdue,
+  taskTree,
+  useTasksStore,
+  type TaskRow as TreeRow,
+} from "@/stores/tasks";
 import ToggleSwitch from "@/components/inputs/ToggleSwitch.vue";
 import TaskRow from "@/components/tasks/TaskRow.vue";
 
@@ -99,10 +105,16 @@ const errorMessage = ref("");
 // Open and closed tasks are listed as two separate trees - open ones, then
 // closed ones below - so moves never mix the two; taskTree's own "orphan"
 // handling means a task whose parent is in the other tree just shows at the
-// top level instead of disappearing.
+// top level instead of disappearing. Closed tasks are listed most recently
+// closed first, so their rank doesn't show and they can't be shifted.
 const openRows = computed(() => taskTree(props.source.tasks.value.filter((t) => !t.closed)));
 const closedRows = computed(() =>
-  props.source.showClosed.value ? taskTree(props.source.tasks.value.filter((t) => t.closed)) : [],
+  props.source.showClosed.value
+    ? taskTree(
+        props.source.tasks.value.filter((t) => t.closed),
+        compareByClosedAt,
+      )
+    : [],
 );
 const sections = computed(() => [
   { key: "open", heading: undefined, rows: openRows.value },
@@ -130,8 +142,8 @@ const moveButtons = computed(() => {
     for (const { task } of rows) {
       const { up, down, indent, outdent } = moves.get(task.id)!;
       buttons.set(task.id, {
-        up: !!up,
-        down: !!down,
+        up: !!up && !task.closed,
+        down: !!down && !task.closed,
         indent: !!indent,
         outdent: !!keptInList(task, outdent),
       });
