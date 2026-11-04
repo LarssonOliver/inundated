@@ -351,6 +351,79 @@ describe("history store", () => {
     expect(latest.apply).toHaveBeenCalledWith({ end: 1 }, { end: 2 });
   });
 
+  describe("scopes", () => {
+    it("undoes and redoes only the current page's edits", async () => {
+      const store = useStore();
+      store.setScope("/tasks");
+      const onTasks = edit({ target: "task:a" });
+      store.record(onTasks);
+      store.setScope("/");
+      const onTimesheet = edit({ target: "timespan:a" });
+      store.record(onTimesheet);
+      store.setScope("/tasks");
+
+      expect(await store.undo()).toBe(true);
+      expect(onTasks.apply).toHaveBeenCalled();
+      expect(onTimesheet.apply).not.toHaveBeenCalled();
+      expect(store.canUndo).toBe(false);
+
+      store.setScope("/");
+      expect(store.canUndo).toBe(true);
+      expect(store.canRedo).toBe(false);
+    });
+
+    it("has nothing to undo on a page without edits", async () => {
+      const store = useStore();
+      store.setScope("/");
+      store.record(edit());
+      store.setScope("/calendar");
+
+      expect(store.canUndo).toBe(false);
+      expect(await store.undo()).toBe(false);
+    });
+
+    it("clears only the current page's redo stack on a new edit", async () => {
+      const store = useStore();
+      store.setScope("/tasks");
+      store.record(edit({ target: "task:a" }));
+      await store.undo();
+      store.setScope("/");
+      store.record(edit());
+
+      store.setScope("/tasks");
+      expect(store.canRedo).toBe(true);
+    });
+
+    it("merges a quick edit into the same page's last edit of the item", async () => {
+      const store = useStore();
+      store.setScope("/tasks");
+      store.record(edit({ target: "task:a", before: { name: "a" }, after: { name: "b" } }));
+      store.setScope("/");
+      store.record(edit({ target: "timespan:b" }));
+      store.setScope("/tasks");
+      const latest = edit({ target: "task:a", before: { name: "b" }, after: { name: "c" } });
+      store.record(latest);
+
+      await store.undo();
+
+      expect(latest.apply).toHaveBeenCalledWith({ name: "a" }, { name: "c" });
+      expect(store.canUndo).toBe(false);
+    });
+  });
+
+  it("says which edit undo and redo wrote", async () => {
+    const store = useStore();
+    store.record(edit());
+
+    await store.undo();
+    const undone = store.applied;
+    await store.redo();
+
+    expect(undone).toMatchObject({ target: "timespan:a", fields: { name: "old" } });
+    expect(store.applied).toMatchObject({ target: "timespan:a", fields: { name: "new" } });
+    expect(store.applied!.seq).toBeGreaterThan(undone!.seq);
+  });
+
   it("dismisses its message", async () => {
     const store = useStore();
     store.record(edit());
