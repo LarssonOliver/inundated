@@ -123,6 +123,25 @@ test("lists closed tasks most recently closed first, without shifting them", asy
   ]);
 });
 
+test("doesn't offer indenting a closed task under its own parent", async () => {
+  const closed = (id: string, day: number, parentId?: string) =>
+    task({
+      id,
+      closed: true,
+      closeReason: "done",
+      closedAt: new Date(2026, 10, day),
+      ...(parentId && { parentId }),
+    });
+  const wrapper = mountList(
+    fakeSource([closed("p", 3), closed("c1", 1, "p"), closed("c2", 2, "p")]),
+  );
+  await wrapper.find('input[type="checkbox"]').setValue(true);
+
+  expect(wrapper.findAll(".name").map((n) => n.text())).toEqual(["p", "c2", "c1"]);
+  expect(enabled(rowNamed(wrapper, "c2"), "indent")).toBe(false);
+  expect(enabled(rowNamed(wrapper, "c1"), "indent")).toBe(true);
+});
+
 test("enables each move exactly when it has somewhere to go", () => {
   const wrapper = mountList(
     fakeSource([task({ id: "a" }), task({ id: "a1", parentId: "a" }), task({ id: "b" })]),

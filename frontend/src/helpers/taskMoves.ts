@@ -12,7 +12,9 @@ export interface MoveTarget {
 
 // Each function takes one open/closed tree as listed (see taskTree), and
 // returns null when the move has nowhere to go, so a list can disable the
-// button instead of offering a move that does nothing.
+// button instead of offering a move that does nothing. That includes any
+// move only among a closed task's siblings: those list most recently closed
+// first, so a new rank wouldn't show.
 
 /** Where each listed task sits, for looking tasks up without a scan. */
 interface RowIndex {
@@ -42,7 +44,8 @@ function indexRows(rows: readonly TaskRow[]): RowIndex {
 function shiftIn(index: RowIndex, id: string, delta: -1 | 1): MoveTarget | null {
   const i = index.siblingOf.get(id);
   if (i === undefined) return null;
-  const { parentId } = index.rows[index.rowOf.get(id)!].task;
+  const { parentId, closed } = index.rows[index.rowOf.get(id)!].task;
+  if (closed) return null;
   const siblings = index.children.get(parentId)!;
   const target = i + delta;
   if (target < 0 || target >= siblings.length) return null;
@@ -59,8 +62,8 @@ function indentIn(index: RowIndex, id: string): MoveTarget | null {
   const parent = index.rows[i - 1].task;
   const children = index.children.get(parent.id) ?? [];
   const lastChild = children.at(-1)?.id === id ? children.at(-2) : children.at(-1);
-  // An only child indented under its own parent would stay where it is.
-  if (parent.id === task.parentId && !lastChild) return null;
+  // Under its own parent, an only child or a closed task would stay put.
+  if (parent.id === task.parentId && (!lastChild || task.closed)) return null;
   return { parentId: parent.id, afterTaskId: lastChild?.id };
 }
 

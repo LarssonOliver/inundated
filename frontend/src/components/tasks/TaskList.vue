@@ -106,7 +106,7 @@ const errorMessage = ref("");
 // closed ones below - so moves never mix the two; taskTree's own "orphan"
 // handling means a task whose parent is in the other tree just shows at the
 // top level instead of disappearing. Closed tasks are listed most recently
-// closed first, so their rank doesn't show and they can't be shifted.
+// closed first, so their rank doesn't show (see helpers/taskMoves).
 const openRows = computed(() => taskTree(props.source.tasks.value.filter((t) => !t.closed)));
 const closedRows = computed(() =>
   props.source.showClosed.value
@@ -142,8 +142,8 @@ const moveButtons = computed(() => {
     for (const { task } of rows) {
       const { up, down, indent, outdent } = moves.get(task.id)!;
       buttons.set(task.id, {
-        up: !!up && !task.closed,
-        down: !!down && !task.closed,
+        up: !!up,
+        down: !!down,
         indent: !!indent,
         outdent: !!keptInList(task, outdent),
       });

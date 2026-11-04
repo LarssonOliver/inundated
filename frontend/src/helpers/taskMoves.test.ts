@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/model";
-import { taskTree } from "@/stores/tasks";
+import { compareByClosedAt, taskTree } from "@/stores/tasks";
 import { indentTarget, listMoves, outdentTarget, shiftTarget } from "./taskMoves";
 
 // Ranks follow ids, so a list's order is easy to read off its ids.
@@ -126,6 +126,36 @@ describe("outdentTarget", () => {
     const child = task({ id: "c", parentId: "p" });
     const openRows = taskTree([parent, child].filter((t) => !t.closed));
     expect(outdentTarget(openRows, "c")).toBeNull();
+  });
+});
+
+describe("closed trees", () => {
+  const closed = (id: string, day: number, partial: Partial<Task> = {}) =>
+    task({ id, closed: true, closedAt: new Date(2026, 10, day), ...partial });
+  const rows = taskTree(
+    [
+      closed("p", 3, { rank: "a" }),
+      closed("c1", 1, { parentId: "p", rank: "a" }),
+      closed("c2", 2, { parentId: "p", rank: "b" }),
+      closed("q", 1, { rank: "b" }),
+    ],
+    compareByClosedAt,
+  );
+
+  it("does not shift a closed task, whose rank doesn't show", () => {
+    expect(shiftTarget(rows, "c2", 1)).toBeNull();
+    expect(shiftTarget(rows, "c1", -1)).toBeNull();
+    expect(shiftTarget(rows, "q", -1)).toBeNull();
+  });
+
+  it("does not indent a closed task under its own parent, which only changes its rank", () => {
+    expect(rows.map((r) => r.task.id)).toEqual(["p", "c2", "c1", "q"]);
+    expect(indentTarget(rows, "c2")).toBeNull();
+  });
+
+  it("still indents a closed task under another row above it", () => {
+    expect(indentTarget(rows, "c1")).toEqual({ parentId: "c2", afterTaskId: undefined });
+    expect(indentTarget(rows, "q")).toEqual({ parentId: "c1", afterTaskId: undefined });
   });
 });
 
