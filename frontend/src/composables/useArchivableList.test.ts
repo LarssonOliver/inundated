@@ -62,4 +62,27 @@ describe("useArchivableList", () => {
 
     expect(sorted.value.map((i) => i.name)).toEqual(["a-new", "b-new", "old"]);
   });
+
+  it("sorts names as the server pages them: ignoring case, by code point", () => {
+    const items = [item("Ärende"), item("zebra"), item("banana"), item("Apple"), item("apple")];
+    const store = { includeArchived: false, setIncludeArchived: vi.fn() };
+    const { sorted } = useArchivableList(() => items, store);
+
+    expect(sorted.value.map((i) => i.name)).toEqual([
+      "Apple",
+      "apple",
+      "banana",
+      "zebra",
+      "Ärende",
+    ]);
+  });
+
+  it("sorts archived items archived at the same time by name, as the server does", () => {
+    const at = new Date("2026-11-01T10:00:00Z");
+    const items = [item("Ärende", true, at), item("zebra", true, at), item("Apple", true, at)];
+    const store = { includeArchived: false, setIncludeArchived: vi.fn() };
+    const { sorted } = useArchivableList(() => items, store);
+
+    expect(sorted.value.map((i) => i.name)).toEqual(["Apple", "zebra", "Ärende"]);
+  });
 });
