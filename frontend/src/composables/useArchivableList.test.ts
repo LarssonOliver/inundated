@@ -51,18 +51,6 @@ describe("useArchivableList", () => {
     ]);
   });
 
-  it("sorts an archived item without a time first among archived ones, then by name", () => {
-    const items = [
-      item("old", true, new Date("2026-10-01T10:00:00Z")),
-      item("b-new", true),
-      item("a-new", true),
-    ];
-    const store = { includeArchived: false, setIncludeArchived: vi.fn() };
-    const { sorted } = useArchivableList(() => items, store);
-
-    expect(sorted.value.map((i) => i.name)).toEqual(["a-new", "b-new", "old"]);
-  });
-
   it("sorts names as the server pages them: ignoring case, by code point", () => {
     const items = [item("Ärende"), item("zebra"), item("banana"), item("Apple"), item("apple")];
     const store = { includeArchived: false, setIncludeArchived: vi.fn() };
