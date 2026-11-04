@@ -44,8 +44,6 @@ describe("useUndoShortcuts", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     history = useHistoryStore();
-    vi.spyOn(history, "undo").mockResolvedValue(true);
-    vi.spyOn(history, "redo").mockResolvedValue(true);
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -61,17 +59,35 @@ describe("useUndoShortcuts", () => {
       },
     });
     wrapper = mount(Host, { attachTo: document.body, global: { plugins: [pinia, router] } });
+    // The page's own edit, so there is something to undo and redo.
+    history.record({
+      label: "Edit timespan",
+      target: "timespan:a",
+      before: {},
+      after: {},
+      apply: async () => {},
+    });
+    vi.spyOn(history, "undo");
+    vi.spyOn(history, "redo");
   });
 
   afterEach(() => wrapper.unmount());
 
-  it("undoes and redoes from the page", () => {
+  it("undoes and redoes from the page", async () => {
     const event = keydown({ key: "z", ctrlKey: true }, wrapper.find("button").element);
+    await vi.waitFor(() => expect(history.canRedo).toBe(true));
     keydown({ key: "z", ctrlKey: true, shiftKey: true });
 
     expect(history.undo).toHaveBeenCalledOnce();
     expect(history.redo).toHaveBeenCalledOnce();
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("leaves the shortcut to the browser with nothing to redo", () => {
+    const event = keydown({ key: "z", ctrlKey: true, shiftKey: true });
+
+    expect(history.redo).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("leaves Ctrl+Z to a focused text field", () => {
@@ -81,7 +97,7 @@ describe("useUndoShortcuts", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("does nothing away from the timesheet, until back on it", async () => {
+  it("undoes only the edits made on the current page", async () => {
     await router.push("/calendar");
 
     const event = keydown({ key: "z", ctrlKey: true });

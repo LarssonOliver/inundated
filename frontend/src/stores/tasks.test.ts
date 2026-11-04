@@ -3,6 +3,8 @@ import { setActivePinia, createPinia } from "pinia";
 import type { Task } from "@/model";
 import type { TasksApi } from "@/api/tasks";
 import { __test__, compareByClosedAt, isTaskOverdue, taskTree } from "@/stores/tasks";
+import { useHistoryStore } from "@/stores/history";
+import { ResponseError } from "@/api/generated";
 
 const ownerWritten = vi.fn();
 vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten }) }));
@@ -355,5 +357,123 @@ describe("tasks store", () => {
 
     expect(store.getTaskById("a")).toBeDefined();
     expect(ownerWritten).not.toHaveBeenCalled();
+  });
+
+  describe("undo", () => {
+    const shown = task({ id: "a", name: "Old", dueDate: "2026-11-05", tagIds: new Set(["x"]) });
+
+    beforeEach(() => {
+      api.updateTask.mockImplementation(
+        async (id, patch) =>
+          ({
+            ...shown,
+            ...patch,
+            id,
+            dueDate: patch.dueDate === null ? undefined : (patch.dueDate ?? shown.dueDate),
+            tagIds: patch.tagIds ?? shown.tagIds,
+          }) as Task,
+      );
+    });
+
+    const statusError = (status: number) => new ResponseError(new Response(null, { status }));
+
+    it("records an edit from the task as shown, and undoes it", async () => {
+      const store = useStore();
+      await store.updateTask("a", { name: "New", dueDate: null }, { recordFrom: shown });
+      api.getTask.mockResolvedValue({ ...shown, name: "New", dueDate: undefined });
+
+      expect(await useHistoryStore().undo()).toBe(true);
+
+      expect(api.getTask).toHaveBeenCalledWith("a", false);
+      expect(api.updateTask).toHaveBeenLastCalledWith("a", {
+        name: "Old",
+        dueDate: "2026-11-05",
+      });
+    });
+
+    it("redoes an undone edit, clearing what it cleared", async () => {
+      const store = useStore();
+      await store.updateTask("a", { dueDate: null }, { recordFrom: shown });
+      api.getTask
+        .mockResolvedValueOnce({ ...shown, dueDate: undefined })
+        .mockResolvedValueOnce(shown);
+      const history = useHistoryStore();
+      await history.undo();
+
+      expect(await history.redo()).toBe(true);
+
+      expect(api.updateTask).toHaveBeenLastCalledWith("a", { dueDate: null });
+    });
+
+    it("records only edits made in place", async () => {
+      const store = useStore();
+      await store.updateTask("a", { name: "New" });
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("doesn't record closing or reopening", async () => {
+      const store = useStore();
+      api.listAllTasks.mockResolvedValue([]);
+      await store.updateTask("a", { closed: true, closeReason: "done" }, { recordFrom: shown });
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("doesn't record an edit that changes nothing", async () => {
+      const store = useStore();
+      await store.updateTask("a", { tagIds: new Set(["x"]) }, { recordFrom: shown });
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("refuses to undo when the task changed since", async () => {
+      const store = useStore();
+      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
+      api.getTask.mockResolvedValue({ ...shown, name: "Renamed elsewhere" });
+      api.updateTask.mockClear();
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(api.updateTask).not.toHaveBeenCalled();
+      expect(history.message?.text).toBe("Can't undo: the task was changed since.");
+      expect(history.canUndo).toBe(false);
+    });
+
+    it("refuses to undo, and forgets the task, when it was deleted", async () => {
+      const store = useStore();
+      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
+      await store.updateTask("a", { name: "Newer" }, { recordFrom: { ...shown, name: "x" } });
+      api.getTask.mockRejectedValue(statusError(404));
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(history.message?.text).toBe("Can't undo: the task was deleted.");
+      expect(history.canUndo).toBe(false);
+    });
+
+    it("refuses to undo when a tag can't be attached any more", async () => {
+      const store = useStore();
+      await store.updateTask("a", { tagIds: new Set() }, { recordFrom: shown });
+      api.getTask.mockResolvedValue({ ...shown, tagIds: new Set() });
+      api.updateTask.mockRejectedValue(statusError(400));
+      const history = useHistoryStore();
+
+      expect(await history.undo()).toBe(false);
+
+      expect(history.message?.text).toBe("Can't undo: a tag in it was archived or deleted.");
+    });
+
+    it("forgets a deleted task's edits", async () => {
+      const store = useStore();
+      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
+      api.listAllTasks.mockResolvedValue([]);
+
+      await store.deleteTask("a");
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { tasksApi, type NewTask, type TasksApi } from "@/api";
+import { ResponseError } from "@/api/generated";
 import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { createSerialQueue } from "@/helpers/serialQueue";
@@ -6,6 +7,12 @@ import type { MoveTarget } from "@/helpers/taskMoves";
 import { toLocalDay } from "@/helpers/dates";
 import { compareNewestFirst } from "@/helpers/time";
 import type { Task } from "@/model";
+import {
+  changedFields,
+  EditConflictError,
+  sameFieldValue,
+  useHistoryStore,
+} from "@/stores/history";
 import { useTagsStore, type TagOwnerWrite } from "@/stores/tags";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -16,6 +23,27 @@ function copyTask(task: Task): Task {
     tagIds: new Set(task.tagIds),
     projectIds: task.projectIds ? new Set(task.projectIds) : undefined,
   };
+}
+
+/** The fields of a task an in-place edit can change, and undo restores. */
+const EDITABLE_FIELDS = ["name", "tagIds", "dueDate", "estimateHours"] as const;
+type EditableField = (typeof EDITABLE_FIELDS)[number];
+
+/**
+ * A task's editable fields as patch values: a missing due date or estimate
+ * is null, which is how a patch clears it.
+ */
+function editableValues(task: Task): Required<Pick<TaskPatch, EditableField>> {
+  return {
+    name: task.name,
+    tagIds: new Set(task.tagIds),
+    dueDate: task.dueDate ?? null,
+    estimateHours: task.estimateHours ?? null,
+  };
+}
+
+function isStatus(error: unknown, status: number): boolean {
+  return error instanceof ResponseError && error.response.status === status;
 }
 
 /** A task placed in the tree: depth 0 for top-level tasks. */
@@ -172,6 +200,10 @@ function createTasksStore(api: TasksApi) {
       return await createTask({ name: normalizedName, parentId });
     }
 
+    // Recorded edits and undo writes run one at a time, so each sees the
+    // result of the one before it.
+    const serializeEdit = createSerialQueue();
+
     /**
      * Updates a task. Closing or reopening one also changes its subtasks or
      * parents on the server, so the individually-fetched cache is dropped
@@ -179,12 +211,81 @@ function createTasksStore(api: TasksApi) {
      * is reloaded afterwards, unless reloadList is false because the caller
      * shows its own list and reloads that instead. Cached task tags the
      * update affects are refetched (see taskTagWrite).
+     *
+     * recordFrom, the task as the user saw it before this edit, records the
+     * change to its editable fields for undo (see useHistoryStore).
      */
-    async function updateTask(
+    function updateTask(
       id: string,
       patch: TaskPatch,
-      { reloadList = true }: { reloadList?: boolean } = {},
+      { reloadList = true, recordFrom }: { reloadList?: boolean; recordFrom?: Task } = {},
     ): Promise<Task> {
+      if (!recordFrom) return writeTask(id, patch, reloadList);
+      return serializeEdit(async () => {
+        const updated = await writeTask(id, patch, reloadList);
+        recordEdit(recordFrom, updated, patch);
+        return updated;
+      });
+    }
+
+    function recordEdit(prior: Task, updated: Task, patch: TaskPatch): void {
+      const before = editableValues(prior);
+      const after = editableValues(updated);
+      const edited = EDITABLE_FIELDS.filter((field) => patch[field] !== undefined);
+      const fields = changedFields(before, after, edited);
+      if (fields.length === 0) return;
+      const pick = (values: typeof before) =>
+        Object.fromEntries(fields.map((field) => [field, values[field]]));
+      useHistoryStore().record({
+        label: "Edit task",
+        target: `task:${updated.id}`,
+        before: pick(before),
+        after: pick(after),
+        apply: (values, expected) => applyEdit(updated.id, values, expected),
+      });
+    }
+
+    /**
+     * Writes values to a task for undo/redo, refusing when the server's copy
+     * no longer holds expected: it changed since (e.g. on the task's page)
+     * or was deleted. Lists showing the task reload themselves (see the
+     * history store's applied).
+     */
+    function applyEdit(
+      id: string,
+      values: Record<string, unknown>,
+      expected: Record<string, unknown>,
+    ): Promise<void> {
+      return serializeEdit(async () => {
+        try {
+          const current = editableValues(await api.getTask(id, false));
+          const changed = Object.entries(expected).some(
+            ([field, value]) => !sameFieldValue(current[field as EditableField], value),
+          );
+          if (changed) throw new EditConflictError("the task was changed since.");
+          try {
+            await writeTask(id, values as TaskPatch, false);
+          } catch (error) {
+            if (isStatus(error, 400)) {
+              throw new EditConflictError(
+                "tagIds" in values
+                  ? "a tag in it was archived or deleted."
+                  : "the server refused it.",
+              );
+            }
+            throw error;
+          }
+        } catch (error) {
+          if (isStatus(error, 404)) {
+            useHistoryStore().forget(`task:${id}`);
+            throw new EditConflictError("the task was deleted.");
+          }
+          throw error;
+        }
+      });
+    }
+
+    async function writeTask(id: string, patch: TaskPatch, reloadList: boolean): Promise<Task> {
       const updated = await api.updateTask(id, patch);
       const tagWrite = taskTagWrite(updated, patch);
       if (tagWrite) void useTagsStore().ownerWritten(tagWrite);
@@ -260,6 +361,7 @@ function createTasksStore(api: TasksApi) {
         cascades: true,
       });
       individuallyFetchedTasks.value.delete(id);
+      useHistoryStore().forget(`task:${id}`);
       await reloadAfterWrite();
     }
 

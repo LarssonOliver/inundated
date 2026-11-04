@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { TaskPatch } from "@/api/mappers";
 import type { Task } from "@/model";
 import type { TaskListSource } from "@/composables/taskListSource";
@@ -65,6 +65,7 @@ import {
   shiftTarget,
   type MoveTarget,
 } from "@/helpers/taskMoves";
+import { useHistoryStore } from "@/stores/history";
 import {
   compareByClosedAt,
   isTaskOverdue,
@@ -97,6 +98,7 @@ const props = withDefaults(
 const emit = defineEmits<{ changed: [] }>();
 
 const tasksStore = useTasksStore();
+const history = useHistoryStore();
 
 const newTaskName = ref("");
 const movingTaskId = ref<string | null>(null);
@@ -208,10 +210,15 @@ function outdent(task: Task) {
 // instead, unless it says the change doesn't need it. Closing and reopening
 // cascade on the server, and a tag edit can move a task in or out of a
 // project.
-async function update(task: Task, patch: TaskPatch, failure: string) {
+async function update(
+  task: Task,
+  patch: TaskPatch,
+  failure: string,
+  { recordFrom }: { recordFrom?: Task } = {},
+) {
   errorMessage.value = "";
   try {
-    await tasksStore.updateTask(task.id, patch, { reloadList: false });
+    await tasksStore.updateTask(task.id, patch, { reloadList: false, recordFrom });
   } catch {
     errorMessage.value = failure;
     return;
@@ -230,9 +237,25 @@ function ignore(task: Task) {
   return update(task, { closed: true, closeReason: "ignored" }, "Couldn't ignore the task.");
 }
 
+// Edits made in place are recorded for undo, as the row showed the task.
 function edit(task: Task, patch: TaskPatch) {
-  return update(task, patch, "Couldn't save the change.");
+  return update(task, patch, "Couldn't save the change.", { recordFrom: task });
 }
+
+// Undo and redo write through the tasks store, so the list catches up the
+// way it does after its own edits. Undo only reaches edits made on this
+// page, so the task was in this list, though undoing a tag edit may be what
+// brings it back into it.
+watch(
+  () => history.applied,
+  async (applied) => {
+    if (!applied?.target.startsWith("task:")) return;
+    if (props.source.reloadsAfter?.(applied.fields as TaskPatch) ?? true) {
+      await props.source.reload();
+    }
+    emit("changed");
+  },
+);
 
 // The source reloads once the task is out, and takes care of whatever else
 // removing it changes (the project page refetches its time totals), so this
