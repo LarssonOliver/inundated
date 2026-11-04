@@ -9,12 +9,12 @@ A task is a to-do item. It has:
 - a **name**,
 - an optional **due date** and **estimate** (in hours),
 - zero or more **tags**, and
-- zero or more **subtasks**, kept in the order you give them.
+- zero or more **subtasks**, kept in the order you give them while open.
 
 Tasks are listed on the **Tasks** page. Each row can be edited in place
-(name, tags, due date and estimate), and its buttons move a task up or down
-among its siblings, or indent and outdent it to change its parent. A task
-doesn't need a project.
+(name, tags, due date and estimate), and its buttons move an open task up or
+down among its siblings, or indent and outdent a task to change its parent. A
+task doesn't need a project.
 
 ## Task tags
 
@@ -82,8 +82,11 @@ colored like their task tag. Clicking one opens the task.
 
 A task is closed as **done** (its checkbox) or **ignored** (the block
 button next to it). Closed tasks are hidden unless **Show Closed** is on,
-which lists them in their own section, and their task tags are archived
-with them, which hides the tags from pickers while keeping their time.
+which lists them in their own section, most recently closed first, and their
+task tags are archived with them, which hides the tags from pickers while
+keeping their time. Since closed tasks sort by when they closed, they can't be
+moved up or down, or indented under their own parent; reopening a task puts it
+back in the order it had.
 
 - Closing a task closes its open subtasks.
 - Reopening a subtask reopens the tasks above it.
