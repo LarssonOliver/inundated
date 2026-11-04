@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mocked } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import type { Task } from "@/model";
 import type { TasksApi } from "@/api/tasks";
-import { __test__, isTaskOverdue, taskTree } from "@/stores/tasks";
+import { __test__, compareByClosedAt, isTaskOverdue, taskTree } from "@/stores/tasks";
 
 const ownerWritten = vi.fn();
 vi.mock("@/stores/tags", () => ({ useTagsStore: () => ({ ownerWritten }) }));
@@ -44,6 +44,30 @@ describe("taskTree", () => {
       ["a1", 1],
       ["a2", 1],
       ["b", 0],
+    ]);
+  });
+
+  it("orders siblings by compare when given one, e.g. most recently closed first", () => {
+    const closed = (id: string, day: number, partial: Partial<Task> = {}) =>
+      task({ id, closed: true, closedAt: new Date(2026, 10, day), ...partial });
+    const rows = taskTree(
+      [
+        closed("old", 1, { rank: "a" }),
+        closed("new", 3, { rank: "z" }),
+        // Closed with "new", so sharing its time: rank decides.
+        closed("new2", 3, { parentId: "new", rank: "b" }),
+        closed("new1", 3, { parentId: "new", rank: "a" }),
+        closed("mid", 2, { rank: "m" }),
+      ],
+      compareByClosedAt,
+    );
+
+    expect(rows.map((r) => [r.task.id, r.depth])).toEqual([
+      ["new", 0],
+      ["new1", 1],
+      ["new2", 1],
+      ["mid", 0],
+      ["old", 0],
     ]);
   });
 

@@ -147,7 +147,9 @@ func (k TagKind) Valid() bool {
 // each kind by name, then the second of each, and so on, regular tags
 // first and owned ones by owner kind within each turn. So one kind's
 // matches can't crowd another's out of a page. With one kind, that's name
-// order.
+// order. Archived tags, when included, come after all active ones, taking
+// turns the same way but most recently archived first rather than by name
+// (see CompareArchived).
 type TagListParams struct {
 	PaginationParams
 	Query string

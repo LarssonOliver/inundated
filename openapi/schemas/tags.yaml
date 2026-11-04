@@ -19,6 +19,14 @@ Tag:
       description: Whether this tag is archived. Archived tags are hidden from
         list views by default and excluded from search/pickers, but keep
         their history and can still be fetched, edited, or deleted directly.
+    archivedAt:
+      type: string
+      format: date-time
+      readOnly: true
+      description: When this tag was archived, set while it is. An owned
+        tag takes its owner's time, so a task tag's is its task's closedAt.
+        Lists that include archived tags show them after active ones, most
+        recently archived first.
 
 TagOwner:
   type: object

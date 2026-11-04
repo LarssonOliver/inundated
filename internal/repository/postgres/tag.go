@@ -34,9 +34,15 @@ const (
 
 	tagColumnsSQL = `t.id, t.name, t.color, t.user_id, ` + tagArchivedAtSQL + `, o.kind, o.owner_id`
 
-	// tagTurnSQL numbers each tag within its kind by name, so ordering by
-	// it lets the kinds take turns (see model.TagListParams).
-	tagTurnSQL = `row_number() OVER (PARTITION BY o.kind ORDER BY lower(t.name) COLLATE "C", t.name COLLATE "C", t.id)`
+	// tagTurnSQL numbers each tag within its kind, and active and
+	// archived tags apart, so ordering by it lets the kinds take turns
+	// (see model.TagListParams): active tags by name, archived ones most
+	// recently archived first.
+	tagTurnSQL = `row_number() OVER (PARTITION BY o.kind, (` + tagArchivedAtSQL + `) IS NOT NULL ` +
+		`ORDER BY ` + tagArchivedAtSQL + ` DESC, lower(t.name) COLLATE "C", t.name COLLATE "C", t.id)`
+
+	// tagOrderSQL orders tags as model.TagListParams says.
+	tagOrderSQL = `(` + tagArchivedAtSQL + `) IS NOT NULL, ` + tagTurnSQL + `, o.kind NULLS FIRST`
 )
 
 func scanTag(row pgx.Row) (model.Tag, error) {
@@ -48,6 +54,7 @@ func scanTag(row pgx.Row) (model.Tag, error) {
 		return model.Tag{}, err
 	}
 	t.Archived = archivedAt != nil
+	t.ArchivedAt = archivedAt
 	if ownerKind != nil && ownerId != nil {
 		t.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
 	}
@@ -154,7 +161,7 @@ func (r *PostgresStore) ListTags(ctx context.Context, scope model.OwnerScope, pa
 		SELECT ` + tagColumnsSQL + `
 		FROM ` + tagFromSQL + `
 		WHERE t.deleted_at IS NULL AND ` + dataFilterSQL + dataOwnerSQL + `
-		ORDER BY ` + tagTurnSQL + `, o.kind NULLS FIRST
+		ORDER BY ` + tagOrderSQL + `
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, q, args...)
@@ -230,6 +237,7 @@ func (r *PostgresStore) ListDerivedTagSources(ctx context.Context, scope model.O
 			return nil, fmt.Errorf("ListDerivedTagSources scan: %w", err)
 		}
 		source.Archived = archivedAt != nil
+		source.ArchivedAt = archivedAt
 		if ownerKind != nil && ownerId != nil {
 			source.Owner = &model.TagOwner{Kind: model.TagOwnerKind(*ownerKind), Id: *ownerId}
 		}
@@ -287,6 +295,7 @@ func (r *PostgresStore) UpdateTag(ctx context.Context, scope model.OwnerScope, t
 		return model.Tag{}, fmt.Errorf("UpdateTag: %w", err)
 	}
 	updated.Archived = archivedAt != nil
+	updated.ArchivedAt = archivedAt
 	return updated, nil
 }
 

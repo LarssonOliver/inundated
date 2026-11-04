@@ -73,6 +73,12 @@ export interface Project {
      * @memberof Project
      */
     archived: boolean;
+    /**
+     * When this project was archived, set while it is. Lists that include archived projects show them after active ones, most recently archived first.
+     * @type {Date}
+     * @memberof Project
+     */
+    readonly archivedAt?: Date;
 }
 
 /**
@@ -106,6 +112,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
         'taskTimeMs': json['taskTimeMs'] == null ? undefined : json['taskTimeMs'],
         'archived': json['archived'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
     };
 }
 
@@ -113,7 +120,7 @@ export function ProjectToJSON(json: any): Project {
     return ProjectToJSONTyped(json, false);
 }
 
-export function ProjectToJSONTyped(value?: Project | null, ignoreDiscriminator: boolean = false): any {
+export function ProjectToJSONTyped(value?: Omit<Project, 'archivedAt'> | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

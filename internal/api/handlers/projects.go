@@ -59,6 +59,7 @@ func (p *ProjectHandler) CreateProject(ctx context.Context, request api.CreatePr
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
 		Archived:        reply.Archived,
+		ArchivedAt:      reply.ArchivedAt,
 	}
 
 	if len(reply.TagIds) > 0 {
@@ -105,6 +106,7 @@ func (p *ProjectHandler) GetProject(ctx context.Context, request api.GetProjectR
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
 		Archived:        reply.Archived,
+		ArchivedAt:      reply.ArchivedAt,
 	}
 
 	if includes.TotalTime && reply.TotalTime != nil {
@@ -150,6 +152,7 @@ func (p *ProjectHandler) ListProjects(ctx context.Context, request api.ListProje
 			Color:           project.Color,
 			TimeBudgetHours: utils.DurationToFloatHours(project.TimeBudget),
 			Archived:        project.Archived,
+			ArchivedAt:      project.ArchivedAt,
 		}
 		if len(project.TagIds) > 0 {
 			apiProject.TagIds = &project.TagIds
@@ -218,6 +221,7 @@ func (p *ProjectHandler) UpdateProject(ctx context.Context, request api.UpdatePr
 		Color:           reply.Color,
 		TimeBudgetHours: utils.DurationToFloatHours(reply.TimeBudget),
 		Archived:        reply.Archived,
+		ArchivedAt:      reply.ArchivedAt,
 	}
 
 	if len(reply.TagIds) > 0 {

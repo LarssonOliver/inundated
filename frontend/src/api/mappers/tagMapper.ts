@@ -13,6 +13,7 @@ export const tagMapper: Mapper<Tag, Api.Tag> = {
       color: apiModel.color,
       totalTimeMs: apiModel.totalTimeMs,
       archived: apiModel.archived,
+      ...(apiModel.archivedAt !== undefined && { archivedAt: apiModel.archivedAt }),
       ...(apiModel.owner !== undefined && {
         owner: { kind: apiModel.owner.kind, id: apiModel.owner.id },
       }),

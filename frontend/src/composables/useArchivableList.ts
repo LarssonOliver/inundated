@@ -1,8 +1,10 @@
 import { computed, ref, watch } from "vue";
+import { compareNewestFirst } from "@/helpers/time";
 
 interface Archivable {
   name: string;
   archived: boolean;
+  archivedAt?: Date;
 }
 
 interface ArchivableStore {
@@ -14,7 +16,8 @@ interface ArchivableStore {
  * Shared "show archived" toggle behavior for list views (Tags, Projects):
  * seeds the toggle from the store's persisted filter (so it doesn't reset to
  * unchecked on remount), pushes changes back to the store, and sorts the
- * list with archived items last, then alphabetically by name.
+ * list as the server pages it: active items by name, then archived ones
+ * most recently archived first.
  *
  * @param items - A getter for the store's current (already filtered) items.
  * @param store - The store's includeArchived state and setter.
@@ -31,7 +34,10 @@ export function useArchivableList<T extends Archivable>(
 
   const sorted = computed(() =>
     [...items()].sort(
-      (a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name),
+      (a, b) =>
+        Number(a.archived) - Number(b.archived) ||
+        (a.archived ? compareNewestFirst(a.archivedAt, b.archivedAt) : 0) ||
+        a.name.localeCompare(b.name),
     ),
   );
 

@@ -63,6 +63,12 @@ export interface Tag {
      * @memberof Tag
      */
     archived: boolean;
+    /**
+     * When this tag was archived, set while it is. An owned tag takes its owner's time, so a task tag's is its task's closedAt. Lists that include archived tags show them after active ones, most recently archived first.
+     * @type {Date}
+     * @memberof Tag
+     */
+    readonly archivedAt?: Date;
 }
 
 /**
@@ -92,6 +98,7 @@ export function TagFromJSONTyped(json: any, ignoreDiscriminator: boolean): Tag {
         'totalTimeMs': json['totalTimeMs'] == null ? undefined : json['totalTimeMs'],
         'owner': json['owner'] == null ? undefined : TagOwnerFromJSON(json['owner']),
         'archived': json['archived'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
     };
 }
 
@@ -99,7 +106,7 @@ export function TagToJSON(json: any): Tag {
     return TagToJSONTyped(json, false);
 }
 
-export function TagToJSONTyped(value?: Tag | null, ignoreDiscriminator: boolean = false): any {
+export function TagToJSONTyped(value?: Omit<Tag, 'archivedAt'> | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
