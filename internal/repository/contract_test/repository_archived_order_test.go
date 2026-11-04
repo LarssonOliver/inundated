@@ -156,6 +156,25 @@ func TestArchivedOrderContract(t *testing.T) {
 			require.NotNil(t, tag.ArchivedAt)
 			require.Equal(t, b.ArchivedAt.UnixMicro(), tag.ArchivedAt.UnixMicro())
 		})
+
+		// Whatever the database's collation, so the stores and the client's
+		// local sort agree on where each project falls.
+		t.Run(repoName+"ProjectNames", func(t *testing.T) {
+			repo := newRepo(t)
+
+			for _, name := range []string{"Ärende", "banana", "Apple", "zebra", "apple", "a b", "ab"} {
+				_, err := repo.CreateProject(ctx, testScope, model.Project{Name: name, Color: "#ffffff"})
+				require.NoError(t, err)
+			}
+
+			page, err := repo.ListProjects(ctx, testScope, includeArchived)
+			require.NoError(t, err)
+			names := []string{}
+			for _, project := range page.Data {
+				names = append(names, project.Name)
+			}
+			require.Equal(t, []string{"a b", "ab", "Apple", "apple", "banana", "zebra", "Ärende"}, names)
+		})
 	}
 
 	run(t, "memory", func(t *testing.T) repository.Repository {

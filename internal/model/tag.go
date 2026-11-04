@@ -112,12 +112,19 @@ func (t Tag) IsDerived() bool {
 	return t.Owner != nil && tagOwnerKinds[t.Owner.Kind].derivesColor
 }
 
-// CompareTagNames orders tags case-insensitively by name, then by name
-// bytes, then by id: the order tags are listed in.
+// CompareNames orders names case-insensitively, then by bytes: the order
+// tags and projects are listed in, whatever the database's collation.
+func CompareNames(a, b string) int {
+	return cmp.Or(
+		strings.Compare(strings.ToLower(a), strings.ToLower(b)),
+		strings.Compare(a, b),
+	)
+}
+
+// CompareTagNames orders tags by CompareNames, then by id.
 func CompareTagNames(a, b Tag) int {
 	return cmp.Or(
-		strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),
-		strings.Compare(a.Name, b.Name),
+		CompareNames(a.Name, b.Name),
 		bytes.Compare(a.Id[:], b.Id[:]),
 	)
 }

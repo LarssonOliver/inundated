@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"context"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -90,7 +89,7 @@ func (t *MemoryStore) ListProjects(ctx context.Context, scope model.OwnerScope, 
 	slices.SortFunc(all, func(a, b model.Project) int {
 		return cmp.Or(
 			model.CompareArchived(a.ArchivedAt, b.ArchivedAt),
-			strings.Compare(a.Name, b.Name),
+			model.CompareNames(a.Name, b.Name),
 			bytes.Compare(a.Id[:], b.Id[:]),
 		)
 	})

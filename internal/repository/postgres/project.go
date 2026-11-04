@@ -61,7 +61,7 @@ func (r *PostgresStore) ListProjects(ctx context.Context, scope model.OwnerScope
 		SELECT id, name, color, time_budget, user_id, archived_at, tag_id
 		FROM projects
 		WHERE deleted_at IS NULL AND ` + archivedSQL + dataOwnerSQL + `
-		ORDER BY archived_at IS NOT NULL, archived_at DESC, name, id
+		ORDER BY archived_at IS NOT NULL, archived_at DESC, lower(name) COLLATE "C", name COLLATE "C", id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, dataQ, args...)
