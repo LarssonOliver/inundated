@@ -105,6 +105,13 @@ func (h TagHolder) MayCarry(tag Tag) bool {
 // source tag to borrow a color from (Nord's nord10).
 const DefaultDerivedTagColor = "#5e81ac"
 
+// SetArchivedAt sets when the tag was archived, nil if it isn't, and
+// Archived with it.
+func (t *Tag) SetArchivedAt(at *time.Time) {
+	t.Archived = at != nil
+	t.ArchivedAt = at
+}
+
 // IsDerived reports whether the tag's color is derived from other tags (see
 // DerivedTagColor) rather than set on the tag itself. Task tags are derived:
 // they take their color from their task's projects, else its regular tags.

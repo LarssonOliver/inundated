@@ -115,13 +115,11 @@ func (l tagLookup) view(tag model.Tag) model.Tag {
 	switch tag.Owner.Kind {
 	case model.TagOwnerTask:
 		if task, ok := l.tasks[tag.Owner.Id]; ok {
-			tag.Archived = task.Closed()
-			tag.ArchivedAt = task.ClosedAt
+			tag.SetArchivedAt(task.ClosedAt)
 		}
 	case model.TagOwnerProject:
 		if project, ok := l.projects[tag.Owner.Id]; ok {
-			tag.Archived = project.Archived
-			tag.ArchivedAt = project.ArchivedAt
+			tag.SetArchivedAt(project.ArchivedAt)
 		}
 	}
 	return tag
@@ -250,7 +248,7 @@ func (t *MemoryStore) UpdateTag(ctx context.Context, scope model.OwnerScope, tag
 
 	tag.UserId = t.tags[idx].UserId
 	tag.Owner = nil
-	tag.ArchivedAt = model.ArchivedAtAfter(t.tags[idx].ArchivedAt, tag.Archived, time.Now().UTC())
+	tag.SetArchivedAt(model.ArchivedAtAfter(t.tags[idx].ArchivedAt, tag.Archived, time.Now().UTC()))
 	t.tags[idx] = tag
 	return tag, nil
 }

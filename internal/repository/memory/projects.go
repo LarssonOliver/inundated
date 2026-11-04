@@ -130,7 +130,7 @@ func (t *MemoryStore) UpdateProject(ctx context.Context, scope model.OwnerScope,
 
 	project.UserId = t.projects[idx].UserId
 	project.TagId = t.projects[idx].TagId
-	project.ArchivedAt = model.ArchivedAtAfter(t.projects[idx].ArchivedAt, project.Archived, time.Now().UTC())
+	project.SetArchivedAt(model.ArchivedAtAfter(t.projects[idx].ArchivedAt, project.Archived, time.Now().UTC()))
 	t.projects[idx] = project
 	if tagIdx := slices.IndexFunc(t.tags, func(tag model.Tag) bool { return tag.Id == project.TagId }); tagIdx != -1 {
 		t.tags[tagIdx].Name = project.Name
