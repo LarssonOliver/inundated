@@ -37,15 +37,7 @@ func (t *TagHandler) CreateTag(ctx context.Context, request api.CreateTagRequest
 		return nil, err
 	}
 
-	apiTag := api.Tag{
-		Id:         reply.Id,
-		Name:       reply.Name,
-		Color:      reply.Color,
-		Archived:   reply.Archived,
-		ArchivedAt: reply.ArchivedAt,
-	}
-
-	return api.CreateTag201JSONResponse(apiTag), nil
+	return api.CreateTag201JSONResponse(tagToAPI(reply)), nil
 }
 
 // DeleteTag implements [api.TagHandler].
@@ -77,14 +69,7 @@ func (t *TagHandler) GetTag(ctx context.Context, request api.GetTagRequestObject
 		return nil, err
 	}
 
-	apiTag := api.Tag{
-		Id:         reply.Id,
-		Name:       reply.Name,
-		Color:      reply.Color,
-		Archived:   reply.Archived,
-		ArchivedAt: reply.ArchivedAt,
-		Owner:      tagOwnerToAPI(reply.Owner),
-	}
+	apiTag := tagToAPI(reply)
 
 	if includes.TotalTime {
 		TotalTimeMs := int(reply.TotalTime.Milliseconds())
@@ -133,15 +118,7 @@ func (t *TagHandler) ListTags(ctx context.Context, request api.ListTagsRequestOb
 
 	apiTags := make([]api.Tag, 0, len(page.Data))
 	for _, tag := range page.Data {
-		apiTag := api.Tag{
-			Id:         tag.Id,
-			Name:       tag.Name,
-			Color:      tag.Color,
-			Archived:   tag.Archived,
-			ArchivedAt: tag.ArchivedAt,
-			Owner:      tagOwnerToAPI(tag.Owner),
-		}
-		apiTags = append(apiTags, apiTag)
+		apiTags = append(apiTags, tagToAPI(tag))
 	}
 
 	response := api.PaginatedTags{
@@ -183,15 +160,7 @@ func (t *TagHandler) UpdateTag(ctx context.Context, request api.UpdateTagRequest
 		return nil, err
 	}
 
-	apiTag := api.Tag{
-		Id:         reply.Id,
-		Name:       reply.Name,
-		Color:      reply.Color,
-		Archived:   reply.Archived,
-		ArchivedAt: reply.ArchivedAt,
-	}
-
-	return api.UpdateTag200JSONResponse(apiTag), nil
+	return api.UpdateTag200JSONResponse(tagToAPI(reply)), nil
 }
 
 // GetTagStats implements [api.TagHandler].
@@ -259,6 +228,19 @@ func mapTagStatsToAPIResponse(stats model.TagStats) api.GetTagStatsResponseObjec
 		Unit:        stats.Unit,
 		Series:      series,
 	})
+}
+
+// tagToAPI converts a tag, leaving out its total time, which only GetTag
+// can include.
+func tagToAPI(tag model.Tag) api.Tag {
+	return api.Tag{
+		Id:         tag.Id,
+		Name:       tag.Name,
+		Color:      tag.Color,
+		Archived:   tag.Archived,
+		ArchivedAt: tag.ArchivedAt,
+		Owner:      tagOwnerToAPI(tag.Owner),
+	}
 }
 
 // tagOwnerToAPI converts an owned tag's owner, if it has one.
