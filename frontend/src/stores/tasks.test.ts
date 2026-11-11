@@ -363,6 +363,7 @@ describe("tasks store", () => {
     const shown = task({ id: "a", name: "Old", dueDate: "2026-11-05", tagIds: new Set(["x"]) });
 
     beforeEach(() => {
+      api.getTask.mockResolvedValue(shown);
       api.updateTask.mockImplementation(
         async (id, patch) =>
           ({
@@ -377,9 +378,9 @@ describe("tasks store", () => {
 
     const statusError = (status: number) => new ResponseError(new Response(null, { status }));
 
-    it("records an edit from the task as shown, and undoes it", async () => {
+    it("records an edit, and undoes it", async () => {
       const store = useStore();
-      await store.updateTask("a", { name: "New", dueDate: null }, { recordFrom: shown });
+      await store.updateTask("a", { name: "New", dueDate: null }, { record: true });
       api.getTask.mockResolvedValue({ ...shown, name: "New", dueDate: undefined });
 
       expect(await useHistoryStore().undo()).toBe(true);
@@ -391,9 +392,33 @@ describe("tasks store", () => {
       });
     });
 
+    it("records an edit from the server's copy, not the list's", async () => {
+      const store = useStore();
+      api.getTask.mockResolvedValueOnce({ ...shown, name: "Saved" });
+      await store.updateTask("a", { name: "New" }, { record: true });
+      api.getTask.mockResolvedValue({ ...shown, name: "New" });
+
+      await useHistoryStore().undo();
+
+      expect(api.updateTask).toHaveBeenLastCalledWith("a", { name: "Saved" });
+    });
+
+    it("records an edit on the page it was made on", async () => {
+      const store = useStore();
+      const history = useHistoryStore();
+      history.setScope("/tasks");
+      const edited = store.updateTask("a", { name: "New" }, { record: true });
+      history.setScope("/tasks/b");
+      await edited;
+
+      expect(history.canUndo).toBe(false);
+      history.setScope("/tasks");
+      expect(history.canUndo).toBe(true);
+    });
+
     it("redoes an undone edit, clearing what it cleared", async () => {
       const store = useStore();
-      await store.updateTask("a", { dueDate: null }, { recordFrom: shown });
+      await store.updateTask("a", { dueDate: null }, { record: true });
       api.getTask
         .mockResolvedValueOnce({ ...shown, dueDate: undefined })
         .mockResolvedValueOnce(shown);
@@ -415,21 +440,21 @@ describe("tasks store", () => {
     it("doesn't record closing or reopening", async () => {
       const store = useStore();
       api.listAllTasks.mockResolvedValue([]);
-      await store.updateTask("a", { closed: true, closeReason: "done" }, { recordFrom: shown });
+      await store.updateTask("a", { closed: true, closeReason: "done" }, { record: true });
 
       expect(useHistoryStore().canUndo).toBe(false);
     });
 
     it("doesn't record an edit that changes nothing", async () => {
       const store = useStore();
-      await store.updateTask("a", { tagIds: new Set(["x"]) }, { recordFrom: shown });
+      await store.updateTask("a", { tagIds: new Set(["x"]) }, { record: true });
 
       expect(useHistoryStore().canUndo).toBe(false);
     });
 
     it("refuses to undo when the task changed since", async () => {
       const store = useStore();
-      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
+      await store.updateTask("a", { name: "New" }, { record: true });
       api.getTask.mockResolvedValue({ ...shown, name: "Renamed elsewhere" });
       api.updateTask.mockClear();
       const history = useHistoryStore();
@@ -443,8 +468,8 @@ describe("tasks store", () => {
 
     it("refuses to undo, and forgets the task, when it was deleted", async () => {
       const store = useStore();
-      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
-      await store.updateTask("a", { name: "Newer" }, { recordFrom: { ...shown, name: "x" } });
+      await store.updateTask("a", { name: "New" }, { record: true });
+      await store.updateTask("a", { name: "Newer" }, { record: true });
       api.getTask.mockRejectedValue(statusError(404));
       const history = useHistoryStore();
 
@@ -456,7 +481,7 @@ describe("tasks store", () => {
 
     it("refuses to undo when a tag can't be attached any more", async () => {
       const store = useStore();
-      await store.updateTask("a", { tagIds: new Set() }, { recordFrom: shown });
+      await store.updateTask("a", { tagIds: new Set() }, { record: true });
       api.getTask.mockResolvedValue({ ...shown, tagIds: new Set() });
       api.updateTask.mockRejectedValue(statusError(400));
       const history = useHistoryStore();
@@ -468,10 +493,28 @@ describe("tasks store", () => {
 
     it("forgets a deleted task's edits", async () => {
       const store = useStore();
-      await store.updateTask("a", { name: "New" }, { recordFrom: shown });
+      await store.updateTask("a", { name: "New" }, { record: true });
       api.listAllTasks.mockResolvedValue([]);
 
       await store.deleteTask("a");
+
+      expect(useHistoryStore().canUndo).toBe(false);
+    });
+
+    it("forgets the edits of a deleted task's loaded subtasks", async () => {
+      api.listAllTasks.mockResolvedValue([
+        task({ id: "p" }),
+        task({ id: "a", parentId: "p" }),
+        task({ id: "b", parentId: "a" }),
+      ]);
+      const store = useStore();
+      await store.fetchTasks();
+      api.getTask.mockResolvedValue(task({ id: "b", parentId: "a" }));
+      api.updateTask.mockResolvedValue(task({ id: "b", parentId: "a", name: "New" }));
+      await store.updateTask("b", { name: "New" }, { record: true });
+      api.listAllTasks.mockResolvedValue([]);
+
+      await store.deleteTask("p");
 
       expect(useHistoryStore().canUndo).toBe(false);
     });

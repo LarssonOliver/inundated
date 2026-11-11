@@ -214,11 +214,11 @@ async function update(
   task: Task,
   patch: TaskPatch,
   failure: string,
-  { recordFrom }: { recordFrom?: Task } = {},
+  { record = false }: { record?: boolean } = {},
 ) {
   errorMessage.value = "";
   try {
-    await tasksStore.updateTask(task.id, patch, { reloadList: false, recordFrom });
+    await tasksStore.updateTask(task.id, patch, { reloadList: false, record });
   } catch {
     errorMessage.value = failure;
     return;
@@ -239,7 +239,7 @@ function ignore(task: Task) {
 
 // Edits made in place are recorded for undo, as the row showed the task.
 function edit(task: Task, patch: TaskPatch) {
-  return update(task, patch, "Couldn't save the change.", { recordFrom: task });
+  return update(task, patch, "Couldn't save the change.", { record: true });
 }
 
 // Undo and redo write through the tasks store, so the list catches up the

@@ -179,12 +179,13 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
      *  if not found.
      */
     function updateTimespan(timespan: Timespan): Promise<Timespan> {
+      const page = useHistoryStore().scope;
       return serializeWrite(async () => {
         const { id, name, startTime, endTime, tagIds } = timespan;
         const prior = timespans.value.get(id);
         const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
         timespans.value.set(updated.id, updated);
-        if (prior) recordEdit(prior, updated);
+        if (prior) recordEdit(prior, updated, page);
         return copyTimespan(updated);
       });
     }
@@ -194,16 +195,19 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
       return Object.fromEntries(fields.map((field) => [field, copy[field]]));
     }
 
-    function recordEdit(prior: Timespan, updated: Timespan): void {
+    function recordEdit(prior: Timespan, updated: Timespan, page: string): void {
       const fields = changedFields(prior, updated, EDITABLE_FIELDS);
       if (fields.length === 0) return;
-      useHistoryStore().record({
-        label: "Edit timespan",
-        target: `timespan:${updated.id}`,
-        before: pickFields(prior, fields),
-        after: pickFields(updated, fields),
-        apply: (values, expected) => applyEdit(updated.id, values, expected),
-      });
+      useHistoryStore().record(
+        {
+          label: "Edit timespan",
+          target: `timespan:${updated.id}`,
+          before: pickFields(prior, fields),
+          after: pickFields(updated, fields),
+          apply: (values, expected) => applyEdit(updated.id, values, expected),
+        },
+        page,
+      );
     }
 
     /**
