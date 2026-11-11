@@ -106,18 +106,21 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     }
 
     /**
-     * Records an edit that has just been written, clearing the redo stack.
-     * An edit to the same item shortly after the previous one merges into
-     * it, so a burst of changes undoes in one step; a burst that ends where
-     * it began leaves nothing to undo.
+     * Records an edit that has just been written on page, clearing that
+     * page's redo stack. An edit written after a wait (e.g. a network write)
+     * passes the page it was made on, read before the wait, since the user
+     * may have moved on since. An edit to the same item shortly after the
+     * previous one merges into it, so a burst of changes undoes in one step;
+     * a burst that ends where it began leaves nothing to undo.
      */
-    function record(edit: FieldEdit): void {
+    function record(edit: FieldEdit, page: string = scope.value): void {
       const at = now();
       const stack = undoStack.value;
-      const last = lastWhere(stack, inScope);
-      redoStack.value = redoStack.value.filter((entry) => !inScope(entry));
+      const onPage = (entry: HistoryEntry) => entry.scope === page;
+      const last = lastWhere(stack, onPage);
+      redoStack.value = redoStack.value.filter((entry) => !onPage(entry));
       // An undo in flight would otherwise land on the redo stack just cleared.
-      if (writing?.direction === "undo" && inScope(writing.entry)) writing.moves = false;
+      if (writing?.direction === "undo" && onPage(writing.entry)) writing.moves = false;
       if (
         last &&
         last !== writing?.entry &&
@@ -139,9 +142,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
         );
         return;
       }
-      undoStack.value = [...stack, { ...edit, recordedAt: at, scope: scope.value }].slice(
-        -HISTORY_LIMIT,
-      );
+      undoStack.value = [...stack, { ...edit, recordedAt: at, scope: page }].slice(-HISTORY_LIMIT);
     }
 
     /** Drops every entry for an item, e.g. one that no longer exists. */
@@ -213,6 +214,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       canRedo,
       message,
       applied,
+      scope,
       setScope,
       record,
       forget,

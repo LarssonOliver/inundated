@@ -212,23 +212,26 @@ function createTasksStore(api: TasksApi) {
      * shows its own list and reloads that instead. Cached task tags the
      * update affects are refetched (see taskTagWrite).
      *
-     * recordFrom, the task as the user saw it before this edit, records the
-     * change to its editable fields for undo (see useHistoryStore).
+     * With record, the change to its editable fields is recorded for undo
+     * (see useHistoryStore). The task is fetched first to compare against,
+     * since a list's copy can predate an earlier write still in the queue.
      */
     function updateTask(
       id: string,
       patch: TaskPatch,
-      { reloadList = true, recordFrom }: { reloadList?: boolean; recordFrom?: Task } = {},
+      { reloadList = true, record = false }: { reloadList?: boolean; record?: boolean } = {},
     ): Promise<Task> {
-      if (!recordFrom) return writeTask(id, patch, reloadList);
+      if (!record) return writeTask(id, patch, reloadList);
+      const page = useHistoryStore().scope;
       return serializeEdit(async () => {
+        const prior = await api.getTask(id, false);
         const updated = await writeTask(id, patch, reloadList);
-        recordEdit(recordFrom, updated, patch);
+        recordEdit(prior, updated, patch, page);
         return updated;
       });
     }
 
-    function recordEdit(prior: Task, updated: Task, patch: TaskPatch): void {
+    function recordEdit(prior: Task, updated: Task, patch: TaskPatch, page: string): void {
       const before = editableValues(prior);
       const after = editableValues(updated);
       const edited = EDITABLE_FIELDS.filter((field) => patch[field] !== undefined);
@@ -236,13 +239,16 @@ function createTasksStore(api: TasksApi) {
       if (fields.length === 0) return;
       const pick = (values: typeof before) =>
         Object.fromEntries(fields.map((field) => [field, values[field]]));
-      useHistoryStore().record({
-        label: "Edit task",
-        target: `task:${updated.id}`,
-        before: pick(before),
-        after: pick(after),
-        apply: (values, expected) => applyEdit(updated.id, values, expected),
-      });
+      useHistoryStore().record(
+        {
+          label: "Edit task",
+          target: `task:${updated.id}`,
+          before: pick(before),
+          after: pick(after),
+          apply: (values, expected) => applyEdit(updated.id, values, expected),
+        },
+        page,
+      );
     }
 
     /**
@@ -349,19 +355,36 @@ function createTasksStore(api: TasksApi) {
       });
     }
 
+    /** The ids of the loaded tasks below id, at any depth. */
+    function loadedSubtaskIds(id: string): Set<string> {
+      const loaded = [...tasks.value.values(), ...individuallyFetchedTasks.value.values()];
+      const found = new Set<string>();
+      const parents = [id];
+      while (parents.length > 0) {
+        const parent = parents.pop();
+        for (const task of loaded) {
+          if (task.parentId !== parent || found.has(task.id)) continue;
+          found.add(task.id);
+          parents.push(task.id);
+        }
+      }
+      return found;
+    }
+
     /**
      * Deletes a task and its subtasks, along with their task tags. The
      * server refuses (409) when any of them has logged time.
      */
     async function deleteTask(id: string): Promise<void> {
       await api.deleteTask(id);
+      const deleted = [id, ...loadedSubtaskIds(id)];
       void useTagsStore().ownerWritten({
         owner: { kind: "task", id },
         deleted: true,
         cascades: true,
       });
       individuallyFetchedTasks.value.delete(id);
-      useHistoryStore().forget(`task:${id}`);
+      for (const deletedId of deleted) useHistoryStore().forget(`task:${deletedId}`);
       await reloadAfterWrite();
     }
 

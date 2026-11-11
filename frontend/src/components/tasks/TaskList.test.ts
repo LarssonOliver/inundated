@@ -93,6 +93,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
   listAllTasks.mockReset();
   getTask.mockReset();
+  getTask.mockImplementation(async (id: string) => task({ id }));
   updateTask.mockReset();
   moveTask.mockReset();
 });
@@ -375,6 +376,7 @@ test("records an in-place edit for undo, and reloads after undoing it", async ()
   const shown = task({ id: "a", name: "Old" });
   const source = fakeSource([shown]);
   const wrapper = mountList(source);
+  getTask.mockResolvedValueOnce(shown);
   updateTask.mockResolvedValueOnce(task({ id: "a", name: "New" }));
   wrapper.findComponent(TaskRowStub).vm.$emit("update", { name: "New" });
   await flushPromises();
