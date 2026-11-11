@@ -1,5 +1,5 @@
 import { tasksApi, type NewTask, type TasksApi } from "@/api";
-import { ResponseError } from "@/api/generated";
+import { isResponseStatus } from "@/api/errors";
 import type { TaskPatch } from "@/api/mappers";
 import { useSupersededFetch } from "@/composables/useSupersededFetch";
 import { createSerialQueue } from "@/helpers/serialQueue";
@@ -40,10 +40,6 @@ function editableValues(task: Task): Required<Pick<TaskPatch, EditableField>> {
     dueDate: task.dueDate ?? null,
     estimateHours: task.estimateHours ?? null,
   };
-}
-
-function isStatus(error: unknown, status: number): boolean {
-  return error instanceof ResponseError && error.response.status === status;
 }
 
 /** A task placed in the tree: depth 0 for top-level tasks. */
@@ -272,7 +268,7 @@ function createTasksStore(api: TasksApi) {
           try {
             await writeTask(id, values as TaskPatch, false);
           } catch (error) {
-            if (isStatus(error, 400)) {
+            if (isResponseStatus(error, 400)) {
               throw new EditConflictError(
                 "tagIds" in values
                   ? "a tag in it was archived or deleted."
@@ -282,7 +278,7 @@ function createTasksStore(api: TasksApi) {
             throw error;
           }
         } catch (error) {
-          if (isStatus(error, 404)) {
+          if (isResponseStatus(error, 404)) {
             useHistoryStore().forget(`task:${id}`);
             throw new EditConflictError("the task was deleted.");
           }

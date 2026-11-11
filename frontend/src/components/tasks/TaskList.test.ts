@@ -393,6 +393,26 @@ test("records an in-place edit for undo, and reloads after undoing it", async ()
   expect(wrapper.emitted("changed")).toHaveLength(changedBefore + 1);
 });
 
+test("clears a failed edit's error after an undo", async () => {
+  const shown = task({ id: "a", name: "Old" });
+  const wrapper = mountList(fakeSource([shown]));
+  getTask.mockResolvedValueOnce(shown);
+  updateTask.mockResolvedValueOnce(task({ id: "a", name: "New" }));
+  wrapper.findComponent(TaskRowStub).vm.$emit("update", { name: "New" });
+  await flushPromises();
+  updateTask.mockRejectedValueOnce(new Error("offline"));
+  wrapper.findComponent(TaskRowStub).vm.$emit("update", { name: "Newer" });
+  await flushPromises();
+  expect(wrapper.find(".error").exists()).toBe(true);
+  getTask.mockResolvedValue(task({ id: "a", name: "New" }));
+  updateTask.mockResolvedValueOnce(shown);
+
+  await useHistoryStore().undo();
+  await flushPromises();
+
+  expect(wrapper.find(".error").exists()).toBe(false);
+});
+
 test("doesn't record closing a task for undo", async () => {
   const source = fakeSource([task({ id: "a" })]);
   const wrapper = mountList(source);

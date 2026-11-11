@@ -24,9 +24,8 @@ function isEditable(target: EventTarget | null): boolean {
 /**
  * Binds Ctrl/Cmd+Z to undo and Ctrl/Cmd+Shift+Z or Ctrl+Y to redo, for as
  * long as the calling component is mounted. Each page undoes only the edits
- * made on it (see the history store's scope), so Ctrl+Z never changes
- * something out of sight; with nothing to undo there, the key is left to
- * the browser. They also do nothing while focus is in a text field or
+ * made on it (see the history store's scope); with nothing to undo there,
+ * the key is left to the browser. They also do nothing while focus is in a text field or
  * picker, which keep their own undo. Holding a shortcut acts once.
  */
 export function useUndoShortcuts(): void {
