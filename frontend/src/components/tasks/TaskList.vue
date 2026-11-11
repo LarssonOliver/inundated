@@ -250,6 +250,7 @@ watch(
   () => history.applied,
   async (applied) => {
     if (!applied?.target.startsWith("task:")) return;
+    errorMessage.value = "";
     if (props.source.reloadsAfter?.(applied.fields as TaskPatch) ?? true) {
       await props.source.reload();
     }

@@ -421,7 +421,7 @@ describe("history store", () => {
 
     expect(undone).toMatchObject({ target: "timespan:a", fields: { name: "old" } });
     expect(store.applied).toMatchObject({ target: "timespan:a", fields: { name: "new" } });
-    expect(store.applied!.seq).toBeGreaterThan(undone!.seq);
+    expect(store.applied).not.toBe(undone);
   });
 
   it("dismisses its message", async () => {

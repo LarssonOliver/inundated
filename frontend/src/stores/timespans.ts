@@ -1,4 +1,4 @@
-import { ResponseError } from "@/api/generated";
+import { isResponseStatus } from "@/api/errors";
 import { timespansApi, type TimespansApi } from "@/api/timespans";
 import { createSerialQueue } from "@/helpers/serialQueue";
 import type { Timespan } from "@/model";
@@ -11,10 +11,6 @@ import {
 import { acceptHMRUpdate } from "pinia";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-
-function isStatus(error: unknown, status: number): boolean {
-  return error instanceof ResponseError && error.response.status === status;
-}
 
 function copyTimespan(timespan: Timespan): Timespan {
   return {
@@ -232,11 +228,12 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
             const fields = values as Partial<Omit<Timespan, "id">>;
             timespans.value.set(id, await api.updateTimespan(id, fields));
           } catch (error) {
-            if (isStatus(error, 400)) throw new EditConflictError(refusalReason(current, values));
+            if (isResponseStatus(error, 400))
+              throw new EditConflictError(refusalReason(current, values));
             throw error;
           }
         } catch (error) {
-          if (isStatus(error, 404)) {
+          if (isResponseStatus(error, 404)) {
             removeTimespan(id);
             throw new EditConflictError("the timespan was deleted.");
           }

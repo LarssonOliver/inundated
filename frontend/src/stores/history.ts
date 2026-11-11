@@ -59,8 +59,6 @@ interface HistoryEntry extends FieldEdit {
 export interface AppliedEdit {
   target: string;
   fields: Record<string, unknown>;
-  /** Counts up, so writing the same values twice is still a change. */
-  seq: number;
 }
 
 function lastWhere<T>(items: readonly T[], test: (item: T) => boolean): T | undefined {
@@ -86,11 +84,12 @@ function createHistoryStore(now: () => number = () => Date.now()) {
 
     /**
      * The page edits are recorded on and undone from. Undo only reaches the
-     * current page's edits, so it never changes something out of sight.
+     * current page's edits, but a page that changes what it shows without
+     * changing its path (the timesheet's week) can still undo an edit that
+     * is out of sight.
      */
     const scope = ref("");
     const applied = shallowRef<AppliedEdit | null>(null);
-    let appliedSeq = 0;
 
     const inScope = (entry: HistoryEntry) => entry.scope === scope.value;
     const canUndo = computed(() => undoStack.value.some(inScope));
@@ -189,7 +188,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
           const moved = { ...entry, recordedAt: -Infinity };
           to.value = [...to.value.slice(0, depth), moved, ...to.value.slice(depth)];
         }
-        applied.value = { target: entry.target, fields, seq: ++appliedSeq };
+        applied.value = { target: entry.target, fields };
         show(`${direction === "undo" ? "Undid" : "Redid"}: ${entry.label}`);
         return true;
       });
