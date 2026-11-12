@@ -192,3 +192,32 @@ func (m *SettingsServiceMock) GetSettings(ctx context.Context) (model.Settings, 
 func (m *SettingsServiceMock) UpdateSettings(ctx context.Context, settings model.Settings) (model.Settings, error) {
 	return m.UpdateFn(ctx, settings)
 }
+
+type AppPasswordServiceMock struct {
+	ListFn         func(ctx context.Context) ([]model.AppPassword, error)
+	CreateFn       func(ctx context.Context, name string) (model.AppPassword, string, error)
+	DeleteFn       func(ctx context.Context, id uuid.UUID) error
+	AuthenticateFn func(ctx context.Context, token string) (model.AppPassword, error)
+}
+
+var _ AppPasswordService = (*AppPasswordServiceMock)(nil)
+
+// ListAppPasswords implements [service.AppPasswordService].
+func (m *AppPasswordServiceMock) ListAppPasswords(ctx context.Context) ([]model.AppPassword, error) {
+	return m.ListFn(ctx)
+}
+
+// CreateAppPassword implements [service.AppPasswordService].
+func (m *AppPasswordServiceMock) CreateAppPassword(ctx context.Context, name string) (model.AppPassword, string, error) {
+	return m.CreateFn(ctx, name)
+}
+
+// DeleteAppPassword implements [service.AppPasswordService].
+func (m *AppPasswordServiceMock) DeleteAppPassword(ctx context.Context, id uuid.UUID) error {
+	return m.DeleteFn(ctx, id)
+}
+
+// AuthenticateAppPassword implements [service.AppPasswordService].
+func (m *AppPasswordServiceMock) AuthenticateAppPassword(ctx context.Context, token string) (model.AppPassword, error) {
+	return m.AuthenticateFn(ctx, token)
+}
