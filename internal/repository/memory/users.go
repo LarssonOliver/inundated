@@ -121,6 +121,12 @@ func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.
 				adoption.Settings++
 			}
 		}
+		for i := range m.appPasswords {
+			if m.appPasswords[i].password.UserId == nil {
+				m.appPasswords[i].password.UserId = &id
+				adoption.AppPasswords++
+			}
+		}
 	}
 
 	return user, adoption, nil

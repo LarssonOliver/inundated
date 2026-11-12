@@ -160,6 +160,34 @@ func (m *MockRepository) UpdateSettings(ctx context.Context, scope model.OwnerSc
 	return args.Get(0).(model.Settings), args.Error(1)
 }
 
+// ListAppPasswords implements [repository.AppPasswordRepository].
+func (m *MockRepository) ListAppPasswords(ctx context.Context, scope model.OwnerScope) ([]model.AppPassword, error) {
+	args := m.Called(ctx, scope)
+	return args.Get(0).([]model.AppPassword), args.Error(1)
+}
+
+// CreateAppPassword implements [repository.AppPasswordRepository].
+func (m *MockRepository) CreateAppPassword(ctx context.Context, scope model.OwnerScope, password model.AppPassword, token string) (model.AppPassword, error) {
+	args := m.Called(ctx, scope, password, token)
+	return args.Get(0).(model.AppPassword), args.Error(1)
+}
+
+// DeleteAppPassword implements [repository.AppPasswordRepository].
+func (m *MockRepository) DeleteAppPassword(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return m.Called(ctx, scope, id).Error(0)
+}
+
+// GetAppPasswordByToken implements [repository.AppPasswordRepository].
+func (m *MockRepository) GetAppPasswordByToken(ctx context.Context, token string) (model.AppPassword, error) {
+	args := m.Called(ctx, token)
+	return args.Get(0).(model.AppPassword), args.Error(1)
+}
+
+// TouchAppPassword implements [repository.AppPasswordRepository].
+func (m *MockRepository) TouchAppPassword(ctx context.Context, id uuid.UUID, usedAt time.Time) error {
+	return m.Called(ctx, id, usedAt).Error(0)
+}
+
 // CreateSession implements [repository.SessionRepository].
 func (m *MockRepository) CreateSession(ctx context.Context, session model.Session, token string) (model.Session, error) {
 	args := m.Called(ctx, session, token)

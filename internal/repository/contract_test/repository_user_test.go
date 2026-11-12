@@ -3,6 +3,7 @@ package contract_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/larssonoliver/inundated/internal/model"
@@ -227,6 +228,22 @@ func TestUserRepositoryContract(t *testing.T) {
 			got, err := repo.GetSettings(ctx, model.UserScope(created.Id))
 			require.NoError(t, err)
 			require.Equal(t, unowned.Id, got.Id)
+		})
+
+		t.Run(repoName+"CreateUserAdoptingOrphans_FirstUserClaimsAppPasswords", func(t *testing.T) {
+			repo := newRepo(t)
+
+			_, err := repo.CreateAppPassword(ctx, model.UnownedScope(), model.AppPassword{Name: "Phone", CreatedAt: time.Now()}, "tok-1")
+			require.NoError(t, err)
+
+			user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
+			_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
+			require.NoError(t, err)
+			require.Equal(t, model.OrphanAdoption{AppPasswords: 1}, adoption)
+
+			got, err := repo.GetAppPasswordByToken(ctx, "tok-1")
+			require.NoError(t, err)
+			require.Equal(t, &user.Id, got.UserId)
 		})
 
 		t.Run(repoName+"CreateUserAdoptingOrphans_SecondUserAdoptsNothing", func(t *testing.T) {
