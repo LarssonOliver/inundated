@@ -87,3 +87,38 @@ test("revoking calls delete and removes the row after confirming", async () => {
   expect(wrapper.text()).not.toContain("Phone");
   expect(wrapper.text()).toContain("Laptop");
 });
+
+test("a failed list shows an error and not the empty state", async () => {
+  api.list.mockRejectedValue(new Error("boom"));
+  const wrapper = await mountComponent();
+
+  expect(wrapper.text()).toContain("Could not load app passwords.");
+  expect(wrapper.text()).not.toContain("No app passwords yet.");
+});
+
+test("a failed create shows an error and no password", async () => {
+  api.create.mockRejectedValue(new Error("boom"));
+  const wrapper = await mountComponent();
+
+  await wrapper.find("input").setValue("Tablet");
+  await buttonWithText(wrapper, "Create")!.trigger("click");
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("Could not create the app password.");
+  expect(buttonWithText(wrapper, "Done")).toBeUndefined();
+});
+
+test("a failed revoke shows an error and keeps the row", async () => {
+  api.delete.mockRejectedValue(new Error("boom"));
+  const wrapper = await mountComponent();
+
+  await wrapper.find("[aria-label='Revoke Phone']").trigger("click");
+  await flushPromises();
+  [...document.body.querySelectorAll("button")]
+    .find((button) => button.textContent?.trim() === "Revoke")!
+    .click();
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("Could not revoke the app password.");
+  expect(wrapper.text()).toContain("Phone");
+});
