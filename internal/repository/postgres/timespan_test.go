@@ -99,7 +99,7 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 				AddRow(2),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
@@ -131,7 +131,7 @@ func TestListTimespans_WithPaginationParams(t *testing.T) {
 				AddRow(3),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(1, 1, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).
@@ -164,7 +164,7 @@ func TestListTimespans_Empty(t *testing.T) {
 				AddRow(0),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id = \$3 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0, *testScope.UserID()).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols),
@@ -194,7 +194,7 @@ func TestListTimespans_WithIntervalFilter(t *testing.T) {
 					AddRow(1),
 			)
 
-		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND start_time < \$4 AND user_id = \$5 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND start_time < \$4 AND user_id = \$5 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 			WithArgs(25, 0, from, to, *testScope.UserID()).
 			WillReturnRows(
 				pgxmock.NewRows(timespanCols).
@@ -226,7 +226,7 @@ func TestListTimespans_WithIntervalFilter(t *testing.T) {
 					AddRow(0),
 			)
 
-		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND user_id = \$4 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND end_time > \$3 AND user_id = \$4 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 			WithArgs(25, 0, from, *testScope.UserID()).
 			WillReturnRows(pgxmock.NewRows(timespanCols))
 
@@ -252,7 +252,7 @@ func TestListTimespans_WithIntervalFilter(t *testing.T) {
 					AddRow(0),
 			)
 
-		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND start_time < \$3 AND user_id = \$4 ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+		mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND start_time < \$3 AND user_id = \$4 ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 			WithArgs(25, 0, to, *testScope.UserID()).
 			WillReturnRows(pgxmock.NewRows(timespanCols))
 
@@ -279,7 +279,7 @@ func TestListTimespans_UnownedScope(t *testing.T) {
 				AddRow(1),
 		)
 
-	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY start_time DESC LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, name, start_time, end_time, user_id FROM timespans WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY start_time DESC, id LIMIT \$1 OFFSET \$2`).
 		WithArgs(25, 0).
 		WillReturnRows(
 			pgxmock.NewRows(timespanCols).

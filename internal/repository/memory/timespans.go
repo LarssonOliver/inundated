@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"slices"
 	"time"
@@ -79,7 +81,8 @@ func (t *MemoryStore) ListTimespans(ctx context.Context, scope model.OwnerScope,
 		all = append(all, ts)
 	}
 	slices.SortFunc(all, func(a, b model.Timespan) int {
-		return -a.StartTime.Compare(b.StartTime) // Negate to sort in descending order
+		// Negate the start time to sort in descending order; ties by id, as Postgres does.
+		return cmp.Or(-a.StartTime.Compare(b.StartTime), bytes.Compare(a.Id[:], b.Id[:]))
 	})
 
 	total := len(all)

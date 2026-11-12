@@ -73,7 +73,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 		SELECT id, name, start_time, end_time, user_id
 		FROM timespans
 		WHERE deleted_at IS NULL` + dataBuilder.SQL() + ` AND ` + dataOwnerSQL + `
-		ORDER BY start_time DESC
+		ORDER BY start_time DESC, id
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.Query(ctx, dataQ, args...)
