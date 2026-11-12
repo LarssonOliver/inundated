@@ -1,3 +1,4 @@
+apis/AppPasswordsApi.ts
 apis/AuthApi.ts
 apis/ProjectsApi.ts
 apis/SettingsApi.ts
@@ -6,12 +7,16 @@ apis/TasksApi.ts
 apis/TimespansApi.ts
 apis/UsersApi.ts
 apis/index.ts
+docs/AppPassword.md
+docs/AppPasswordsApi.md
 docs/AuthApi.md
 docs/CloseReason.md
+docs/CreateAppPassword.md
 docs/CreateProject.md
 docs/CreateTag.md
 docs/CreateTask.md
 docs/CreateTimespan.md
+docs/CreatedAppPassword.md
 docs/DateFormat.md
 docs/DurationFormat.md
 docs/MoveTask.md
@@ -46,11 +51,14 @@ docs/User.md
 docs/UsersApi.md
 docs/WeekStartDay.md
 index.ts
+models/AppPassword.ts
 models/CloseReason.ts
+models/CreateAppPassword.ts
 models/CreateProject.ts
 models/CreateTag.ts
 models/CreateTask.ts
 models/CreateTimespan.ts
+models/CreatedAppPassword.ts
 models/DateFormat.ts
 models/DurationFormat.ts
 models/MoveTask.ts

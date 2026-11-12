@@ -247,8 +247,24 @@ func (e GetTaskParamsInclude) Valid() bool {
 	}
 }
 
+// AppPassword defines model for AppPassword.
+type AppPassword struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LastUsedAt When the app password last authenticated a request. Unset until it is first used.
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Name       string     `json:"name"`
+}
+
 // CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
 type CloseReason string
+
+// CreateAppPassword defines model for CreateAppPassword.
+type CreateAppPassword struct {
+	// Name A label for the client that will use the password.
+	Name string `json:"name"`
+}
 
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
@@ -279,6 +295,17 @@ type CreateTimespan struct {
 	Name      *string    `json:"name,omitempty"`
 	StartTime time.Time  `json:"startTime"`
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
+}
+
+// CreatedAppPassword defines model for CreatedAppPassword.
+type CreatedAppPassword struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LastUsedAt When the app password last authenticated a request. Unset until it is first used.
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Name       string     `json:"name"`
+	Password   string     `json:"password"`
 }
 
 // DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
@@ -593,6 +620,9 @@ type WeekStartDay string
 // AncestorId defines model for ancestorId.
 type AncestorId = openapi_types.UUID
 
+// AppPasswordIdPath defines model for appPasswordIdPath.
+type AppPasswordIdPath = openapi_types.UUID
+
 // Code defines model for code.
 type Code = string
 
@@ -836,6 +866,9 @@ type ListTimespansParams struct {
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 }
 
+// CreateAppPasswordJSONRequestBody defines body for CreateAppPassword for application/json ContentType.
+type CreateAppPasswordJSONRequestBody = CreateAppPassword
+
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject
 
@@ -939,6 +972,17 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// ListAppPasswords request
+	ListAppPasswords(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAppPasswordWithBody request with any body
+	CreateAppPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateAppPassword(ctx context.Context, body CreateAppPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppPassword request
+	DeleteAppPassword(ctx context.Context, appPasswordId AppPasswordIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthCallback request
 	AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1045,6 +1089,54 @@ type ClientInterface interface {
 	UpdateTimespanWithBody(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) ListAppPasswords(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppPasswordsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateAppPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppPasswordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateAppPassword(ctx context.Context, body CreateAppPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppPasswordRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteAppPassword(ctx context.Context, appPasswordId AppPasswordIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppPasswordRequest(c.Server, appPasswordId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) AuthCallback(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1513,6 +1605,107 @@ func (c *Client) UpdateTimespan(ctx context.Context, timespanId TimespanIdPath, 
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewListAppPasswordsRequest generates requests for ListAppPasswords
+func NewListAppPasswordsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/app-passwords")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAppPasswordRequest calls the generic CreateAppPassword builder with application/json body
+func NewCreateAppPasswordRequest(server string, body CreateAppPasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAppPasswordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAppPasswordRequestWithBody generates requests for CreateAppPassword with any type of body
+func NewCreateAppPasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/app-passwords")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAppPasswordRequest generates requests for DeleteAppPassword
+func NewDeleteAppPasswordRequest(server string, appPasswordId AppPasswordIdPath) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appPasswordId", appPasswordId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/app-passwords/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewAuthCallbackRequest generates requests for AuthCallback
@@ -3174,6 +3367,17 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// ListAppPasswordsWithResponse request
+	ListAppPasswordsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAppPasswordsResponse, error)
+
+	// CreateAppPasswordWithBodyWithResponse request with any body
+	CreateAppPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppPasswordResponse, error)
+
+	CreateAppPasswordWithResponse(ctx context.Context, body CreateAppPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppPasswordResponse, error)
+
+	// DeleteAppPasswordWithResponse request
+	DeleteAppPasswordWithResponse(ctx context.Context, appPasswordId AppPasswordIdPath, reqEditors ...RequestEditorFn) (*DeleteAppPasswordResponse, error)
+
 	// AuthCallbackWithResponse request
 	AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error)
 
@@ -3280,6 +3484,95 @@ type ClientWithResponsesInterface interface {
 	UpdateTimespanWithBodyWithResponse(ctx context.Context, timespanId TimespanIdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
 
 	UpdateTimespanWithResponse(ctx context.Context, timespanId TimespanIdPath, body UpdateTimespanJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimespanResponse, error)
+}
+
+type ListAppPasswordsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]AppPassword
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppPasswordsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppPasswordsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppPasswordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAppPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreatedAppPassword
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAppPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAppPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAppPasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppPasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type AuthCallbackResponse struct {
@@ -4145,6 +4438,41 @@ func (r UpdateTimespanResponse) ContentType() string {
 	return ""
 }
 
+// ListAppPasswordsWithResponse request returning *ListAppPasswordsResponse
+func (c *ClientWithResponses) ListAppPasswordsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAppPasswordsResponse, error) {
+	rsp, err := c.ListAppPasswords(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppPasswordsResponse(rsp)
+}
+
+// CreateAppPasswordWithBodyWithResponse request with arbitrary body returning *CreateAppPasswordResponse
+func (c *ClientWithResponses) CreateAppPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppPasswordResponse, error) {
+	rsp, err := c.CreateAppPasswordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppPasswordResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateAppPasswordWithResponse(ctx context.Context, body CreateAppPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppPasswordResponse, error) {
+	rsp, err := c.CreateAppPassword(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppPasswordResponse(rsp)
+}
+
+// DeleteAppPasswordWithResponse request returning *DeleteAppPasswordResponse
+func (c *ClientWithResponses) DeleteAppPasswordWithResponse(ctx context.Context, appPasswordId AppPasswordIdPath, reqEditors ...RequestEditorFn) (*DeleteAppPasswordResponse, error) {
+	rsp, err := c.DeleteAppPassword(ctx, appPasswordId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppPasswordResponse(rsp)
+}
+
 // AuthCallbackWithResponse request returning *AuthCallbackResponse
 func (c *ClientWithResponses) AuthCallbackWithResponse(ctx context.Context, params *AuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthCallbackResponse, error) {
 	rsp, err := c.AuthCallback(ctx, params, reqEditors...)
@@ -4484,6 +4812,74 @@ func (c *ClientWithResponses) UpdateTimespanWithResponse(ctx context.Context, ti
 		return nil, err
 	}
 	return ParseUpdateTimespanResponse(rsp)
+}
+
+// ParseListAppPasswordsResponse parses an HTTP response from a ListAppPasswordsWithResponse call
+func ParseListAppPasswordsResponse(rsp *http.Response) (*ListAppPasswordsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppPasswordsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []AppPassword
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAppPasswordResponse parses an HTTP response from a CreateAppPasswordWithResponse call
+func ParseCreateAppPasswordResponse(rsp *http.Response) (*CreateAppPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAppPasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreatedAppPassword
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppPasswordResponse parses an HTTP response from a DeleteAppPasswordWithResponse call
+func ParseDeleteAppPasswordResponse(rsp *http.Response) (*DeleteAppPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppPasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseAuthCallbackResponse parses an HTTP response from a AuthCallbackWithResponse call

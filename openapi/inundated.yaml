@@ -23,6 +23,8 @@ tags:
     description: Task-related operations
   - name: settings
     description: User settings operations
+  - name: app-passwords
+    description: App password operations
 paths:
   /api/auth/login:
     $ref: "./paths/auth.yaml#/login"
@@ -57,6 +59,10 @@ paths:
     $ref: "./paths/tasks.yaml#/tasks-id-move"
   /api/settings:
     $ref: "./paths/settings.yaml#/settings"
+  /api/app-passwords:
+    $ref: "./paths/app-passwords.yaml#/app-passwords"
+  /api/app-passwords/{appPasswordId}:
+    $ref: "./paths/app-passwords.yaml#/app-passwords-id"
 components:
   securitySchemes:
     sessionCookie:
@@ -100,3 +106,9 @@ components:
       $ref: "./schemas/settings.yaml#/Settings"
     UpdateSettings:
       $ref: "./schemas/settings.yaml#/UpdateSettings"
+    AppPassword:
+      $ref: "./schemas/app-passwords.yaml#/AppPassword"
+    CreatedAppPassword:
+      $ref: "./schemas/app-passwords.yaml#/CreatedAppPassword"
+    CreateAppPassword:
+      $ref: "./schemas/app-passwords.yaml#/CreateAppPassword"

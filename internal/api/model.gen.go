@@ -238,8 +238,24 @@ func (e GetTaskParamsInclude) Valid() bool {
 	}
 }
 
+// AppPassword defines model for AppPassword.
+type AppPassword struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LastUsedAt When the app password last authenticated a request. Unset until it is first used.
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Name       string     `json:"name"`
+}
+
 // CloseReason Why a task was closed. Both reasons hide the task, and its logged time keeps counting either way.
 type CloseReason string
+
+// CreateAppPassword defines model for CreateAppPassword.
+type CreateAppPassword struct {
+	// Name A label for the client that will use the password.
+	Name string `json:"name"`
+}
 
 // CreateProject defines model for CreateProject.
 type CreateProject struct {
@@ -270,6 +286,17 @@ type CreateTimespan struct {
 	Name      *string    `json:"name,omitempty"`
 	StartTime time.Time  `json:"startTime"`
 	TagIds    *TagIdList `json:"tagIds,omitempty"`
+}
+
+// CreatedAppPassword defines model for CreatedAppPassword.
+type CreatedAppPassword struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LastUsedAt When the app password last authenticated a request. Unset until it is first used.
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Name       string     `json:"name"`
+	Password   string     `json:"password"`
 }
 
 // DateFormat How calendar dates are rendered in the UI: "iso" (e.g. "2024-01-15"), "us" (e.g. "01/15/2024"), "eu" (e.g. "15/01/2024"), or "text" (e.g. "15 Jan 2024").
@@ -584,6 +611,9 @@ type WeekStartDay string
 // AncestorId defines model for ancestorId.
 type AncestorId = openapi_types.UUID
 
+// AppPasswordIdPath defines model for appPasswordIdPath.
+type AppPasswordIdPath = openapi_types.UUID
+
 // Code defines model for code.
 type Code = string
 
@@ -826,6 +856,9 @@ type ListTimespansParams struct {
 	// Datetime values must be full RFC 3339 timestamps including timezone (for example `...Z` or `...+01:00`). Duration/duration intervals are not supported.
 	Interval *Interval `form:"interval,omitempty" json:"interval,omitempty"`
 }
+
+// CreateAppPasswordJSONRequestBody defines body for CreateAppPassword for application/json ContentType.
+type CreateAppPasswordJSONRequestBody = CreateAppPassword
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProject

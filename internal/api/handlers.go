@@ -10,6 +10,7 @@ type HttpHandler interface {
 	TimespanHandler
 	TaskHandler
 	SettingsHandler
+	AppPasswordHandler
 }
 
 type AuthHandler interface {
@@ -60,4 +61,10 @@ type TaskHandler interface {
 type SettingsHandler interface {
 	GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error)
 	UpdateSettings(ctx context.Context, request UpdateSettingsRequestObject) (UpdateSettingsResponseObject, error)
+}
+
+type AppPasswordHandler interface {
+	ListAppPasswords(ctx context.Context, request ListAppPasswordsRequestObject) (ListAppPasswordsResponseObject, error)
+	CreateAppPassword(ctx context.Context, request CreateAppPasswordRequestObject) (CreateAppPasswordResponseObject, error)
+	DeleteAppPassword(ctx context.Context, request DeleteAppPasswordRequestObject) (DeleteAppPasswordResponseObject, error)
 }
