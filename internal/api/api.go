@@ -163,3 +163,18 @@ func (s *Server) GetSettings(ctx context.Context, request GetSettingsRequestObje
 func (s *Server) UpdateSettings(ctx context.Context, request UpdateSettingsRequestObject) (UpdateSettingsResponseObject, error) {
 	return s.handler.UpdateSettings(ctx, request)
 }
+
+// ListAppPasswords implements StrictServerInterface.
+func (s *Server) ListAppPasswords(ctx context.Context, request ListAppPasswordsRequestObject) (ListAppPasswordsResponseObject, error) {
+	return s.handler.ListAppPasswords(ctx, request)
+}
+
+// CreateAppPassword implements StrictServerInterface.
+func (s *Server) CreateAppPassword(ctx context.Context, request CreateAppPasswordRequestObject) (CreateAppPasswordResponseObject, error) {
+	return s.handler.CreateAppPassword(ctx, request)
+}
+
+// DeleteAppPassword implements StrictServerInterface.
+func (s *Server) DeleteAppPassword(ctx context.Context, request DeleteAppPasswordRequestObject) (DeleteAppPasswordResponseObject, error) {
+	return s.handler.DeleteAppPassword(ctx, request)
+}

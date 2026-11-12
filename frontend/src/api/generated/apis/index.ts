@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AppPasswordsApi';
 export * from './AuthApi';
 export * from './ProjectsApi';
 export * from './SettingsApi';

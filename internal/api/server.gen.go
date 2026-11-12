@@ -17,6 +17,15 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List app passwords
+	// (GET /api/app-passwords)
+	ListAppPasswords(w http.ResponseWriter, r *http.Request)
+	// Create app password
+	// (POST /api/app-passwords)
+	CreateAppPassword(w http.ResponseWriter, r *http.Request)
+	// Delete app password
+	// (DELETE /api/app-passwords/{appPasswordId})
+	DeleteAppPassword(w http.ResponseWriter, r *http.Request, appPasswordId AppPasswordIdPath)
 	// OIDC callback
 	// (GET /api/auth/callback)
 	AuthCallback(w http.ResponseWriter, r *http.Request, params AuthCallbackParams)
@@ -109,6 +118,24 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// List app passwords
+// (GET /api/app-passwords)
+func (_ Unimplemented) ListAppPasswords(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create app password
+// (POST /api/app-passwords)
+func (_ Unimplemented) CreateAppPassword(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete app password
+// (DELETE /api/app-passwords/{appPasswordId})
+func (_ Unimplemented) DeleteAppPassword(w http.ResponseWriter, r *http.Request, appPasswordId AppPasswordIdPath) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // OIDC callback
 // (GET /api/auth/callback)
@@ -292,6 +319,78 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAppPasswords operation middleware
+func (siw *ServerInterfaceWrapper) ListAppPasswords(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppPasswords(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAppPassword operation middleware
+func (siw *ServerInterfaceWrapper) CreateAppPassword(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAppPassword(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAppPassword operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAppPassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "appPasswordId" -------------
+	var appPasswordId AppPasswordIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "appPasswordId", chi.URLParam(r, "appPasswordId"), &appPasswordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "appPasswordId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAppPassword(w, r, appPasswordId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // AuthCallback operation middleware
 func (siw *ServerInterfaceWrapper) AuthCallback(w http.ResponseWriter, r *http.Request) {
@@ -1689,6 +1788,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/app-passwords", wrapper.ListAppPasswords)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/app-passwords", wrapper.CreateAppPassword)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/app-passwords/{appPasswordId}", wrapper.DeleteAppPassword)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/auth/callback", wrapper.AuthCallback)
 	})
 	r.Group(func(r chi.Router) {
@@ -1777,6 +1885,81 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type ListAppPasswordsRequestObject struct {
+}
+
+type ListAppPasswordsResponseObject interface {
+	VisitListAppPasswordsResponse(w http.ResponseWriter) error
+}
+
+type ListAppPasswords200JSONResponse []AppPassword
+
+func (response ListAppPasswords200JSONResponse) VisitListAppPasswordsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAppPasswordRequestObject struct {
+	Body *CreateAppPasswordJSONRequestBody
+}
+
+type CreateAppPasswordResponseObject interface {
+	VisitCreateAppPasswordResponse(w http.ResponseWriter) error
+}
+
+type CreateAppPassword201JSONResponse CreatedAppPassword
+
+func (response CreateAppPassword201JSONResponse) VisitCreateAppPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAppPassword400Response struct {
+}
+
+func (response CreateAppPassword400Response) VisitCreateAppPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type DeleteAppPasswordRequestObject struct {
+	AppPasswordId AppPasswordIdPath `json:"appPasswordId"`
+}
+
+type DeleteAppPasswordResponseObject interface {
+	VisitDeleteAppPasswordResponse(w http.ResponseWriter) error
+}
+
+type DeleteAppPassword204Response struct {
+}
+
+func (response DeleteAppPassword204Response) VisitDeleteAppPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteAppPassword404Response struct {
+}
+
+func (response DeleteAppPassword404Response) VisitDeleteAppPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type AuthCallbackRequestObject struct {
@@ -2766,6 +2949,15 @@ func (response UpdateTimespan404Response) VisitUpdateTimespanResponse(w http.Res
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// List app passwords
+	// (GET /api/app-passwords)
+	ListAppPasswords(ctx context.Context, request ListAppPasswordsRequestObject) (ListAppPasswordsResponseObject, error)
+	// Create app password
+	// (POST /api/app-passwords)
+	CreateAppPassword(ctx context.Context, request CreateAppPasswordRequestObject) (CreateAppPasswordResponseObject, error)
+	// Delete app password
+	// (DELETE /api/app-passwords/{appPasswordId})
+	DeleteAppPassword(ctx context.Context, request DeleteAppPasswordRequestObject) (DeleteAppPasswordResponseObject, error)
 	// OIDC callback
 	// (GET /api/auth/callback)
 	AuthCallback(ctx context.Context, request AuthCallbackRequestObject) (AuthCallbackResponseObject, error)
@@ -2882,6 +3074,87 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListAppPasswords operation middleware
+func (sh *strictHandler) ListAppPasswords(w http.ResponseWriter, r *http.Request) {
+	var request ListAppPasswordsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAppPasswords(ctx, request.(ListAppPasswordsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAppPasswords")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAppPasswordsResponseObject); ok {
+		if err := validResponse.VisitListAppPasswordsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateAppPassword operation middleware
+func (sh *strictHandler) CreateAppPassword(w http.ResponseWriter, r *http.Request) {
+	var request CreateAppPasswordRequestObject
+
+	var body CreateAppPasswordJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAppPassword(ctx, request.(CreateAppPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAppPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateAppPasswordResponseObject); ok {
+		if err := validResponse.VisitCreateAppPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteAppPassword operation middleware
+func (sh *strictHandler) DeleteAppPassword(w http.ResponseWriter, r *http.Request, appPasswordId AppPasswordIdPath) {
+	var request DeleteAppPasswordRequestObject
+
+	request.AppPasswordId = appPasswordId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteAppPassword(ctx, request.(DeleteAppPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteAppPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteAppPasswordResponseObject); ok {
+		if err := validResponse.VisitDeleteAppPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // AuthCallback operation middleware
