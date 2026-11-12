@@ -107,14 +107,23 @@ func TestListTimespans_ReturnsAll(t *testing.T) {
 				AddRow(ts2.Id, ts2.Name, ts2.StartTime, ts2.EndTime, testScope.UserID()),
 		)
 
-	expectTimespanTagsQuery(mock, ts1.Id, ts1.TagIds)
-	expectTimespanTagsQuery(mock, ts2.Id, ts2.TagIds)
+	tagRows := pgxmock.NewRows([]string{"timespan_id", "tag_id"})
+	for _, ts := range []model.Timespan{ts1, ts2} {
+		for _, tagId := range ts.TagIds {
+			tagRows.AddRow(ts.Id, tagId)
+		}
+	}
+	mock.ExpectQuery(`FROM timespan_tags l .* WHERE l\.timespan_id = ANY\(\$1\)`).
+		WithArgs([]uuid.UUID{ts1.Id, ts2.Id}).
+		WillReturnRows(tagRows)
 
 	page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 
 	require.NoError(t, err)
 
-	assert.Len(t, page.Data, 2)
+	require.Len(t, page.Data, 2)
+	assert.Equal(t, ts1.TagIds, page.Data[0].TagIds)
+	assert.Equal(t, ts2.TagIds, page.Data[1].TagIds)
 	assert.Equal(t, 2, page.TotalCount)
 }
 

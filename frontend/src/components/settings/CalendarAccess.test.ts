@@ -32,6 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   document.body.innerHTML = "";
 });
 
@@ -123,4 +124,38 @@ test("a failed revoke shows an error and keeps the row", async () => {
 
   expect(wrapper.text()).toContain("Could not revoke the app password.");
   expect(wrapper.text()).toContain("Phone");
+});
+
+test("copying the server URL writes it to the clipboard and marks it copied", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  const wrapper = await mountComponent();
+
+  await wrapper.find("[aria-label='Copy server URL']").trigger("click");
+  await flushPromises();
+
+  expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/dav/me/`);
+  expect(wrapper.find("[aria-label='Copy server URL']").text()).toContain("check");
+});
+
+test("copying without clipboard access shows an error", async () => {
+  vi.stubGlobal("navigator", {});
+  const wrapper = await mountComponent();
+
+  await wrapper.find("[aria-label='Copy server URL']").trigger("click");
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("Could not copy.");
+});
+
+test("a refused clipboard write shows an error", async () => {
+  vi.stubGlobal("navigator", {
+    clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+  });
+  const wrapper = await mountComponent();
+
+  await wrapper.find("[aria-label='Copy server URL']").trigger("click");
+  await flushPromises();
+
+  expect(wrapper.text()).toContain("Could not copy.");
 });

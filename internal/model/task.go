@@ -111,7 +111,9 @@ func (p TaskPatch) Apply(task Task) Task {
 type TaskListParams struct {
 	PaginationParams
 	IncludeClosed bool
-	ParentId      *uuid.UUID
+	// ClosedSince leaves out tasks closed before it.
+	ClosedSince *time.Time
+	ParentId    *uuid.UUID
 	// AncestorId keeps the task's subtasks at any depth, not the task itself.
 	AncestorId *uuid.UUID
 	TagId      *uuid.UUID

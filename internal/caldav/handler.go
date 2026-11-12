@@ -12,8 +12,9 @@ import (
 // NewHandler serves the CalDAV tree under /dav, plus /.well-known/caldav.
 // now sets the window of closed tasks served.
 func NewHandler(svc service.Service, now func() time.Time) http.Handler {
-	dav := &gocaldav.Handler{Backend: &backend{svc: svc, now: now}, Prefix: prefix}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A backend per request, since it remembers the tags it loads.
+		dav := &gocaldav.Handler{Backend: &backend{svc: svc, now: now}, Prefix: prefix}
 		// go-webdav answers PROPPATCH with 501, and Apple clients send one on
 		// every sync to set colour and order.
 		if r.Method == "PROPPATCH" {

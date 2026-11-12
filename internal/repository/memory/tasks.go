@@ -43,6 +43,9 @@ func (t *MemoryStore) ListTasks(ctx context.Context, scope model.OwnerScope, par
 		if !matchesScope(task.UserId, scope) || (!params.IncludeClosed && task.Closed()) {
 			continue
 		}
+		if params.ClosedSince != nil && task.ClosedBefore(*params.ClosedSince) {
+			continue
+		}
 		if params.ParentId != nil && (task.ParentId == nil || *task.ParentId != *params.ParentId) {
 			continue
 		}

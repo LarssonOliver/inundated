@@ -25,19 +25,9 @@ func (s *ServiceImpl) ListCalendarTasks(ctx context.Context, closedSince time.Ti
 	if err != nil {
 		return nil, err
 	}
-	tasks, err := readAllPages(func(page model.PaginationParams) (model.Page[model.Task], error) {
-		return s.repository.ListTasks(ctx, scope, model.TaskListParams{PaginationParams: page, IncludeClosed: true})
+	return readAllPages(func(page model.PaginationParams) (model.Page[model.Task], error) {
+		return s.repository.ListTasks(ctx, scope, model.TaskListParams{PaginationParams: page, IncludeClosed: true, ClosedSince: &closedSince})
 	})
-	if err != nil {
-		return nil, err
-	}
-	kept := tasks[:0]
-	for _, task := range tasks {
-		if !task.ClosedBefore(closedSince) {
-			kept = append(kept, task)
-		}
-	}
-	return kept, nil
 }
 
 func (s *ServiceImpl) ListCalendarTags(ctx context.Context) (map[uuid.UUID]model.Tag, error) {

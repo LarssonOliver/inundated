@@ -336,6 +336,18 @@ func TestTaskRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, open.Data)
 
+			closedSince := func(moment time.Time) model.TaskListParams {
+				return model.TaskListParams{PaginationParams: model.DefaultPaginationParams(), IncludeClosed: true, ClosedSince: &moment}
+			}
+			recent, err := repo.ListTasks(ctx, testScope, closedSince(time.Now().Add(-time.Hour)))
+			require.NoError(t, err)
+			require.Len(t, recent.Data, 4)
+			require.Equal(t, 4, recent.TotalCount)
+			stale, err := repo.ListTasks(ctx, testScope, closedSince(time.Now().Add(time.Hour)))
+			require.NoError(t, err)
+			require.Empty(t, stale.Data)
+			require.Zero(t, stale.TotalCount)
+
 			// Reopening the grandchild reopens its ancestors, but not its
 			// siblings' subtrees.
 			_, err = repo.UpdateTask(ctx, testScope, grandchild.Id, model.TaskPatch{Closed: new(false)})

@@ -50,24 +50,22 @@ func TestCalendarService_ListCalendarTimespansPassesRange(t *testing.T) {
 }
 
 func TestCalendarService_ListCalendarTasks(t *testing.T) {
-	now := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
-	done := model.CloseReasonDone
-	open := model.Task{Id: uuid.New(), Name: "open"}
-	recent := model.Task{Id: uuid.New(), Name: "recent", CloseReason: &done, ClosedAt: new(now.AddDate(0, 0, -29))}
-	old := model.Task{Id: uuid.New(), Name: "old", CloseReason: &done, ClosedAt: new(now.AddDate(0, 0, -31))}
+	closedSince := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	listed := []model.Task{{Id: uuid.New(), Name: "open"}, {Id: uuid.New(), Name: "recent"}}
 	var got model.TaskListParams
 	repo := &repository.RepoMock{
 		ListTasksFn: func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error) {
 			got = params
-			return model.Page[model.Task]{Data: []model.Task{open, recent, old}, TotalCount: 3}, nil
+			return model.Page[model.Task]{Data: listed, TotalCount: len(listed)}, nil
 		},
 	}
 
-	tasks, err := service.NewService(repo).ListCalendarTasks(context.Background(), now.AddDate(0, 0, -30))
+	tasks, err := service.NewService(repo).ListCalendarTasks(context.Background(), closedSince)
 
 	require.NoError(t, err)
 	assert.True(t, got.IncludeClosed)
-	assert.Equal(t, []model.Task{open, recent}, tasks)
+	assert.Equal(t, &closedSince, got.ClosedSince)
+	assert.Equal(t, listed, tasks)
 }
 
 func TestCalendarService_ListCalendarTags(t *testing.T) {

@@ -10,7 +10,7 @@
     <div class="copy-row">
       <code>{{ serverUrl }}</code>
       <button class="icon-button" aria-label="Copy server URL" @click="copy(serverUrl)">
-        <MaterialIcon icon="content_copy" size="18px" />
+        <MaterialIcon :icon="copyIcon(serverUrl)" size="18px" />
       </button>
     </div>
 
@@ -22,7 +22,7 @@
       <div class="copy-row">
         <code>{{ created.password }}</code>
         <button class="icon-button" aria-label="Copy password" @click="copy(created.password)">
-          <MaterialIcon icon="content_copy" size="18px" />
+          <MaterialIcon :icon="copyIcon(created.password)" size="18px" />
         </button>
       </div>
       <button class="btn-info" @click="created = null">Done</button>
@@ -103,13 +103,26 @@ const pendingRevoke = ref<AppPassword | null>(null);
 const revoking = ref(false);
 const loaded = ref(false);
 const errorMessage = ref("");
+const copiedText = ref("");
 
 function formatDate(date: Date): string {
   return formatDatePickerInput(date, dateFormat.value);
 }
 
-function copy(text: string) {
-  navigator.clipboard.writeText(text);
+function copyIcon(text: string): string {
+  return copiedText.value === text ? "check" : "content_copy";
+}
+
+async function copy(text: string) {
+  errorMessage.value = "";
+  try {
+    // navigator.clipboard is undefined outside secure contexts (plain HTTP).
+    await navigator.clipboard.writeText(text);
+    copiedText.value = text;
+  } catch {
+    copiedText.value = "";
+    errorMessage.value = "Could not copy. Select the text and copy it manually.";
+  }
 }
 
 onMounted(async () => {

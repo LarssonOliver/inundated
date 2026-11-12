@@ -21,9 +21,9 @@ working at the next sync.
 
 App passwords work only for calendar access, not for the rest of the API.
 
-If you run inundated without login and later enable OIDC, the first user to
-sign in takes over every app password created while the instance had no login.
-Review the list in Settings and revoke any you don't recognise.
+If you run inundated without login and later enable OIDC, every app password
+created while the instance had no login is deleted when the first user signs
+in. Create new ones afterwards.
 
 The card also shows the server URL, `https://<your-host>/dav/me/`. The
 **username can be anything**; it is ignored, and the password decides whose data

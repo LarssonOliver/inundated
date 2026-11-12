@@ -27,6 +27,7 @@ type fakeService struct {
 	timespans []model.Timespan
 	tasks     []model.Task
 	tags      map[uuid.UUID]model.Tag
+	tagLists  int
 	from, to  *time.Time
 	err       error
 }
@@ -62,6 +63,7 @@ func (f *fakeService) ListCalendarTasks(ctx context.Context, closedSince time.Ti
 }
 
 func (f *fakeService) ListCalendarTags(ctx context.Context) (map[uuid.UUID]model.Tag, error) {
+	f.tagLists++
 	return f.tags, nil
 }
 
@@ -191,6 +193,23 @@ func TestCalendarMultigetReturnsEncodedTask(t *testing.T) {
 	want, _, err := caldav.Encode(caldav.TaskTodo(openTask, map[uuid.UUID]model.Tag{label.Id: label}))
 	require.NoError(t, err)
 	assert.Equal(t, string(want), result.Responses[0].Propstats[0].Prop.CalendarData)
+}
+
+func TestCalendarMultigetLoadsTagsOncePerRequest(t *testing.T) {
+	handler, svc := newHandler()
+	body := `<?xml version="1.0" encoding="utf-8"?>
+<c:calendar-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+  <d:href>/dav/me/calendars/time/` + before.Id.String() + `.ics</d:href>
+  <d:href>/dav/me/calendars/time/` + overlapping.Id.String() + `.ics</d:href>
+</c:calendar-multiget>`
+
+	first := serve(handler, "REPORT", "/dav/me/calendars/time/", "1", body)
+	require.Equal(t, http.StatusMultiStatus, first.Code)
+	assert.Equal(t, 1, svc.tagLists)
+
+	serve(handler, "REPORT", "/dav/me/calendars/time/", "1", body)
+	assert.Equal(t, 2, svc.tagLists)
 }
 
 func TestGetReturnsEncodedETag(t *testing.T) {

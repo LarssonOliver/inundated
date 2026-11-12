@@ -156,6 +156,9 @@ func addTaskFilters(b *sqlConditionBuilder, params model.TaskListParams) string 
 	if params.DueTo != nil {
 		b.add("due_date <=", *params.DueTo)
 	}
+	if params.ClosedSince != nil {
+		b.addExpr("(closed_at IS NULL OR closed_at >= $?)", *params.ClosedSince)
+	}
 	if params.IncludeClosed {
 		return ""
 	}
