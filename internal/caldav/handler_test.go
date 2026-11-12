@@ -3,6 +3,7 @@ package caldav_test
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -27,9 +28,13 @@ type fakeService struct {
 	tasks     []model.Task
 	tags      map[uuid.UUID]model.Tag
 	from, to  *time.Time
+	err       error
 }
 
 func (f *fakeService) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
+	if f.err != nil {
+		return model.Timespan{}, f.err
+	}
 	for _, timespan := range f.timespans {
 		if timespan.Id == id {
 			return timespan, nil
@@ -207,6 +212,9 @@ func TestGetMissingObjects(t *testing.T) {
 		"task closed 31 days ago": objectPath("tasks", oldTask.Id),
 		"malformed id":            "/dav/me/calendars/time/not-a-uuid.ics",
 		"missing suffix":          "/dav/me/calendars/time/" + overlapping.Id.String(),
+		"undashed id":             "/dav/me/calendars/time/" + strings.ReplaceAll(overlapping.Id.String(), "-", "") + ".ics",
+		"urn id":                  "/dav/me/calendars/time/urn:uuid:" + overlapping.Id.String() + ".ics",
+		"braced id":               "/dav/me/calendars/time/{" + overlapping.Id.String() + "}.ics",
 		"unknown timespan":        objectPath("time", uuid.New()),
 		"unknown collection":      objectPath("other", overlapping.Id),
 	}
@@ -215,6 +223,16 @@ func TestGetMissingObjects(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, serve(handler, http.MethodGet, path, "", "").Code)
 		})
 	}
+}
+
+func TestGetHidesInternalErrors(t *testing.T) {
+	handler, svc := newHandler()
+	svc.err = errors.New("database password is hunter2")
+
+	recorder := serve(handler, http.MethodGet, objectPath("time", overlapping.Id), "", "")
+
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+	assert.NotContains(t, recorder.Body.String(), "hunter2")
 }
 
 func TestWritesAreForbidden(t *testing.T) {
