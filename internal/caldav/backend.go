@@ -3,6 +3,7 @@ package caldav
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -32,6 +33,7 @@ const closedTaskWindow = 30 * 24 * time.Hour
 var (
 	errReadOnly = webdav.NewHTTPError(http.StatusForbidden, errors.New("caldav: read-only"))
 	errNotFound = webdav.NewHTTPError(http.StatusNotFound, nil)
+	errInternal = webdav.NewHTTPError(http.StatusInternalServerError, errors.New("internal error"))
 )
 
 var calendars = []gocaldav.Calendar{
@@ -73,9 +75,14 @@ func (b *backend) GetCalendar(ctx context.Context, calendarPath string) (*gocald
 }
 
 func (b *backend) GetCalendarObject(ctx context.Context, objectPath string, request *gocaldav.CalendarCompRequest) (*gocaldav.CalendarObject, error) {
+	object, err := b.getObject(ctx, objectPath)
+	return object, clientError(ctx, err)
+}
+
+func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.CalendarObject, error) {
 	collection, name := path.Split(objectPath)
 	id, err := uuid.Parse(strings.TrimSuffix(name, objectSuffix))
-	if err != nil || !strings.HasSuffix(name, objectSuffix) || (collection != timePath && collection != tasksPath) {
+	if err != nil || id.String()+objectSuffix != name || (collection != timePath && collection != tasksPath) {
 		return nil, errNotFound
 	}
 	tags, err := b.svc.ListCalendarTags(ctx)
@@ -86,13 +93,13 @@ func (b *backend) GetCalendarObject(ctx context.Context, objectPath string, requ
 	if collection == timePath {
 		timespan, err := b.svc.GetTimespan(ctx, id)
 		if err != nil {
-			return nil, notFoundOr(err)
+			return nil, err
 		}
 		return timespanObject(timespan, tags)
 	}
 	task, err := b.svc.GetTask(ctx, id, nil)
 	if err != nil {
-		return nil, notFoundOr(err)
+		return nil, err
 	}
 	if task.ClosedBefore(b.closedSince()) {
 		return nil, errNotFound
@@ -101,7 +108,8 @@ func (b *backend) GetCalendarObject(ctx context.Context, objectPath string, requ
 }
 
 func (b *backend) ListCalendarObjects(ctx context.Context, calendarPath string, request *gocaldav.CalendarCompRequest) ([]gocaldav.CalendarObject, error) {
-	return b.listObjects(ctx, collectionPath(calendarPath), nil, nil)
+	objects, err := b.listObjects(ctx, collectionPath(calendarPath), nil, nil)
+	return objects, clientError(ctx, err)
 }
 
 func (b *backend) QueryCalendarObjects(ctx context.Context, calendarPath string, query *gocaldav.CalendarQuery) ([]gocaldav.CalendarObject, error) {
@@ -119,10 +127,10 @@ func (b *backend) QueryCalendarObjects(ctx context.Context, calendarPath string,
 	}
 
 	objects, err := b.listObjects(ctx, collectionPath(calendarPath), from, to)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		objects, err = gocaldav.Filter(query, objects)
 	}
-	return gocaldav.Filter(query, objects)
+	return objects, clientError(ctx, err)
 }
 
 func (b *backend) PutCalendarObject(ctx context.Context, objectPath string, calendar *ical.Calendar, options *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {
@@ -199,9 +207,16 @@ func collectionPath(calendarPath string) string {
 	return strings.TrimSuffix(calendarPath, "/") + "/"
 }
 
-func notFoundOr(err error) error {
-	if errors.Is(err, model.ErrNotFound) {
+// clientError keeps internal error text out of responses, since go-webdav
+// writes an error's text into the body.
+func clientError(ctx context.Context, err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errNotFound), errors.Is(err, model.ErrNotFound):
 		return errNotFound
+	default:
+		slog.ErrorContext(ctx, "caldav request failed", "error", err)
+		return errInternal
 	}
-	return err
 }

@@ -35,7 +35,9 @@ var flushLogs = func() {}
 
 // chi answers 405 to methods it doesn't know, before any route sees them.
 // MKCOL, COPY and MOVE are left out: CalDAV here is read-only, so chi's 405
-// is as good as go-webdav's answer.
+// is as good as go-webdav's answer. The registration is process-global, so
+// catch-all routes such as the SPA's receive these methods too; that is why
+// the frontend handler checks the method itself.
 func init() {
 	for _, method := range []string{"PROPFIND", "PROPPATCH", "REPORT"} {
 		chi.RegisterMethod(method)
@@ -127,7 +129,9 @@ func newRouter(
 	r.Use(middleware.RequestLogContext)
 	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
 	r.Use(middleware.RequestLogger(func(r *http.Request) bool {
-		return r.URL.Path == "/health" || !(strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/dav/"))
+		path := r.URL.Path
+		logged := strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/dav/") || path == "/.well-known/caldav"
+		return path == "/health" || !logged
 	}))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
