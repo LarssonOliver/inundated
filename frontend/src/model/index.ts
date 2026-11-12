@@ -6,3 +6,4 @@ export type { Task, CloseReason } from "./task";
 export type { User } from "./user";
 export type { Settings, WeekStartDay, DurationFormat, TimeFormat, DateFormat } from "./settings";
 export { TIMEZONE_BROWSER } from "./settings";
+export type { AppPassword } from "./appPassword";

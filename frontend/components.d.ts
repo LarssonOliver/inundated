@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    CalendarAccess: typeof import('./src/components/settings/CalendarAccess.vue')['default']
     ColorInput: typeof import('./src/components/inputs/ColorInput.vue')['default']
     ConfirmationPopup: typeof import('./src/components/inputs/ConfirmationPopup.vue')['default']
     DurationInput: typeof import('./src/components/inputs/DurationInput.vue')['default']

@@ -47,6 +47,8 @@
         </button>
       </div>
     </div>
+
+    <CalendarAccess />
   </div>
 </template>
 
@@ -57,6 +59,7 @@ import { useUserStore } from "@/stores/user";
 import type { Settings } from "@/model";
 import Dropdown, { type DropdownOption } from "@/components/inputs/SelectDropdown.vue";
 import { timezoneOptions } from "@/helpers/timezones";
+import CalendarAccess from "@/components/settings/CalendarAccess.vue";
 import { diffSettings } from "@/helpers/settingsDiff";
 
 const weekStartDayOptions: DropdownOption[] = [
