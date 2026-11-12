@@ -44,7 +44,7 @@ test("shows the calendar server URL", async () => {
 test("shows that calendar edits are reverted", async () => {
   const wrapper = await mountComponent();
 
-  expect(wrapper.text()).toContain("Edits made in calendar apps are reverted");
+  expect(wrapper.text()).toMatch(/edits made in calendar apps are reverted/i);
 });
 
 test("lists the app password names", async () => {
@@ -65,6 +65,8 @@ test("shows a new password once, and not after dismissing it", async () => {
   expect(api.create).toHaveBeenCalledWith("Tablet");
   expect(wrapper.text()).toContain("s3cret-pw");
   expect(wrapper.text()).toContain("Tablet");
+  const names = wrapper.findAll(".app-password-name").map((name) => name.text());
+  expect(names).toEqual(["Tablet", "Phone", "Laptop"]);
 
   await buttonWithText(wrapper, "Done")!.trigger("click");
 
