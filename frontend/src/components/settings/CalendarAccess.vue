@@ -2,8 +2,8 @@
   <div class="card calendar-access">
     <h3>Calendar access</h3>
     <p class="note">
-      Subscribe from a calendar app to see your tasks. Access is read-only: Edits made in calendar
-      apps are reverted.
+      Add a CalDAV account in your calendar app to see your time entries and tasks. Access is
+      read-only: edits made in calendar apps are reverted.
     </p>
 
     <p class="field-label">Server URL</p>
@@ -126,7 +126,7 @@ async function create() {
   errorMessage.value = "";
   try {
     const result = await appPasswordsApi.create(newName.value.trim());
-    appPasswords.value.push(result.appPassword);
+    appPasswords.value.unshift(result.appPassword);
     created.value = { password: result.password };
     newName.value = "";
   } catch {
