@@ -200,3 +200,20 @@ func TestAppPasswordAuthFailureLimit(t *testing.T) {
 	other := h.do("192.0.2.2:1234", "right", true)
 	assert.Equal(t, http.StatusOK, other.StatusCode)
 }
+
+func TestAppPasswordAuthMissingHeaderDoesNotCountAsFailure(t *testing.T) {
+	h := newAppPasswordHarness(false, func(token string) (model.AppPassword, error) {
+		if token == "right" {
+			return model.AppPassword{}, nil
+		}
+		return model.AppPassword{}, model.ErrNotFound
+	})
+
+	for range middleware.AppPasswordFailureLimit + 5 {
+		res := h.do("192.0.2.1:1234", "", false)
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode)
+		require.NotEmpty(t, res.Header.Get("WWW-Authenticate"))
+	}
+
+	assert.Equal(t, http.StatusOK, h.do("192.0.2.1:1234", "right", true).StatusCode)
+}
