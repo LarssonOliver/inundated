@@ -6,6 +6,7 @@ tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
 require (
 	github.com/coreos/go-oidc/v3 v3.20.0
+	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
 	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/httprate v0.16.0
 	github.com/go-jose/go-jose/v4 v4.1.6
@@ -78,6 +79,7 @@ require (
 	github.com/speakeasy-api/jsonpath v0.6.3 // indirect
 	github.com/speakeasy-api/openapi v1.19.2 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/teambition/rrule-go v1.8.2 // indirect
 	github.com/testcontainers/testcontainers-go v0.40.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
