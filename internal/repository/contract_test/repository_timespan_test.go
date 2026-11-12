@@ -512,6 +512,40 @@ func TestTimespanRepositoryContract(t *testing.T) {
 			require.Equal(t, []uuid.UUID{activeTag}, updated.TagIds)
 		})
 
+		t.Run(repoName+"PagingWithEqualStartTimesListsEveryTimespanOnce", func(t *testing.T) {
+			repo := newRepo(t)
+
+			base := time.Now().Add(-24 * time.Hour).Round(time.Second)
+			want := map[uuid.UUID]bool{}
+			for i := range 12 {
+				start := base.Add(time.Duration(i/4) * time.Hour)
+				created, err := repo.CreateTimespan(ctx, testScope, model.Timespan{
+					Name: fmt.Sprintf("span %d", i), StartTime: start, EndTime: start.Add(time.Minute),
+				})
+				require.NoError(t, err)
+				want[created.Id] = true
+			}
+
+			seen := map[uuid.UUID]int{}
+			for offset := 0; ; offset += 5 {
+				page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{
+					PaginationParams: model.PaginationParams{Limit: 5, Offset: offset},
+				})
+				require.NoError(t, err)
+				for _, ts := range page.Data {
+					seen[ts.Id]++
+				}
+				if offset+5 >= page.TotalCount {
+					break
+				}
+			}
+
+			require.Len(t, seen, len(want))
+			for id := range want {
+				require.Equal(t, 1, seen[id])
+			}
+		})
+
 		t.Run(repoName+"UnownedScopeIsolation", func(t *testing.T) {
 			repo := newRepo(t)
 			user := model.UserScope(uuid.New())
