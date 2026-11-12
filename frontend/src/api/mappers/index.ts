@@ -13,3 +13,4 @@ export interface FromApiMapper<Domain, Api> {
 export interface Mapper<Domain, Api> extends FromApiMapper<Domain, Api> {
   toApi(domainModel: Domain): Api;
 }
+export * from "./appPasswordMapper";
