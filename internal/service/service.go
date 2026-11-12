@@ -41,6 +41,7 @@ type Service interface {
 	TaskService
 	SettingsService
 	AppPasswordService
+	CalendarService
 }
 
 type UserService interface {
@@ -139,4 +140,14 @@ type AppPasswordService interface {
 	DeleteAppPassword(ctx context.Context, id uuid.UUID) error
 	// AuthenticateAppPassword is unscoped and records use (throttled).
 	AuthenticateAppPassword(ctx context.Context, token string) (model.AppPassword, error)
+}
+
+// CalendarService lists what the CalDAV endpoint serves, reading every page.
+type CalendarService interface {
+	// ListCalendarTimespans returns every timespan in scope overlapping [from, to); nil bounds are open.
+	ListCalendarTimespans(ctx context.Context, from, to *time.Time) ([]model.Timespan, error)
+	// ListCalendarTasks returns open tasks and those closed at or after closedSince.
+	ListCalendarTasks(ctx context.Context, closedSince time.Time) ([]model.Task, error)
+	// ListCalendarTags returns every tag in scope, owned and archived ones included.
+	ListCalendarTags(ctx context.Context) (map[uuid.UUID]model.Tag, error)
 }
