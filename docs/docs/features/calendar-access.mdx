@@ -21,6 +21,10 @@ working at the next sync.
 
 App passwords work only for calendar access, not for the rest of the API.
 
+If you run inundated without login and later enable OIDC, the first user to
+sign in takes over every app password created while the instance had no login.
+Review the list in Settings and revoke any you don't recognise.
+
 The card also shows the server URL, `https://<your-host>/dav/me/`. The
 **username can be anything**; it is ignored, and the password decides whose data
 you see. After 10 failed attempts from one IP address within a minute, further
@@ -34,12 +38,16 @@ account name or password". See [Reverse Proxy](/docs/configuration/reverse-proxy
 
 ## Apple Calendar and Reminders
 
-1. Open **System Settings → Internet Accounts → Add Account → Other Account →
-   CalDAV Account**, or **Calendar → Add Account → Other CalDAV Account**.
-2. Choose **Manual**, then enter any username, the app password, and the
-   server's host name.
-3. Open **Advanced** and set the server path to `/dav/me/`.
-4. In **Internet Accounts**, make sure **Reminders** is enabled for the new
+1. Open **Calendar → Settings → Accounts**, choose **+**, then **Other CalDAV
+   Account**.
+2. Set the account type to **Advanced** and fill in:
+   - **User**: anything
+   - **Password**: the app password
+   - **Server**: your host name
+   - **Server Path**: `/dav/me/`
+   - **Port**: `443`
+   - **Use SSL**: on
+3. In **Internet Accounts**, make sure **Reminders** is enabled for the new
    account. Calendar only syncs the Time calendar and Reminders only syncs the
    Tasks calendar.
 
@@ -56,8 +64,11 @@ supports, such as tasks.org or OpenTasks.
   get it refused, and then silently restore the original on the next sync.
   Make changes in inundated.
 - **Apple Reminders doesn't nest subtasks.** Every task appears at the top
-  level. Clients such as Thunderbird and tasks.org (via DAVx⁵) do show the
-  hierarchy.
+  level. Clients that support RELATED-TO, such as Thunderbird or tasks.org,
+  can show the hierarchy.
 - **Ignored tasks are hidden in Apple Reminders.** They are sent as cancelled
   to-dos, which other clients may show.
+- **Large histories make larger syncs.** The Time calendar includes your whole
+  history, and Apple re-lists it on every sync (there's no incremental sync
+  yet).
 - **Closed tasks disappear after 30 days.**
