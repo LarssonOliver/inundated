@@ -40,6 +40,7 @@ type Service interface {
 	TimespanService
 	TaskService
 	SettingsService
+	AppPasswordService
 }
 
 type UserService interface {
@@ -129,4 +130,13 @@ type TaskService interface {
 type SettingsService interface {
 	GetSettings(ctx context.Context) (model.Settings, error)
 	UpdateSettings(ctx context.Context, settings model.Settings) (model.Settings, error)
+}
+
+type AppPasswordService interface {
+	ListAppPasswords(ctx context.Context) ([]model.AppPassword, error)
+	// CreateAppPassword returns the stored password and its plaintext token.
+	CreateAppPassword(ctx context.Context, name string) (model.AppPassword, string, error)
+	DeleteAppPassword(ctx context.Context, id uuid.UUID) error
+	// AuthenticateAppPassword is unscoped and records use (throttled).
+	AuthenticateAppPassword(ctx context.Context, token string) (model.AppPassword, error)
 }
