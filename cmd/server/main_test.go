@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -8,11 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/larssonoliver/inundated/internal/api"
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/auth"
 	"github.com/larssonoliver/inundated/internal/config"
+	"github.com/larssonoliver/inundated/internal/model"
 	"github.com/larssonoliver/inundated/internal/repository/memory"
 	"github.com/larssonoliver/inundated/internal/service"
 	"github.com/stretchr/testify/assert"
@@ -248,5 +252,74 @@ func TestNewRouter_OIDCMode(t *testing.T) {
 		rec := get(t, r, "/api/does-not-exist")
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 		assert.Contains(t, rec.Header().Get("Content-Type"), "json")
+	})
+}
+
+func davRequest(method, path, password string) *http.Request {
+	req := httptest.NewRequest(method, path, strings.NewReader(`<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>`))
+	req.Header.Set("Content-Type", "application/xml")
+	req.Header.Set("Depth", "0")
+	if password != "" {
+		req.SetBasicAuth("anyone", password)
+	}
+	return req
+}
+
+func serveRequest(h http.Handler, req *http.Request) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestNewRouter_CalDAVUserlessMode(t *testing.T) {
+	cfg := &config.Config{}
+	server, svc, repo := buildTestServer(auth.NewOIDCClient(), shouldUseSecureCookies(cfg))
+	r := newRouter(cfg, svc, repo, server)
+	_, password, err := svc.CreateAppPassword(context.Background(), "phone")
+	require.NoError(t, err)
+
+	t.Run("a request without a password is rejected", func(t *testing.T) {
+		rec := serveRequest(r, davRequest("PROPFIND", "/dav/me/", ""))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("a request with a password reaches the principal", func(t *testing.T) {
+		rec := serveRequest(r, davRequest("PROPFIND", "/dav/me/", password))
+		assert.Equal(t, http.StatusMultiStatus, rec.Code)
+	})
+
+	t.Run("well-known redirects to the principal", func(t *testing.T) {
+		rec := serveRequest(r, davRequest(http.MethodGet, "/.well-known/caldav", password))
+		assert.Equal(t, http.StatusPermanentRedirect, rec.Code)
+		assert.Equal(t, "/dav/me/", rec.Header().Get("Location"))
+	})
+}
+
+func TestNewRouter_CalDAVOIDCMode(t *testing.T) {
+	cfg := &config.Config{
+		PublicBaseURL: "https://app.example.com",
+		OIDC: config.OIDCConfig{
+			IssuerURL:    "https://issuer.example.com",
+			ClientID:     "id",
+			ClientSecret: "secret",
+			HTTPTimeout:  time.Second,
+		},
+	}
+	server, svc, repo := buildTestServer(auth.NewOIDCClientMock(), shouldUseSecureCookies(cfg))
+	r := newRouter(cfg, svc, repo, server)
+	user, err := repo.CreateUser(context.Background(), model.User{Id: uuid.New(), Sub: "sub", Email: "user@example.com"})
+	require.NoError(t, err)
+	_, password, err := svc.CreateAppPassword(model.SetUserInContext(context.Background(), user), "phone")
+	require.NoError(t, err)
+
+	t.Run("an owned password reaches the principal", func(t *testing.T) {
+		rec := serveRequest(r, davRequest("PROPFIND", "/dav/me/", password))
+		assert.Equal(t, http.StatusMultiStatus, rec.Code)
+	})
+
+	t.Run("an app password does not grant the API", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+		req.SetBasicAuth("anyone", password)
+		assert.Equal(t, http.StatusUnauthorized, serveRequest(r, req).Code)
 	})
 }

@@ -49,6 +49,12 @@ func (t Task) Closed() bool {
 	return t.CloseReason != nil
 }
 
+// ClosedBefore reports whether t was closed before moment. A closed task
+// missing its ClosedAt counts as closed before any moment.
+func (t Task) ClosedBefore(moment time.Time) bool {
+	return t.Closed() && (t.ClosedAt == nil || t.ClosedAt.Before(moment))
+}
+
 // TaskPatch is a partial update to a task. Nil fields keep the stored
 // value. Applying it to the stored task inside the write, rather than
 // writing back a whole task read earlier, keeps concurrent updates from

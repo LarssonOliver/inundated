@@ -18,6 +18,7 @@ import (
 	"github.com/larssonoliver/inundated/internal/api/handlers"
 	"github.com/larssonoliver/inundated/internal/api/middleware"
 	"github.com/larssonoliver/inundated/internal/auth"
+	"github.com/larssonoliver/inundated/internal/caldav"
 	"github.com/larssonoliver/inundated/internal/config"
 	postgresdb "github.com/larssonoliver/inundated/internal/db/postgres"
 	"github.com/larssonoliver/inundated/internal/demo"
@@ -31,6 +32,15 @@ import (
 var Version = "dev"
 
 var flushLogs = func() {}
+
+// chi answers 405 to methods it doesn't know, before any route sees them.
+// MKCOL, COPY and MOVE are left out: CalDAV here is read-only, so chi's 405
+// is as good as go-webdav's answer.
+func init() {
+	for _, method := range []string{"PROPFIND", "PROPPATCH", "REPORT"} {
+		chi.RegisterMethod(method)
+	}
+}
 
 func fatal(msg string, args ...any) {
 	slog.Error(msg, args...)
@@ -117,12 +127,22 @@ func newRouter(
 	r.Use(middleware.RequestLogContext)
 	r.Use(middleware.RealIP(cfg.TrustedProxies, cfg.TrustedProxyHeaders))
 	r.Use(middleware.RequestLogger(func(r *http.Request) bool {
-		return r.URL.Path == "/health" || !strings.HasPrefix(r.URL.Path, "/api/")
+		return r.URL.Path == "/health" || !(strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/dav/"))
 	}))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
 
 	r.Handle("/health", handlers.HealthHandler())
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
+		r.Use(middleware.MaxBodyBytes(middleware.MaxAPIBodyBytes))
+		r.Use(middleware.AppPasswordAuth(svc, cfg.OIDC.Enabled()))
+
+		dav := caldav.NewHandler(svc, time.Now)
+		r.Handle("/.well-known/caldav", dav)
+		r.Handle("/dav/*", dav)
+	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RateLimitByIP(middleware.APIRateLimitRequests, middleware.APIRateLimitWindow))
