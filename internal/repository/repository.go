@@ -16,6 +16,7 @@ type Repository interface {
 	TaskRepository
 	ProjectStatsRepository
 	SettingsRepository
+	AppPasswordRepository
 }
 
 type TagRepository interface {
@@ -168,4 +169,14 @@ type LoginStateRepository interface {
 	CreateLoginState(ctx context.Context, loginState model.LoginState) (model.LoginState, error)
 	DeleteLoginState(ctx context.Context, id uuid.UUID) error
 	DeleteAllExpiredLoginStates(ctx context.Context) error
+}
+
+type AppPasswordRepository interface {
+	// ListAppPasswords orders newest CreatedAt first.
+	ListAppPasswords(ctx context.Context, scope model.OwnerScope) ([]model.AppPassword, error)
+	CreateAppPassword(ctx context.Context, scope model.OwnerScope, password model.AppPassword, token string) (model.AppPassword, error)
+	DeleteAppPassword(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	// GetAppPasswordByToken is unscoped: the token decides the owner.
+	GetAppPasswordByToken(ctx context.Context, token string) (model.AppPassword, error)
+	TouchAppPassword(ctx context.Context, id uuid.UUID, usedAt time.Time) error
 }

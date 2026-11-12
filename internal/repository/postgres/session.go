@@ -35,7 +35,7 @@ func (r *PostgresStore) CreateSession(ctx context.Context, session model.Session
 		RETURNING id, user_id, sub, created_at, expires_at`
 
 	var created model.Session
-	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, model.HashSessionToken(token), session.CreatedAt, session.ExpiresAt).
+	err := r.db.QueryRow(ctx, q, session.Id, session.UserId, session.Sub, model.HashToken(token), session.CreatedAt, session.ExpiresAt).
 		Scan(&created.Id, &created.UserId, &created.Sub, &created.CreatedAt, &created.ExpiresAt)
 	if isUniqueViolation(err) {
 		return model.Session{}, fmt.Errorf("CreateSession %s: %w", session.Id, model.ErrAlreadyExists)
@@ -76,7 +76,7 @@ func (r *PostgresStore) GetSessionByToken(ctx context.Context, token string) (mo
 		WHERE token_hash = $1`
 
 	var s model.Session
-	err := r.db.QueryRow(ctx, q, model.HashSessionToken(token)).Scan(&s.Id, &s.UserId, &s.Sub, &s.CreatedAt, &s.ExpiresAt)
+	err := r.db.QueryRow(ctx, q, model.HashToken(token)).Scan(&s.Id, &s.UserId, &s.Sub, &s.CreatedAt, &s.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.Session{}, fmt.Errorf("GetSessionByToken: %w", model.ErrNotFound)
 	}

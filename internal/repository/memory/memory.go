@@ -9,16 +9,17 @@ import (
 )
 
 type MemoryStore struct {
-	mu          sync.RWMutex
-	users       []model.User
-	subToId     map[string]uuid.UUID // mapping from sub to user ID for efficient lookups
-	projects    []model.Project
-	tags        []model.Tag
-	timespans   []model.Timespan
-	tasks       []model.Task
-	settings    []model.Settings
-	sessions    []storedSession
-	loginStates []model.LoginState
+	mu           sync.RWMutex
+	users        []model.User
+	subToId      map[string]uuid.UUID // mapping from sub to user ID for efficient lookups
+	projects     []model.Project
+	tags         []model.Tag
+	timespans    []model.Timespan
+	tasks        []model.Task
+	settings     []model.Settings
+	sessions     []storedSession
+	appPasswords []storedAppPassword
+	loginStates  []model.LoginState
 }
 
 var _ repository.Repository = (*MemoryStore)(nil)
@@ -27,15 +28,16 @@ var _ repository.LoginStateRepository = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		mu:          sync.RWMutex{},
-		users:       []model.User{},
-		subToId:     make(map[string]uuid.UUID),
-		projects:    []model.Project{},
-		tags:        []model.Tag{},
-		timespans:   []model.Timespan{},
-		tasks:       []model.Task{},
-		settings:    []model.Settings{},
-		sessions:    []storedSession{},
-		loginStates: []model.LoginState{},
+		mu:           sync.RWMutex{},
+		users:        []model.User{},
+		subToId:      make(map[string]uuid.UUID),
+		projects:     []model.Project{},
+		tags:         []model.Tag{},
+		timespans:    []model.Timespan{},
+		tasks:        []model.Task{},
+		settings:     []model.Settings{},
+		sessions:     []storedSession{},
+		appPasswords: []storedAppPassword{},
+		loginStates:  []model.LoginState{},
 	}
 }

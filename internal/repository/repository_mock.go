@@ -55,6 +55,37 @@ type RepoMock struct {
 	GetSettingsFn    func(ctx context.Context, scope model.OwnerScope) (model.Settings, error)
 	CreateSettingsFn func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
 	UpdateSettingsFn func(ctx context.Context, scope model.OwnerScope, settings model.Settings) (model.Settings, error)
+
+	ListAppPasswordsFn      func(ctx context.Context, scope model.OwnerScope) ([]model.AppPassword, error)
+	CreateAppPasswordFn     func(ctx context.Context, scope model.OwnerScope, password model.AppPassword, token string) (model.AppPassword, error)
+	DeleteAppPasswordFn     func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	GetAppPasswordByTokenFn func(ctx context.Context, token string) (model.AppPassword, error)
+	TouchAppPasswordFn      func(ctx context.Context, id uuid.UUID, usedAt time.Time) error
+}
+
+// ListAppPasswords implements repository.AppPasswordRepository.
+func (t *RepoMock) ListAppPasswords(ctx context.Context, scope model.OwnerScope) ([]model.AppPassword, error) {
+	return t.ListAppPasswordsFn(ctx, scope)
+}
+
+// CreateAppPassword implements repository.AppPasswordRepository.
+func (t *RepoMock) CreateAppPassword(ctx context.Context, scope model.OwnerScope, password model.AppPassword, token string) (model.AppPassword, error) {
+	return t.CreateAppPasswordFn(ctx, scope, password, token)
+}
+
+// DeleteAppPassword implements repository.AppPasswordRepository.
+func (t *RepoMock) DeleteAppPassword(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error {
+	return t.DeleteAppPasswordFn(ctx, scope, id)
+}
+
+// GetAppPasswordByToken implements repository.AppPasswordRepository.
+func (t *RepoMock) GetAppPasswordByToken(ctx context.Context, token string) (model.AppPassword, error) {
+	return t.GetAppPasswordByTokenFn(ctx, token)
+}
+
+// TouchAppPassword implements repository.AppPasswordRepository.
+func (t *RepoMock) TouchAppPassword(ctx context.Context, id uuid.UUID, usedAt time.Time) error {
+	return t.TouchAppPasswordFn(ctx, id, usedAt)
 }
 
 var _ SessionRepository = (*SessionRepoMock)(nil)

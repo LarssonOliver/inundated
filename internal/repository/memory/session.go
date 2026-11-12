@@ -16,7 +16,7 @@ type storedSession struct {
 }
 
 func hashHex(token string) string {
-	return hex.EncodeToString(model.HashSessionToken(token))
+	return hex.EncodeToString(model.HashToken(token))
 }
 
 // CreateSession implements [repository.SessionRepository].

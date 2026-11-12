@@ -18,13 +18,14 @@ type UserIdentity struct {
 }
 
 type OrphanAdoption struct {
-	Projects  int
-	Tags      int
-	Timespans int
-	Tasks     int
-	Settings  int
+	Projects     int
+	Tags         int
+	Timespans    int
+	Tasks        int
+	Settings     int
+	AppPasswords int
 }
 
 func (a OrphanAdoption) Total() int {
-	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings
+	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings + a.AppPasswords
 }

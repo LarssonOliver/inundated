@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHashSessionToken(t *testing.T) {
+func TestHashToken(t *testing.T) {
 	t.Run("is deterministic", func(t *testing.T) {
-		assert.Equal(t, model.HashSessionToken("abc"), model.HashSessionToken("abc"))
+		assert.Equal(t, model.HashToken("abc"), model.HashToken("abc"))
 	})
 
 	t.Run("is a 32-byte digest that hides the input", func(t *testing.T) {
-		h := model.HashSessionToken("a-secret-session-token")
+		h := model.HashToken("a-secret-session-token")
 		require.Len(t, h, 32)
 		assert.NotContains(t, string(h), "a-secret-session-token")
 	})
 
 	t.Run("differs per input", func(t *testing.T) {
-		assert.NotEqual(t, model.HashSessionToken("token-a"), model.HashSessionToken("token-b"))
+		assert.NotEqual(t, model.HashToken("token-a"), model.HashToken("token-b"))
 	})
 }

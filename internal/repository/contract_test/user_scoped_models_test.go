@@ -17,11 +17,12 @@ import (
 // in every repository implementation. TestUserScopedModelsAreCovered fails if a
 // model gains or loses a UserId field without this map being updated.
 var userScopedModels = map[string]string{
-	"Project":  "projects",
-	"Tag":      "tags",
-	"Timespan": "timespans",
-	"Task":     "tasks",
-	"Settings": "settings",
+	"Project":     "projects",
+	"Tag":         "tags",
+	"Timespan":    "timespans",
+	"Task":        "tasks",
+	"Settings":    "settings",
+	"AppPassword": "app_passwords",
 }
 
 func TestUserScopedModelsAreCovered(t *testing.T) {
