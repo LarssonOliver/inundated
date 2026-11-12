@@ -41,7 +41,12 @@ func AppPasswordAuth(svc service.AppPasswordService, requireOwner bool) func(htt
 			}
 
 			_, token, ok := r.BasicAuth()
-			if !ok || token == "" {
+			if !ok {
+				// Clients send an unauthenticated probe first; it is not a failed guess.
+				challenge(w)
+				return
+			}
+			if token == "" {
 				rejectAppPassword(w, r, failures, key)
 				return
 			}
@@ -73,6 +78,10 @@ func AppPasswordAuth(svc service.AppPasswordService, requireOwner bool) func(htt
 
 func rejectAppPassword(w http.ResponseWriter, r *http.Request, failures *httprate.RateLimiter, key string) {
 	failures.OnLimit(w, r, key)
+	challenge(w)
+}
+
+func challenge(w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", `Basic realm="inundated"`)
 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 }
