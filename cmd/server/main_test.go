@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -285,6 +286,20 @@ func TestNewRouter_CalDAVUserlessMode(t *testing.T) {
 
 	t.Run("a request with a password reaches the principal", func(t *testing.T) {
 		rec := serveRequest(r, davRequest("PROPFIND", "/dav/me/", password))
+		assert.Equal(t, http.StatusMultiStatus, rec.Code)
+	})
+
+	t.Run("REPORT reaches the calendar", func(t *testing.T) {
+		req := davRequest("REPORT", "/dav/me/calendars/time/", password)
+		req.Body = io.NopCloser(strings.NewReader(`<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"/></c:comp-filter></c:filter></c:calendar-query>`))
+		rec := serveRequest(r, req)
+		assert.Equal(t, http.StatusMultiStatus, rec.Code)
+	})
+
+	t.Run("PROPPATCH reaches the calendar", func(t *testing.T) {
+		req := davRequest("PROPPATCH", "/dav/me/calendars/time/", password)
+		req.Body = io.NopCloser(strings.NewReader(`<?xml version="1.0"?><d:propertyupdate xmlns:d="DAV:"><d:set><d:prop><d:displayname>x</d:displayname></d:prop></d:set></d:propertyupdate>`))
+		rec := serveRequest(r, req)
 		assert.Equal(t, http.StatusMultiStatus, rec.Code)
 	})
 
