@@ -96,12 +96,16 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 		return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans rows: %w", err)
 	}
 
-	var tagErr error
+	ids := make([]uuid.UUID, len(spans))
+	for i, ts := range spans {
+		ids[i] = ts.Id
+	}
+	tagIds, err := linkedTagIds(ctx, r.db, "timespan_tags", "timespan_id", ids)
+	if err != nil {
+		return model.Page[model.Timespan]{}, err
+	}
 	for i := range spans {
-		spans[i].TagIds, tagErr = r.timespanTagIds(ctx, r.db, spans[i].Id)
-		if tagErr != nil {
-			return model.Page[model.Timespan]{}, tagErr
-		}
+		spans[i].TagIds = tagIds[spans[i].Id]
 	}
 
 	if spans == nil {

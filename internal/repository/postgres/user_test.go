@@ -142,7 +142,7 @@ func TestCreateUser_EmptyEmail(t *testing.T) {
 // ── CreateUserAdoptingOrphans ────────────────────────────────────────────────
 
 func adoptionRows(id uuid.UUID, sub, email, name string, projects, tags, timespans, tasks, settings, appPasswords int) *pgxmock.Rows {
-	return pgxmock.NewRows([]string{"id", "sub", "email", "name", "projects", "tags", "timespans", "tasks", "settings", "app_passwords"}).
+	return pgxmock.NewRows([]string{"id", "sub", "email", "name", "projects", "tags", "timespans", "tasks", "settings", "deleted_app_passwords"}).
 		AddRow(id, sub, email, name, projects, tags, timespans, tasks, settings, appPasswords)
 }
 
@@ -158,7 +158,7 @@ func TestCreateUserAdoptingOrphans_FirstUserReportsAdoptedCounts(t *testing.T) {
 	got, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
 	assert.Equal(t, user, got)
-	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5, Tasks: 4, Settings: 1, AppPasswords: 6}, adoption)
+	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5, Tasks: 4, Settings: 1, DeletedAppPasswords: 6}, adoption)
 }
 
 func TestCreateUserAdoptingOrphans_GeneratesIdWhenNil(t *testing.T) {

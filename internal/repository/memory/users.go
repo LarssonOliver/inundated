@@ -121,12 +121,11 @@ func (m *MemoryStore) CreateUserAdoptingOrphans(ctx context.Context, user model.
 				adoption.Settings++
 			}
 		}
-		for i := range m.appPasswords {
-			if m.appPasswords[i].password.UserId == nil {
-				m.appPasswords[i].password.UserId = &id
-				adoption.AppPasswords++
-			}
-		}
+		owned := slices.DeleteFunc(m.appPasswords, func(stored storedAppPassword) bool {
+			return stored.password.UserId == nil
+		})
+		adoption.DeletedAppPasswords = len(m.appPasswords) - len(owned)
+		m.appPasswords = owned
 	}
 
 	return user, adoption, nil

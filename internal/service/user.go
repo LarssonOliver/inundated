@@ -83,7 +83,7 @@ func (s *ServiceImpl) createUserFromIdentity(ctx context.Context, identity model
 			"timespans", adoption.Timespans,
 			"tasks", adoption.Tasks,
 			"settings", adoption.Settings,
-			"app_passwords", adoption.AppPasswords,
+			"deleted_app_passwords", adoption.DeletedAppPasswords,
 		)
 	}
 	return created, nil

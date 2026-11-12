@@ -41,9 +41,12 @@ var calendars = []gocaldav.Calendar{
 	{Path: tasksPath, Name: "Tasks", SupportedComponentSet: []string{ical.CompToDo}},
 }
 
+// backend serves one request: a calendar-multiget fetches each object
+// separately, and all of them share the tags loaded for the first.
 type backend struct {
-	svc service.Service
-	now func() time.Time
+	svc  service.Service
+	now  func() time.Time
+	tags map[uuid.UUID]model.Tag
 }
 
 var _ gocaldav.Backend = (*backend)(nil)
@@ -85,7 +88,7 @@ func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.C
 	if err != nil || id.String()+objectSuffix != name || (collection != timePath && collection != tasksPath) {
 		return nil, errNotFound
 	}
-	tags, err := b.svc.ListCalendarTags(ctx)
+	tags, err := b.loadTags(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +149,7 @@ func (b *backend) listObjects(ctx context.Context, collection string, from, to *
 	if collection != timePath && collection != tasksPath {
 		return nil, errNotFound
 	}
-	tags, err := b.svc.ListCalendarTags(ctx)
+	tags, err := b.loadTags(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +166,17 @@ func (b *backend) listObjects(ctx context.Context, collection string, from, to *
 		return nil, err
 	}
 	return toObjects(tasks, tags, taskObject)
+}
+
+func (b *backend) loadTags(ctx context.Context) (map[uuid.UUID]model.Tag, error) {
+	if b.tags == nil {
+		tags, err := b.svc.ListCalendarTags(ctx)
+		if err != nil {
+			return nil, err
+		}
+		b.tags = tags
+	}
+	return b.tags, nil
 }
 
 func (b *backend) closedSince() time.Time {

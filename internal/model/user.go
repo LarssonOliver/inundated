@@ -18,14 +18,16 @@ type UserIdentity struct {
 }
 
 type OrphanAdoption struct {
-	Projects     int
-	Tags         int
-	Timespans    int
-	Tasks        int
-	Settings     int
-	AppPasswords int
+	Projects  int
+	Tags      int
+	Timespans int
+	Tasks     int
+	Settings  int
+	// An orphan app password may be held by anyone who could reach the
+	// instance while it had no login, so they are deleted, not adopted.
+	DeletedAppPasswords int
 }
 
 func (a OrphanAdoption) Total() int {
-	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings + a.AppPasswords
+	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings + a.DeletedAppPasswords
 }
