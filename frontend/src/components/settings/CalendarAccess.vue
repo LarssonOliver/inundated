@@ -51,17 +51,28 @@
         </button>
       </li>
     </ul>
-    <p v-else class="note">No app passwords yet.</p>
+    <p v-else-if="loaded" class="note">No app passwords yet.</p>
 
     <form class="create-row" @submit.prevent="create">
-      <input v-model="newName" placeholder="Name, e.g. iPhone" maxlength="100" />
+      <input
+        v-model="newName"
+        aria-label="App password name"
+        placeholder="Name, e.g. iPhone"
+        maxlength="100"
+      />
       <button type="submit" class="btn-info" :disabled="!newName.trim() || creating">Create</button>
     </form>
+
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
     <ConfirmationPopup
       :model-value="pendingRevoke !== null"
       title="Revoke app password?"
-      :message="`Calendar apps using &quot;${pendingRevoke?.name}&quot; will stop syncing.`"
+      :message="
+        pendingRevoke
+          ? `Calendar apps using &quot;${pendingRevoke.name}&quot; will stop syncing.`
+          : undefined
+      "
       confirm-label="Revoke"
       variant="danger"
       @update:model-value="pendingRevoke = null"
@@ -89,6 +100,9 @@ const newName = ref("");
 const creating = ref(false);
 const created = ref<{ password: string } | null>(null);
 const pendingRevoke = ref<AppPassword | null>(null);
+const revoking = ref(false);
+const loaded = ref(false);
+const errorMessage = ref("");
 
 function formatDate(date: Date): string {
   return formatDatePickerInput(date, dateFormat.value);
@@ -99,16 +113,24 @@ function copy(text: string) {
 }
 
 onMounted(async () => {
-  appPasswords.value = await appPasswordsApi.list();
+  try {
+    appPasswords.value = await appPasswordsApi.list();
+    loaded.value = true;
+  } catch {
+    errorMessage.value = "Could not load app passwords.";
+  }
 });
 
 async function create() {
   creating.value = true;
+  errorMessage.value = "";
   try {
     const result = await appPasswordsApi.create(newName.value.trim());
     appPasswords.value.push(result.appPassword);
     created.value = { password: result.password };
     newName.value = "";
+  } catch {
+    errorMessage.value = "Could not create the app password.";
   } finally {
     creating.value = false;
   }
@@ -116,11 +138,19 @@ async function create() {
 
 async function revoke() {
   const target = pendingRevoke.value;
-  if (!target) {
+  if (!target || revoking.value) {
     return;
   }
-  await appPasswordsApi.delete(target.id);
-  appPasswords.value = appPasswords.value.filter((appPassword) => appPassword.id !== target.id);
+  revoking.value = true;
+  errorMessage.value = "";
+  try {
+    await appPasswordsApi.delete(target.id);
+    appPasswords.value = appPasswords.value.filter((appPassword) => appPassword.id !== target.id);
+  } catch {
+    errorMessage.value = "Could not revoke the app password.";
+  } finally {
+    revoking.value = false;
+  }
 }
 </script>
 
@@ -161,6 +191,10 @@ async function revoke() {
 .copy-row code {
   flex: 1;
   overflow-wrap: anywhere;
+}
+
+.error {
+  color: var(--nord11);
 }
 
 .created {
