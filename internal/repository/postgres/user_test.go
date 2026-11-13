@@ -158,7 +158,7 @@ func TestCreateUserAdoptingOrphans_FirstUserReportsAdoptedCounts(t *testing.T) {
 	got, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 	require.NoError(t, err)
 	assert.Equal(t, user, got)
-	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5, Tasks: 4, Settings: 1, DeletedAppPasswords: 6}, adoption)
+	assert.Equal(t, model.OrphanAdoption{Projects: 3, Tags: 2, Timespans: 5, Tasks: 4, Settings: 1, DeletedAppPasswordCount: 6}, adoption)
 }
 
 func TestCreateUserAdoptingOrphans_GeneratesIdWhenNil(t *testing.T) {
