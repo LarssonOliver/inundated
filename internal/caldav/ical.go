@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -20,14 +21,18 @@ var timestamp = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 const untitled = "Untitled"
 
-// TimespanEvent maps a timespan to a calendar holding one VEVENT. tags holds
-// every tag the timespan may reference, keyed by id.
-func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag) *ical.Calendar {
+// TimespanEvent maps a timespan to a calendar holding one VEVENT, with its
+// times in location. tags holds every tag the timespan may reference, keyed
+// by id.
+func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag, location *time.Location) *ical.Calendar {
+	start := timespan.StartTime.In(location)
+	end := timespan.EndTime.In(location)
+
 	event := ical.NewEvent()
 	event.Props.SetText(ical.PropUID, timespan.Id.String())
 	event.Props.SetDateTime(ical.PropDateTimeStamp, timestamp)
-	event.Props.SetDateTime(ical.PropDateTimeStart, timespan.StartTime.UTC())
-	event.Props.SetDateTime(ical.PropDateTimeEnd, timespan.EndTime.UTC())
+	event.Props.SetDateTime(ical.PropDateTimeStart, start)
+	event.Props.SetDateTime(ical.PropDateTimeEnd, end)
 
 	tagsOfTimespan := lookupTags(timespan.TagIds, tags)
 	summary := timespan.Name
@@ -40,7 +45,77 @@ func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag) *ical.
 	event.Props.SetText(ical.PropSummary, summary)
 	setCategories(event.Component, tagsOfTimespan)
 
-	return newCalendar(event.Component)
+	cal := newCalendar(event.Component)
+	if location != time.UTC {
+		cal.Children = slices.Insert(cal.Children, 0, timezone(start, end))
+	}
+	return cal
+}
+
+// timezone describes the zone of the given times, all in one location, with
+// only the observances in effect at those times. RFC 5545 requires a
+// VTIMEZONE for every TZID, but not one covering all of history.
+func timezone(times ...time.Time) *ical.Component {
+	component := ical.NewComponent(ical.CompTimezone)
+	component.Props.SetText(ical.PropTimezoneID, times[0].Location().String())
+
+	var starts []time.Time
+	for _, t := range times {
+		start, _ := t.ZoneBounds()
+		if slices.ContainsFunc(starts, start.Equal) {
+			continue
+		}
+		starts = append(starts, start)
+		component.Children = append(component.Children, observance(t, start))
+	}
+	return component
+}
+
+// observance describes the zone in effect at t, which began at start (zero
+// if the location has always used it).
+func observance(t, start time.Time) *ical.Component {
+	name, offset := t.Zone()
+	offsetFrom := offset
+	if start.IsZero() {
+		start = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	} else {
+		_, offsetFrom = start.Add(-time.Second).Zone()
+	}
+
+	kind := ical.CompTimezoneStandard
+	if t.IsDST() {
+		kind = ical.CompTimezoneDaylight
+	}
+	component := ical.NewComponent(kind)
+	// An observance's DTSTART is local time under the offset it replaces.
+	onset := ical.NewProp(ical.PropDateTimeStart)
+	onset.Value = start.In(time.FixedZone("", offsetFrom)).Format("20060102T150405")
+	component.Props.Set(onset)
+	setOffset(component, ical.PropTimezoneOffsetFrom, offsetFrom)
+	setOffset(component, ical.PropTimezoneOffsetTo, offset)
+	component.Props.SetText(ical.PropTimezoneName, name)
+	return component
+}
+
+// setOffset sets the value directly, since SetText would mark the
+// UTC-OFFSET property as TEXT.
+func setOffset(component *ical.Component, name string, seconds int) {
+	prop := ical.NewProp(name)
+	prop.Value = formatOffset(seconds)
+	component.Props.Set(prop)
+}
+
+func formatOffset(seconds int) string {
+	sign := '+'
+	if seconds < 0 {
+		sign = '-'
+		seconds = -seconds
+	}
+	formatted := fmt.Sprintf("%c%02d%02d", sign, seconds/3600, seconds%3600/60)
+	if seconds%60 != 0 {
+		formatted += fmt.Sprintf("%02d", seconds%60)
+	}
+	return formatted
 }
 
 // TaskTodo maps a task to a calendar holding one VTODO. tags holds every tag

@@ -42,11 +42,13 @@ var calendars = []gocaldav.Calendar{
 }
 
 // backend serves one request: a calendar-multiget fetches each object
-// separately, and all of them share the tags loaded for the first.
+// separately, and all of them share the tags and location loaded for the
+// first.
 type backend struct {
-	svc  service.Service
-	now  func() time.Time
-	tags map[uuid.UUID]model.Tag
+	svc      service.Service
+	now      func() time.Time
+	tags     map[uuid.UUID]model.Tag
+	location *time.Location
 }
 
 var _ gocaldav.Backend = (*backend)(nil)
@@ -94,11 +96,15 @@ func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.C
 	}
 
 	if collection == timePath {
+		location, err := b.loadLocation(ctx)
+		if err != nil {
+			return nil, err
+		}
 		timespan, err := b.svc.GetTimespan(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		return timespanObject(timespan, tags)
+		return timespanObject(timespan, tags, location)
 	}
 	task, err := b.svc.GetTask(ctx, id, nil)
 	if err != nil {
@@ -155,17 +161,25 @@ func (b *backend) listObjects(ctx context.Context, collection string, from, to *
 	}
 
 	if collection == timePath {
+		location, err := b.loadLocation(ctx)
+		if err != nil {
+			return nil, err
+		}
 		timespans, err := b.svc.ListCalendarTimespans(ctx, from, to)
 		if err != nil {
 			return nil, err
 		}
-		return toObjects(timespans, tags, timespanObject)
+		return toObjects(timespans, func(timespan model.Timespan) (*gocaldav.CalendarObject, error) {
+			return timespanObject(timespan, tags, location)
+		})
 	}
 	tasks, err := b.svc.ListCalendarTasks(ctx, b.closedSince())
 	if err != nil {
 		return nil, err
 	}
-	return toObjects(tasks, tags, taskObject)
+	return toObjects(tasks, func(task model.Task) (*gocaldav.CalendarObject, error) {
+		return taskObject(task, tags)
+	})
 }
 
 func (b *backend) loadTags(ctx context.Context) (map[uuid.UUID]model.Tag, error) {
@@ -179,22 +193,39 @@ func (b *backend) loadTags(ctx context.Context) (map[uuid.UUID]model.Tag, error)
 	return b.tags, nil
 }
 
+// loadLocation falls back to UTC when the timezone setting is "browser",
+// since only the browser knows its zone.
+func (b *backend) loadLocation(ctx context.Context) (*time.Location, error) {
+	if b.location == nil {
+		settings, err := b.svc.GetSettings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		location, err := time.LoadLocation(settings.Timezone)
+		if settings.Timezone == model.TimezoneBrowser || err != nil {
+			location = time.UTC
+		}
+		b.location = location
+	}
+	return b.location, nil
+}
+
 func (b *backend) closedSince() time.Time {
 	return b.now().Add(-closedTaskWindow)
 }
 
-func timespanObject(timespan model.Timespan, tags map[uuid.UUID]model.Tag) (*gocaldav.CalendarObject, error) {
-	return newObject(timePath, timespan.Id, TimespanEvent(timespan, tags))
+func timespanObject(timespan model.Timespan, tags map[uuid.UUID]model.Tag, location *time.Location) (*gocaldav.CalendarObject, error) {
+	return newObject(timePath, timespan.Id, TimespanEvent(timespan, tags, location))
 }
 
 func taskObject(task model.Task, tags map[uuid.UUID]model.Tag) (*gocaldav.CalendarObject, error) {
 	return newObject(tasksPath, task.Id, TaskTodo(task, tags))
 }
 
-func toObjects[T any](items []T, tags map[uuid.UUID]model.Tag, toObject func(T, map[uuid.UUID]model.Tag) (*gocaldav.CalendarObject, error)) ([]gocaldav.CalendarObject, error) {
+func toObjects[T any](items []T, toObject func(T) (*gocaldav.CalendarObject, error)) ([]gocaldav.CalendarObject, error) {
 	objects := make([]gocaldav.CalendarObject, 0, len(items))
 	for _, item := range items {
-		object, err := toObject(item, tags)
+		object, err := toObject(item)
 		if err != nil {
 			return nil, err
 		}
