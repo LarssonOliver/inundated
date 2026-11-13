@@ -105,7 +105,7 @@ func (r *PostgresStore) CreateUserAdoptingOrphans(ctx context.Context, user mode
 	var adoption model.OrphanAdoption
 	err := r.db.QueryRow(ctx, q, user.Id, user.Sub, user.Email, user.Name).
 		Scan(&created.Id, &created.Sub, &created.Email, &created.Name,
-			&adoption.Projects, &adoption.Tags, &adoption.Timespans, &adoption.Tasks, &adoption.Settings, &adoption.DeletedAppPasswords)
+			&adoption.Projects, &adoption.Tags, &adoption.Timespans, &adoption.Tasks, &adoption.Settings, &adoption.DeletedAppPasswordCount)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return model.User{}, model.OrphanAdoption{}, fmt.Errorf("CreateUserAdoptingOrphans: sub already exists: %w", model.ErrAlreadyExists)

@@ -239,7 +239,7 @@ func TestUserRepositoryContract(t *testing.T) {
 			user := model.User{Id: uuid.New(), Sub: "auth0|first", Email: "first@example.com", Name: "First"}
 			_, adoption, err := repo.CreateUserAdoptingOrphans(ctx, user)
 			require.NoError(t, err)
-			require.Equal(t, model.OrphanAdoption{DeletedAppPasswords: 1}, adoption)
+			require.Equal(t, model.OrphanAdoption{DeletedAppPasswordCount: 1}, adoption)
 
 			_, err = repo.GetAppPasswordByToken(ctx, "tok-1")
 			require.ErrorIs(t, err, model.ErrNotFound)

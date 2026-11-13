@@ -25,9 +25,9 @@ type OrphanAdoption struct {
 	Settings  int
 	// An orphan app password may be held by anyone who could reach the
 	// instance while it had no login, so they are deleted, not adopted.
-	DeletedAppPasswords int
+	DeletedAppPasswordCount int
 }
 
 func (a OrphanAdoption) Total() int {
-	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings + a.DeletedAppPasswords
+	return a.Projects + a.Tags + a.Timespans + a.Tasks + a.Settings + a.DeletedAppPasswordCount
 }
