@@ -269,7 +269,7 @@ func TestWritesAreForbidden(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, serve(handler, http.MethodDelete, path, "", "").Code)
 }
 
-func TestPropPatchIsRefused(t *testing.T) {
+func TestPropPatchIsAccepted(t *testing.T) {
 	handler, _ := newHandler()
 
 	recorder := serve(handler, "PROPPATCH", "/dav/me/calendars/time/", "", `<?xml version="1.0" encoding="UTF-8"?>
@@ -286,7 +286,7 @@ func TestPropPatchIsRefused(t *testing.T) {
 	assert.Equal(t, "/dav/me/calendars/time/", result.Responses[0].Href)
 	require.Len(t, result.Responses[0].Propstats, 1)
 	propstat := result.Responses[0].Propstats[0]
-	assert.Equal(t, "HTTP/1.1 403 Forbidden", propstat.Status)
+	assert.Equal(t, "HTTP/1.1 200 OK", propstat.Status)
 	var names []xml.Name
 	for _, property := range propstat.Prop.Raw {
 		names = append(names, property.XMLName)
