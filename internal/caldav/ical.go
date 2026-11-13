@@ -61,7 +61,7 @@ func timezone(times ...time.Time) *ical.Component {
 
 	var starts []time.Time
 	for _, t := range times {
-		start, _ := t.ZoneBounds()
+		start := zoneStart(t)
 		if slices.ContainsFunc(starts, start.Equal) {
 			continue
 		}
@@ -69,6 +69,23 @@ func timezone(times ...time.Time) *ical.Component {
 		component.Children = append(component.Children, observance(t, start))
 	}
 	return component
+}
+
+// zoneStart returns when the zone in effect at t began, or zero if the
+// location has always used it. With slim tzdata, as in Go's own zoneinfo.zip,
+// ZoneBounds stops at year boundaries the zone continues across, so keep
+// stepping back until the zone actually changes.
+func zoneStart(t time.Time) time.Time {
+	name, offset := t.Zone()
+	start, _ := t.ZoneBounds()
+	for !start.IsZero() {
+		before := start.Add(-time.Second)
+		if beforeName, beforeOffset := before.Zone(); beforeName != name || beforeOffset != offset {
+			break
+		}
+		start, _ = before.ZoneBounds()
+	}
+	return start
 }
 
 // observance describes the zone in effect at t, which began at start (zero
