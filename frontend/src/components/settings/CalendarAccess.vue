@@ -199,6 +199,7 @@ async function revoke() {
   display: flex;
   align-items: center;
   gap: 0.5em;
+  padding-bottom: 0.5em;
 }
 
 .copy-row code {
@@ -227,6 +228,9 @@ async function revoke() {
 }
 
 .icon-button {
+  display: inline-flex;
+  width: auto;
+  max-width: none;
   background: none;
   padding: 0.25em;
   color: inherit;
@@ -234,5 +238,9 @@ async function revoke() {
 
 .create-row input {
   flex: 1;
+}
+
+.create-row button {
+  width: auto;
 }
 </style>
