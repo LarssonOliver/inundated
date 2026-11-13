@@ -40,26 +40,40 @@ func requireGolden(t *testing.T, name string, got []byte) {
 }
 
 func TestTimespanEvent(t *testing.T) {
+	stockholm, err := time.LoadLocation("Europe/Stockholm")
+	require.NoError(t, err)
+
 	tests := []struct {
 		name     string
 		timespan model.Timespan
+		location *time.Location
 	}{
 		{"timespan_named", model.Timespan{
 			Id: id(10), Name: "Standup", StartTime: start, EndTime: end,
 			TagIds: []uuid.UUID{work.Id, taskTag.Id, alpha.Id},
-		}},
+		}, time.UTC},
 		{"timespan_unnamed_owned_tags", model.Timespan{
 			Id: id(11), StartTime: start, EndTime: end,
 			TagIds: []uuid.UUID{taskTag.Id, project.Id},
-		}},
+		}, time.UTC},
 		{"timespan_untitled", model.Timespan{
 			Id: id(12), StartTime: start, EndTime: end,
 			TagIds: []uuid.UUID{id(99)},
-		}},
+		}, time.UTC},
+		{"timespan_local", model.Timespan{
+			Id: id(13), Name: "Standup", StartTime: start, EndTime: end,
+		}, stockholm},
+		// Summer time began at 01:00 UTC that day.
+		{"timespan_local_across_dst", model.Timespan{
+			Id:        id(14),
+			Name:      "Night shift",
+			StartTime: time.Date(2024, 3, 31, 0, 30, 0, 0, time.UTC),
+			EndTime:   time.Date(2024, 3, 31, 1, 30, 0, 0, time.UTC),
+		}, stockholm},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, _, err := Encode(TimespanEvent(test.timespan, tags))
+			got, _, err := Encode(TimespanEvent(test.timespan, tags, test.location))
 			require.NoError(t, err)
 			requireGolden(t, test.name, got)
 		})
@@ -101,11 +115,11 @@ func TestTimespanEvent_StableBytes(t *testing.T) {
 	timespan := model.Timespan{Id: id(10), StartTime: start, EndTime: end}
 
 	timespan.TagIds = []uuid.UUID{work.Id, alpha.Id, taskTag.Id, project.Id}
-	first, firstETag, err := Encode(TimespanEvent(timespan, tags))
+	first, firstETag, err := Encode(TimespanEvent(timespan, tags, time.UTC))
 	require.NoError(t, err)
 
 	timespan.TagIds = []uuid.UUID{project.Id, taskTag.Id, alpha.Id, work.Id}
-	second, secondETag, err := Encode(TimespanEvent(timespan, tags))
+	second, secondETag, err := Encode(TimespanEvent(timespan, tags, time.UTC))
 	require.NoError(t, err)
 
 	require.Equal(t, first, second)

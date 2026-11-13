@@ -30,6 +30,11 @@ type fakeService struct {
 	tagLists  int
 	from, to  *time.Time
 	err       error
+	timezone  string
+}
+
+func (f *fakeService) GetSettings(ctx context.Context) (model.Settings, error) {
+	return model.Settings{Timezone: f.timezone}, nil
 }
 
 func (f *fakeService) GetTimespan(ctx context.Context, id uuid.UUID) (model.Timespan, error) {
@@ -89,6 +94,7 @@ func newHandler() (http.Handler, *fakeService) {
 		timespans: []model.Timespan{before, overlapping},
 		tasks:     []model.Task{openTask},
 		tags:      map[uuid.UUID]model.Tag{label.Id: label},
+		timezone:  model.TimezoneBrowser,
 	}
 	return caldav.NewHandler(svc, func() time.Time { return now }), svc
 }
@@ -213,15 +219,31 @@ func TestCalendarMultigetLoadsTagsOncePerRequest(t *testing.T) {
 }
 
 func TestGetReturnsEncodedETag(t *testing.T) {
-	handler, _ := newHandler()
-
-	recorder := serve(handler, http.MethodGet, objectPath("time", overlapping.Id), "", "")
-
-	require.Equal(t, http.StatusOK, recorder.Code)
-	want, etag, err := caldav.Encode(caldav.TimespanEvent(overlapping, map[uuid.UUID]model.Tag{label.Id: label}))
+	stockholm, err := time.LoadLocation("Europe/Stockholm")
 	require.NoError(t, err)
-	assert.Equal(t, `"`+etag+`"`, recorder.Header().Get("ETag"))
-	assert.Equal(t, string(want), recorder.Body.String())
+
+	tests := []struct {
+		timezone string
+		location *time.Location
+	}{
+		{"Europe/Stockholm", stockholm},
+		{model.TimezoneBrowser, time.UTC},
+		{"Not/AZone", time.UTC},
+	}
+	for _, test := range tests {
+		t.Run(test.timezone, func(t *testing.T) {
+			handler, svc := newHandler()
+			svc.timezone = test.timezone
+
+			recorder := serve(handler, http.MethodGet, objectPath("time", overlapping.Id), "", "")
+
+			require.Equal(t, http.StatusOK, recorder.Code)
+			want, etag, err := caldav.Encode(caldav.TimespanEvent(overlapping, map[uuid.UUID]model.Tag{label.Id: label}, test.location))
+			require.NoError(t, err)
+			assert.Equal(t, `"`+etag+`"`, recorder.Header().Get("ETag"))
+			assert.Equal(t, string(want), recorder.Body.String())
+		})
+	}
 }
 
 func TestGetMissingObjects(t *testing.T) {
