@@ -18,7 +18,7 @@ func NewHandler(svc service.Service, now func() time.Time) http.Handler {
 		// go-webdav answers PROPPATCH with 501, and Apple clients send one on
 		// every sync to set colour and order.
 		if r.Method == "PROPPATCH" {
-			refusePropPatch(w, r)
+			acceptPropPatch(w, r)
 			return
 		}
 		dav.ServeHTTP(w, r)
@@ -52,15 +52,17 @@ type propstat struct {
 	Status string `xml:"DAV: status"`
 }
 
-// refusePropPatch reports every property in the request as forbidden.
-func refusePropPatch(w http.ResponseWriter, r *http.Request) {
+// acceptPropPatch reports every property in the request as set, without
+// storing any. Apple Calendar flags the calendar with an error when a
+// property such as its colour is refused.
+func acceptPropPatch(w http.ResponseWriter, r *http.Request) {
 	var update propertyUpdate
 	if err := xml.NewDecoder(r.Body).Decode(&update); err != nil {
 		http.Error(w, "malformed propertyupdate", http.StatusBadRequest)
 		return
 	}
 
-	response := multistatus{Href: r.URL.EscapedPath(), Propstat: propstat{Status: "HTTP/1.1 403 Forbidden"}}
+	response := multistatus{Href: r.URL.EscapedPath(), Propstat: propstat{Status: "HTTP/1.1 200 OK"}}
 	for _, operation := range update.Operations {
 		response.Propstat.Prop.Properties = append(response.Propstat.Prop.Properties, operation.Prop.Properties...)
 	}
