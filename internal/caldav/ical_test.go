@@ -56,6 +56,10 @@ func TestTimespanEvent(t *testing.T) {
 			Id: id(11), StartTime: start, EndTime: end,
 			TagIds: []uuid.UUID{taskTag.Id, project.Id},
 		}, time.UTC},
+		{"timespan_unnamed_labels", model.Timespan{
+			Id: id(15), StartTime: start, EndTime: end,
+			TagIds: []uuid.UUID{work.Id, alpha.Id},
+		}, time.UTC},
 		{"timespan_untitled", model.Timespan{
 			Id: id(12), StartTime: start, EndTime: end,
 			TagIds: []uuid.UUID{id(99)},

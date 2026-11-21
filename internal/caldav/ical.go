@@ -40,6 +40,11 @@ func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag, locati
 		summary = strings.Join(tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner != nil }), ", ")
 	}
 	if summary == "" {
+		if labels := tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner == nil }); len(labels) > 0 {
+			summary = labels[0]
+		}
+	}
+	if summary == "" {
 		summary = untitled
 	}
 	event.Props.SetText(ical.PropSummary, summary)
