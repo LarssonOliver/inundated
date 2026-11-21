@@ -86,8 +86,7 @@ func (b *backend) GetCalendarObject(ctx context.Context, objectPath string, requ
 
 func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.CalendarObject, error) {
 	collection, name := path.Split(objectPath)
-	id, err := uuid.Parse(strings.TrimSuffix(name, objectSuffix))
-	if err != nil || id.String()+objectSuffix != name || (collection != timePath && collection != tasksPath) {
+	if collection != timePath && collection != tasksPath {
 		return nil, errNotFound
 	}
 	tags, err := b.loadTags(ctx)
@@ -100,13 +99,13 @@ func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.C
 		if err != nil {
 			return nil, err
 		}
-		timespan, err := b.svc.GetTimespan(ctx, id)
+		timespan, err := b.lookupTimespan(ctx, name)
 		if err != nil {
 			return nil, err
 		}
 		return timespanObject(timespan, tags, location)
 	}
-	task, err := b.svc.GetTask(ctx, id, nil)
+	task, err := b.lookupTask(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +113,36 @@ func (b *backend) getObject(ctx context.Context, objectPath string) (*gocaldav.C
 		return nil, errNotFound
 	}
 	return taskObject(task, tags)
+}
+
+// lookupTimespan finds the timespan served under name: by id for
+// "<id>.ics", else by the name a client created it under.
+func (b *backend) lookupTimespan(ctx context.Context, name string) (model.Timespan, error) {
+	if id, ok := objectId(name); ok {
+		timespan, err := b.svc.GetTimespan(ctx, id)
+		if !errors.Is(err, model.ErrNotFound) {
+			return timespan, err
+		}
+	}
+	return b.svc.GetCalendarTimespan(ctx, name)
+}
+
+// lookupTask is [backend.lookupTimespan] for tasks.
+func (b *backend) lookupTask(ctx context.Context, name string) (model.Task, error) {
+	if id, ok := objectId(name); ok {
+		task, err := b.svc.GetTask(ctx, id, nil)
+		if !errors.Is(err, model.ErrNotFound) {
+			return task, err
+		}
+	}
+	return b.svc.GetCalendarTask(ctx, name)
+}
+
+// objectId parses the names this server gives objects, "<id>.ics" with a
+// lower-case id. A client may still have created an object under such a name.
+func objectId(name string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(strings.TrimSuffix(name, objectSuffix))
+	return id, err == nil && id.String()+objectSuffix == name
 }
 
 func (b *backend) ListCalendarObjects(ctx context.Context, calendarPath string, request *gocaldav.CalendarCompRequest) ([]gocaldav.CalendarObject, error) {
@@ -215,11 +244,11 @@ func (b *backend) closedSince() time.Time {
 }
 
 func timespanObject(timespan model.Timespan, tags map[uuid.UUID]model.Tag, location *time.Location) (*gocaldav.CalendarObject, error) {
-	return newObject(timePath, timespan.Id, TimespanEvent(timespan, tags, location))
+	return newObject(timePath+objectName(timespan.Id, timespan.CaldavName), TimespanEvent(timespan, tags, location))
 }
 
 func taskObject(task model.Task, tags map[uuid.UUID]model.Tag) (*gocaldav.CalendarObject, error) {
-	return newObject(tasksPath, task.Id, TaskTodo(task, tags))
+	return newObject(tasksPath+objectName(task.Id, task.CaldavName), TaskTodo(task, tags))
 }
 
 func toObjects[T any](items []T, toObject func(T) (*gocaldav.CalendarObject, error)) ([]gocaldav.CalendarObject, error) {
@@ -234,13 +263,22 @@ func toObjects[T any](items []T, toObject func(T) (*gocaldav.CalendarObject, err
 	return objects, nil
 }
 
-func newObject(collection string, id uuid.UUID, calendar *ical.Calendar) (*gocaldav.CalendarObject, error) {
+// objectName keeps the name a client created an object under, so it finds
+// the object again.
+func objectName(id uuid.UUID, caldavName *string) string {
+	if caldavName != nil {
+		return *caldavName
+	}
+	return id.String() + objectSuffix
+}
+
+func newObject(objectPath string, calendar *ical.Calendar) (*gocaldav.CalendarObject, error) {
 	data, etag, err := Encode(calendar)
 	if err != nil {
 		return nil, err
 	}
 	return &gocaldav.CalendarObject{
-		Path:          collection + id.String() + objectSuffix,
+		Path:          objectPath,
 		ContentLength: int64(len(data)),
 		ETag:          etag,
 		Data:          calendar,

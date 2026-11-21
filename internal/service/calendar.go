@@ -49,6 +49,22 @@ func (s *ServiceImpl) ListCalendarTags(ctx context.Context) (map[uuid.UUID]model
 	return byId, nil
 }
 
+func (s *ServiceImpl) GetCalendarTimespan(ctx context.Context, name string) (model.Timespan, error) {
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Timespan{}, err
+	}
+	return s.repository.GetTimespanByCaldavName(ctx, scope, name)
+}
+
+func (s *ServiceImpl) GetCalendarTask(ctx context.Context, name string) (model.Task, error) {
+	scope, err := ownerScope(ctx)
+	if err != nil {
+		return model.Task{}, err
+	}
+	return s.repository.GetTaskByCaldavName(ctx, scope, name)
+}
+
 func readAllPages[T any](list func(page model.PaginationParams) (model.Page[T], error)) ([]T, error) {
 	var all []T
 	for {

@@ -58,6 +58,24 @@ func (f *fakeService) GetTask(ctx context.Context, id uuid.UUID, includes *servi
 	return model.Task{}, model.ErrNotFound
 }
 
+func (f *fakeService) GetCalendarTimespan(ctx context.Context, name string) (model.Timespan, error) {
+	for _, timespan := range f.timespans {
+		if timespan.CaldavName != nil && *timespan.CaldavName == name {
+			return timespan, nil
+		}
+	}
+	return model.Timespan{}, model.ErrNotFound
+}
+
+func (f *fakeService) GetCalendarTask(ctx context.Context, name string) (model.Task, error) {
+	for _, task := range f.tasks {
+		if task.CaldavName != nil && *task.CaldavName == name {
+			return task, nil
+		}
+	}
+	return model.Task{}, model.ErrNotFound
+}
+
 func (f *fakeService) ListCalendarTimespans(ctx context.Context, from, to *time.Time) ([]model.Timespan, error) {
 	f.from, f.to = from, to
 	return f.timespans, nil
@@ -264,6 +282,48 @@ func TestGetMissingObjects(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, serve(handler, http.MethodGet, path, "", "").Code)
 		})
 	}
+}
+
+func TestListUsesCaldavName(t *testing.T) {
+	handler, svc := newHandler()
+	named := before
+	named.CaldavName = new("A1B2.ics")
+	svc.timespans = []model.Timespan{named, overlapping}
+
+	recorder := serve(handler, "PROPFIND", "/dav/me/calendars/time/", "1", `<?xml version="1.0" encoding="UTF-8"?>
+<d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>`)
+
+	result := decodeMultistatus(t, recorder)
+	assert.ElementsMatch(t, []string{
+		"/dav/me/calendars/time/",
+		"/dav/me/calendars/time/A1B2.ics",
+		objectPath("time", overlapping.Id),
+	}, result.hrefs())
+}
+
+func TestGetByCaldavName(t *testing.T) {
+	handler, svc := newHandler()
+	named := before
+	named.CaldavName = new("A1B2.ics")
+	task := openTask
+	task.CaldavName = new("Some Name With Spaces.ics")
+	svc.timespans = []model.Timespan{named}
+	svc.tasks = []model.Task{task}
+
+	assert.Equal(t, http.StatusOK, serve(handler, http.MethodGet, "/dav/me/calendars/time/A1B2.ics", "", "").Code)
+	assert.Equal(t, http.StatusOK, serve(handler, http.MethodGet, "/dav/me/calendars/tasks/Some%20Name%20With%20Spaces.ics", "", "").Code)
+	// A name belongs to its own collection only.
+	assert.Equal(t, http.StatusNotFound, serve(handler, http.MethodGet, "/dav/me/calendars/tasks/A1B2.ics", "", "").Code)
+}
+
+func TestGetLowercaseUuidNameFallsBackToCaldavName(t *testing.T) {
+	handler, svc := newHandler()
+	name := uuid.New().String() + ".ics"
+	named := before
+	named.CaldavName = &name
+	svc.timespans = []model.Timespan{named}
+
+	assert.Equal(t, http.StatusOK, serve(handler, http.MethodGet, "/dav/me/calendars/time/"+name, "", "").Code)
 }
 
 func TestGetHidesInternalErrors(t *testing.T) {
