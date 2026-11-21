@@ -50,6 +50,9 @@ type TagRepository interface {
 
 type TaskRepository interface {
 	GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
+	// GetTaskByCaldavName finds the live task a CalDAV client created under
+	// name. A name is unique among live tasks in a scope.
+	GetTaskByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Task, error)
 	// ListTasks orders tasks by parent, then by rank among siblings.
 	ListTasks(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
 	// CreateTask creates the task together with its task tag and places it
@@ -110,6 +113,9 @@ type ProjectRepository interface {
 
 type TimespanRepository interface {
 	GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
+	// GetTimespanByCaldavName finds the live timespan a CalDAV client
+	// created under name. A name is unique among live timespans in a scope.
+	GetTimespanByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Timespan, error)
 	ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
 	CreateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
 	UpdateTimespan(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)

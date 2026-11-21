@@ -11,12 +11,12 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-const taskColumnsSQL = `id, name, tag_id, parent_id, due_date, estimate, rank, close_reason, closed_at, user_id`
+const taskColumnsSQL = `id, name, tag_id, parent_id, due_date, estimate, rank, close_reason, closed_at, user_id, caldav_name`
 
 func scanTask(row pgx.Row) (model.Task, error) {
 	var t model.Task
 	var reason *string
-	if err := row.Scan(&t.Id, &t.Name, &t.TagId, &t.ParentId, &t.DueDate, &t.Estimate, &t.Rank, &reason, &t.ClosedAt, &t.UserId); err != nil {
+	if err := row.Scan(&t.Id, &t.Name, &t.TagId, &t.ParentId, &t.DueDate, &t.Estimate, &t.Rank, &reason, &t.ClosedAt, &t.UserId, &t.CaldavName); err != nil {
 		return model.Task{}, err
 	}
 	if reason != nil {
@@ -31,6 +31,29 @@ func (r *PostgresStore) GetTask(ctx context.Context, scope model.OwnerScope, id 
 		return model.Task{}, fmt.Errorf("GetTask: %w", errNilId)
 	}
 	return r.getTask(ctx, r.db, scope, id, false)
+}
+
+func (r *PostgresStore) GetTaskByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Task, error) {
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{name})
+	query := `
+		SELECT ` + taskColumnsSQL + `
+		FROM tasks
+		WHERE caldav_name = $1 AND deleted_at IS NULL AND ` + ownerSQL
+
+	t, err := scanTask(r.db.QueryRow(ctx, query, args...))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.Task{}, fmt.Errorf("GetTaskByCaldavName %q: %w", name, model.ErrNotFound)
+	}
+	if err != nil {
+		return model.Task{}, fmt.Errorf("GetTaskByCaldavName: %w", err)
+	}
+
+	tagIds, err := r.taskTagIds(ctx, r.db, []uuid.UUID{t.Id})
+	if err != nil {
+		return model.Task{}, err
+	}
+	t.TagIds = tagIds[t.Id]
+	return t, nil
 }
 
 // getTask reads one live task in scope. forUpdate locks its row for the
@@ -222,11 +245,14 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		}
 
 		const insert = `
-			INSERT INTO tasks (id, name, tag_id, parent_id, due_date, estimate, rank, user_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			INSERT INTO tasks (id, name, tag_id, parent_id, due_date, estimate, rank, user_id, caldav_name)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			RETURNING ` + taskColumnsSQL
 		created, err = scanTask(q.QueryRow(ctx, insert,
-			uuid.New(), task.Name, tagId, task.ParentId, task.DueDate, task.Estimate, rank, scope.UserID()))
+			uuid.New(), task.Name, tagId, task.ParentId, task.DueDate, task.Estimate, rank, scope.UserID(), task.CaldavName))
+		if isUniqueViolation(err) {
+			return fmt.Errorf("CreateTask: %w", model.ErrAlreadyExists)
+		}
 		if err != nil {
 			return fmt.Errorf("CreateTask: %w", err)
 		}
