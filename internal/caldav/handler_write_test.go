@@ -285,3 +285,16 @@ func TestWriteErrorsHideInternals(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 	assert.NotContains(t, recorder.Body.String(), "hunter2")
 }
+
+func TestPutToCollectionIsRefused(t *testing.T) {
+	for _, collection := range []string{"/dav/me/calendars/time/", "/dav/me/calendars/tasks/"} {
+		t.Run(collection, func(t *testing.T) {
+			handler, svc := newHandler()
+
+			recorder := put(handler, collection, fixture(t, "apple_event"), nil)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
+			assert.Empty(t, svc.writes)
+		})
+	}
+}

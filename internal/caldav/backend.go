@@ -36,11 +36,12 @@ var (
 	errNotFound           = webdav.NewHTTPError(http.StatusNotFound, nil)
 	errPreconditionFailed = webdav.NewHTTPError(http.StatusPreconditionFailed, nil)
 	errHasSubtasks        = webdav.NewHTTPError(http.StatusForbidden, errors.New("caldav: tasks with subtasks can't be deleted here"))
+	errNotAnObject        = webdav.NewHTTPError(http.StatusMethodNotAllowed, errors.New("caldav: not a calendar object"))
 	errInternal           = webdav.NewHTTPError(http.StatusInternalServerError, errors.New("internal error"))
 )
 
 // clientErrors are safe to send to clients as they are.
-var clientErrors = []error{errReadOnly, errNotFound, errPreconditionFailed, errHasSubtasks, errUnsupported, errInvalid}
+var clientErrors = []error{errReadOnly, errNotFound, errPreconditionFailed, errHasSubtasks, errNotAnObject, errUnsupported, errInvalid}
 
 var calendars = []gocaldav.Calendar{
 	{Path: timePath, Name: "Time", SupportedComponentSet: []string{ical.CompEvent}},
@@ -181,10 +182,12 @@ func (b *backend) QueryCalendarObjects(ctx context.Context, calendarPath string,
 // what the client sent byte for byte, so the client fetches it again.
 func (b *backend) PutCalendarObject(ctx context.Context, objectPath string, calendar *ical.Calendar, options *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {
 	var err error
-	switch collection, name := path.Split(objectPath); collection {
-	case timePath:
+	switch collection, name := path.Split(objectPath); {
+	case name == "":
+		err = errNotAnObject
+	case collection == timePath:
 		err = b.putTimespan(ctx, name, calendar, options)
-	case tasksPath:
+	case collection == tasksPath:
 		err = b.putTask(ctx, name, calendar, options)
 	default:
 		err = errNotFound
