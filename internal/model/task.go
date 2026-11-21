@@ -36,6 +36,9 @@ type Task struct {
 	CloseReason *CloseReason
 	ClosedAt    *time.Time
 	UserId      *uuid.UUID
+	// CaldavName is the object name a CalDAV client chose when it created
+	// the task; nil otherwise.
+	CaldavName *string
 
 	// TotalTime and ProjectIds are only filled in when requested.
 	// TotalTime is the time logged on the task and its subtasks.

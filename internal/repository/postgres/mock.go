@@ -103,6 +103,11 @@ func (m *MockRepository) GetTimespan(ctx context.Context, scope model.OwnerScope
 	return args.Get(0).(model.Timespan), args.Error(1)
 }
 
+func (m *MockRepository) GetTimespanByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Timespan, error) {
+	args := m.Called(ctx, scope, name)
+	return args.Get(0).(model.Timespan), args.Error(1)
+}
+
 func (m *MockRepository) ListTimespans(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error) {
 	args := m.Called(ctx, scope, params)
 	return args.Get(0).(model.Page[model.Timespan]), args.Error(1)
@@ -244,6 +249,11 @@ func (m *MockRepository) DeleteAllExpiredLoginStates(ctx context.Context) error 
 
 func (m *MockRepository) GetTask(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error) {
 	args := m.Called(ctx, scope, id)
+	return args.Get(0).(model.Task), args.Error(1)
+}
+
+func (m *MockRepository) GetTaskByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Task, error) {
+	args := m.Called(ctx, scope, name)
 	return args.Get(0).(model.Task), args.Error(1)
 }
 

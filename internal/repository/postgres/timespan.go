@@ -12,27 +12,44 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
+const timespanColumnsSQL = `id, name, start_time, end_time, user_id, caldav_name`
+
+func scanTimespan(row pgx.Row) (model.Timespan, error) {
+	var ts model.Timespan
+	err := row.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId, &ts.CaldavName)
+	return ts, err
+}
+
 func (r *PostgresStore) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	if id == uuid.Nil {
 		return model.Timespan{}, fmt.Errorf("GetTimespan: %w", errNilId)
 	}
 
-	ownerSQL, args := ownerPredicate("user_id", scope, []any{id})
-	q := `
-		SELECT id, name, start_time, end_time, user_id
-		FROM timespans
-		WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL
+	return r.getTimespanWhere(ctx, scope, "id", id)
+}
 
-	var ts model.Timespan
-	err := r.db.QueryRow(ctx, q, args...).Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId)
+func (r *PostgresStore) GetTimespanByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Timespan, error) {
+	return r.getTimespanWhere(ctx, scope, "caldav_name", name)
+}
+
+// getTimespanWhere reads the live timespan in scope whose column equals
+// value; column must be a trusted identifier.
+func (r *PostgresStore) getTimespanWhere(ctx context.Context, scope model.OwnerScope, column string, value any) (model.Timespan, error) {
+	ownerSQL, args := ownerPredicate("user_id", scope, []any{value})
+	q := `
+		SELECT ` + timespanColumnsSQL + `
+		FROM timespans
+		WHERE ` + column + ` = $1 AND deleted_at IS NULL AND ` + ownerSQL
+
+	ts, err := scanTimespan(r.db.QueryRow(ctx, q, args...))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Timespan{}, fmt.Errorf("GetTimespan %s: %w", id, model.ErrNotFound)
+		return model.Timespan{}, fmt.Errorf("GetTimespan %s %v: %w", column, value, model.ErrNotFound)
 	}
 	if err != nil {
 		return model.Timespan{}, fmt.Errorf("GetTimespan: %w", err)
 	}
 
-	ts.TagIds, err = r.timespanTagIds(ctx, r.db, id)
+	ts.TagIds, err = r.timespanTagIds(ctx, r.db, ts.Id)
 	if err != nil {
 		return model.Timespan{}, err
 	}
@@ -70,7 +87,7 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 	addIntervalConditions(dataBuilder)
 	dataOwnerSQL, args := ownerPredicate("user_id", scope, dataBuilder.Args())
 	dataQ := `
-		SELECT id, name, start_time, end_time, user_id
+		SELECT ` + timespanColumnsSQL + `
 		FROM timespans
 		WHERE deleted_at IS NULL` + dataBuilder.SQL() + ` AND ` + dataOwnerSQL + `
 		ORDER BY start_time DESC, id
@@ -85,8 +102,8 @@ func (r *PostgresStore) ListTimespans(ctx context.Context, scope model.OwnerScop
 	var spans []model.Timespan
 
 	for rows.Next() {
-		var ts model.Timespan
-		if err := rows.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId); err != nil {
+		ts, err := scanTimespan(rows)
+		if err != nil {
 			return model.Page[model.Timespan]{}, fmt.Errorf("ListTimespans scan: %w", err)
 		}
 		spans = append(spans, ts)
@@ -143,11 +160,14 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 		}
 
 		const insert = `
-			INSERT INTO timespans (id, name, start_time, end_time, user_id)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, name, start_time, end_time, user_id`
-		if err := q.QueryRow(ctx, insert, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID()).
-			Scan(&created.Id, &created.Name, &created.StartTime, &created.EndTime, &created.UserId); err != nil {
+			INSERT INTO timespans (id, name, start_time, end_time, user_id, caldav_name)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING ` + timespanColumnsSQL
+		created, err = scanTimespan(q.QueryRow(ctx, insert, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID(), timespan.CaldavName))
+		if isUniqueViolation(err) {
+			return fmt.Errorf("CreateTimespan: %w", model.ErrAlreadyExists)
+		}
+		if err != nil {
 			return fmt.Errorf("CreateTimespan: %w", err)
 		}
 		return setLinkedTags(ctx, q, "timespan_tags", "timespan_id", created.Id, timespan.TagIds)
@@ -187,9 +207,8 @@ func (r *PostgresStore) UpdateTimespan(ctx context.Context, scope model.OwnerSco
 		update := `
 			UPDATE timespans SET name = $2, start_time = $3, end_time = $4
 			WHERE id = $1 AND deleted_at IS NULL AND ` + ownerSQL + `
-			RETURNING id, name, start_time, end_time, user_id`
-		err = q.QueryRow(ctx, update, args...).
-			Scan(&updated.Id, &updated.Name, &updated.StartTime, &updated.EndTime, &updated.UserId)
+			RETURNING ` + timespanColumnsSQL
+		updated, err = scanTimespan(q.QueryRow(ctx, update, args...))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("UpdateTimespan %s: %w", timespan.Id, model.ErrNotFound)
 		}

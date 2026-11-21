@@ -25,12 +25,13 @@ type RepoMock struct {
 
 	ListDerivedTagSourcesFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID][]model.Tag, error)
 
-	GetTaskFn    func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
-	ListTasksFn  func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
-	CreateTaskFn func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
-	UpdateTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
-	MoveTaskFn   func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
-	DeleteTaskFn func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	GetTaskFn             func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Task, error)
+	GetTaskByCaldavNameFn func(ctx context.Context, scope model.OwnerScope, name string) (model.Task, error)
+	ListTasksFn           func(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error)
+	CreateTaskFn          func(ctx context.Context, scope model.OwnerScope, task model.Task) (model.Task, error)
+	UpdateTaskFn          func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, patch model.TaskPatch) (model.Task, error)
+	MoveTaskFn            func(ctx context.Context, scope model.OwnerScope, id uuid.UUID, parentId *uuid.UUID, afterId *uuid.UUID) (model.Task, error)
+	DeleteTaskFn          func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
 
 	ListTaskProjectIdsFn func(ctx context.Context, scope model.OwnerScope, taskIds []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 
@@ -41,14 +42,15 @@ type RepoMock struct {
 	CreateUserAdoptingOrphansFn func(ctx context.Context, user model.User) (model.User, model.OrphanAdoption, error)
 	UpdateUserFn                func(ctx context.Context, user model.User) (model.User, error)
 
-	CreateTimespanFn         func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
-	DeleteTimespanFn         func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
-	GetTimespanFn            func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
-	ListTimespanFn           func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
-	UpdateTimespanFn         func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
-	GetTotalDurationByTagsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
-	GetTotalDurationPerTagFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error)
-	GetTaskDurationByTagsFn  func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
+	CreateTimespanFn          func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
+	DeleteTimespanFn          func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) error
+	GetTimespanFn             func(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error)
+	GetTimespanByCaldavNameFn func(ctx context.Context, scope model.OwnerScope, name string) (model.Timespan, error)
+	ListTimespanFn            func(ctx context.Context, scope model.OwnerScope, params model.TimespanListParams) (model.Page[model.Timespan], error)
+	UpdateTimespanFn          func(ctx context.Context, scope model.OwnerScope, timespan model.Timespan) (model.Timespan, error)
+	GetTotalDurationByTagsFn  func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
+	GetTotalDurationPerTagFn  func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (map[uuid.UUID]time.Duration, error)
+	GetTaskDurationByTagsFn   func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID) (time.Duration, error)
 
 	AggregateTimeSpentByTagsAndBucketsFn func(ctx context.Context, scope model.OwnerScope, tagIds []uuid.UUID, buckets []model.BucketRange) ([]model.BucketValue, error)
 
@@ -157,6 +159,11 @@ func (t *RepoMock) GetTask(ctx context.Context, scope model.OwnerScope, id uuid.
 	return t.GetTaskFn(ctx, scope, id)
 }
 
+// GetTaskByCaldavName implements repository.TaskRepository.
+func (t *RepoMock) GetTaskByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Task, error) {
+	return t.GetTaskByCaldavNameFn(ctx, scope, name)
+}
+
 // ListTasks implements repository.TaskRepository.
 func (t *RepoMock) ListTasks(ctx context.Context, scope model.OwnerScope, params model.TaskListParams) (model.Page[model.Task], error) {
 	return t.ListTasksFn(ctx, scope, params)
@@ -240,6 +247,11 @@ func (t *RepoMock) DeleteTimespan(ctx context.Context, scope model.OwnerScope, i
 // GetTimespan implements repository.TimespanRepository.
 func (t *RepoMock) GetTimespan(ctx context.Context, scope model.OwnerScope, id uuid.UUID) (model.Timespan, error) {
 	return t.GetTimespanFn(ctx, scope, id)
+}
+
+// GetTimespanByCaldavName implements repository.TimespanRepository.
+func (t *RepoMock) GetTimespanByCaldavName(ctx context.Context, scope model.OwnerScope, name string) (model.Timespan, error) {
+	return t.GetTimespanByCaldavNameFn(ctx, scope, name)
 }
 
 // ListTimespans implements repository.TimespanRepository.
