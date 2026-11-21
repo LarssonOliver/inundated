@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,10 +32,15 @@ const (
 const closedTaskWindow = 30 * 24 * time.Hour
 
 var (
-	errReadOnly = webdav.NewHTTPError(http.StatusForbidden, errors.New("caldav: read-only"))
-	errNotFound = webdav.NewHTTPError(http.StatusNotFound, nil)
-	errInternal = webdav.NewHTTPError(http.StatusInternalServerError, errors.New("internal error"))
+	errReadOnly           = webdav.NewHTTPError(http.StatusForbidden, errors.New("caldav: calendars can't be created"))
+	errNotFound           = webdav.NewHTTPError(http.StatusNotFound, nil)
+	errPreconditionFailed = webdav.NewHTTPError(http.StatusPreconditionFailed, nil)
+	errHasSubtasks        = webdav.NewHTTPError(http.StatusForbidden, errors.New("caldav: tasks with subtasks can't be deleted here"))
+	errInternal           = webdav.NewHTTPError(http.StatusInternalServerError, errors.New("internal error"))
 )
+
+// clientErrors are safe to send to clients as they are.
+var clientErrors = []error{errReadOnly, errNotFound, errPreconditionFailed, errHasSubtasks, errUnsupported, errInvalid}
 
 var calendars = []gocaldav.Calendar{
 	{Path: timePath, Name: "Time", SupportedComponentSet: []string{ical.CompEvent}},
@@ -171,12 +177,35 @@ func (b *backend) QueryCalendarObjects(ctx context.Context, calendarPath string,
 	return objects, clientError(ctx, err)
 }
 
+// PutCalendarObject answers without an ETag: what is stored never matches
+// what the client sent byte for byte, so the client fetches it again.
 func (b *backend) PutCalendarObject(ctx context.Context, objectPath string, calendar *ical.Calendar, options *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {
-	return nil, errReadOnly
+	var err error
+	switch collection, name := path.Split(objectPath); collection {
+	case timePath:
+		err = b.putTimespan(ctx, name, calendar, options)
+	case tasksPath:
+		err = b.putTask(ctx, name, calendar, options)
+	default:
+		err = errNotFound
+	}
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+	return &gocaldav.CalendarObject{Path: objectPath}, nil
 }
 
 func (b *backend) DeleteCalendarObject(ctx context.Context, objectPath string) error {
-	return errReadOnly
+	var err error
+	switch collection, name := path.Split(objectPath); collection {
+	case timePath:
+		err = b.deleteTimespan(ctx, name)
+	case tasksPath:
+		err = b.deleteTask(ctx, name)
+	default:
+		err = errNotFound
+	}
+	return clientError(ctx, err)
 }
 
 // listObjects lists a collection's objects; from and to bound timespans only.
@@ -296,8 +325,14 @@ func clientError(ctx context.Context, err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, errNotFound), errors.Is(err, model.ErrNotFound):
+	case slices.ContainsFunc(clientErrors, func(clientErr error) bool { return errors.Is(err, clientErr) }):
+		return err
+	case errors.Is(err, model.ErrNotFound):
 		return errNotFound
+	case errors.Is(err, model.ErrAlreadyExists):
+		return errPreconditionFailed
+	case errors.Is(err, model.ErrInvalidArgument), errors.Is(err, model.ErrInvalidReference):
+		return errInvalid
 	default:
 		slog.ErrorContext(ctx, "caldav request failed", "error", err)
 		return errInternal
