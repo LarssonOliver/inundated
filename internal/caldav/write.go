@@ -80,7 +80,13 @@ func (b *backend) putTask(ctx context.Context, name string, calendar *ical.Calen
 		if todo.Summary == "" {
 			todo.Summary = untitled
 		}
-		_, err = b.svc.CreateTask(ctx, model.Task{Name: todo.Summary, DueDate: todo.Due, CaldavName: &name})
+		created, err := b.svc.CreateTask(ctx, model.Task{Name: todo.Summary, DueDate: todo.Due, CaldavName: &name})
+		if err != nil || todo.CloseReason == nil {
+			return err
+		}
+		// Tasks are created open. If closing fails, the client's retry
+		// finds the task by name and closes it as an update.
+		_, err = b.svc.UpdateTask(ctx, created.Id, model.TaskPatch{CloseReason: todo.CloseReason})
 		return err
 	}
 	if err != nil {

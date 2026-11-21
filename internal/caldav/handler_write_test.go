@@ -298,3 +298,28 @@ func TestPutToCollectionIsRefused(t *testing.T) {
 		})
 	}
 }
+
+func TestPutCreatesClosedTask(t *testing.T) {
+	ignored := model.CloseReasonIgnored
+	tests := map[string]struct {
+		body string
+		want *model.CloseReason
+	}{
+		"completed": {fixture(t, "apple_todo_completed"), &done},
+		"cancelled": {todoBody("SUMMARY:Skip\nSTATUS:CANCELLED\n"), &ignored},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler, svc := newHandler()
+
+			recorder := put(handler, "/dav/me/calendars/tasks/"+newName, test.body, nil)
+
+			require.Equal(t, http.StatusCreated, recorder.Code, recorder.Body.String())
+			require.Len(t, svc.writes, 2)
+			assert.IsType(t, model.Task{}, svc.writes[0])
+			update := svc.writes[1].(taskUpdate)
+			assert.NotEqual(t, uuid.Nil, update.id)
+			assert.Equal(t, model.TaskPatch{CloseReason: test.want}, update.patch)
+		})
+	}
+}
