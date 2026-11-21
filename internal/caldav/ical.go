@@ -34,27 +34,30 @@ func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag, locati
 	event.Props.SetDateTime(ical.PropDateTimeStart, start)
 	event.Props.SetDateTime(ical.PropDateTimeEnd, end)
 
-	tagsOfTimespan := lookupTags(timespan.TagIds, tags)
-	summary := timespan.Name
-	if summary == "" {
-		summary = strings.Join(tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner != nil }), ", ")
-	}
-	if summary == "" {
-		if labels := tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner == nil }); len(labels) > 0 {
-			summary = labels[0]
-		}
-	}
-	if summary == "" {
-		summary = untitled
-	}
-	event.Props.SetText(ical.PropSummary, summary)
-	setCategories(event.Component, tagsOfTimespan)
+	event.Props.SetText(ical.PropSummary, timespanSummary(timespan, tags))
+	setCategories(event.Component, lookupTags(timespan.TagIds, tags))
 
 	cal := newCalendar(event.Component)
 	if location != time.UTC {
 		cal.Children = slices.Insert(cal.Children, 0, timezone(start, end))
 	}
 	return cal
+}
+
+// timespanSummary is the timespan's name or, for an unnamed timespan, the
+// names of its task and project tags, else its first label, else "Untitled".
+func timespanSummary(timespan model.Timespan, tags map[uuid.UUID]model.Tag) string {
+	if timespan.Name != "" {
+		return timespan.Name
+	}
+	tagsOfTimespan := lookupTags(timespan.TagIds, tags)
+	if owned := tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner != nil }); len(owned) > 0 {
+		return strings.Join(owned, ", ")
+	}
+	if labels := tagNames(tagsOfTimespan, func(tag model.Tag) bool { return tag.Owner == nil }); len(labels) > 0 {
+		return labels[0]
+	}
+	return untitled
 }
 
 // timezone describes the zone of the given times, all in one location, with
