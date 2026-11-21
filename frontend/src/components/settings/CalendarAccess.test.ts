@@ -42,10 +42,11 @@ test("shows the calendar server URL", async () => {
   expect(wrapper.text()).toContain(`${window.location.origin}/dav/me/`);
 });
 
-test("shows that calendar edits are reverted", async () => {
+test("says calendar apps can add entries", async () => {
   const wrapper = await mountComponent();
 
-  expect(wrapper.text()).toMatch(/edits made in calendar apps are reverted/i);
+  expect(wrapper.text()).toMatch(/add new ones from your phone/i);
+  expect(wrapper.text()).not.toMatch(/read-only/i);
 });
 
 test("lists the app password names", async () => {

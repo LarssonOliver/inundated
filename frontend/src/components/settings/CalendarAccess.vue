@@ -2,8 +2,8 @@
   <div class="card calendar-access">
     <h3>Calendar access</h3>
     <p class="note">
-      Add a CalDAV account in your calendar app to see your time entries and tasks. Access is
-      read-only: edits made in calendar apps are reverted.
+      Add a CalDAV account in your calendar app to see your time entries and tasks, and to add new
+      ones from your phone.
     </p>
 
     <p class="field-label">Server URL</p>

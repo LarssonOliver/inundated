@@ -1,4 +1,4 @@
-// Package caldav exposes timespans and tasks as read-only CalDAV resources.
+// Package caldav exposes timespans and tasks as CalDAV resources.
 package caldav
 
 import (

@@ -5,11 +5,27 @@ sidebar_position: 3
 # Calendar Access
 
 inundated can show your time entries and tasks in other calendar apps over
-CalDAV. Access is **read-only**: the apps display your data but can't change it.
+CalDAV, and the apps can add and change them. This makes your phone's
+calendar a quick way to log time and jot down tasks, which you can tag and
+sort later in inundated.
 
 - **Time** is a calendar of events, one per time entry.
 - **Tasks** is a calendar of to-dos, one per task: open tasks, plus tasks
   closed in the last 30 days.
+
+## What calendar apps can change
+
+- **New events** become time entries, with the event's title, start and end.
+  An event titled "Untitled" becomes a time entry without a name.
+- **New to-dos** become top-level tasks, with the to-do's title and due date.
+- **Editing** an event changes the entry's title, start and end. Editing a
+  to-do changes the task's title and due date.
+- **Completing** a to-do closes the task as done, and unchecking it reopens
+  it. A cancelled to-do closes the task as ignored.
+- **Deleting** an event or a to-do deletes the time entry or task.
+
+Tags, projects and subtasks are set in inundated. Calendar apps can't change
+them, and changing an event's title or time keeps its tags.
 
 ## Create a password
 
@@ -60,9 +76,14 @@ supports, such as tasks.org or OpenTasks.
 
 ## Limitations
 
-- **Edits are reverted.** Apple's apps let you edit items, send the change,
-  get it refused, and then silently restore the original on the next sync.
-  Make changes in inundated.
+- **Repeating and all-day events are refused.** A time entry has a single
+  start and end time.
+- **Alerts, notes, locations and attendees aren't stored.** The app keeps
+  them until the next sync, then they disappear.
+- **Tasks with subtasks can't be deleted from a calendar app**, since that
+  would delete the subtasks too. Delete them in inundated.
+- **An unnamed time entry shows its tags as its title.** Leaving that title
+  as it is keeps the entry unnamed; changing it names the entry.
 - **Apple Reminders doesn't nest subtasks.** Every task appears at the top
   level. Clients that support RELATED-TO, such as Thunderbird or tasks.org,
   can show the hierarchy.
