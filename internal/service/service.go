@@ -150,4 +150,8 @@ type CalendarService interface {
 	ListCalendarTasks(ctx context.Context, closedSince time.Time) ([]model.Task, error)
 	// ListCalendarTags returns every tag in scope, owned and archived ones included.
 	ListCalendarTags(ctx context.Context) (map[uuid.UUID]model.Tag, error)
+	// GetCalendarTimespan finds the timespan a CalDAV client created under name.
+	GetCalendarTimespan(ctx context.Context, name string) (model.Timespan, error)
+	// GetCalendarTask finds the task a CalDAV client created under name.
+	GetCalendarTask(ctx context.Context, name string) (model.Task, error)
 }

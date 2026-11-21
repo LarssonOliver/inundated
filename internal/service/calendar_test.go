@@ -86,3 +86,34 @@ func TestCalendarService_ListCalendarTags(t *testing.T) {
 	assert.Equal(t, []model.TagKind{model.TagKindAll}, got.Kinds)
 	assert.Equal(t, map[uuid.UUID]model.Tag{label.Id: label, archived.Id: archived}, tags)
 }
+
+func TestCalendarService_GetCalendarTimespanByName(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	start := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	created, err := store.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), CaldavName: new("A1B2.ics")})
+	require.NoError(t, err)
+	svc := service.NewService(store)
+
+	found, err := svc.GetCalendarTimespan(ctx, "A1B2.ics")
+	require.NoError(t, err)
+	assert.Equal(t, created.Id, found.Id)
+
+	_, err = svc.GetCalendarTimespan(ctx, "missing.ics")
+	assert.ErrorIs(t, err, model.ErrNotFound)
+}
+
+func TestCalendarService_GetCalendarTaskByName(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewMemoryStore()
+	created, err := store.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "Buy milk", CaldavName: new("A1B2.ics")})
+	require.NoError(t, err)
+	svc := service.NewService(store)
+
+	found, err := svc.GetCalendarTask(ctx, "A1B2.ics")
+	require.NoError(t, err)
+	assert.Equal(t, created.Id, found.Id)
+
+	_, err = svc.GetCalendarTask(ctx, "missing.ics")
+	assert.ErrorIs(t, err, model.ErrNotFound)
+}
