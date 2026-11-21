@@ -31,6 +31,60 @@ type fakeService struct {
 	from, to  *time.Time
 	err       error
 	timezone  string
+
+	// writes records the write calls, and writeErr fails them.
+	writes   []any
+	writeErr error
+	// subtasks is the number of subtasks ListTasks reports.
+	subtasks int
+}
+
+type taskUpdate struct {
+	id    uuid.UUID
+	patch model.TaskPatch
+}
+
+type taskDelete uuid.UUID
+
+type timespanDelete uuid.UUID
+
+func (f *fakeService) CreateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	f.writes = append(f.writes, timespan)
+	timespan.Id = uuid.New()
+	return timespan, f.writeErr
+}
+
+func (f *fakeService) UpdateTimespan(ctx context.Context, timespan model.Timespan) (model.Timespan, error) {
+	f.writes = append(f.writes, timespan)
+	return timespan, f.writeErr
+}
+
+func (f *fakeService) DeleteTimespan(ctx context.Context, id uuid.UUID) error {
+	f.writes = append(f.writes, timespanDelete(id))
+	return f.writeErr
+}
+
+func (f *fakeService) CreateTask(ctx context.Context, task model.Task) (model.Task, error) {
+	f.writes = append(f.writes, task)
+	task.Id = uuid.New()
+	return task, f.writeErr
+}
+
+func (f *fakeService) UpdateTask(ctx context.Context, id uuid.UUID, patch model.TaskPatch) (model.Task, error) {
+	f.writes = append(f.writes, taskUpdate{id, patch})
+	return model.Task{Id: id}, f.writeErr
+}
+
+func (f *fakeService) DeleteTask(ctx context.Context, id uuid.UUID) error {
+	f.writes = append(f.writes, taskDelete(id))
+	return f.writeErr
+}
+
+func (f *fakeService) ListTasks(ctx context.Context, params model.TaskListParams, includes *service.TaskServiceIncludes) (model.Page[model.Task], error) {
+	if params.ParentId == nil || !params.IncludeClosed {
+		panic("ListTasks: expected a query for all subtasks")
+	}
+	return model.Page[model.Task]{TotalCount: f.subtasks}, nil
 }
 
 func (f *fakeService) GetSettings(ctx context.Context) (model.Settings, error) {
@@ -334,21 +388,6 @@ func TestGetHidesInternalErrors(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 	assert.NotContains(t, recorder.Body.String(), "hunter2")
-}
-
-func TestWritesAreForbidden(t *testing.T) {
-	handler, _ := newHandler()
-	path := objectPath("tasks", openTask.Id)
-
-	body, _, err := caldav.Encode(caldav.TaskTodo(model.Task{Id: openTask.Id, Name: "changed"}, nil))
-	require.NoError(t, err)
-	put := httptest.NewRequest(http.MethodPut, path, strings.NewReader(string(body)))
-	put.Header.Set("Content-Type", "text/calendar")
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, put)
-	assert.Equal(t, http.StatusForbidden, recorder.Code)
-
-	assert.Equal(t, http.StatusForbidden, serve(handler, http.MethodDelete, path, "", "").Code)
 }
 
 func TestPropPatchIsAccepted(t *testing.T) {
