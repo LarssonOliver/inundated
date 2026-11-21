@@ -310,6 +310,72 @@ describe("history store", () => {
     });
   });
 
+  describe("while a recorded edit is writing", () => {
+    /** A write on the current page that stays in flight until settled, recording edit if it succeeds. */
+    function heldWrite(store: ReturnType<typeof useStore>, recorded: FieldEdit) {
+      let settle!: (succeeded: boolean) => void;
+      const page = store.scope;
+      const write = store.track(
+        new Promise<void>((resolve, reject) => {
+          settle = (succeeded) => {
+            if (!succeeded) return reject(new Error("network"));
+            store.record(recorded, page);
+            resolve();
+          };
+        }),
+      );
+      return { write, settle };
+    }
+
+    it("undoes that edit once it is recorded, keeping the one before", async () => {
+      const store = useStore();
+      const earlier = edit({ target: "task:x" });
+      store.record(earlier);
+      const latest = edit({ target: "task:y" });
+      const held = heldWrite(store, latest);
+
+      const undoing = store.undo();
+      await new Promise((resolve) => setTimeout(resolve));
+      held.settle(true);
+      await Promise.all([held.write, undoing]);
+
+      expect(latest.apply).toHaveBeenCalledOnce();
+      expect(earlier.apply).not.toHaveBeenCalled();
+      await store.undo();
+      await store.redo();
+      expect(earlier.apply).toHaveBeenLastCalledWith({ name: "new" }, { name: "old" });
+    });
+
+    it("undoes the edit before once that write fails", async () => {
+      const store = useStore();
+      const earlier = edit();
+      store.record(earlier);
+      const held = heldWrite(store, edit({ target: "task:y" }));
+
+      const undoing = store.undo();
+      held.settle(false);
+      await expect(held.write).rejects.toThrow("network");
+
+      expect(await undoing).toBe(true);
+      expect(earlier.apply).toHaveBeenCalledOnce();
+    });
+
+    it("can undo on its page before the edit is recorded", async () => {
+      const store = useStore();
+      store.setScope("/tasks");
+      const held = heldWrite(store, edit({ target: "task:y" }));
+
+      expect(store.canUndo).toBe(true);
+      store.setScope("/");
+      expect(store.canUndo).toBe(false);
+
+      held.settle(true);
+      await held.write;
+      store.setScope("/tasks");
+      expect(store.canUndo).toBe(true);
+    });
+  });
+
   it("forgets every entry for an item, on both stacks", async () => {
     const store = useStore();
     const other = edit({ target: "timespan:b" });

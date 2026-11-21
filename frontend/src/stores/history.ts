@@ -90,9 +90,11 @@ function createHistoryStore(now: () => number = () => Date.now()) {
      */
     const scope = ref("");
     const applied = shallowRef<AppliedEdit | null>(null);
+    /** Writes of edits to record once they succeed (see track). */
+    const pending = shallowRef<{ write: Promise<unknown>; scope: string }[]>([]);
 
-    const inScope = (entry: HistoryEntry) => entry.scope === scope.value;
-    const canUndo = computed(() => undoStack.value.some(inScope));
+    const inScope = (entry: { scope: string }) => entry.scope === scope.value;
+    const canUndo = computed(() => undoStack.value.some(inScope) || pending.value.some(inScope));
     const canRedo = computed(() => redoStack.value.some(inScope));
 
     /** Sets the page that edits are recorded on and undone from. */
@@ -144,6 +146,22 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       undoStack.value = [...stack, { ...edit, recordedAt: at, scope: page }].slice(-HISTORY_LIMIT);
     }
 
+    /**
+     * Marks write as one that records an edit on page when it succeeds, so
+     * undo and redo wait for it and act on that edit rather than the one
+     * before. Call it as soon as the write is started, without awaiting
+     * anything first, or an undo pressed meanwhile won't wait. Returns write.
+     */
+    function track<T>(write: Promise<T>, page: string = scope.value): Promise<T> {
+      const item = { write, scope: page };
+      pending.value = [...pending.value, item];
+      const remove = () => {
+        pending.value = pending.value.filter((other) => other !== item);
+      };
+      write.then(remove, remove);
+      return write;
+    }
+
     /** Drops every entry for an item, e.g. one that no longer exists. */
     function forget(target: string): void {
       undoStack.value = undoStack.value.filter((entry) => entry.target !== target);
@@ -152,13 +170,16 @@ function createHistoryStore(now: () => number = () => Date.now()) {
     }
 
     /**
-     * Moves the top entry of from to to once its write succeeds. A conflict
-     * drops the entry, since it can never apply again; any other failure
-     * leaves it in place to retry. An edit can be recorded during the write,
+     * Moves the top entry of from to to once its write succeeds, after any
+     * tracked edit writes have settled. A conflict drops the entry, since it
+     * can never apply again; any other failure leaves it in place to retry. An edit can be recorded during the write,
      * so the entry is found again by identity, and lands below that edit.
      */
     function step(direction: "undo" | "redo"): Promise<boolean> {
       return serialize(async () => {
+        while (pending.value.length > 0) {
+          await Promise.allSettled(pending.value.map((item) => item.write));
+        }
         const from = direction === "undo" ? undoStack : redoStack;
         const to = direction === "undo" ? redoStack : undoStack;
         const entry = lastWhere(from.value, inScope);
@@ -216,6 +237,7 @@ function createHistoryStore(now: () => number = () => Date.now()) {
       scope,
       setScope,
       record,
+      track,
       forget,
       undo,
       redo,

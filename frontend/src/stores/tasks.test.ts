@@ -416,6 +416,32 @@ describe("tasks store", () => {
       expect(history.canUndo).toBe(true);
     });
 
+    it("undoes a save in flight, not the edit before it", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
+      const store = useStore();
+      await store.updateTask("a", { name: "New" }, { record: true });
+      now.mockReturnValue(20_000);
+      api.getTask.mockResolvedValue({ ...shown, name: "New" });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const respond = api.updateTask.getMockImplementation()!;
+      api.updateTask.mockImplementationOnce(async (id, patch) => {
+        await gate;
+        return respond(id, patch);
+      });
+      const saving = store.updateTask("a", { dueDate: null }, { record: true });
+
+      const undoing = useHistoryStore().undo();
+      await new Promise((resolve) => setTimeout(resolve));
+      api.getTask.mockResolvedValue({ ...shown, name: "New", dueDate: undefined });
+      release();
+      await saving;
+
+      expect(await undoing).toBe(true);
+      expect(api.updateTask).toHaveBeenLastCalledWith("a", { dueDate: "2026-11-05" });
+      now.mockRestore();
+    });
+
     it("redoes an undone edit, clearing what it cleared", async () => {
       const store = useStore();
       await store.updateTask("a", { dueDate: null }, { record: true });

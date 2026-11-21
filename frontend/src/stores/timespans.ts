@@ -175,15 +175,19 @@ function createTimespansStore(api: TimespansApi, now: () => number = () => Date.
      *  if not found.
      */
     function updateTimespan(timespan: Timespan): Promise<Timespan> {
-      const page = useHistoryStore().scope;
-      return serializeWrite(async () => {
-        const { id, name, startTime, endTime, tagIds } = timespan;
-        const prior = timespans.value.get(id);
-        const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
-        timespans.value.set(updated.id, updated);
-        if (prior) recordEdit(prior, updated, page);
-        return copyTimespan(updated);
-      });
+      const history = useHistoryStore();
+      const page = history.scope;
+      return history.track(
+        serializeWrite(async () => {
+          const { id, name, startTime, endTime, tagIds } = timespan;
+          const prior = timespans.value.get(id);
+          const updated = await api.updateTimespan(id, { name, startTime, endTime, tagIds });
+          timespans.value.set(updated.id, updated);
+          if (prior) recordEdit(prior, updated, page);
+          return copyTimespan(updated);
+        }),
+        page,
+      );
     }
 
     function pickFields(timespan: Timespan, fields: readonly EditableField[]) {

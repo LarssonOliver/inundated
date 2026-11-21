@@ -332,6 +332,26 @@ describe("timespans store", () => {
       expect(api.getTimespan).toHaveBeenCalledOnce();
     });
 
+    it("undoes a save in flight, not the edit before it", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
+      const prior = makeTimespan({ id: "e1", name: "Old", startTime: start, endTime: end });
+      const store = await storeWith(prior);
+      await store.updateTimespan({ ...prior, name: "New" });
+      now.mockReturnValue(20_000);
+      const release = holdNextUpdate();
+      const saving = store.updateTimespan({ ...prior, name: "New", endTime: later });
+      api.getTimespan.mockResolvedValue({ ...prior, name: "New", endTime: later });
+
+      const undoing = useHistoryStore().undo();
+      await new Promise((resolve) => setTimeout(resolve));
+      release();
+      await saving;
+
+      expect(await undoing).toBe(true);
+      expect(api.updateTimespan).toHaveBeenLastCalledWith("e1", { endTime: end });
+      now.mockRestore();
+    });
+
     it("forgets a timespan's edits when it is deleted", async () => {
       const prior = makeTimespan({ id: "e1", name: "Old" });
       const store = await storeWith(prior);

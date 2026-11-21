@@ -218,13 +218,17 @@ function createTasksStore(api: TasksApi) {
       { reloadList = true, record = false }: { reloadList?: boolean; record?: boolean } = {},
     ): Promise<Task> {
       if (!record) return writeTask(id, patch, reloadList);
-      const page = useHistoryStore().scope;
-      return serializeEdit(async () => {
-        const prior = await api.getTask(id, false);
-        const updated = await writeTask(id, patch, reloadList);
-        recordEdit(prior, updated, patch, page);
-        return updated;
-      });
+      const history = useHistoryStore();
+      const page = history.scope;
+      return history.track(
+        serializeEdit(async () => {
+          const prior = await api.getTask(id, false);
+          const updated = await writeTask(id, patch, reloadList);
+          recordEdit(prior, updated, patch, page);
+          return updated;
+        }),
+        page,
+      );
     }
 
     function recordEdit(prior: Task, updated: Task, patch: TaskPatch, page: string): void {
