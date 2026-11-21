@@ -111,6 +111,16 @@ describe("useUndoShortcuts", () => {
     expect(history.undo).toHaveBeenCalledOnce();
   });
 
+  it("undoes on a page whose first edit is still saving", async () => {
+    await router.push("/calendar");
+    history.track(new Promise(() => {}));
+
+    const event = keydown({ key: "z", ctrlKey: true });
+
+    expect(history.undo).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it("undoes once while the shortcut is held", () => {
     keydown({ key: "z", ctrlKey: true });
     const repeated = keydown({ key: "z", ctrlKey: true, repeat: true });
