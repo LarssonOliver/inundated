@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE tasks DROP COLUMN IF EXISTS caldav_uid;
+ALTER TABLE timespans DROP COLUMN IF EXISTS caldav_uid;
+
+COMMIT;

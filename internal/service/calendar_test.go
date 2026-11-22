@@ -91,7 +91,7 @@ func TestCalendarService_GetCalendarTimespanByName(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewMemoryStore()
 	start := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
-	created, err := store.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), CaldavName: new("A1B2.ics")})
+	created, err := store.CreateTimespan(ctx, model.UnownedScope(), model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), Caldav: model.CaldavRef{Name: new("A1B2.ics")}})
 	require.NoError(t, err)
 	svc := service.NewService(store)
 
@@ -106,7 +106,7 @@ func TestCalendarService_GetCalendarTimespanByName(t *testing.T) {
 func TestCalendarService_GetCalendarTaskByName(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewMemoryStore()
-	created, err := store.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "Buy milk", CaldavName: new("A1B2.ics")})
+	created, err := store.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "Buy milk", Caldav: model.CaldavRef{Name: new("A1B2.ics")}})
 	require.NoError(t, err)
 	svc := service.NewService(store)
 

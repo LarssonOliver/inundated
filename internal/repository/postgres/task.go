@@ -11,12 +11,12 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-const taskColumnsSQL = `id, name, tag_id, parent_id, due_date, estimate, rank, close_reason, closed_at, user_id, caldav_name`
+const taskColumnsSQL = `id, name, tag_id, parent_id, due_date, estimate, rank, close_reason, closed_at, user_id, caldav_name, caldav_uid`
 
 func scanTask(row pgx.Row) (model.Task, error) {
 	var t model.Task
 	var reason *string
-	if err := row.Scan(&t.Id, &t.Name, &t.TagId, &t.ParentId, &t.DueDate, &t.Estimate, &t.Rank, &reason, &t.ClosedAt, &t.UserId, &t.CaldavName); err != nil {
+	if err := row.Scan(&t.Id, &t.Name, &t.TagId, &t.ParentId, &t.DueDate, &t.Estimate, &t.Rank, &reason, &t.ClosedAt, &t.UserId, &t.Caldav.Name, &t.Caldav.Uid); err != nil {
 		return model.Task{}, err
 	}
 	if reason != nil {
@@ -245,11 +245,11 @@ func (r *PostgresStore) CreateTask(ctx context.Context, scope model.OwnerScope, 
 		}
 
 		const insert = `
-			INSERT INTO tasks (id, name, tag_id, parent_id, due_date, estimate, rank, user_id, caldav_name)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO tasks (id, name, tag_id, parent_id, due_date, estimate, rank, user_id, caldav_name, caldav_uid)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING ` + taskColumnsSQL
 		created, err = scanTask(q.QueryRow(ctx, insert,
-			uuid.New(), task.Name, tagId, task.ParentId, task.DueDate, task.Estimate, rank, scope.UserID(), task.CaldavName))
+			uuid.New(), task.Name, tagId, task.ParentId, task.DueDate, task.Estimate, rank, scope.UserID(), task.Caldav.Name, task.Caldav.Uid))
 		if isUniqueViolation(err) {
 			return fmt.Errorf("CreateTask: %w", model.ErrAlreadyExists)
 		}

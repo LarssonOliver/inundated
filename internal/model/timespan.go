@@ -13,7 +13,5 @@ type Timespan struct {
 	EndTime   time.Time
 	TagIds    []uuid.UUID
 	UserId    *uuid.UUID // owner; nil for resources predating user support
-	// CaldavName is the object name a CalDAV client chose when it created
-	// the timespan; nil otherwise.
-	CaldavName *string
+	Caldav    CaldavRef
 }

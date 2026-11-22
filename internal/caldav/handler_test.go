@@ -114,7 +114,7 @@ func (f *fakeService) GetTask(ctx context.Context, id uuid.UUID, includes *servi
 
 func (f *fakeService) GetCalendarTimespan(ctx context.Context, name string) (model.Timespan, error) {
 	for _, timespan := range f.timespans {
-		if timespan.CaldavName != nil && *timespan.CaldavName == name {
+		if timespan.Caldav.Name != nil && *timespan.Caldav.Name == name {
 			return timespan, nil
 		}
 	}
@@ -123,7 +123,7 @@ func (f *fakeService) GetCalendarTimespan(ctx context.Context, name string) (mod
 
 func (f *fakeService) GetCalendarTask(ctx context.Context, name string) (model.Task, error) {
 	for _, task := range f.tasks {
-		if task.CaldavName != nil && *task.CaldavName == name {
+		if task.Caldav.Name != nil && *task.Caldav.Name == name {
 			return task, nil
 		}
 	}
@@ -341,7 +341,7 @@ func TestGetMissingObjects(t *testing.T) {
 func TestListUsesCaldavName(t *testing.T) {
 	handler, svc := newHandler()
 	named := before
-	named.CaldavName = new("A1B2.ics")
+	named.Caldav.Name = new("A1B2.ics")
 	svc.timespans = []model.Timespan{named, overlapping}
 
 	recorder := serve(handler, "PROPFIND", "/dav/me/calendars/time/", "1", `<?xml version="1.0" encoding="UTF-8"?>
@@ -358,9 +358,9 @@ func TestListUsesCaldavName(t *testing.T) {
 func TestGetByCaldavName(t *testing.T) {
 	handler, svc := newHandler()
 	named := before
-	named.CaldavName = new("A1B2.ics")
+	named.Caldav.Name = new("A1B2.ics")
 	task := openTask
-	task.CaldavName = new("Some Name With Spaces.ics")
+	task.Caldav.Name = new("Some Name With Spaces.ics")
 	svc.timespans = []model.Timespan{named}
 	svc.tasks = []model.Task{task}
 
@@ -374,7 +374,7 @@ func TestGetLowercaseUuidNameFallsBackToCaldavName(t *testing.T) {
 	handler, svc := newHandler()
 	name := uuid.New().String() + ".ics"
 	named := before
-	named.CaldavName = &name
+	named.Caldav.Name = &name
 	svc.timespans = []model.Timespan{named}
 
 	assert.Equal(t, http.StatusOK, serve(handler, http.MethodGet, "/dav/me/calendars/time/"+name, "", "").Code)

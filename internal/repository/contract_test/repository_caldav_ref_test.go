@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCaldavNameRepositoryContract(t *testing.T) {
+func TestCaldavRefRepositoryContract(t *testing.T) {
 	ctx := context.Background()
 	start := time.Date(2026, 11, 21, 9, 0, 0, 0, time.UTC)
 	newTimespan := func(name string) model.Timespan {
-		return model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), CaldavName: new(name)}
+		return model.Timespan{StartTime: start, EndTime: start.Add(time.Hour), Caldav: model.CaldavRef{Name: new(name), Uid: new("uid-" + name)}}
 	}
 
 	run := func(t *testing.T, repoName string, newRepo func(t *testing.T) repository.Repository) {
@@ -26,21 +26,22 @@ func TestCaldavNameRepositoryContract(t *testing.T) {
 			repo := newRepo(t)
 			created, err := repo.CreateTimespan(ctx, testScope, newTimespan("ABC.ics"))
 			require.NoError(t, err)
-			require.Equal(t, "ABC.ics", *created.CaldavName)
+			require.Equal(t, "ABC.ics", *created.Caldav.Name)
 
 			found, err := repo.GetTimespanByCaldavName(ctx, testScope, "ABC.ics")
 			require.NoError(t, err)
 			require.Equal(t, created.Id, found.Id)
-			require.Equal(t, "ABC.ics", *found.CaldavName)
+			require.Equal(t, "ABC.ics", *found.Caldav.Name)
 
 			got, err := repo.GetTimespan(ctx, testScope, created.Id)
 			require.NoError(t, err)
-			require.Equal(t, "ABC.ics", *got.CaldavName)
+			require.Equal(t, "ABC.ics", *got.Caldav.Name)
 
 			page, err := repo.ListTimespans(ctx, testScope, model.TimespanListParams{PaginationParams: model.DefaultPaginationParams()})
 			require.NoError(t, err)
 			require.Len(t, page.Data, 1)
-			require.Equal(t, "ABC.ics", *page.Data[0].CaldavName)
+			require.Equal(t, "ABC.ics", *page.Data[0].Caldav.Name)
+			require.Equal(t, "uid-ABC.ics", *page.Data[0].Caldav.Uid)
 
 			_, err = repo.GetTimespanByCaldavName(ctx, testScope, "missing.ics")
 			require.ErrorIs(t, err, model.ErrNotFound)
@@ -61,7 +62,7 @@ func TestCaldavNameRepositoryContract(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run(repoName+"TimespanUpdateKeepsName", func(t *testing.T) {
+		t.Run(repoName+"TimespanUpdateKeepsCaldavRef", func(t *testing.T) {
 			repo := newRepo(t)
 			created, err := repo.CreateTimespan(ctx, testScope, newTimespan("ABC.ics"))
 			require.NoError(t, err)
@@ -72,8 +73,10 @@ func TestCaldavNameRepositoryContract(t *testing.T) {
 			got, err := repo.GetTimespan(ctx, testScope, created.Id)
 			require.NoError(t, err)
 			require.Equal(t, "renamed", got.Name)
-			require.NotNil(t, got.CaldavName)
-			require.Equal(t, "ABC.ics", *got.CaldavName)
+			require.NotNil(t, got.Caldav.Name)
+			require.Equal(t, "ABC.ics", *got.Caldav.Name)
+			require.NotNil(t, got.Caldav.Uid)
+			require.Equal(t, "uid-ABC.ics", *got.Caldav.Uid)
 		})
 
 		t.Run(repoName+"TimespanDuplicateName", func(t *testing.T) {
@@ -94,55 +97,58 @@ func TestCaldavNameRepositoryContract(t *testing.T) {
 			for range 2 {
 				created, err := repo.CreateTimespan(ctx, testScope, model.Timespan{StartTime: start, EndTime: start.Add(time.Hour)})
 				require.NoError(t, err)
-				require.Nil(t, created.CaldavName)
+				require.Nil(t, created.Caldav.Name)
+				require.Nil(t, created.Caldav.Uid)
 			}
 		})
 
 		t.Run(repoName+"TaskCreateAndFindByName", func(t *testing.T) {
 			repo := newRepo(t)
 			tagIds := seedTags(t, ctx, repo, testScope, 1)
-			created, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Buy milk", TagIds: tagIds, CaldavName: new("Some Name.ics")})
+			created, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Buy milk", TagIds: tagIds, Caldav: model.CaldavRef{Name: new("Some Name.ics")}})
 			require.NoError(t, err)
-			require.Equal(t, "Some Name.ics", *created.CaldavName)
+			require.Equal(t, "Some Name.ics", *created.Caldav.Name)
 
 			found, err := repo.GetTaskByCaldavName(ctx, testScope, "Some Name.ics")
 			require.NoError(t, err)
 			require.Equal(t, created.Id, found.Id)
-			require.Equal(t, "Some Name.ics", *found.CaldavName)
+			require.Equal(t, "Some Name.ics", *found.Caldav.Name)
 			require.ElementsMatch(t, tagIds, found.TagIds)
 
 			got, err := repo.GetTask(ctx, testScope, created.Id)
 			require.NoError(t, err)
-			require.Equal(t, "Some Name.ics", *got.CaldavName)
+			require.Equal(t, "Some Name.ics", *got.Caldav.Name)
 
 			_, err = repo.GetTaskByCaldavName(ctx, testScope, "missing.ics")
 			require.ErrorIs(t, err, model.ErrNotFound)
 		})
 
-		t.Run(repoName+"TaskUpdateKeepsName", func(t *testing.T) {
+		t.Run(repoName+"TaskUpdateKeepsCaldavRef", func(t *testing.T) {
 			repo := newRepo(t)
-			created, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Buy milk", CaldavName: new("A.ics")})
+			created, err := repo.CreateTask(ctx, testScope, model.Task{Name: "Buy milk", Caldav: model.CaldavRef{Name: new("A.ics"), Uid: new("A")}})
 			require.NoError(t, err)
 
 			updated, err := repo.UpdateTask(ctx, testScope, created.Id, model.TaskPatch{Name: new("Buy oat milk")})
 			require.NoError(t, err)
-			require.Equal(t, "A.ics", *updated.CaldavName)
+			require.Equal(t, "A.ics", *updated.Caldav.Name)
+			require.Equal(t, "A", *updated.Caldav.Uid)
 
 			got, err := repo.GetTask(ctx, testScope, created.Id)
 			require.NoError(t, err)
-			require.Equal(t, "A.ics", *got.CaldavName)
+			require.Equal(t, "A.ics", *got.Caldav.Name)
+			require.Equal(t, "A", *got.Caldav.Uid)
 		})
 
 		t.Run(repoName+"TaskDuplicateName", func(t *testing.T) {
 			repo := newRepo(t)
-			first, err := repo.CreateTask(ctx, testScope, model.Task{Name: "a", CaldavName: new("A.ics")})
+			first, err := repo.CreateTask(ctx, testScope, model.Task{Name: "a", Caldav: model.CaldavRef{Name: new("A.ics")}})
 			require.NoError(t, err)
 
-			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "b", CaldavName: new("A.ics")})
+			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "b", Caldav: model.CaldavRef{Name: new("A.ics")}})
 			require.ErrorIs(t, err, model.ErrAlreadyExists)
 
 			require.NoError(t, repo.DeleteTask(ctx, testScope, first.Id))
-			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "c", CaldavName: new("A.ics")})
+			_, err = repo.CreateTask(ctx, testScope, model.Task{Name: "c", Caldav: model.CaldavRef{Name: new("A.ics")}})
 			require.NoError(t, err)
 		})
 
@@ -153,9 +159,9 @@ func TestCaldavNameRepositoryContract(t *testing.T) {
 			_, err = repo.CreateTimespan(ctx, model.UnownedScope(), newTimespan("A.ics"))
 			require.ErrorIs(t, err, model.ErrAlreadyExists)
 
-			_, err = repo.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "a", CaldavName: new("A.ics")})
+			_, err = repo.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "a", Caldav: model.CaldavRef{Name: new("A.ics")}})
 			require.NoError(t, err)
-			_, err = repo.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "b", CaldavName: new("A.ics")})
+			_, err = repo.CreateTask(ctx, model.UnownedScope(), model.Task{Name: "b", Caldav: model.CaldavRef{Name: new("A.ics")}})
 			require.ErrorIs(t, err, model.ErrAlreadyExists)
 		})
 	}

@@ -12,11 +12,11 @@ import (
 	"github.com/larssonoliver/inundated/internal/utils"
 )
 
-const timespanColumnsSQL = `id, name, start_time, end_time, user_id, caldav_name`
+const timespanColumnsSQL = `id, name, start_time, end_time, user_id, caldav_name, caldav_uid`
 
 func scanTimespan(row pgx.Row) (model.Timespan, error) {
 	var ts model.Timespan
-	err := row.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId, &ts.CaldavName)
+	err := row.Scan(&ts.Id, &ts.Name, &ts.StartTime, &ts.EndTime, &ts.UserId, &ts.Caldav.Name, &ts.Caldav.Uid)
 	return ts, err
 }
 
@@ -160,10 +160,10 @@ func (r *PostgresStore) CreateTimespan(ctx context.Context, scope model.OwnerSco
 		}
 
 		const insert = `
-			INSERT INTO timespans (id, name, start_time, end_time, user_id, caldav_name)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO timespans (id, name, start_time, end_time, user_id, caldav_name, caldav_uid)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING ` + timespanColumnsSQL
-		created, err = scanTimespan(q.QueryRow(ctx, insert, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID(), timespan.CaldavName))
+		created, err = scanTimespan(q.QueryRow(ctx, insert, timespan.Id, timespan.Name, timespan.StartTime, timespan.EndTime, scope.UserID(), timespan.Caldav.Name, timespan.Caldav.Uid))
 		if isUniqueViolation(err) {
 			return fmt.Errorf("CreateTimespan: %w", model.ErrAlreadyExists)
 		}

@@ -276,11 +276,11 @@ func (b *backend) closedSince() time.Time {
 }
 
 func timespanObject(timespan model.Timespan, tags map[uuid.UUID]model.Tag, location *time.Location) (*gocaldav.CalendarObject, error) {
-	return newObject(timePath+objectName(timespan.Id, timespan.CaldavName), TimespanEvent(timespan, tags, location))
+	return newObject(timePath+objectName(timespan.Id, timespan.Caldav.Name), TimespanEvent(timespan, tags, location))
 }
 
 func taskObject(task model.Task, tags map[uuid.UUID]model.Tag) (*gocaldav.CalendarObject, error) {
-	return newObject(tasksPath+objectName(task.Id, task.CaldavName), TaskTodo(task, tags))
+	return newObject(tasksPath+objectName(task.Id, task.Caldav.Name), TaskTodo(task, tags))
 }
 
 func toObjects[T any](items []T, toObject func(T) (*gocaldav.CalendarObject, error)) ([]gocaldav.CalendarObject, error) {
@@ -302,6 +302,15 @@ func objectName(id uuid.UUID, caldavName *string) string {
 		return *caldavName
 	}
 	return id.String() + objectSuffix
+}
+
+// uid keeps the UID a client created an object with, so clients that track
+// objects by UID don't see it as a different object.
+func uid(id uuid.UUID, ref model.CaldavRef) string {
+	if ref.Uid != nil {
+		return *ref.Uid
+	}
+	return id.String()
 }
 
 func newObject(objectPath string, calendar *ical.Calendar) (*gocaldav.CalendarObject, error) {

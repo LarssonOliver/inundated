@@ -33,7 +33,7 @@ func (b *backend) putTimespan(ctx context.Context, name string, calendar *ical.C
 		if event.Summary == untitled {
 			event.Summary = ""
 		}
-		_, err = b.svc.CreateTimespan(ctx, model.Timespan{Name: event.Summary, StartTime: event.Start, EndTime: event.End, CaldavName: &name})
+		_, err = b.svc.CreateTimespan(ctx, model.Timespan{Name: event.Summary, StartTime: event.Start, EndTime: event.End, Caldav: caldavRef(name, event.Uid)})
 		return err
 	}
 	if err != nil {
@@ -80,7 +80,7 @@ func (b *backend) putTask(ctx context.Context, name string, calendar *ical.Calen
 		if todo.Summary == "" {
 			todo.Summary = untitled
 		}
-		created, err := b.svc.CreateTask(ctx, model.Task{Name: todo.Summary, DueDate: todo.Due, CaldavName: &name})
+		created, err := b.svc.CreateTask(ctx, model.Task{Name: todo.Summary, DueDate: todo.Due, Caldav: caldavRef(name, todo.Uid)})
 		if err != nil || todo.CloseReason == nil {
 			return err
 		}
@@ -183,4 +183,14 @@ func (b *backend) deleteTask(ctx context.Context, name string) error {
 		return errHasSubtasks
 	}
 	return b.svc.DeleteTask(ctx, task.Id)
+}
+
+// caldavRef records the name and UID a client created an object under. A
+// missing UID is left out, so the object is served with its id instead.
+func caldavRef(name, uid string) model.CaldavRef {
+	ref := model.CaldavRef{Name: &name}
+	if uid != "" {
+		ref.Uid = &uid
+	}
+	return ref
 }
