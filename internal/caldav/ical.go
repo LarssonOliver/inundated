@@ -29,7 +29,7 @@ func TimespanEvent(timespan model.Timespan, tags map[uuid.UUID]model.Tag, locati
 	end := timespan.EndTime.In(location)
 
 	event := ical.NewEvent()
-	event.Props.SetText(ical.PropUID, timespan.Id.String())
+	event.Props.SetText(ical.PropUID, uid(timespan.Id, timespan.Caldav))
 	event.Props.SetDateTime(ical.PropDateTimeStamp, timestamp)
 	event.Props.SetDateTime(ical.PropDateTimeStart, start)
 	event.Props.SetDateTime(ical.PropDateTimeEnd, end)
@@ -147,7 +147,7 @@ func formatOffset(seconds int) string {
 // the task may reference, keyed by id.
 func TaskTodo(task model.Task, tags map[uuid.UUID]model.Tag) *ical.Calendar {
 	todo := ical.NewComponent(ical.CompToDo)
-	todo.Props.SetText(ical.PropUID, task.Id.String())
+	todo.Props.SetText(ical.PropUID, uid(task.Id, task.Caldav))
 	todo.Props.SetDateTime(ical.PropDateTimeStamp, timestamp)
 	todo.Props.SetText(ical.PropSummary, task.Name)
 	setCategories(todo, lookupTags(task.TagIds, tags))

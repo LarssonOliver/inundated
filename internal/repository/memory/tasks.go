@@ -95,7 +95,7 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.taskNameIndex(scope, task.CaldavName) != -1 {
+	if t.taskNameIndex(scope, task.Caldav.Name) != -1 {
 		return model.Task{}, model.ErrAlreadyExists
 	}
 	if !t.tagsUsable(scope, model.TagHolderTask, tagIds, nil) {
@@ -134,16 +134,16 @@ func (t *MemoryStore) CreateTask(ctx context.Context, scope model.OwnerScope, ta
 		Owner:  &model.TagOwner{Kind: model.TagOwnerTask, Id: taskId},
 	}
 	created := model.Task{
-		Id:         taskId,
-		Name:       task.Name,
-		TagId:      tag.Id,
-		ParentId:   task.ParentId,
-		TagIds:     append([]uuid.UUID{}, tagIds...),
-		DueDate:    task.DueDate,
-		Estimate:   task.Estimate,
-		Rank:       rank,
-		UserId:     scope.UserID(),
-		CaldavName: task.CaldavName,
+		Id:       taskId,
+		Name:     task.Name,
+		TagId:    tag.Id,
+		ParentId: task.ParentId,
+		TagIds:   append([]uuid.UUID{}, tagIds...),
+		DueDate:  task.DueDate,
+		Estimate: task.Estimate,
+		Rank:     rank,
+		UserId:   scope.UserID(),
+		Caldav:   task.Caldav,
 	}
 
 	t.tags = append(t.tags, tag)

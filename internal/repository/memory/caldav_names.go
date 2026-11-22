@@ -38,7 +38,7 @@ func (t *MemoryStore) timespanNameIndex(scope model.OwnerScope, name *string) in
 		return -1
 	}
 	return slices.IndexFunc(t.timespans, func(timespan model.Timespan) bool {
-		return timespan.CaldavName != nil && *timespan.CaldavName == *name && matchesScope(timespan.UserId, scope)
+		return timespan.Caldav.Name != nil && *timespan.Caldav.Name == *name && matchesScope(timespan.UserId, scope)
 	})
 }
 
@@ -48,6 +48,6 @@ func (t *MemoryStore) taskNameIndex(scope model.OwnerScope, name *string) int {
 		return -1
 	}
 	return slices.IndexFunc(t.tasks, func(task model.Task) bool {
-		return task.CaldavName != nil && *task.CaldavName == *name && matchesScope(task.UserId, scope)
+		return task.Caldav.Name != nil && *task.Caldav.Name == *name && matchesScope(task.UserId, scope)
 	})
 }

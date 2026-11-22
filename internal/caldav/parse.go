@@ -17,12 +17,14 @@ var (
 
 // Event holds what a client may change on a timespan.
 type Event struct {
+	Uid        string
 	Summary    string
 	Start, End time.Time
 }
 
 // Todo holds what a client may change on a task.
 type Todo struct {
+	Uid     string
 	Summary string
 	// Due is midnight UTC of the due date, as [model.Task.DueDate].
 	Due *time.Time
@@ -69,7 +71,7 @@ func ParseEvent(cal *ical.Calendar, location *time.Location) (Event, error) {
 		return Event{}, errInvalid
 	}
 
-	return Event{Summary: text(props, ical.PropSummary), Start: start, End: end}, nil
+	return Event{Uid: text(props, ical.PropUID), Summary: text(props, ical.PropSummary), Start: start, End: end}, nil
 }
 
 // ParseTodo reads the VTODO in cal. location dates due times.
@@ -79,7 +81,7 @@ func ParseTodo(cal *ical.Calendar, location *time.Location) (Todo, error) {
 		return Todo{}, errInvalid
 	}
 	props := component.Props
-	todo := Todo{Summary: text(props, ical.PropSummary)}
+	todo := Todo{Uid: text(props, ical.PropUID), Summary: text(props, ical.PropSummary)}
 
 	if dueProp := props.Get(ical.PropDue); dueProp != nil {
 		due, err := dueProp.DateTime(location)

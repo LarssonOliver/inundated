@@ -21,7 +21,7 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.timespanNameIndex(scope, timespan.CaldavName) != -1 {
+	if t.timespanNameIndex(scope, timespan.Caldav.Name) != -1 {
 		return model.Timespan{}, model.ErrAlreadyExists
 	}
 
@@ -41,13 +41,13 @@ func (t *MemoryStore) CreateTimespan(ctx context.Context, scope model.OwnerScope
 
 	newId := uuid.New()
 	newTimespan := model.Timespan{
-		Id:         newId,
-		Name:       timespan.Name,
-		StartTime:  timespan.StartTime,
-		EndTime:    timespan.EndTime,
-		TagIds:     tagIds,
-		UserId:     scope.UserID(),
-		CaldavName: timespan.CaldavName,
+		Id:        newId,
+		Name:      timespan.Name,
+		StartTime: timespan.StartTime,
+		EndTime:   timespan.EndTime,
+		TagIds:    tagIds,
+		UserId:    scope.UserID(),
+		Caldav:    timespan.Caldav,
 	}
 
 	t.timespans = append(t.timespans, newTimespan)
@@ -125,7 +125,7 @@ func (t *MemoryStore) UpdateTimespan(ctx context.Context, scope model.OwnerScope
 	}
 
 	timespan.UserId = t.timespans[idx].UserId
-	timespan.CaldavName = t.timespans[idx].CaldavName
+	timespan.Caldav = t.timespans[idx].Caldav
 	t.timespans[idx] = timespan
 	return timespan, nil
 }

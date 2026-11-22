@@ -66,8 +66,10 @@ func TestPutCreatesTimespan(t *testing.T) {
 	assert.Equal(t, "Gym", created.Name)
 	assert.True(t, time.Date(2026, 11, 21, 9, 0, 0, 0, stockholm).Equal(created.StartTime))
 	assert.True(t, time.Date(2026, 11, 21, 10, 30, 0, 0, stockholm).Equal(created.EndTime))
-	require.NotNil(t, created.CaldavName)
-	assert.Equal(t, newName, *created.CaldavName)
+	require.NotNil(t, created.Caldav.Name)
+	assert.Equal(t, newName, *created.Caldav.Name)
+	require.NotNil(t, created.Caldav.Uid)
+	assert.Equal(t, "7F3A1C2E-5B4D-4E6F-8A9B-0C1D2E3F4A5B", *created.Caldav.Uid)
 }
 
 func TestPutCreatesUntitledTimespan(t *testing.T) {
@@ -179,8 +181,10 @@ func TestPutCreatesTask(t *testing.T) {
 	require.NotNil(t, created.DueDate)
 	assert.Equal(t, time.Date(2026, 11, 24, 0, 0, 0, 0, time.UTC), *created.DueDate)
 	assert.Nil(t, created.ParentId)
-	require.NotNil(t, created.CaldavName)
-	assert.Equal(t, newName, *created.CaldavName)
+	require.NotNil(t, created.Caldav.Name)
+	assert.Equal(t, newName, *created.Caldav.Name)
+	require.NotNil(t, created.Caldav.Uid)
+	assert.Equal(t, "9C8B7A6D-5E4F-4321-8765-43210FEDCBA9", *created.Caldav.Uid)
 }
 
 func TestPutCreatesUntitledTask(t *testing.T) {
@@ -322,4 +326,54 @@ func TestPutCreatesClosedTask(t *testing.T) {
 			assert.Equal(t, model.TaskPatch{CloseReason: test.want}, update.patch)
 		})
 	}
+}
+
+// A client that tracks objects by UID must get back the UID it created the
+// object with, or it shows the object twice.
+func TestGetAfterCreateKeepsClientUid(t *testing.T) {
+	t.Run("timespan", func(t *testing.T) {
+		handler, svc := newHandler()
+		path := "/dav/me/calendars/time/" + newName
+		require.Equal(t, http.StatusCreated, put(handler, path, fixture(t, "apple_event"), nil).Code)
+		created := svc.writes[0].(model.Timespan)
+		created.Id = uuid.New()
+		svc.timespans = []model.Timespan{created}
+
+		recorder := serve(handler, http.MethodGet, path, "", "")
+
+		require.Equal(t, http.StatusOK, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "UID:7F3A1C2E-5B4D-4E6F-8A9B-0C1D2E3F4A5B\r\n")
+		assert.NotContains(t, recorder.Body.String(), created.Id.String())
+	})
+
+	t.Run("task", func(t *testing.T) {
+		handler, svc := newHandler()
+		path := "/dav/me/calendars/tasks/" + newName
+		require.Equal(t, http.StatusCreated, put(handler, path, fixture(t, "apple_todo"), nil).Code)
+		created := svc.writes[0].(model.Task)
+		created.Id = uuid.New()
+		svc.tasks = []model.Task{created}
+
+		recorder := serve(handler, http.MethodGet, path, "", "")
+
+		require.Equal(t, http.StatusOK, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "UID:9C8B7A6D-5E4F-4321-8765-43210FEDCBA9\r\n")
+		assert.NotContains(t, recorder.Body.String(), created.Id.String())
+	})
+
+	t.Run("missing UID falls back to the id", func(t *testing.T) {
+		handler, svc := newHandler()
+		path := "/dav/me/calendars/tasks/" + newName
+		body := strings.Replace(todoBody("SUMMARY:No uid\n"), "UID:x\r\n", "", 1)
+		require.Equal(t, http.StatusCreated, put(handler, path, body, nil).Code)
+		created := svc.writes[0].(model.Task)
+		require.Nil(t, created.Caldav.Uid)
+		created.Id = uuid.New()
+		svc.tasks = []model.Task{created}
+
+		recorder := serve(handler, http.MethodGet, path, "", "")
+
+		require.Equal(t, http.StatusOK, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "UID:"+created.Id.String()+"\r\n")
+	})
 }
